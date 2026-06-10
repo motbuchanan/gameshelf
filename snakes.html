@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Snakes &amp; Ladders</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{font-family:system-ui,sans-serif;color:#e8f0e4;overflow:hidden;display:flex;flex-direction:column;
+    background:radial-gradient(120% 80% at 50% 20%,#1f3327 0%,#0c1410 70%);}
+  #bar{display:flex;align-items:center;gap:10px;padding:12px 14px;}
+  #bar a{color:#cfe6d8;text-decoration:none;font-size:14px;border:1px solid #3a5a47;border-radius:999px;padding:6px 12px;}
+  #title{font-weight:800;font-size:18px;}
+  #turnWrap{margin-left:auto;display:flex;align-items:center;gap:8px;}
+  #dot{width:16px;height:16px;border-radius:50%;}
+  #turnName{font-weight:700;font-size:15px;}
+  #boardWrap{flex:1;display:flex;align-items:center;justify-content:center;padding:6px;}
+  canvas{border-radius:12px;box-shadow:0 14px 30px rgba(0,0,0,.55);}
+  #msg{min-height:24px;text-align:center;font-size:15px;color:#d8e8dd;padding:0 16px;}
+  #foot{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;padding:10px 14px 18px;}
+  .act{font-family:inherit;font-size:17px;font-weight:bold;padding:12px 28px;border-radius:10px;border:none;
+    color:#1c2b16;background:#b0d235;cursor:pointer;box-shadow:0 4px 0 #7e9a1f,0 5px 10px rgba(0,0,0,.4);}
+  .act:disabled{opacity:.4;}
+  .act.ghost{background:#15241b;color:#cfe6d8;box-shadow:0 4px 0 #0b160f;border:1px solid #3a5a47;font-size:15px;}
+  #score{font-size:14px;color:#bcd6c7;}
+  .ov{position:fixed;inset:0;background:rgba(7,12,9,.92);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:50;text-align:center;padding:24px;}
+  .ov.show{display:flex;}
+  .ov h1{font-size:30px;}
+  #confetti{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
+  .cf{position:absolute;width:10px;height:14px;top:-20px;animation:fall linear forwards;}
+  @keyframes fall{to{transform:translateY(110vh) rotate(720deg);}}
+</style>
+</head>
+<body>
+<div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">Snakes &amp; Ladders</div><div id="turnWrap"><div id="dot"></div><div id="turnName"></div></div></div>
+<div id="boardWrap"><canvas id="cv"></canvas></div>
+<div id="msg"></div>
+<div id="foot">
+  <button class="act" id="rollBtn">Roll</button>
+  <button class="act ghost" id="newBtn">New game</button>
+  <div id="score"></div>
+</div>
+<div class="ov" id="overlay"><div id="confetti"></div><div style="font-size:54px;">&#127937;</div><h1 id="ovTitle"></h1><p id="ovText"></p>
+  <button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
+<script src="gamenight.js?v=3"></script>
+<script>
+const KEY="sl_games";
+const LADDERS={2:38,7:14,8:31,15:26,21:42,28:84,36:44,51:67,71:91,78:98};
+const SNAKES={16:6,46:25,49:11,62:19,64:60,74:53,89:68,92:88,95:75,99:80};
+let P={A:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},B:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182"}};
+function seatFrom(p){return{name:p.name,main:p.color,light:p.light,dark:p.dark};}
+let pos={A:0,B:0},turn="A",phase="over",GS=null,rolling=false,anim=null;
+const canvas=document.getElementById("cv"),ctx=canvas.getContext("2d");
+let SZ=300,CELL=30;
+function fit(){const w=Math.min(window.innerWidth-16,window.innerHeight-220,460);
+  SZ=Math.max(280,w);CELL=SZ/10;canvas.width=SZ;canvas.height=SZ;render();}
+window.addEventListener("resize",fit);
+function cellXY(n){ // 1..100 boustrophedon from bottom-left
+  const i=n-1,row=Math.floor(i/10),col=row%2===0?(i%10):(9-(i%10));
+  return{x:col*CELL+CELL/2,y:SZ-(row*CELL+CELL/2)};}
+function render(){ctx.clearRect(0,0,SZ,SZ);
+  for(let n=1;n<=100;n++){const i=n-1,row=Math.floor(i/10),col=row%2===0?(i%10):(9-(i%10));
+    const x=col*CELL,y=SZ-(row+1)*CELL;
+    ctx.fillStyle=(row+col)%2?"#e8d9b0":"#cdb582";
+    ctx.fillRect(x,y,CELL,CELL);
+    ctx.fillStyle="rgba(255,255,255,.25)";ctx.fillRect(x,y,CELL,1.2);
+    ctx.fillStyle="rgba(0,0,0,.12)";ctx.fillRect(x,y+CELL-1.2,CELL,1.2);
+    ctx.fillStyle="rgba(60,40,10,.55)";ctx.font=Math.round(CELL*0.26)+"px system-ui";
+    ctx.textAlign="left";ctx.textBaseline="top";ctx.fillText(n,x+3,y+2);}
+  // ladders
+  for(const[f,t]of Object.entries(LADDERS)){const a=cellXY(+f),b=cellXY(t);
+    const dx=b.x-a.x,dy=b.y-a.y,L=Math.hypot(dx,dy),px=-dy/L,py=dx/L,w=CELL*0.14;
+    ctx.strokeStyle="#8a5a22";ctx.lineWidth=3.4;ctx.lineCap="round";
+    ctx.beginPath();ctx.moveTo(a.x+px*w,a.y+py*w);ctx.lineTo(b.x+px*w,b.y+py*w);
+    ctx.moveTo(a.x-px*w,a.y-py*w);ctx.lineTo(b.x-px*w,b.y-py*w);ctx.stroke();
+    ctx.strokeStyle="#a9743a";ctx.lineWidth=2.4;
+    const rungs=Math.max(3,Math.floor(L/(CELL*0.5)));
+    for(let r=1;r<rungs;r++){const t2=r/rungs;
+      ctx.beginPath();ctx.moveTo(a.x+dx*t2+px*w,a.y+dy*t2+py*w);
+      ctx.lineTo(a.x+dx*t2-px*w,a.y+dy*t2-py*w);ctx.stroke();}}
+  // snakes
+  for(const[f,t]of Object.entries(SNAKES)){const a=cellXY(+f),b=cellXY(t);
+    const mx=(a.x+b.x)/2,my=(a.y+b.y)/2,dx=b.x-a.x,dy=b.y-a.y,L=Math.hypot(dx,dy);
+    const px=-dy/L,py=dx/L,amp=Math.min(CELL*0.9,L*0.25);
+    ctx.strokeStyle="#2e7d4f";ctx.lineWidth=CELL*0.16;ctx.lineCap="round";
+    ctx.beginPath();ctx.moveTo(a.x,a.y);
+    ctx.bezierCurveTo(a.x+dx*0.25+px*amp,a.y+dy*0.25+py*amp,
+                      mx-px*amp,my-py*amp,b.x,b.y);
+    ctx.stroke();
+    ctx.strokeStyle="rgba(255,255,255,.25)";ctx.lineWidth=CELL*0.05;
+    ctx.beginPath();ctx.moveTo(a.x,a.y);
+    ctx.bezierCurveTo(a.x+dx*0.25+px*amp,a.y+dy*0.25+py*amp,mx-px*amp,my-py*amp,b.x,b.y);ctx.stroke();
+    ctx.fillStyle="#2e7d4f";ctx.beginPath();ctx.arc(a.x,a.y,CELL*0.16,0,7);ctx.fill();
+    ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(a.x-CELL*0.06,a.y-CELL*0.05,CELL*0.045,0,7);ctx.fill();
+    ctx.beginPath();ctx.arc(a.x+CELL*0.06,a.y-CELL*0.05,CELL*0.045,0,7);ctx.fill();}
+  // vignette
+  const vg=ctx.createRadialGradient(SZ/2,SZ/2,SZ*0.3,SZ/2,SZ/2,SZ*0.75);
+  vg.addColorStop(0,"rgba(0,0,0,0)");vg.addColorStop(1,"rgba(0,0,0,.22)");
+  ctx.fillStyle=vg;ctx.fillRect(0,0,SZ,SZ);
+  // tokens
+  for(const s of["A","B"]){let p=anim&&anim.s===s?anim.at:(pos[s]?cellXY(pos[s]):{x:CELL*0.5,y:SZ+CELL*0.2});
+    if(!pos[s]&&!(anim&&anim.s===s))p={x:(s==="A"?0.35:0.65)*CELL,y:SZ-CELL*0.3};
+    drawToken(p.x+(s==="A"?-1:1)*CELL*0.13,p.y,P[s]);}}
+function drawToken(x,y,pc){ctx.save();
+  ctx.fillStyle="rgba(0,0,0,.35)";ctx.beginPath();ctx.ellipse(x,y+CELL*0.18,CELL*0.2,CELL*0.08,0,0,7);ctx.fill();
+  const g=ctx.createRadialGradient(x-CELL*0.08,y-CELL*0.1,CELL*0.04,x,y,CELL*0.26);
+  g.addColorStop(0,pc.light);g.addColorStop(0.7,pc.main);g.addColorStop(1,pc.dark);
+  ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,CELL*0.24,0,7);ctx.fill();
+  ctx.fillStyle="rgba(255,255,255,.7)";ctx.beginPath();ctx.arc(x-CELL*0.07,y-CELL*0.09,CELL*0.06,0,7);ctx.fill();
+  ctx.restore();}
+function newGame(){phase="over";anim=null;pos={A:0,B:0};
+  document.getElementById("overlay").classList.remove("show");
+  document.getElementById("confetti").innerHTML="";
+  GN.matchStart(function(m){P={A:seatFrom(m.a),B:seatFrom(m.b)};
+    turn=(m.first===m.a)?"A":"B";phase="play";pos={A:0,B:0};
+    GS={start:Date.now(),flipWinner:m.first.name,friendly:m.friendly,snakes:{},ladders:{},sixes:{}};
+    for(const n of[m.a.name,m.b.name]){GS.snakes[n]=0;GS.ladders[n]=0;GS.sixes[n]=0;}
+    setMessage(P[turn].name+" won the flip \u2014 roll!");refresh();render();});}
+function setMessage(t){document.getElementById("msg").textContent=t;}
+function refresh(){const pc=P[turn];
+  document.getElementById("turnName").textContent=pc.name+"'s roll";
+  const d=document.getElementById("dot");
+  d.style.background="radial-gradient(circle at 35% 30%,"+pc.light+","+pc.main+" 70%,"+pc.dark+")";
+  d.style.boxShadow="0 0 0 3px rgba(255,255,255,.15),0 0 14px "+pc.main;
+  const recs=GN.readGames(KEY);let a=0,b=0;
+  for(const r of recs){if(r.winner===P.A.name)a++;else if(r.winner===P.B.name)b++;}
+  document.getElementById("score").textContent=P.A.name+" "+a+" \u00b7 "+b+" "+P.B.name+((GS&&GS.friendly)?" \u00b7 friendly":"");
+  document.getElementById("rollBtn").disabled=phase!=="play"||rolling;}
+function landingOf(from,v){let to=from+v;
+  if(to>100)to=100-(to-100); // bounce back
+  return to;}
+function roll(){if(phase!=="play"||rolling)return;rolling=true;refresh();
+  const v=1+Math.floor(Math.random()*6);
+  if(!GN.friendly)GN.g.addDice([v]);
+  if(v===6)GS.sixes[P[turn].name]++;
+  setMessage(P[turn].name+" rolls "+v+(pos[turn]+v>100?" \u2014 too far, bounce back!":""));
+  const from=pos[turn],to=landingOf(from,v);
+  walk(turn,from,to,()=>{
+    pos[turn]=to;
+    const chute=SNAKES[to],lad=LADDERS[to];
+    if(lad){GS.ladders[P[turn].name]++;setMessage("Ladder! Up to "+lad+".");
+      slide(turn,to,lad,()=>{pos[turn]=lad;after();});return;}
+    if(chute){GS.snakes[P[turn].name]++;setMessage("Sssnake\u2026 down to "+chute+".");
+      slide(turn,to,chute,()=>{pos[turn]=chute;after();});return;}
+    after();
+    function unused(){}});
+  function after(){rolling=false;
+    if(pos[turn]===100){finish(turn);return;}
+    if(v===6){setMessage((document.getElementById("msg").textContent+" ").trim()+" Six rolls again!");refresh();render();return;}
+    turn=turn==="A"?"B":"A";refresh();render();
+    setMessage(P[turn].name+" \u2014 your roll.");}}
+function walk(s,from,to,done){ // hop square by square
+  const path=[];const step=from<to?1:-1;
+  // bounce path: forward to 100 then back
+  if(from<to){for(let n=from+1;n<=to;n++)path.push(n);}
+  else{for(let n=from+1;n<=100;n++)path.push(n);for(let n=99;n>=to;n--)path.push(n);}
+  if(from+1>100){} // safety
+  let i=0;
+  (function hop(){if(i>=path.length){anim=null;render();done();return;}
+    const c=cellXY(path[i]);anim={s,at:{x:c.x,y:c.y-CELL*0.12}};render();
+    setTimeout(()=>{anim={s,at:c};render();i++;setTimeout(hop,90);},70);})();}
+function slide(s,from,to,done){const a=cellXY(from),b=cellXY(to);let t0=null;
+  (function st(ts){if(t0===null)t0=ts;const p=Math.min(1,(ts-t0)/450);
+    const e=p<0.5?2*p*p:1-Math.pow(-2*p+2,2)/2;
+    anim={s,at:{x:a.x+(b.x-a.x)*e,y:a.y+(b.y-a.y)*e}};render();
+    if(p<1)requestAnimationFrame(st);else{anim=null;render();done();}})(performance.now());
+  requestAnimationFrame(()=>{});}
+function finish(w){phase="over";
+  const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
+    winner:P[w].name,loser:P[w==="A"?"B":"A"].name,flipWinner:GS.flipWinner,
+    snakes:GS.snakes,ladders:GS.ladders,sixes:GS.sixes};
+  GN.recordGame(KEY,rec);
+  document.getElementById("ovTitle").textContent=P[w].name+" reaches 100!";
+  document.getElementById("ovText").textContent=GS.ladders[P[w].name]+" ladders up \u00b7 "+GS.snakes[P[w].name]+" snakes survived";
+  const box=document.getElementById("confetti"),cols=[P[w].main,P[w].light,"#f4c542","#fff"];
+  for(let i=0;i<60;i++){const d=document.createElement("div");d.className="cf";d.style.left=Math.random()*100+"%";
+    d.style.background=cols[i%cols.length];d.style.animationDuration=(2.2+Math.random()*1.8)+"s";
+    d.style.animationDelay=(Math.random()*0.8)+"s";box.appendChild(d);}
+  document.getElementById("overlay").classList.add("show");refresh();}
+document.getElementById("rollBtn").addEventListener("click",roll);
+document.getElementById("newBtn").addEventListener("click",newGame);
+document.getElementById("ovBtn").addEventListener("click",newGame);
+GN.rulesButton(document.getElementById("foot"),{title:"Snakes & Ladders",sections:[
+ {h:"Goal",p:"Race from square 1 to square 100. Pure luck \u2014 the dice decide everything, which is exactly the fun."},
+ {h:"Rolling",p:"Roll and walk that many squares along the winding path. Roll a 6 and you go again."},
+ {h:"Ladders & snakes",p:"Land on a ladder's foot and climb to its top. Land on a snake's head and slide all the way down its tail."},
+ {h:"The finish",p:"You need square 100 exactly \u2014 roll too far and you bounce back from the top. The endgame can be agony."}]});
+GN.statsButton(document.getElementById("foot"),{title:"Snakes & Ladders",key:KEY,specials:[
+ {label:"Snakes hit",of:(r,n)=>r.reduce((a,x)=>a+((x.snakes&&x.snakes[n])||0),0)},
+ {label:"Ladders climbed",of:(r,n)=>r.reduce((a,x)=>a+((x.ladders&&x.ladders[n])||0),0)},
+ {label:"Sixes rolled",of:(r,n)=>r.reduce((a,x)=>a+((x.sixes&&x.sixes[n])||0),0)},
+ {label:"Coin flips won",of:(r,n)=>r.filter(x=>x.flipWinner===n).length}]});
+fit();newGame();
+</script>
+</body>
+</html>

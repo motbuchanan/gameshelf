@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>War</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{font-family:system-ui,sans-serif;color:#e8f0e4;overflow:hidden;display:flex;flex-direction:column;
+    background:radial-gradient(120% 80% at 50% 20%,#1f3327 0%,#0c1410 70%);}
+  #bar{display:flex;align-items:center;gap:10px;padding:12px 14px;}
+  #bar a{color:#cfe6d8;text-decoration:none;font-size:14px;border:1px solid #3a5a47;border-radius:999px;padding:6px 12px;}
+  #title{font-weight:800;font-size:20px;}
+  #turnName{margin-left:auto;font-weight:700;font-size:15px;}
+  #table{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:8px;}
+  .side{display:flex;align-items:center;gap:16px;}
+  .deck{width:74px;height:104px;border-radius:9px;position:relative;
+    background:repeating-linear-gradient(45deg,#7e2a22 0 6px,#6b1f18 6px 12px);
+    border:2px solid rgba(255,255,255,.25);box-shadow:0 6px 14px rgba(0,0,0,.5),inset 0 2px 0 rgba(255,255,255,.15);}
+  .deck.blue{background:repeating-linear-gradient(45deg,#274f8e 0 6px,#1d3f74 6px 12px);}
+  .deck .n{position:absolute;bottom:-24px;left:0;right:0;text-align:center;font-size:13px;color:#bcd6c7;font-variant-numeric:tabular-nums;}
+  .card{width:74px;height:104px;border-radius:9px;background:#f7f3ea;color:#1c1c1c;position:relative;
+    box-shadow:0 8px 18px rgba(0,0,0,.55),inset 0 1px 0 #fff;display:flex;align-items:center;justify-content:center;
+    font-weight:800;font-size:34px;transform-style:preserve-3d;}
+  .card.red{color:#c0271f;}
+  .card .pip{position:absolute;font-size:13px;font-weight:800;}
+  .card .tl{top:5px;left:7px;} .card .br{bottom:5px;right:7px;transform:rotate(180deg);}
+  .card.facedown{background:repeating-linear-gradient(45deg,#555 0 6px,#444 6px 12px);color:transparent;}
+  @keyframes flipIn{from{transform:rotateY(90deg) translateY(-8px);}to{transform:rotateY(0) translateY(0);}}
+  .card.flip{animation:flipIn .22s ease-out;}
+  #arena{display:flex;align-items:center;gap:14px;min-height:130px;}
+  #pot{display:flex;gap:3px;align-items:center;}
+  #pot .mini{width:22px;height:32px;border-radius:3px;background:#ddd;border:1px solid #aaa;}
+  #vs{font-weight:800;color:#7d9a88;font-size:18px;}
+  #msg{min-height:40px;text-align:center;font-size:15px;color:#d8e8dd;padding:0 16px;display:flex;align-items:center;}
+  #foot{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;padding:10px 14px 18px;}
+  .act{font-family:inherit;font-size:16px;font-weight:bold;padding:11px 22px;border-radius:10px;border:none;
+    color:#1c2b16;background:#b0d235;cursor:pointer;box-shadow:0 4px 0 #7e9a1f,0 5px 10px rgba(0,0,0,.4);}
+  .act.ghost{background:#15241b;color:#cfe6d8;box-shadow:0 4px 0 #0b160f;border:1px solid #3a5a47;}
+  #score{font-size:14px;color:#bcd6c7;}
+  #flipBtn{font-size:20px;padding:16px 44px;}
+  .ov{position:fixed;inset:0;background:rgba(7,12,9,.92);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:50;text-align:center;padding:24px;}
+  .ov.show{display:flex;}
+  .ov h1{font-size:30px;}
+  #confetti{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
+  .cf{position:absolute;width:10px;height:14px;top:-20px;animation:fall linear forwards;}
+  @keyframes fall{to{transform:translateY(110vh) rotate(720deg);}}
+</style>
+</head>
+<body>
+<div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">War</div><div id="turnName"></div></div>
+<div id="table">
+  <div class="side"><div class="deck" id="deckA"><div class="n" id="nA"></div></div></div>
+  <div id="arena"><div id="cardA"></div><div id="pot"></div><div id="vs">VS</div><div id="cardB"></div></div>
+  <div class="side"><div class="deck blue" id="deckB"><div class="n" id="nB"></div></div></div>
+</div>
+<div id="msg"></div>
+<div id="foot">
+  <button class="act" id="flipBtn">Battle!</button>
+  <button class="act ghost" id="newBtn">New game</button>
+  <div id="score"></div>
+</div>
+<div class="ov" id="overlay"><div id="confetti"></div><div style="font-size:54px;">&#127881;</div><h1 id="ovTitle"></h1><p id="ovText"></p>
+  <button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
+<script src="gamenight.js?v=3"></script>
+<script>
+const KEY="war_games",MAXR=200;
+let P={A:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},B:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182"}};
+function seatFrom(p){return{name:p.name,main:p.color,light:p.light,dark:p.dark};}
+const RANKS=["2","3","4","5","6","7","8","9","10","J","Q","K","A"];
+const SUITS=[{s:"\u2660",r:false},{s:"\u2665",r:true},{s:"\u2666",r:true},{s:"\u2663",r:false}];
+let decks={A:[],B:[]},phase="over",rounds=0,GS=null,busy=false;
+function freshDeck(){const d=[];for(let v=0;v<13;v++)for(const su of SUITS)d.push({v,s:su.s,red:su.r});
+  for(let i=d.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[d[i],d[j]]=[d[j],d[i]];}return d;}
+function newGame(){phase="over";busy=false;rounds=0;
+  document.getElementById("overlay").classList.remove("show");
+  document.getElementById("confetti").innerHTML="";
+  document.getElementById("cardA").innerHTML="";document.getElementById("cardB").innerHTML="";
+  document.getElementById("pot").innerHTML="";
+  GN.matchStart(function(m){P={A:seatFrom(m.a),B:seatFrom(m.b)};
+    const d=freshDeck();decks={A:d.slice(0,26),B:d.slice(26)};
+    phase="play";rounds=0;
+    GS={start:Date.now(),flipWinner:m.first.name,friendly:m.friendly,wars:{},pot:0,bigPot:{}};
+    GS.wars[m.a.name]=0;GS.wars[m.b.name]=0;GS.bigPot[m.a.name]=0;GS.bigPot[m.b.name]=0;
+    setMessage(m.first.name+" won the flip \u2014 tap Battle! to fight each round");
+    refresh();});}
+function setMessage(t){document.getElementById("msg").textContent=t;}
+function cardEl(c,down){const e=document.createElement("div");e.className="card flip"+(c.red?" red":"")+(down?" facedown":"");
+  if(!down){e.innerHTML='<span class="pip tl">'+RANKS[c.v]+c.s+'</span>'+RANKS[c.v]+c.s+'<span class="pip br">'+RANKS[c.v]+c.s+'</span>';}
+  return e;}
+function refresh(){document.getElementById("nA").textContent=P.A.name+" \u00b7 "+decks.A.length;
+  document.getElementById("nB").textContent=P.B.name+" \u00b7 "+decks.B.length;
+  const recs=GN.readGames(KEY);let a=0,b=0;
+  for(const r of recs){if(r.winner===P.A.name)a++;else if(r.winner===P.B.name)b++;}
+  document.getElementById("score").textContent=P.A.name+" "+a+" \u00b7 "+b+" "+P.B.name+((GS&&GS.friendly)?" \u00b7 friendly":"");
+  document.getElementById("turnName").textContent="Round "+(rounds+1);}
+function battle(){if(phase!=="play"||busy)return;busy=true;
+  const table=[];let warCount=0;
+  (function fight(){
+    if(!decks.A.length||!decks.B.length){conclude();return;}
+    const ca=decks.A.shift(),cb=decks.B.shift();table.push(ca,cb);
+    const eA=document.getElementById("cardA"),eB=document.getElementById("cardB");
+    eA.innerHTML="";eA.appendChild(cardEl(ca,false));
+    eB.innerHTML="";eB.appendChild(cardEl(cb,false));
+    document.getElementById("pot").innerHTML=table.length>2?('<div class="mini"></div>'.repeat(Math.min(8,table.length-2))):"";
+    if(ca.v>cb.v){award("A",table,warCount);return;}
+    if(cb.v>ca.v){award("B",table,warCount);return;}
+    // WAR: each buries 3 (or all but one), then fights again
+    warCount++;
+    setMessage("WAR! "+RANKS[ca.v]+" ties "+RANKS[cb.v]+" \u2014 three down, one up\u2026");
+    setTimeout(()=>{
+      const burn=s=>{const n=Math.min(3,Math.max(0,decks[s].length-1));for(let i=0;i<n;i++)table.push(decks[s].shift());};
+      burn("A");burn("B");
+      setTimeout(fight,420);},650);})();
+  function award(w,pile,wars){rounds++;
+    if(wars){GS.wars[P[w].name]+=wars;}
+    if(pile.length>GS.bigPot[P[w].name])GS.bigPot[P[w].name]=pile.length;
+    decks[w].push(...pile);
+    setMessage(P[w].name+" takes "+pile.length+" card"+(pile.length>1?"s":"")+(wars?" \u2014 won the war!":""));
+    setTimeout(()=>{busy=false;refresh();
+      if(!decks.A.length||!decks.B.length||rounds>=MAXR)conclude();},pile.length>2?700:280);}
+  function conclude(){phase="over";
+    const w=decks.A.length===decks.B.length?null:(decks.A.length>decks.B.length?"A":"B");
+    finish(w);}}
+function finish(w){
+  const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
+    winner:w?P[w].name:null,loser:w?P[w==="A"?"B":"A"].name:null,draw:!w,
+    flipWinner:GS.flipWinner,rounds,wars:GS.wars,bigPot:GS.bigPot};
+  GN.recordGame(KEY,rec);
+  document.getElementById("ovTitle").textContent=w?P[w].name+" wins the war!":"Stalemate!";
+  document.getElementById("ovText").textContent=w?("All 52 cards in "+rounds+" rounds."):"Equal armies after "+rounds+" rounds.";
+  if(w)confetti(P[w]);
+  document.getElementById("overlay").classList.add("show");refresh();}
+function confetti(pc){const box=document.getElementById("confetti"),cols=[pc.main,pc.light,"#f4c542","#fff"];
+  for(let i=0;i<60;i++){const d=document.createElement("div");d.className="cf";d.style.left=Math.random()*100+"%";
+    d.style.background=cols[i%cols.length];d.style.animationDuration=(2.2+Math.random()*1.8)+"s";
+    d.style.animationDelay=(Math.random()*0.8)+"s";box.appendChild(d);}}
+document.getElementById("flipBtn").addEventListener("click",battle);
+document.getElementById("newBtn").addEventListener("click",newGame);
+document.getElementById("ovBtn").addEventListener("click",newGame);
+GN.rulesButton(document.getElementById("foot"),{title:"War",sections:[
+ {h:"Goal",p:"Capture all 52 cards. Zero decisions, maximum drama \u2014 the fastest box on the shelf."},
+ {h:"Battles",p:"Tap Battle! \u2014 both armies flip their top card. Higher rank takes both cards to the bottom of their deck. Aces are high."},
+ {h:"WAR",p:"A tie means WAR: each side buries three cards face down and flips a fourth. Winner of that flip takes the entire pile. Ties can chain into double and triple wars."},
+ {h:"Endings",p:"Run your opponent out of cards and the war is won. After 200 rounds, the bigger army takes it on points."}]});
+GN.statsButton(document.getElementById("foot"),{title:"War",key:KEY,specials:[
+ {label:"Wars won",of:(r,n)=>r.reduce((a,x)=>a+((x.wars&&x.wars[n])||0),0)},
+ {label:"Biggest pot",of:(r,n)=>r.reduce((a,x)=>Math.max(a,(x.bigPot&&x.bigPot[n])||0),0)},
+ {label:"Coin flips won",of:(r,n)=>r.filter(x=>x.flipWinner===n).length}]});
+newGame();
+</script>
+</body>
+</html>

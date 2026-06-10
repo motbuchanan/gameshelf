@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Shut the Box</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{font-family:system-ui,sans-serif;color:#e8f0e4;overflow:hidden;display:flex;flex-direction:column;
+    background:radial-gradient(120% 80% at 50% 20%,#1f3327 0%,#0c1410 70%);}
+  #bar{display:flex;align-items:center;gap:10px;padding:12px 14px;}
+  #bar a{color:#cfe6d8;text-decoration:none;font-size:14px;border:1px solid #3a5a47;border-radius:999px;padding:6px 12px;}
+  #title{font-weight:800;font-size:19px;}
+  #turnWrap{margin-left:auto;display:flex;align-items:center;gap:8px;}
+  #dot{width:16px;height:16px;border-radius:50%;}
+  #turnName{font-weight:700;font-size:15px;}
+  #boxWrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:8px;}
+  #box{background:linear-gradient(180deg,#6e431f 0%,#4f2c11 100%);border-radius:14px;padding:16px 12px 14px;
+    box-shadow:0 12px 26px rgba(0,0,0,.6),inset 0 2px 0 rgba(255,225,170,.25),inset 0 -6px 14px rgba(0,0,0,.4);
+    border:1px solid rgba(0,0,0,.5);}
+  #tiles{display:flex;gap:7px;}
+  .tile{width:34px;height:74px;border-radius:6px;border:none;font-family:inherit;font-weight:800;font-size:21px;cursor:pointer;
+    color:#3a2a05;background:linear-gradient(180deg,#f0dca8,#d9bd7d 60%,#c4a463);position:relative;
+    box-shadow:0 4px 0 #8a6f3a,0 6px 10px rgba(0,0,0,.45),inset 0 2px 0 rgba(255,255,255,.5);
+    transition:transform .18s,box-shadow .18s,opacity .18s;}
+  .tile.shut{transform:translateY(-26px) rotateX(58deg);transform-origin:top center;opacity:.35;
+    box-shadow:none;background:linear-gradient(180deg,#9d8657,#7c683f);pointer-events:none;}
+  .tile.sel{transform:translateY(-8px);box-shadow:0 12px 0 #8a6f3a,0 14px 16px rgba(0,0,0,.5),0 0 0 3px #f7f3da,inset 0 2px 0 rgba(255,255,255,.5);}
+  .tile:disabled{cursor:default;}
+  #diceRow{display:flex;gap:14px;min-height:74px;align-items:center;}
+  .die{width:64px;height:64px;border-radius:13px;background:linear-gradient(160deg,#fff,#e4e4dc);position:relative;
+    box-shadow:0 8px 16px rgba(0,0,0,.5),inset 0 2px 0 #fff;}
+  .die .p{position:absolute;width:11px;height:11px;border-radius:50%;background:#1c1c1c;}
+  @keyframes shake{0%,100%{transform:rotate(0)}25%{transform:rotate(-8deg)}75%{transform:rotate(8deg)}}
+  .die.rolling{animation:shake .12s linear infinite;}
+  #sums{font-size:14px;color:#bcd6c7;min-height:20px;}
+  #msg{min-height:40px;text-align:center;font-size:15px;color:#d8e8dd;padding:0 16px;display:flex;align-items:center;justify-content:center;}
+  #foot{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;padding:10px 14px 18px;}
+  .act{font-family:inherit;font-size:16px;font-weight:bold;padding:11px 22px;border-radius:10px;border:none;
+    color:#1c2b16;background:#b0d235;cursor:pointer;box-shadow:0 4px 0 #7e9a1f,0 5px 10px rgba(0,0,0,.4);}
+  .act:disabled{opacity:.4;}
+  .act.gold{background:#f4c542;box-shadow:0 4px 0 #9a7414,0 5px 10px rgba(0,0,0,.4);}
+  .act.ghost{background:#15241b;color:#cfe6d8;box-shadow:0 4px 0 #0b160f;border:1px solid #3a5a47;font-size:15px;}
+  #score{font-size:14px;color:#bcd6c7;width:100%;text-align:center;}
+  .ov{position:fixed;inset:0;background:rgba(7,12,9,.92);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:50;text-align:center;padding:24px;}
+  .ov.show{display:flex;}
+  .ov h1{font-size:28px;}
+  #confetti{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
+  .cf{position:absolute;width:10px;height:14px;top:-20px;animation:fall linear forwards;}
+  @keyframes fall{to{transform:translateY(110vh) rotate(720deg);}}
+</style>
+</head>
+<body>
+<div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">Shut the Box</div><div id="turnWrap"><div id="dot"></div><div id="turnName"></div></div></div>
+<div id="boxWrap">
+  <div id="box"><div id="tiles"></div></div>
+  <div id="diceRow"></div>
+  <div id="sums"></div>
+</div>
+<div id="msg"></div>
+<div id="foot">
+  <button class="act" id="rollBtn">Roll</button>
+  <button class="act gold" id="shutBtn">Shut tiles</button>
+  <button class="act ghost" id="newBtn">New game</button>
+  <div id="score"></div>
+</div>
+<div class="ov" id="overlay"><div id="confetti"></div><div style="font-size:54px;">&#128230;</div><h1 id="ovTitle"></h1><p id="ovText"></p>
+  <button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
+<script src="gamenight.js?v=3"></script>
+<script>
+const KEY="sb_games";
+let P={A:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},B:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182"}};
+function seatFrom(p){return{name:p.name,main:p.color,light:p.light,dark:p.dark};}
+let tiles=[],sel=new Set(),dice=[],need=0,turn="A",roundScore={A:null,B:null},phase="over",GS=null,rolling=false;
+const PIPS={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
+function dieEl(v){const d=document.createElement("div");d.className="die";
+  const pos=[[14,14],[32,14],[50,14],[14,32],[32,32],[50,32],[14,50],[32,50],[50,50]];
+  for(const i of PIPS[v]){const p=document.createElement("div");p.className="p";
+    p.style.left=pos[i][0]-5.5+"px";p.style.top=pos[i][1]-5.5+"px";d.appendChild(p);}
+  return d;}
+function anyCombo(open,target){ // can any subset of open tiles sum to target?
+  if(target===0)return true;if(target<0)return false;
+  for(let i=0;i<open.length;i++){
+    if(anyCombo(open.slice(i+1),target-open[i]))return true;}
+  return false;}
+function newGame(){phase="over";
+  document.getElementById("overlay").classList.remove("show");
+  document.getElementById("confetti").innerHTML="";
+  GN.matchStart(function(m){P={A:seatFrom(m.a),B:seatFrom(m.b)};
+    turn=(m.first===m.a)?"A":"B";roundScore={A:null,B:null};
+    GS={start:Date.now(),flipWinner:m.first.name,friendly:m.friendly,shut:{},left:{}};
+    for(const n of[m.a.name,m.b.name]){GS.shut[n]=0;GS.left[n]=0;}
+    startRound();});}
+function startRound(){tiles=[1,2,3,4,5,6,7,8,9];sel.clear();dice=[];need=0;phase="roll";
+  setMessage(P[turn].name+" \u2014 roll to open your round.");
+  render();}
+function setMessage(t){document.getElementById("msg").textContent=t;}
+function render(){const pc=P[turn];
+  document.getElementById("turnName").textContent=pc.name+"'s round";
+  const d=document.getElementById("dot");
+  d.style.background="radial-gradient(circle at 35% 30%,"+pc.light+","+pc.main+" 70%,"+pc.dark+")";
+  d.style.boxShadow="0 0 0 3px rgba(255,255,255,.15),0 0 14px "+pc.main;
+  const tl=document.getElementById("tiles");tl.innerHTML="";
+  for(let n=1;n<=9;n++){const b=document.createElement("button");b.className="tile";
+    b.textContent=n;
+    if(!tiles.includes(n))b.classList.add("shut");
+    else{if(sel.has(n))b.classList.add("sel");
+      b.disabled=(phase!=="pick");
+      b.addEventListener("click",()=>{if(phase!=="pick")return;
+        if(sel.has(n))sel.delete(n);else sel.add(n);render();});}
+    tl.appendChild(b);}
+  const dr=document.getElementById("diceRow");dr.innerHTML="";
+  for(const v of dice)dr.appendChild(dieEl(v));
+  const cur=[...sel].reduce((a,b)=>a+b,0);
+  document.getElementById("sums").textContent=phase==="pick"?("Need "+need+" \u00b7 selected "+(cur||0)):"";
+  const recs=GN.readGames(KEY);let a=0,b=0;
+  for(const r of recs){if(r.winner===P.A.name)a++;else if(r.winner===P.B.name)b++;}
+  document.getElementById("score").textContent=P.A.name+" "+a+" \u00b7 "+b+" "+P.B.name+((GS&&GS.friendly)?" \u00b7 friendly":"")+
+    (roundScore.A!==null?(" \u00b7 "+P.A.name+" left "+roundScore.A):"");
+  document.getElementById("rollBtn").disabled=phase!=="roll"||rolling;
+  document.getElementById("shutBtn").disabled=!(phase==="pick"&&cur===need);}
+function roll(){if(phase!=="roll"||rolling)return;rolling=true;render();
+  const high=tiles.reduce((a,b)=>a+b,0),one=tiles.every(t=>t<=6)&&high<=6?false:false;
+  const useOne=tiles.length&&Math.max(...tiles)<=6&&[7,8,9].every(t=>!tiles.includes(t));
+  const dr=document.getElementById("diceRow");dr.innerHTML="";
+  const d1=dieEl(1),d2=useOne?null:dieEl(1);
+  d1.classList.add("rolling");dr.appendChild(d1);
+  if(d2){d2.classList.add("rolling");dr.appendChild(d2);}
+  let n=0;const iv=setInterval(()=>{
+    const a=1+Math.floor(Math.random()*6),b=useOne?0:1+Math.floor(Math.random()*6);
+    dr.innerHTML="";const e1=dieEl(a);dr.appendChild(e1);if(!useOne)dr.appendChild(dieEl(b));
+    if(++n>=7){clearInterval(iv);rolling=false;
+      dice=useOne?[a]:[a,b];need=a+b;
+      if(!GN.friendly)GN.g.addDice(dice);
+      if(!anyCombo(tiles,need)){
+        const left=tiles.reduce((x,y)=>x+y,0);
+        setMessage("Rolled "+need+" \u2014 no tiles make it. "+P[turn].name+" is stuck with "+left+".");
+        phase="over";render();
+        setTimeout(()=>endRound(left),1100);return;}
+      phase="pick";sel.clear();
+      setMessage("Rolled "+need+" \u2014 tap tiles that add up to it.");
+      render();}},65);}
+function shut(){const cur=[...sel].reduce((a,b)=>a+b,0);
+  if(phase!=="pick"||cur!==need)return;
+  tiles=tiles.filter(t=>!sel.has(t));
+  GS.shut[P[turn].name]+=sel.size;sel.clear();dice=[];
+  if(!tiles.length){setMessage(P[turn].name+" SHUT THE BOX!");phase="over";render();
+    setTimeout(()=>endRound(0),900);return;}
+  phase="roll";setMessage("Tiles down. Roll again \u2014 "+tiles.reduce((a,b)=>a+b,0)+" left on the lid.");
+  render();}
+function endRound(left){roundScore[turn]=left;GS.left[P[turn].name]+=left;
+  if(left===0){finish(turn,true);return;}
+  if(turn==="A"){turn="B";startRound();return;}
+  // both rounds done: lower remainder wins
+  const w=roundScore.A===roundScore.B?null:(roundScore.A<roundScore.B?"A":"B");
+  finish(w,false);}
+function finish(w,shutout){phase="over";
+  const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
+    winner:w?P[w].name:null,loser:w?P[w==="A"?"B":"A"].name:null,draw:!w,
+    flipWinner:GS.flipWinner,shutBox:!!shutout&&!!w?P[w].name:null,
+    left:(function(){const s={};s[P.A.name]=roundScore.A;s[P.B.name]=roundScore.B;return s;})(),
+    shut:GS.shut};
+  GN.recordGame(KEY,rec);
+  document.getElementById("ovTitle").textContent=w?(shutout?P[w].name+" shut the box!":P[w].name+" wins!"):"Dead even!";
+  document.getElementById("ovText").textContent=shutout?"Every tile down. The perfect round.":
+    (w?(P.A.name+" left "+roundScore.A+" \u00b7 "+P.B.name+" left "+(roundScore.B===null?"\u2014":roundScore.B)):"Both left "+roundScore.A+".");
+  if(w){const box=document.getElementById("confetti"),cols=[P[w].main,P[w].light,"#f4c542","#fff"];
+    for(let i=0;i<60;i++){const d=document.createElement("div");d.className="cf";d.style.left=Math.random()*100+"%";
+      d.style.background=cols[i%cols.length];d.style.animationDuration=(2.2+Math.random()*1.8)+"s";
+      d.style.animationDelay=(Math.random()*0.8)+"s";box.appendChild(d);}}
+  document.getElementById("overlay").classList.add("show");render();}
+document.getElementById("rollBtn").addEventListener("click",roll);
+document.getElementById("shutBtn").addEventListener("click",shut);
+document.getElementById("newBtn").addEventListener("click",newGame);
+document.getElementById("ovBtn").addEventListener("click",newGame);
+GN.rulesButton(document.getElementById("foot"),{title:"Shut the Box",sections:[
+ {h:"Goal",p:"Flip down tiles 1\u20139. Each player gets one round; the lower leftover total wins. Flip them ALL and you shut the box \u2014 instant win."},
+ {h:"Your round",p:"Roll the dice, then tap any tiles that add up exactly to the roll \u2014 a 9 can be the 9, or 4+5, or 1+2+6. Shut them and roll again."},
+ {h:"One die",p:"Once 7, 8, and 9 are all down, you roll a single die. The endgame gets surgical."},
+ {h:"Stuck",p:"If no open tiles can make your roll, the round ends \u2014 your score is everything still standing. Pub wisdom: kill the big tiles early."}]});
+GN.statsButton(document.getElementById("foot"),{title:"Shut the Box",key:KEY,specials:[
+ {label:"Boxes shut",of:(r,n)=>r.filter(x=>x.shutBox===n).length},
+ {label:"Tiles flipped",of:(r,n)=>r.reduce((a,x)=>a+((x.shut&&x.shut[n])||0),0)},
+ {label:"Coin flips won",of:(r,n)=>r.filter(x=>x.flipWinner===n).length}]});
+newGame();
+</script>
+</body>
+</html>

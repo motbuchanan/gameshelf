@@ -18,14 +18,19 @@
   @keyframes dp{0%,100%{transform:scale(1);}50%{transform:scale(1.2);}}
   #wrap{flex:1;display:flex;align-items:center;justify-content:center;width:100%;padding:6px 10px;position:relative;}
   canvas{display:block;border-radius:50%;touch-action:none;}
+  #domeBase{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:50%;pointer-events:none;
+    background:radial-gradient(circle at 50% 38%,#cfd6de 0%,#9aa4b0 42%,#5d6873 70%,#39424c 100%);
+    box-shadow:0 6px 14px rgba(0,0,0,.55),inset 0 2px 2px rgba(255,255,255,.65),inset 0 -3px 6px rgba(0,0,0,.45);}
+  #domeBase::after{content:"";position:absolute;inset:7%;border-radius:50%;
+    background:radial-gradient(circle at 50% 60%,#1a222b 0%,#242e38 60%,#11171d 100%);
+    box-shadow:inset 0 4px 10px rgba(0,0,0,.8),inset 0 -1px 2px rgba(255,255,255,.12);}
   #dome{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border:none;cursor:pointer;border-radius:50%;
-    background:radial-gradient(circle at 38% 30%,rgba(255,255,255,.9),rgba(220,232,245,.45) 38%,rgba(150,175,200,.30) 70%,rgba(90,110,135,.45));
+    background:radial-gradient(circle at 38% 28%,rgba(255,255,255,.95) 0%,rgba(235,243,250,.55) 22%,rgba(200,218,236,.28) 45%,rgba(150,175,200,.18) 68%,rgba(110,135,165,.38) 88%,rgba(80,100,125,.5));
     box-shadow:inset 0 -6px 14px rgba(40,60,90,.35),inset 0 4px 8px rgba(255,255,255,.7),0 8px 18px rgba(0,0,0,.45);
     display:flex;align-items:center;justify-content:center;}
-  #dome:active{transform:translate(-50%,-50%) scale(.94);}
-  #dome.popping{animation:pop .34s ease;}
-  @keyframes pop{0%{transform:translate(-50%,-50%) scale(.88,.78);}55%{transform:translate(-50%,-50%) scale(1.06,1.1);}100%{transform:translate(-50%,-50%) scale(1,1);}}
-  #die{background:#fff;border-radius:18%;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);padding:9%;box-shadow:0 3px 6px rgba(0,0,0,.4);}
+  #dome::before{content:"";position:absolute;left:18%;top:10%;width:34%;height:22%;border-radius:50%;
+    background:radial-gradient(ellipse at center,rgba(255,255,255,.95),rgba(255,255,255,0) 70%);pointer-events:none;}
+  #die{background:linear-gradient(150deg,#fff 0%,#f2efe6 60%,#dcd6c6 100%);border-radius:18%;will-change:transform;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);padding:9%;box-shadow:0 3px 6px rgba(0,0,0,.4);}
   #die i{border-radius:50%;background:#1b2330;visibility:hidden;}
   #msg{min-height:20px;font-size:14px;color:#cfe6d8;text-align:center;padding:2px 12px;}
   #foot{padding:0 0 14px;display:flex;gap:12px;align-items:center;}
@@ -44,11 +49,11 @@
 </head>
 <body>
 <div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">Trouble</div><div id="turn"><div id="dot"></div><span id="turnName"></span></div></div>
-<div id="wrap"><canvas id="board"></canvas><button id="dome" aria-label="Pop the die"><div id="die"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></button></div>
+<div id="wrap"><canvas id="board"></canvas><div id="domeBase"></div><button id="dome" aria-label="Pop the die"><div id="die"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></button></div>
 <div id="msg"></div>
 <div id="foot"><button class="act" id="newBtn">New game</button><div id="score"></div></div>
 <div class="ov" id="overlay"><div id="confetti"></div><div id="ovTrophy">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p><button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
-<script src="gamenight.js?v=2"></script>
+<script src="gamenight.js?v=3"></script>
 <script>
 const TRACK=28,FIN=4;
 let P={red:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19",entry:0},
@@ -63,6 +68,8 @@ function fit(){SZ=Math.floor(Math.min(window.innerWidth-24,window.innerHeight-17
   canvas.width=SZ;canvas.height=SZ;R=SZ*0.40;
   const dome=document.getElementById("dome"),d=SZ*0.34;
   dome.style.width=d+"px";dome.style.height=d+"px";
+  const base=document.getElementById("domeBase");
+  base.style.width=(d*1.22)+"px";base.style.height=(d*1.22)+"px";
   const die=document.getElementById("die");die.style.width=(d*0.46)+"px";die.style.height=(d*0.46)+"px";
   render();}
 function holeXY(i){const a=-Math.PI/2+i/TRACK*2*Math.PI;return{x:SZ/2+R*Math.cos(a),y:SZ/2+R*Math.sin(a)};}
@@ -101,10 +108,30 @@ function moveOf(p,n){ // returns {to,bump}|null
   for(let i=0;i<=f;i++)if(pegs.find(q=>q.color===p.color&&q.loc.state==="fin"&&q.loc.i===i))return null;
   return{to:{state:"fin",i:f},bump:null,t};}
 function rollDie(){if(phase!=="roll"||animFly)return;
-  const dome=document.getElementById("dome");dome.classList.remove("popping");void dome.offsetWidth;dome.classList.add("popping");
+  const dome=document.getElementById("dome"),dieEl=document.getElementById("die");
   GS.pops[P[turn].name]++;
-  let n=0;const iv=setInterval(()=>{showDie(1+Math.floor(Math.random()*6));if(++n>=7){clearInterval(iv);
-    die=1+Math.floor(Math.random()*6);showDie(die);if(!GN.friendly)GN.g.addDice([die]);afterRoll();}},45);}
+  // dome: press down, spring back with overshoot
+  dome.animate([
+    {transform:"translate(-50%,-50%) scale(1,1)"},
+    {transform:"translate(-50%,-50%) scale(1.04,0.82)",offset:0.18},
+    {transform:"translate(-50%,-50%) scale(0.97,1.08)",offset:0.5},
+    {transform:"translate(-50%,-50%) scale(1.02,0.98)",offset:0.74},
+    {transform:"translate(-50%,-50%) scale(1,1)"}
+  ],{duration:560,easing:"cubic-bezier(.3,.7,.3,1)"});
+  // die: squash, launch, tumble, bounce twice — randomized every pop
+  const jump=-(dieEl.offsetHeight*(0.85+Math.random()*0.5));
+  const rot=(Math.random()<0.5?-1:1)*(180+Math.random()*360);
+  const drift=(Math.random()*2-1)*dieEl.offsetWidth*0.3;
+  dieEl.animate([
+    {transform:"translate(0,0) rotate(0deg) scale(1,1)"},
+    {transform:"translate(0,"+(dieEl.offsetHeight*0.14)+"px) rotate(0deg) scale(1.15,0.7)",offset:0.12},
+    {transform:"translate("+drift+"px,"+jump+"px) rotate("+(rot*0.6)+"deg) scale(0.95,1.05)",offset:0.42,easing:"cubic-bezier(.2,.9,.4,1)"},
+    {transform:"translate("+(drift*0.4)+"px,0) rotate("+rot+"deg) scale(1.1,0.85)",offset:0.68,easing:"cubic-bezier(.5,0,.8,.4)"},
+    {transform:"translate(0,"+(jump*0.18)+"px) rotate("+rot+"deg) scale(1,1)",offset:0.84},
+    {transform:"translate(0,0) rotate("+(Math.round(rot/360)*360)+"deg) scale(1,1)"}
+  ],{duration:620,easing:"linear"});
+  let n=0;const iv=setInterval(()=>{showDie(1+Math.floor(Math.random()*6));if(++n>=9){clearInterval(iv);
+    die=1+Math.floor(Math.random()*6);showDie(die);if(!GN.friendly)GN.g.addDice([die]);afterRoll();}},58);}
 function showDie(v){const pips=document.querySelectorAll("#die i");
   const ON={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]}[v];
   pips.forEach((p,i)=>p.style.visibility=ON.includes(i)?"visible":"hidden");}

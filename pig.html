@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Pig</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{font-family:system-ui,sans-serif;color:#e8f0e4;overflow:hidden;display:flex;flex-direction:column;
+    background:radial-gradient(120% 80% at 50% 20%,#1f3327 0%,#0c1410 70%);}
+  #bar{display:flex;align-items:center;gap:10px;padding:12px 14px;}
+  #bar a{color:#cfe6d8;text-decoration:none;font-size:14px;border:1px solid #3a5a47;border-radius:999px;padding:6px 12px;}
+  #title{font-weight:800;font-size:20px;}
+  #turnWrap{margin-left:auto;display:flex;align-items:center;gap:8px;}
+  #dot{width:16px;height:16px;border-radius:50%;}
+  #turnName{font-weight:700;font-size:15px;}
+  #race{padding:6px 18px 0;}
+  .lane{margin:10px 0;}
+  .lane .who{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;}
+  .lane .who b{font-variant-numeric:tabular-nums;}
+  .track{height:18px;border-radius:9px;background:#0e1813;position:relative;overflow:hidden;
+    box-shadow:inset 0 2px 5px rgba(0,0,0,.6);}
+  .fill{position:absolute;left:0;top:0;bottom:0;border-radius:9px;transition:width .4s ease;
+    box-shadow:inset 0 2px 0 rgba(255,255,255,.3);}
+  .ghost{position:absolute;top:0;bottom:0;border-radius:0 9px 9px 0;opacity:.45;transition:left .25s,width .25s;}
+  #board{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:8px;}
+  #die{width:110px;height:110px;border-radius:20px;background:linear-gradient(160deg,#fff,#e4e4dc);position:relative;
+    box-shadow:0 10px 22px rgba(0,0,0,.55),inset 0 2px 0 #fff,inset 0 -4px 8px rgba(0,0,0,.15);}
+  #die .p{position:absolute;width:18px;height:18px;border-radius:50%;background:#b3211b;
+    box-shadow:inset 0 -2px 3px rgba(0,0,0,.35);}
+  @keyframes shake{0%,100%{transform:rotate(0)}25%{transform:rotate(-9deg) translateX(-4px)}75%{transform:rotate(9deg) translateX(4px)}}
+  #die.rolling{animation:shake .12s linear infinite;}
+  #die.bust{background:linear-gradient(160deg,#f3b8b2,#dd9088);}
+  #turnTotal{font-size:17px;color:#d8e8dd;min-height:24px;font-variant-numeric:tabular-nums;}
+  #msg{min-height:24px;text-align:center;font-size:15px;color:#d8e8dd;padding:0 16px;}
+  #foot{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;padding:10px 14px 18px;}
+  .act{font-family:inherit;font-size:17px;font-weight:bold;padding:12px 26px;border-radius:10px;border:none;
+    color:#1c2b16;background:#b0d235;cursor:pointer;box-shadow:0 4px 0 #7e9a1f,0 5px 10px rgba(0,0,0,.4);}
+  .act:disabled{opacity:.4;}
+  .act.hold{background:#f4c542;box-shadow:0 4px 0 #9a7414,0 5px 10px rgba(0,0,0,.4);}
+  .act.ghost{background:#15241b;color:#cfe6d8;box-shadow:0 4px 0 #0b160f;border:1px solid #3a5a47;font-size:15px;}
+  #score{font-size:14px;color:#bcd6c7;width:100%;text-align:center;}
+  .ov{position:fixed;inset:0;background:rgba(7,12,9,.92);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:50;text-align:center;padding:24px;}
+  .ov.show{display:flex;}
+  .ov h1{font-size:30px;}
+  #confetti{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
+  .cf{position:absolute;width:10px;height:14px;top:-20px;animation:fall linear forwards;}
+  @keyframes fall{to{transform:translateY(110vh) rotate(720deg);}}
+</style>
+</head>
+<body>
+<div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">Pig</div><div id="turnWrap"><div id="dot"></div><div id="turnName"></div></div></div>
+<div id="race">
+  <div class="lane"><div class="who"><span id="whoA"></span><b id="bankA">0</b></div><div class="track"><div class="fill" id="fillA"></div><div class="ghost" id="ghostA"></div></div></div>
+  <div class="lane"><div class="who"><span id="whoB"></span><b id="bankB">0</b></div><div class="track"><div class="fill" id="fillB"></div><div class="ghost" id="ghostB"></div></div></div>
+</div>
+<div id="board">
+  <div id="die"></div>
+  <div id="turnTotal"></div>
+</div>
+<div id="msg"></div>
+<div id="foot">
+  <button class="act" id="rollBtn">Roll</button>
+  <button class="act hold" id="holdBtn">Hold</button>
+  <button class="act ghost" id="newBtn">New game</button>
+  <div id="score"></div>
+</div>
+<div class="ov" id="overlay"><div id="confetti"></div><div style="font-size:54px;">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p>
+  <button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
+<script src="gamenight.js?v=3"></script>
+<script>
+const KEY="pig_games",GOAL=100;
+let P={A:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},B:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182"}};
+function seatFrom(p){return{name:p.name,main:p.color,light:p.light,dark:p.dark};}
+let bank={A:0,B:0},turn="A",pot=0,phase="over",GS=null,rolling=false;
+const PIPS={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
+function drawDie(v,bust){const d=document.getElementById("die");d.innerHTML="";d.classList.toggle("bust",!!bust);
+  if(!v)return;const pos=[[22,22],[55,22],[88,22],[22,55],[55,55],[88,55],[22,88],[55,88],[88,88]];
+  for(const i of PIPS[v]){const p=document.createElement("div");p.className="p";
+    p.style.left=pos[i][0]-9+"px";p.style.top=pos[i][1]-9+"px";d.appendChild(p);}}
+function newGame(){phase="over";pot=0;bank={A:0,B:0};drawDie(0);
+  document.getElementById("overlay").classList.remove("show");
+  document.getElementById("confetti").innerHTML="";
+  GN.matchStart(function(m){P={A:seatFrom(m.a),B:seatFrom(m.b)};
+    turn=(m.first===m.a)?"A":"B";phase="play";pot=0;bank={A:0,B:0};
+    GS={start:Date.now(),flipWinner:m.first.name,friendly:m.friendly,busts:{},bestTurn:{},holds:{}};
+    for(const n of[m.a.name,m.b.name]){GS.busts[n]=0;GS.bestTurn[n]=0;GS.holds[n]=0;}
+    setMessage(P[turn].name+" won the flip \u2014 roll first. First to "+GOAL+" wins.");
+    refresh();});}
+function setMessage(t){document.getElementById("msg").textContent=t;}
+function refresh(){const pc=P[turn];
+  document.getElementById("turnName").textContent=pc.name+"'s turn";
+  const d=document.getElementById("dot");
+  d.style.background="radial-gradient(circle at 35% 30%,"+pc.light+","+pc.main+" 70%,"+pc.dark+")";
+  d.style.boxShadow="0 0 0 3px rgba(255,255,255,.15),0 0 14px "+pc.main;
+  document.getElementById("whoA").textContent=P.A.name;document.getElementById("whoB").textContent=P.B.name;
+  document.getElementById("bankA").textContent=bank.A;document.getElementById("bankB").textContent=bank.B;
+  for(const s of["A","B"]){const f=document.getElementById("fill"+s),g=document.getElementById("ghost"+s);
+    f.style.width=Math.min(100,bank[s]/GOAL*100)+"%";
+    f.style.background="linear-gradient(180deg,"+P[s].light+","+P[s].main+")";
+    const live=(s===turn&&phase==="play")?pot:0;
+    g.style.left=Math.min(100,bank[s]/GOAL*100)+"%";
+    g.style.width=Math.min(100-Math.min(100,bank[s]/GOAL*100),live/GOAL*100)+"%";
+    g.style.background=P[s].light;}
+  document.getElementById("turnTotal").textContent=phase==="play"?("This turn: "+pot+(pot?("  \u2192 would bank "+(bank[turn]+pot)):"")):"";
+  const recs=GN.readGames(KEY);let a=0,b=0;
+  for(const r of recs){if(r.winner===P.A.name)a++;else if(r.winner===P.B.name)b++;}
+  document.getElementById("score").textContent=P.A.name+" "+a+" \u00b7 "+b+" "+P.B.name+((GS&&GS.friendly)?" \u00b7 friendly":"");
+  document.getElementById("rollBtn").disabled=phase!=="play"||rolling;
+  document.getElementById("holdBtn").disabled=phase!=="play"||rolling||pot===0;}
+function roll(){if(phase!=="play"||rolling)return;rolling=true;refresh();
+  const die=document.getElementById("die");die.classList.add("rolling");die.classList.remove("bust");
+  let n=0;const iv=setInterval(()=>{drawDie(1+Math.floor(Math.random()*6));
+    if(++n>=7){clearInterval(iv);die.classList.remove("rolling");
+      const v=1+Math.floor(Math.random()*6);drawDie(v,v===1);
+      if(!GN.friendly)GN.g.addDice([v]);
+      rolling=false;
+      if(v===1){GS.busts[P[turn].name]++;pot=0;
+        setMessage("Oink! "+P[turn].name+" busts \u2014 turn points gone.");
+        setTimeout(()=>{swap();},900);}
+      else{pot+=v;setMessage(P[turn].name+" rolls "+v+". Push on, or Hold?");refresh();}}},65);}
+function hold(){if(phase!=="play"||rolling||pot===0)return;
+  bank[turn]+=pot;GS.holds[P[turn].name]++;
+  if(pot>GS.bestTurn[P[turn].name])GS.bestTurn[P[turn].name]=pot;
+  if(bank[turn]>=GOAL){pot=0;refresh();finish(turn);return;}
+  setMessage(P[turn].name+" banks "+pot+".");pot=0;swap();}
+function swap(){pot=0;turn=turn==="A"?"B":"A";drawDie(0);
+  setMessage(P[turn].name+" \u2014 your roll.");refresh();}
+function finish(w){phase="over";
+  const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
+    winner:P[w].name,loser:P[w==="A"?"B":"A"].name,flipWinner:GS.flipWinner,
+    score:(function(){const s={};s[P.A.name]=bank.A;s[P.B.name]=bank.B;return s;})(),
+    busts:GS.busts,bestTurn:GS.bestTurn,holds:GS.holds};
+  GN.recordGame(KEY,rec);
+  document.getElementById("ovTitle").textContent=P[w].name+" wins!";
+  document.getElementById("ovText").textContent=bank[w]+" to "+bank[w==="A"?"B":"A"]+" \u00b7 best turn "+GS.bestTurn[P[w].name];
+  const box=document.getElementById("confetti"),cols=[P[w].main,P[w].light,"#f4c542","#fff"];
+  for(let i=0;i<60;i++){const d=document.createElement("div");d.className="cf";d.style.left=Math.random()*100+"%";
+    d.style.background=cols[i%cols.length];d.style.animationDuration=(2.2+Math.random()*1.8)+"s";
+    d.style.animationDelay=(Math.random()*0.8)+"s";box.appendChild(d);}
+  document.getElementById("overlay").classList.add("show");refresh();}
+document.getElementById("rollBtn").addEventListener("click",roll);
+document.getElementById("holdBtn").addEventListener("click",hold);
+document.getElementById("newBtn").addEventListener("click",newGame);
+document.getElementById("ovBtn").addEventListener("click",newGame);
+GN.rulesButton(document.getElementById("foot"),{title:"Pig",sections:[
+ {h:"Goal",p:"First to bank 100 points wins. Pure push-your-luck \u2014 every roll is a dare."},
+ {h:"Your turn",p:"Roll the die as many times as you like, piling points into your turn total. Tap Hold to bank the pile and pass the die."},
+ {h:"The pig",p:"Roll a 1 and you bust: the whole turn total vanishes and the die passes. Banked points are always safe."},
+ {h:"Feel for it",p:"Around 20 points a turn is the mathematician's hold point \u2014 but trailing big? The pig rewards the brave."}]});
+GN.statsButton(document.getElementById("foot"),{title:"Pig",key:KEY,specials:[
+ {label:"Busts (1s rolled)",of:(r,n)=>r.reduce((a,x)=>a+((x.busts&&x.busts[n])||0),0)},
+ {label:"Best single turn",of:(r,n)=>r.reduce((a,x)=>Math.max(a,(x.bestTurn&&x.bestTurn[n])||0),0)},
+ {label:"Coin flips won",of:(r,n)=>r.filter(x=>x.flipWinner===n).length}]});
+newGame();
+</script>
+</body>
+</html>

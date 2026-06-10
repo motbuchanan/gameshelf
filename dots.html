@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Dots and Boxes</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{font-family:system-ui,sans-serif;color:#e8f0e4;overflow:hidden;display:flex;flex-direction:column;
+    background:radial-gradient(120% 80% at 50% 20%,#1f3327 0%,#0c1410 70%);}
+  #bar{display:flex;align-items:center;gap:10px;padding:12px 14px;}
+  #bar a{color:#cfe6d8;text-decoration:none;font-size:14px;border:1px solid #3a5a47;border-radius:999px;padding:6px 12px;}
+  #title{font-weight:800;font-size:18px;}
+  #turnWrap{margin-left:auto;display:flex;align-items:center;gap:8px;}
+  #dot{width:16px;height:16px;border-radius:50%;}
+  #turnName{font-weight:700;font-size:15px;}
+  #counts{display:flex;justify-content:center;gap:22px;padding:2px 0 4px;font-size:14px;font-weight:700;}
+  #wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:6px;}
+  canvas{border-radius:12px;box-shadow:0 14px 30px rgba(0,0,0,.55);touch-action:manipulation;}
+  #msg{min-height:24px;text-align:center;font-size:15px;color:#d8e8dd;padding:0 16px;}
+  #foot{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;padding:10px 14px 18px;}
+  .act{font-family:inherit;font-size:15px;font-weight:bold;padding:10px 18px;border-radius:10px;border:none;
+    color:#1c2b16;background:#b0d235;cursor:pointer;box-shadow:0 4px 0 #7e9a1f,0 5px 10px rgba(0,0,0,.4);}
+  .act.ghost{background:#15241b;color:#cfe6d8;box-shadow:0 4px 0 #0b160f;border:1px solid #3a5a47;}
+  #score{font-size:14px;color:#bcd6c7;}
+  .ov{position:fixed;inset:0;background:rgba(7,12,9,.92);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:50;text-align:center;padding:24px;}
+  .ov.show{display:flex;}
+  .ov h1{font-size:28px;}
+  #confetti{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
+  .cf{position:absolute;width:10px;height:14px;top:-20px;animation:fall linear forwards;}
+  @keyframes fall{to{transform:translateY(110vh) rotate(720deg);}}
+</style>
+</head>
+<body>
+<div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">Dots and Boxes</div><div id="turnWrap"><div id="dot"></div><div id="turnName"></div></div></div>
+<div id="counts"><span id="cntA"></span><span id="cntB"></span></div>
+<div id="wrap"><canvas id="cv"></canvas></div>
+<div id="msg"></div>
+<div id="foot">
+  <button class="act ghost" id="newBtn">New game</button>
+  <div id="score"></div>
+</div>
+<div class="ov" id="overlay"><div id="confetti"></div><div style="font-size:54px;">&#128395;</div><h1 id="ovTitle"></h1><p id="ovText"></p>
+  <button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
+<script src="gamenight.js?v=3"></script>
+<script>
+const KEY="dots_games",B=5; // 5x5 boxes, 6x6 dots
+let P={A:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},B:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182"}};
+function seatFrom(p){return{name:p.name,main:p.color,light:p.light,dark:p.dark};}
+// edges: H[r][c] = horizontal edge above box row r (r 0..B, c 0..B-1); V[r][c] vertical (r 0..B-1, c 0..B)
+let H,V,owner,turn="A",phase="over",GS=null,boxes={A:0,B:0},turnBoxes=0,lastEdge=null;
+const canvas=document.getElementById("cv"),ctx=canvas.getContext("2d");
+let SZ=320,CELL=52,M=26;
+function fit(){const w=Math.min(window.innerWidth-14,window.innerHeight-250,440);
+  SZ=Math.max(300,w);M=SZ*0.09;CELL=(SZ-2*M)/B;canvas.width=SZ;canvas.height=SZ;render();}
+window.addEventListener("resize",fit);
+function boxDone(r,c){return H[r][c]&&H[r+1][c]&&V[r][c]&&V[r][c+1];}
+function claimAround(kind,r,c){ // returns list of newly completed boxes after setting edge
+  const done=[];
+  const check=(br,bc)=>{if(br>=0&&br<B&&bc>=0&&bc<B&&!owner[br][bc]&&boxDone(br,bc))done.push([br,bc]);};
+  if(kind==="H"){check(r-1,c);check(r,c);}else{check(r,c-1);check(r,c);}
+  return done;}
+function render(){if(!H)return;
+  ctx.clearRect(0,0,SZ,SZ);
+  // paper
+  const pg=ctx.createLinearGradient(0,0,0,SZ);
+  pg.addColorStop(0,"#f3ecd9");pg.addColorStop(1,"#e4d9bd");
+  ctx.fillStyle=pg;ctx.fillRect(0,0,SZ,SZ);
+  ctx.strokeStyle="rgba(120,140,180,.18)";ctx.lineWidth=1;
+  for(let y=M*0.5;y<SZ;y+=CELL*0.5){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(SZ,y);ctx.stroke();}
+  // claimed boxes
+  for(let r=0;r<B;r++)for(let c=0;c<B;c++){if(!owner[r][c])continue;
+    const pc=P[owner[r][c]],x=M+c*CELL,y=M+r*CELL;
+    ctx.fillStyle=pc.main+"33";ctx.fillRect(x+3,y+3,CELL-6,CELL-6);
+    ctx.fillStyle=pc.main;ctx.font="bold "+Math.round(CELL*0.42)+"px system-ui";
+    ctx.textAlign="center";ctx.textBaseline="middle";
+    ctx.fillText(pc.name[0],x+CELL/2,y+CELL/2+1);}
+  // edges
+  function edge(x1,y1,x2,y2,v,isLast){
+    if(v){const pc=P[v];
+      ctx.strokeStyle=pc.main;ctx.lineWidth=isLast?6:4.5;ctx.lineCap="round";
+      if(isLast){ctx.shadowColor=pc.main;ctx.shadowBlur=10;}
+      ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+      ctx.shadowBlur=0;}
+    else{ctx.strokeStyle="rgba(60,70,90,.16)";ctx.lineWidth=3;ctx.lineCap="round";
+      ctx.setLineDash([4,5]);
+      ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+      ctx.setLineDash([]);}}
+  for(let r=0;r<=B;r++)for(let c=0;c<B;c++)
+    edge(M+c*CELL+5,M+r*CELL,M+(c+1)*CELL-5,M+r*CELL,H[r][c],lastEdge&&lastEdge[0]==="H"&&lastEdge[1]===r&&lastEdge[2]===c);
+  for(let r=0;r<B;r++)for(let c=0;c<=B;c++)
+    edge(M+c*CELL,M+r*CELL+5,M+c*CELL,M+(r+1)*CELL-5,V[r][c],lastEdge&&lastEdge[0]==="V"&&lastEdge[1]===r&&lastEdge[2]===c);
+  // dots on top
+  for(let r=0;r<=B;r++)for(let c=0;c<=B;c++){
+    ctx.fillStyle="#3a3f4d";ctx.beginPath();ctx.arc(M+c*CELL,M+r*CELL,Math.max(3.4,CELL*0.075),0,7);ctx.fill();
+    ctx.fillStyle="rgba(255,255,255,.5)";ctx.beginPath();ctx.arc(M+c*CELL-1,M+r*CELL-1,1.3,0,7);ctx.fill();}}
+function nearestEdge(x,y){let best=null,bd=1e9;
+  for(let r=0;r<=B;r++)for(let c=0;c<B;c++){if(H[r][c])continue;
+    const ex=M+(c+0.5)*CELL,ey=M+r*CELL,d=Math.hypot(x-ex,y-ey);
+    if(d<bd){bd=d;best=["H",r,c];}}
+  for(let r=0;r<B;r++)for(let c=0;c<=B;c++){if(V[r][c])continue;
+    const ex=M+c*CELL,ey=M+(r+0.5)*CELL,d=Math.hypot(x-ex,y-ey);
+    if(d<bd){bd=d;best=["V",r,c];}}
+  return bd<=CELL*0.45?best:null;}
+function newGame(){phase="over";lastEdge=null;
+  document.getElementById("overlay").classList.remove("show");
+  document.getElementById("confetti").innerHTML="";
+  GN.matchStart(function(m){P={A:seatFrom(m.a),B:seatFrom(m.b)};
+    H=Array.from({length:B+1},()=>Array(B).fill(null));
+    V=Array.from({length:B},()=>Array(B+1).fill(null));
+    owner=Array.from({length:B},()=>Array(B).fill(null));
+    boxes={A:0,B:0};turnBoxes=0;lastEdge=null;
+    turn=(m.first===m.a)?"A":"B";phase="play";
+    GS={start:Date.now(),flipWinner:m.first.name,friendly:m.friendly,bestRun:{}};
+    GS.bestRun[m.a.name]=0;GS.bestRun[m.b.name]=0;
+    setMessage(m.first.name+" won the flip \u2014 tap between two dots to draw a line.");
+    refresh();render();});}
+function setMessage(t){document.getElementById("msg").textContent=t;}
+function refresh(){const pc=P[turn];
+  document.getElementById("turnName").textContent=pc.name+"'s line";
+  const d=document.getElementById("dot");
+  d.style.background="radial-gradient(circle at 35% 30%,"+pc.light+","+pc.main+" 70%,"+pc.dark+")";
+  d.style.boxShadow="0 0 0 3px rgba(255,255,255,.15),0 0 14px "+pc.main;
+  const cA=document.getElementById("cntA"),cB=document.getElementById("cntB");
+  cA.textContent=P.A.name+" "+boxes.A;cA.style.color=P.A.main;
+  cB.textContent=boxes.B+" "+P.B.name;cB.style.color=P.B.main;
+  const recs=GN.readGames(KEY);let a=0,b=0;
+  for(const r of recs){if(r.winner===P.A.name)a++;else if(r.winner===P.B.name)b++;}
+  document.getElementById("score").textContent=P.A.name+" "+a+" \u00b7 "+b+" "+P.B.name+((GS&&GS.friendly)?" \u00b7 friendly":"");}
+canvas.addEventListener("click",e=>{if(phase!=="play")return;
+  const rect=canvas.getBoundingClientRect();
+  const x=(e.clientX-rect.left)*(SZ/rect.width),y=(e.clientY-rect.top)*(SZ/rect.height);
+  const ed=nearestEdge(x,y);if(!ed)return;
+  const[k,r,c]=ed;
+  if(k==="H")H[r][c]=turn;else V[r][c]=turn;
+  lastEdge=ed;
+  const done=claimAround(k,r,c);
+  if(done.length){for(const[br,bc]of done){owner[br][bc]=turn;boxes[turn]++;turnBoxes++;}
+    if(turnBoxes>GS.bestRun[P[turn].name])GS.bestRun[P[turn].name]=turnBoxes;
+    if(boxes.A+boxes.B>=B*B){render();refresh();finishGame();return;}
+    setMessage(P[turn].name+" boxes "+done.length+" \u2014 and goes again!");
+    refresh();render();return;}
+  turnBoxes=0;
+  turn=turn==="A"?"B":"A";
+  setMessage(P[turn].name+" \u2014 your line. Careful with the third side\u2026");
+  refresh();render();});
+function finishGame(){phase="over";
+  const w=boxes.A===boxes.B?null:(boxes.A>boxes.B?"A":"B");
+  const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
+    winner:w?P[w].name:null,loser:w?P[w==="A"?"B":"A"].name:null,draw:!w,
+    flipWinner:GS.flipWinner,
+    boxes:(function(){const s={};s[P.A.name]=boxes.A;s[P.B.name]=boxes.B;return s;})(),
+    bestRun:GS.bestRun};
+  GN.recordGame(KEY,rec);
+  document.getElementById("ovTitle").textContent=w?P[w].name+" wins!":"Split right down the middle!";
+  document.getElementById("ovText").textContent=boxes.A+" \u2013 "+boxes.B+(w?(" \u00b7 best run "+GS.bestRun[P[w].name]+" boxes"):"");
+  if(w){const box=document.getElementById("confetti"),cols=[P[w].main,P[w].light,"#f4c542","#fff"];
+    for(let i=0;i<60;i++){const d=document.createElement("div");d.className="cf";d.style.left=Math.random()*100+"%";
+      d.style.background=cols[i%cols.length];d.style.animationDuration=(2.2+Math.random()*1.8)+"s";
+      d.style.animationDelay=(Math.random()*0.8)+"s";box.appendChild(d);}}
+  document.getElementById("overlay").classList.add("show");refresh();}
+document.getElementById("newBtn").addEventListener("click",newGame);
+document.getElementById("ovBtn").addEventListener("click",newGame);
+GN.rulesButton(document.getElementById("foot"),{title:"Dots and Boxes",sections:[
+ {h:"Goal",p:"Claim the most boxes on a 5\u00d75 grid. The pencil-and-paper classic, no pencil required."},
+ {h:"Drawing",p:"Tap between two dots to draw a line. Complete the fourth side of a box and it\u2019s yours \u2014 stamped with your initial \u2014 and you draw again."},
+ {h:"The trap",p:"Drawing the third side of any box gifts it to your opponent. Early game is all about NOT being the one forced to open a chain."},
+ {h:"Chains",p:"Late game, boxes connect into chains \u2014 open one and your opponent eats the whole run. The masters\u2019 move: leave the last two boxes of a chain as a sacrifice to force the next chain open."}]});
+GN.statsButton(document.getElementById("foot"),{title:"Dots and Boxes",key:KEY,specials:[
+ {label:"Boxes claimed",of:(r,n)=>r.reduce((a,x)=>a+((x.boxes&&x.boxes[n])||0),0)},
+ {label:"Best chain run",of:(r,n)=>r.reduce((a,x)=>Math.max(a,(x.bestRun&&x.bestRun[n])||0),0)},
+ {label:"Coin flips won",of:(r,n)=>r.filter(x=>x.flipWinner===n).length}]});
+fit();newGame();
+</script>
+</body>
+</html>

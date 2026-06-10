@@ -30,13 +30,11 @@
   td.cell.done{color:#e8f0e4;font-weight:700;}
   tr.section td{background:rgba(0,0,0,.22);color:#9fbdac;font-size:12px;font-weight:700;}
   tr.total td{font-weight:800;font-size:15px;border-top:2px solid #3a5a47;}
-  #diceRow{display:flex;justify-content:center;gap:10px;padding:8px 0 2px;}
-  .die{width:52px;height:52px;background:#fbf8f0;border-radius:12px;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);
-    padding:8px;box-shadow:0 4px 9px rgba(0,0,0,.45);cursor:pointer;position:relative;transition:transform .12s;border:none;}
-  .die i{border-radius:50%;background:#b3211b;visibility:hidden;margin:1px;}
-  .die.held{transform:translateY(6px);box-shadow:0 2px 4px rgba(0,0,0,.5),0 0 0 3px var(--accent);}
-  .die.rolling{animation:sh .42s ease;}
-  @keyframes sh{0%{transform:translateY(-14px) rotate(-14deg);}40%{transform:translateY(4px) rotate(10deg);}70%{transform:translateY(-3px) rotate(-5deg);}100%{transform:none;}}
+  #trayWrap{display:flex;justify-content:center;padding:6px 0 4px;}
+  #trayRim{padding:7px;border-radius:16px;
+    background:linear-gradient(160deg,#7a4f24 0%,#5b3a17 45%,#42290e 100%);
+    box-shadow:0 8px 18px rgba(0,0,0,.55),inset 0 2px 2px rgba(255,225,170,.35),inset 0 -2px 4px rgba(0,0,0,.5);}
+  #tray{display:block;border-radius:10px;touch-action:manipulation;cursor:pointer;}
   #msg{min-height:18px;font-size:13.5px;color:#cfe6d8;text-align:center;padding:2px 12px;}
   #foot{padding:4px 0 12px;display:flex;gap:12px;align-items:center;justify-content:center;}
   button.act{font-family:inherit;font-size:15px;font-weight:bold;padding:9px 18px;border-radius:10px;border:none;color:#1c2b16;background:var(--accent);cursor:pointer;box-shadow:0 4px 0 var(--accentSh),0 5px 10px rgba(0,0,0,.4);}
@@ -55,11 +53,11 @@
 <body>
 <div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">Yahtzee</div><div id="turn"><div id="dot"></div><span id="turnName"></span></div></div>
 <div id="card"></div>
-<div id="diceRow"></div>
+<div id="trayWrap"><div id="trayRim"><canvas id="tray"></canvas></div></div>
 <div id="msg"></div>
 <div id="foot"><button class="act" id="rollBtn">Roll</button></div>
 <div class="ov" id="overlay"><div id="confetti"></div><div id="ovTrophy">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p><button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
-<script src="gamenight.js?v=2"></script>
+<script src="gamenight.js?v=3"></script>
 <script>
 let P={A:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},B:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182"}};
 const CATS=[
@@ -99,32 +97,110 @@ function newGame(){cards={A:{},B:{}};
     GS={start:Date.now(),flipWinner:m.first.name};
     startTurn();});}
 function startTurn(){held=[false,false,false,false,false];rolls=0;phase="turn";
-  updateBar();setMessage(P[turn].name+" \u2014 roll the dice");renderDice(false);renderCard();
+  updateBar();setMessage(P[turn].name+" \u2014 roll the dice");layoutDice();drawTray();renderCard();
   document.getElementById("rollBtn").disabled=false;document.getElementById("rollBtn").textContent="Roll";}
 function updateBar(){const pc=P[turn];document.getElementById("turnName").textContent=pc.name+" \u00b7 round "+(roundsDone(cards[turn])+1)+"/13";
   const d=document.getElementById("dot");
   d.style.background="radial-gradient(circle at 35% 30%,"+pc.light+","+pc.main+" 70%,"+pc.dark+")";
   d.style.boxShadow="0 0 0 3px rgba(255,255,255,.15),0 0 14px "+pc.main;}
 function setMessage(t){document.getElementById("msg").textContent=t;}
-function roll(){if(rolls>=3||phase!=="turn")return;
-  rolls++;document.getElementById("rollBtn").disabled=true;
-  const els=[...document.querySelectorAll(".die")];
-  els.forEach((el,i)=>{if(!held[i])el.classList.add("rolling");});
-  let n=0;const iv=setInterval(()=>{for(let i=0;i<5;i++)if(!held[i])dice[i]=1+Math.floor(Math.random()*6);
-    renderDice(true);if(++n>=6){clearInterval(iv);
-      renderDice(true);renderCard();
+// ---- dice tray: top-down physics ----
+const tray=document.getElementById("tray"),tctx=tray.getContext("2d");
+let TW=380,TH=128,DS=46,bodies=[],tumbling=false;
+function fitTray(){TW=Math.min(window.innerWidth-46,430);TH=Math.max(118,Math.min(140,Math.round(TW*0.33)));
+  DS=Math.round(Math.min(50,TW/7.6));
+  tray.width=TW;tray.height=TH;
+  if(bodies.length){for(const b of bodies){b.x=Math.min(Math.max(b.x,DS*0.7),TW-DS*0.7);b.y=Math.min(Math.max(b.y,DS*0.7),TH-DS*0.7);}}
+  drawTray();}
+function layoutDice(){bodies=dice.map((v,i)=>({
+  x:TW/2+(i-2)*(DS*1.32),y:TH/2,a:(Math.random()*14-7)*Math.PI/180,
+  vx:0,vy:0,va:0,disp:v,settled:true,delay:0}));
+  drawTray();}
+function drawDieAt(b,heldRing){tctx.save();
+  tctx.translate(b.x,b.y);
+  // shadow
+  tctx.fillStyle="rgba(0,0,0,.32)";
+  tctx.beginPath();tctx.ellipse(2,DS*0.34,DS*0.48,DS*0.2,0,0,7);tctx.fill();
+  tctx.rotate(b.a);
+  const h=DS/2,r=DS*0.2;
+  const g=tctx.createLinearGradient(-h,-h,h,h);
+  g.addColorStop(0,"#fffdf6");g.addColorStop(0.6,"#f4efe2");g.addColorStop(1,"#ddd6c2");
+  tctx.fillStyle=g;
+  tctx.beginPath();
+  tctx.moveTo(-h+r,-h);tctx.arcTo(h,-h,h,h,r);tctx.arcTo(h,h,-h,h,r);
+  tctx.arcTo(-h,h,-h,-h,r);tctx.arcTo(-h,-h,h,-h,r);tctx.closePath();
+  tctx.fill();
+  tctx.strokeStyle="rgba(0,0,0,.18)";tctx.lineWidth=1;tctx.stroke();
+  if(heldRing){tctx.strokeStyle="#f4c542";tctx.lineWidth=3;
+    tctx.shadowColor="#f4c542";tctx.shadowBlur=8;tctx.stroke();tctx.shadowBlur=0;}
+  // pips
+  const ON={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]}[b.disp]||[];
+  const off=DS*0.26,pr=DS*0.085;
+  const pos=[[-off,-off],[0,-off],[off,-off],[-off,0],[0,0],[off,0],[-off,off],[0,off],[off,off]];
+  tctx.fillStyle="#b3211b";
+  for(const k of ON){tctx.beginPath();tctx.arc(pos[k][0],pos[k][1],pr,0,7);tctx.fill();}
+  tctx.restore();}
+function drawTray(){tctx.clearRect(0,0,TW,TH);
+  const felt=tctx.createRadialGradient(TW/2,TH/2,TH*0.2,TW/2,TH/2,TW*0.62);
+  felt.addColorStop(0,"#1f4030");felt.addColorStop(1,"#122518");
+  tctx.fillStyle=felt;tctx.fillRect(0,0,TW,TH);
+  tctx.strokeStyle="rgba(0,0,0,.4)";tctx.lineWidth=6;tctx.strokeRect(0,0,TW,TH);
+  tctx.strokeStyle="rgba(255,235,190,.12)";tctx.lineWidth=1;
+  tctx.setLineDash([5,4]);tctx.strokeRect(8,8,TW-16,TH-16);tctx.setLineDash([]);
+  for(let i=0;i<5;i++)if(bodies[i])drawDieAt(bodies[i],held[i]);}
+function roll(){if(rolls>=3||phase!=="turn"||tumbling)return;
+  rolls++;tumbling=true;document.getElementById("rollBtn").disabled=true;
+  for(let i=0;i<5;i++)if(!held[i])dice[i]=1+Math.floor(Math.random()*6); // outcomes decided now
+  const sc=TW/430;let thrown=0;
+  bodies.forEach((b,i)=>{if(held[i])return;
+    b.val=dice[i];b.settled=false;b.delay=thrown*5;thrown++;
+    b.x=-DS*0.8;b.y=TH*0.3+Math.random()*TH*0.4;
+    b.vx=(9+Math.random()*4.5)*sc;b.vy=(Math.random()*2-1)*3.2;
+    b.va=(Math.random()*2-1)*0.5;b.shuf=0;});
+  const t0=performance.now();
+  (function step(ts){
+    let live=false;
+    for(let i=0;i<5;i++){const b=bodies[i];if(held[i]||b.settled)continue;
+      if(b.delay>0){b.delay--;live=true;continue;}
+      b.x+=b.vx;b.y+=b.vy;b.a+=b.va;
+      const m=DS*0.62;
+      if(b.x>TW-m){b.x=TW-m;b.vx*=-0.5;b.va*=-0.7;}
+      if(b.x<m&&b.vx<0){b.x=m;b.vx*=-0.5;b.va*=-0.7;}
+      if(b.y>TH-m){b.y=TH-m;b.vy*=-0.55;}
+      if(b.y<m){b.y=m;b.vy*=-0.55;}
+      // die-die collision
+      for(let j=0;j<5;j++){if(j===i)continue;const o=bodies[j];
+        const dx=b.x-o.x,dy=b.y-o.y,d=Math.hypot(dx,dy),min=DS*1.02;
+        if(d>0&&d<min){const nx=dx/d,ny=dy/d,push=(min-d);
+          if(held[j]||o.settled){b.x+=nx*push;b.y+=ny*push;
+            const dot=b.vx*nx+b.vy*ny;b.vx-=1.6*dot*nx;b.vy-=1.6*dot*ny;b.va*=-0.8;}
+          else{b.x+=nx*push/2;b.y+=ny*push/2;o.x-=nx*push/2;o.y-=ny*push/2;
+            const dot=(b.vx-o.vx)*nx+(b.vy-o.vy)*ny;
+            b.vx-=dot*nx*0.9;b.vy-=dot*ny*0.9;o.vx+=dot*nx*0.9;o.vy+=dot*ny*0.9;}}}
+      b.vx*=0.964;b.vy*=0.964;b.va*=0.94;
+      const sp=Math.hypot(b.vx,b.vy);
+      if(sp>1.3){if(++b.shuf%4===0)b.disp=1+Math.floor(Math.random()*6);}
+      else b.disp=b.val;
+      if(sp<0.28&&Math.abs(b.va)<0.015){b.settled=true;b.vx=b.vy=b.va=0;b.disp=b.val;}
+      else live=true;}
+    if(ts-t0>2200){for(const b of bodies){if(!b.settled){b.settled=true;b.vx=b.vy=b.va=0;if(b.val)b.disp=b.val;}}live=false;}
+    drawTray();
+    if(live)requestAnimationFrame(step);
+    else{tumbling=false;
+      renderCard();
       if(!GN.friendly)GN.g.addDice(dice.filter((v,i)=>!held[i]));
       const left=3-rolls;
       document.getElementById("rollBtn").disabled=(left===0);
       document.getElementById("rollBtn").textContent=left?("Roll again ("+left+" left)"):"Roll";
-      setMessage(left?P[turn].name+" \u2014 hold dice, roll again, or score":P[turn].name+" \u2014 pick a row to score");}},70);}
-function renderDice(showHolds){const row=document.getElementById("diceRow");row.innerHTML="";
-  dice.forEach((v,i)=>{const d=document.createElement("button");d.className="die"+(held[i]?" held":"");
-    const ON={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]}[v];
-    for(let k=0;k<9;k++){const p=document.createElement("i");if(ON.includes(k))p.style.visibility="visible";d.appendChild(p);}
-    d.addEventListener("click",()=>{if(rolls===0||rolls>=3&&false)return;if(rolls===0)return;
-      held[i]=!held[i];renderDice(true);});
-    row.appendChild(d);});}
+      setMessage(left?P[turn].name+" \u2014 tap dice to hold, roll again, or score":P[turn].name+" \u2014 pick a row to score");}
+  })(performance.now());}
+tray.addEventListener("click",e=>{if(rolls===0||phase!=="turn"||tumbling)return;
+  const rect=tray.getBoundingClientRect();
+  const x=(e.clientX-rect.left)*(TW/rect.width),y=(e.clientY-rect.top)*(TH/rect.height);
+  let best=-1,bd=1e9;
+  bodies.forEach((b,i)=>{const d=Math.hypot(b.x-x,b.y-y);if(d<bd){bd=d;best=i;}});
+  if(best<0||bd>DS*0.78)return;
+  held[best]=!held[best];drawTray();});
 function renderCard(){const host=document.getElementById("card");
   let h='<table><tr><th>Category</th><th style="color:'+P.A.light+'">Mot</th><th style="color:'+P.B.light+'">Kathy</th></tr>';
   const row=(cat)=>{let cells="";
@@ -163,6 +239,7 @@ function spawnConfetti(pl){const box=document.getElementById("confetti");box.inn
     d.style.animationDuration=(2.4+Math.random()*1.8)+"s";d.style.animationDelay=(Math.random()*0.9)+"s";
     d.style.transform="rotate("+Math.floor(Math.random()*360)+"deg)";box.appendChild(d);}}
 document.getElementById("rollBtn").addEventListener("click",roll);
+window.addEventListener("resize",fitTray);fitTray();
 document.getElementById("ovBtn").addEventListener("click",newGame);
 GN.rulesButton(document.getElementById("foot"),{title:"Yahtzee",sections:[
  {h:"Goal",p:"Highest total after 13 rounds. Each round you fill exactly one category \u2014 even if it scores zero."},

@@ -227,7 +227,9 @@ function hhId(code){let h=5381;for(let i=0;i<code.length;i++)h=((h<<5)+h+code.ch
 function loadScript(u){return new Promise((res,rej)=>{const s=document.createElement("script");
   s.src=u;s.onload=res;s.onerror=rej;document.head.appendChild(s);});}
 const GAME_KEYS=["sorry_games","checkers_games","c4_games","trouble_games","mancala_games",
-  "dom_games","yahtzee_games","bs_games","cc_games","bg_games"];
+  "dom_games","yahtzee_games","bs_games","cc_games","bg_games",
+  "war_games","pig_games","sb_games","sl_games","uttt_games",
+  "gomoku_games","dots_games","hex_games","cb_games"];
 GN.sync={
   status(){try{return localStorage.getItem("gn_sync_hh")?"on":"off";}catch(e){return"off";}},
   enable(code){if(!code||!code.trim())return false;

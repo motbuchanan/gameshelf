@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Gomoku</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{font-family:system-ui,sans-serif;color:#e8f0e4;overflow:hidden;display:flex;flex-direction:column;
+    background:radial-gradient(120% 80% at 50% 20%,#1f3327 0%,#0c1410 70%);}
+  #bar{display:flex;align-items:center;gap:10px;padding:12px 14px;}
+  #bar a{color:#cfe6d8;text-decoration:none;font-size:14px;border:1px solid #3a5a47;border-radius:999px;padding:6px 12px;}
+  #title{font-weight:800;font-size:20px;}
+  #turnWrap{margin-left:auto;display:flex;align-items:center;gap:8px;}
+  #dot{width:16px;height:16px;border-radius:50%;}
+  #turnName{font-weight:700;font-size:15px;}
+  #wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:6px;}
+  canvas{border-radius:12px;box-shadow:0 14px 30px rgba(0,0,0,.55);touch-action:manipulation;}
+  #msg{min-height:24px;text-align:center;font-size:15px;color:#d8e8dd;padding:0 16px;}
+  #foot{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;padding:10px 14px 18px;}
+  .act{font-family:inherit;font-size:15px;font-weight:bold;padding:10px 18px;border-radius:10px;border:none;
+    color:#1c2b16;background:#b0d235;cursor:pointer;box-shadow:0 4px 0 #7e9a1f,0 5px 10px rgba(0,0,0,.4);}
+  .act.ghost{background:#15241b;color:#cfe6d8;box-shadow:0 4px 0 #0b160f;border:1px solid #3a5a47;}
+  #score{font-size:14px;color:#bcd6c7;}
+  .ov{position:fixed;inset:0;background:rgba(7,12,9,.92);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:50;text-align:center;padding:24px;}
+  .ov.show{display:flex;}
+  .ov h1{font-size:28px;}
+  #confetti{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
+  .cf{position:absolute;width:10px;height:14px;top:-20px;animation:fall linear forwards;}
+  @keyframes fall{to{transform:translateY(110vh) rotate(720deg);}}
+</style>
+</head>
+<body>
+<div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">Gomoku</div><div id="turnWrap"><div id="dot"></div><div id="turnName"></div></div></div>
+<div id="wrap"><canvas id="cv"></canvas></div>
+<div id="msg"></div>
+<div id="foot">
+  <button class="act ghost" id="newBtn">New game</button>
+  <div id="score"></div>
+</div>
+<div class="ov" id="overlay"><div id="confetti"></div><div style="font-size:54px;">&#11044;</div><h1 id="ovTitle"></h1><p id="ovText"></p>
+  <button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
+<script src="gamenight.js?v=3"></script>
+<script>
+const KEY="gomoku_games",N=13;
+let P={A:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},B:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182"}};
+function seatFrom(p){return{name:p.name,main:p.color,light:p.light,dark:p.dark};}
+let grid,turn="A",phase="over",GS=null,winLine=null,last=null,moves=0;
+const canvas=document.getElementById("cv"),ctx=canvas.getContext("2d");
+let SZ=320,CELL=24,M=18;
+function fit(){const w=Math.min(window.innerWidth-14,window.innerHeight-210,470);
+  SZ=Math.max(300,w);M=SZ*0.05;CELL=(SZ-2*M)/(N-1);canvas.width=SZ;canvas.height=SZ;render();}
+window.addEventListener("resize",fit);
+function ptOf(r,c){return{x:M+c*CELL,y:M+r*CELL};}
+function render(){if(!grid){return;}
+  // goban wood
+  const wood=ctx.createLinearGradient(0,0,SZ,SZ);
+  wood.addColorStop(0,"#dcb56e");wood.addColorStop(0.5,"#cda35c");wood.addColorStop(1,"#b88e48");
+  ctx.fillStyle=wood;ctx.fillRect(0,0,SZ,SZ);
+  ctx.globalAlpha=0.12;ctx.strokeStyle="#8a6428";
+  for(let i=0;i<26;i++){ctx.beginPath();ctx.moveTo(0,i*SZ/25+Math.sin(i)*3);
+    ctx.bezierCurveTo(SZ*0.3,i*SZ/25+4,SZ*0.7,i*SZ/25-3,SZ,i*SZ/25+Math.cos(i)*3);ctx.stroke();}
+  ctx.globalAlpha=1;
+  // grid lines
+  ctx.strokeStyle="rgba(60,38,8,.75)";ctx.lineWidth=1.2;
+  for(let i=0;i<N;i++){const p0=ptOf(i,0),p1=ptOf(i,N-1);
+    ctx.beginPath();ctx.moveTo(p0.x,p0.y);ctx.lineTo(p1.x,p1.y);ctx.stroke();
+    const q0=ptOf(0,i),q1=ptOf(N-1,i);
+    ctx.beginPath();ctx.moveTo(q0.x,q0.y);ctx.lineTo(q1.x,q1.y);ctx.stroke();}
+  // star points
+  ctx.fillStyle="rgba(60,38,8,.8)";
+  for(const[r,c]of[[3,3],[3,9],[9,3],[9,9],[6,6]]){const p=ptOf(r,c);
+    ctx.beginPath();ctx.arc(p.x,p.y,CELL*0.11,0,7);ctx.fill();}
+  // vignette
+  const vg=ctx.createRadialGradient(SZ/2,SZ/2,SZ*0.3,SZ/2,SZ/2,SZ*0.75);
+  vg.addColorStop(0,"rgba(0,0,0,0)");vg.addColorStop(1,"rgba(0,0,0,.18)");
+  ctx.fillStyle=vg;ctx.fillRect(0,0,SZ,SZ);
+  // stones
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){const v=grid[r][c];if(!v)continue;
+    const p=ptOf(r,c),pc=P[v],R=CELL*0.44;
+    ctx.fillStyle="rgba(0,0,0,.3)";ctx.beginPath();ctx.ellipse(p.x+1.5,p.y+2.5,R,R*0.92,0,0,7);ctx.fill();
+    const g=ctx.createRadialGradient(p.x-R*0.35,p.y-R*0.4,R*0.15,p.x,p.y,R);
+    g.addColorStop(0,pc.light);g.addColorStop(0.65,pc.main);g.addColorStop(1,pc.dark);
+    ctx.fillStyle=g;ctx.beginPath();ctx.arc(p.x,p.y,R,0,7);ctx.fill();
+    ctx.fillStyle="rgba(255,255,255,.65)";ctx.beginPath();
+    ctx.ellipse(p.x-R*0.3,p.y-R*0.38,R*0.22,R*0.14,-0.6,0,7);ctx.fill();}
+  // last move marker
+  if(last&&!winLine){const p=ptOf(last[0],last[1]);
+    ctx.strokeStyle="rgba(255,255,255,.85)";ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(p.x,p.y,CELL*0.5,0,7);ctx.stroke();}
+  // winning line
+  if(winLine){const a=ptOf(winLine[0][0],winLine[0][1]),b=ptOf(winLine[4][0],winLine[4][1]);
+    ctx.strokeStyle="rgba(244,197,66,.9)";ctx.lineWidth=CELL*0.18;ctx.lineCap="round";
+    ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();}}
+function findWin(r,c,v){
+  for(const[dr,dc]of[[0,1],[1,0],[1,1],[1,-1]]){
+    let line=[[r,c]];
+    for(let k=1;k<5;k++){const rr=r+dr*k,cc=c+dc*k;
+      if(rr<0||rr>=N||cc<0||cc>=N||grid[rr][cc]!==v)break;line.push([rr,cc]);}
+    for(let k=1;k<5;k++){const rr=r-dr*k,cc=c-dc*k;
+      if(rr<0||rr>=N||cc<0||cc>=N||grid[rr][cc]!==v)break;line.unshift([rr,cc]);}
+    if(line.length>=5)return line.slice(0,5);}
+  return null;}
+function newGame(){phase="over";winLine=null;last=null;moves=0;
+  document.getElementById("overlay").classList.remove("show");
+  document.getElementById("confetti").innerHTML="";
+  GN.matchStart(function(m){P={A:seatFrom(m.a),B:seatFrom(m.b)};
+    grid=Array.from({length:N},()=>Array(N).fill(null));
+    turn=(m.first===m.a)?"A":"B";phase="play";winLine=null;last=null;moves=0;
+    GS={start:Date.now(),flipWinner:m.first.name,friendly:m.friendly,moves:{}};
+    GS.moves[m.a.name]=0;GS.moves[m.b.name]=0;
+    setMessage(P[turn].name+" won the flip \u2014 five in a row wins. Tap a crossing.");
+    refresh();render();});}
+function setMessage(t){document.getElementById("msg").textContent=t;}
+function refresh(){const pc=P[turn];
+  document.getElementById("turnName").textContent=pc.name;
+  const d=document.getElementById("dot");
+  d.style.background="radial-gradient(circle at 35% 30%,"+pc.light+","+pc.main+" 70%,"+pc.dark+")";
+  d.style.boxShadow="0 0 0 3px rgba(255,255,255,.15),0 0 14px "+pc.main;
+  const recs=GN.readGames(KEY);let a=0,b=0;
+  for(const r of recs){if(r.winner===P.A.name)a++;else if(r.winner===P.B.name)b++;}
+  document.getElementById("score").textContent=P.A.name+" "+a+" \u00b7 "+b+" "+P.B.name+((GS&&GS.friendly)?" \u00b7 friendly":"");}
+canvas.addEventListener("click",e=>{if(phase!=="play")return;
+  const rect=canvas.getBoundingClientRect();
+  const x=(e.clientX-rect.left)*(SZ/rect.width),y=(e.clientY-rect.top)*(SZ/rect.height);
+  const c=Math.round((x-M)/CELL),r=Math.round((y-M)/CELL);
+  if(r<0||r>=N||c<0||c>=N||grid[r][c])return;
+  const p=ptOf(r,c);
+  if(Math.hypot(p.x-x,p.y-y)>CELL*0.55)return;
+  grid[r][c]=turn;last=[r,c];moves++;GS.moves[P[turn].name]++;
+  const w=findWin(r,c,turn);
+  if(w){winLine=w;render();finish(turn);return;}
+  if(moves>=N*N){render();finish(null);return;}
+  turn=turn==="A"?"B":"A";
+  setMessage(P[turn].name+" \u2014 your stone.");
+  refresh();render();});
+function finish(w){phase="over";
+  const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
+    winner:w?P[w].name:null,loser:w?P[w==="A"?"B":"A"].name:null,draw:!w,
+    flipWinner:GS.flipWinner,moves:GS.moves};
+  GN.recordGame(KEY,rec);
+  document.getElementById("ovTitle").textContent=w?P[w].name+" \u2014 five in a row!":"Board full!";
+  document.getElementById("ovText").textContent=w?("Victory in "+GS.moves[P[w].name]+" stones."):"A 169-stone stalemate. Legendary.";
+  if(w){const box=document.getElementById("confetti"),cols=[P[w].main,P[w].light,"#f4c542","#fff"];
+    for(let i=0;i<60;i++){const d=document.createElement("div");d.className="cf";d.style.left=Math.random()*100+"%";
+      d.style.background=cols[i%cols.length];d.style.animationDuration=(2.2+Math.random()*1.8)+"s";
+      d.style.animationDelay=(Math.random()*0.8)+"s";box.appendChild(d);}}
+  document.getElementById("overlay").classList.add("show");refresh();}
+document.getElementById("newBtn").addEventListener("click",newGame);
+document.getElementById("ovBtn").addEventListener("click",newGame);
+GN.rulesButton(document.getElementById("foot"),{title:"Gomoku",sections:[
+ {h:"Goal",p:"Place stones on the crossings; first to line up five in a row \u2014 any direction \u2014 wins. Centuries old, learned in seconds, surprisingly deep."},
+ {h:"Playing",p:"Tap any empty crossing to place your stone. Stones never move and never come off."},
+ {h:"Strategy",p:"Build open threes (three in a row with both ends free) \u2014 they force a block. Two threats at once \u2014 a double three or a four-and-three \u2014 cannot both be answered."},
+ {h:"First move",p:"Going first is a real edge, which is why the coin flip matters. Rematch with the seats swapped to keep it honest."}]});
+GN.statsButton(document.getElementById("foot"),{title:"Gomoku",key:KEY,specials:[
+ {label:"Fastest win (stones)",of:(r,n)=>{const w=r.filter(x=>x.winner===n&&x.moves&&x.moves[n]);return w.length?Math.min(...w.map(x=>x.moves[n])):0;}},
+ {label:"Stones placed",of:(r,n)=>r.reduce((a,x)=>a+((x.moves&&x.moves[n])||0),0)},
+ {label:"Coin flips won",of:(r,n)=>r.filter(x=>x.flipWinner===n).length}]});
+fit();newGame();
+</script>
+</body>
+</html>

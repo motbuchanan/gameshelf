@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Code Breaker</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{font-family:system-ui,sans-serif;color:#e8f0e4;overflow:hidden;display:flex;flex-direction:column;
+    background:radial-gradient(120% 80% at 50% 20%,#1f3327 0%,#0c1410 70%);}
+  #bar{display:flex;align-items:center;gap:10px;padding:12px 14px;}
+  #bar a{color:#cfe6d8;text-decoration:none;font-size:14px;border:1px solid #3a5a47;border-radius:999px;padding:6px 12px;}
+  #title{font-weight:800;font-size:19px;}
+  #roundTag{margin-left:auto;font-weight:700;font-size:14px;color:#bcd6c7;}
+  #history{flex:1;overflow-y:auto;padding:4px 14px;display:flex;flex-direction:column;gap:6px;}
+  .row{display:flex;align-items:center;gap:10px;justify-content:center;}
+  .row .gnum{width:22px;text-align:right;font-size:12px;color:#7d9a88;font-variant-numeric:tabular-nums;}
+  .pegs{display:flex;gap:7px;}
+  .peg{width:30px;height:30px;border-radius:50%;box-shadow:inset 0 -3px 5px rgba(0,0,0,.4),inset 0 2px 3px rgba(255,255,255,.45),0 2px 4px rgba(0,0,0,.4);}
+  .peg.empty{background:#0e1813;box-shadow:inset 0 2px 5px rgba(0,0,0,.6);}
+  .fb{display:grid;grid-template-columns:repeat(2,12px);gap:3px;width:30px;}
+  .fbp{width:11px;height:11px;border-radius:50%;background:#0e1813;box-shadow:inset 0 1px 3px rgba(0,0,0,.6);}
+  .fbp.b{background:radial-gradient(circle at 35% 30%,#666,#111);}
+  .fbp.w{background:radial-gradient(circle at 35% 30%,#fff,#bbb);}
+  #entry{padding:6px 14px 2px;display:flex;flex-direction:column;gap:8px;align-items:center;}
+  #slots{display:flex;gap:9px;}
+  .slot{width:40px;height:40px;border-radius:50%;background:#0e1813;border:2px dashed #3a5a47;cursor:pointer;
+    box-shadow:inset 0 2px 5px rgba(0,0,0,.6);}
+  .slot.filled{border-style:solid;border-color:rgba(255,255,255,.3);
+    box-shadow:inset 0 -4px 6px rgba(0,0,0,.4),inset 0 2px 4px rgba(255,255,255,.45),0 2px 5px rgba(0,0,0,.4);}
+  .slot.cursor{border-color:#b0d235;box-shadow:0 0 10px rgba(176,210,53,.5),inset 0 2px 5px rgba(0,0,0,.6);}
+  #palette{display:flex;gap:9px;}
+  .pal{width:38px;height:38px;border-radius:50%;border:none;cursor:pointer;
+    box-shadow:inset 0 -4px 6px rgba(0,0,0,.4),inset 0 2px 4px rgba(255,255,255,.5),0 3px 6px rgba(0,0,0,.45);}
+  #msg{min-height:22px;text-align:center;font-size:14px;color:#d8e8dd;padding:0 16px;}
+  #foot{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;padding:8px 14px 16px;}
+  .act{font-family:inherit;font-size:15px;font-weight:bold;padding:10px 20px;border-radius:10px;border:none;
+    color:#1c2b16;background:#b0d235;cursor:pointer;box-shadow:0 4px 0 #7e9a1f,0 5px 10px rgba(0,0,0,.4);}
+  .act:disabled{opacity:.4;}
+  .act.ghost{background:#15241b;color:#cfe6d8;box-shadow:0 4px 0 #0b160f;border:1px solid #3a5a47;}
+  #score{font-size:14px;color:#bcd6c7;}
+  .ov{position:fixed;inset:0;background:rgba(7,12,9,.96);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:50;text-align:center;padding:24px;}
+  .ov.show{display:flex;}
+  .ov h1{font-size:26px;}
+  .ov p{color:#bcd6c7;max-width:300px;line-height:1.45;}
+  #confetti{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
+  .cf{position:absolute;width:10px;height:14px;top:-20px;animation:fall linear forwards;}
+  @keyframes fall{to{transform:translateY(110vh) rotate(720deg);}}
+</style>
+</head>
+<body>
+<div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">Code Breaker</div><div id="roundTag"></div></div>
+<div id="history"></div>
+<div id="entry">
+  <div id="slots"></div>
+  <div id="palette"></div>
+</div>
+<div id="msg"></div>
+<div id="foot">
+  <button class="act" id="goBtn">Guess</button>
+  <button class="act ghost" id="newBtn">New game</button>
+  <div id="score"></div>
+</div>
+<div class="ov" id="curtain"><div style="font-size:46px;">&#129323;</div><h1 id="cTitle"></h1><p id="cText"></p>
+  <button class="act" id="cBtn">I'm ready</button></div>
+<div class="ov" id="overlay"><div id="confetti"></div><div style="font-size:54px;">&#128273;</div><h1 id="ovTitle"></h1><p id="ovText"></p>
+  <button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
+<script src="gamenight.js?v=3"></script>
+<script>
+const KEY="cb_games",SLOTS=4,MAXG=10;
+const COLORS=["#d8312b","#f4c542","#46b06a","#2f6fd0","#b06ad0","#e8e4da"];
+let P={A:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},B:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182"}};
+function seatFrom(p){return{name:p.name,main:p.color,light:p.light,dark:p.dark};}
+// round 1: A sets, B guesses. round 2: swap. lower total guesses wins (fail = MAXG+1)
+let phase="over",round=1,setter="A",code=null,cur=[],cursor=0,guesses=[],used={A:null,B:null},GS=null,mode="set";
+function feedback(code,guess){let black=0;
+  const cc={},gc={};
+  for(let i=0;i<SLOTS;i++){
+    if(code[i]===guess[i])black++;
+    else{cc[code[i]]=(cc[code[i]]||0)+1;gc[guess[i]]=(gc[guess[i]]||0)+1;}}
+  let white=0;
+  for(const k in gc)white+=Math.min(gc[k],cc[k]||0);
+  return{black,white};}
+function guesserOf(){return setter==="A"?"B":"A";}
+function newGame(){phase="over";
+  document.getElementById("overlay").classList.remove("show");
+  document.getElementById("confetti").innerHTML="";
+  GN.matchStart(function(m){P={A:seatFrom(m.a),B:seatFrom(m.b)};
+    round=1;used={A:null,B:null};
+    setter=(m.first===m.a)?"A":"B"; // flip winner SETS first (guessing second = knowing the target)
+    GS={start:Date.now(),flipWinner:m.first.name,friendly:m.friendly};
+    startRound();});}
+function startRound(){code=null;cur=[];cursor=0;guesses=[];mode="set";phase="play";
+  document.getElementById("history").innerHTML="";
+  curtain(P[setter].name+" sets the code",
+    "Pass the phone to "+P[setter].name+". Pick a secret 4-peg code \u2014 colors may repeat. "+P[guesserOf()].name+", look away!",
+    ()=>{buildEntry();setMessage(P[setter].name+": tap colors to build your secret code.");render();});}
+function curtain(title,text,then){const c=document.getElementById("curtain");
+  document.getElementById("cTitle").textContent=title;
+  document.getElementById("cText").textContent=text;
+  c.classList.add("show");
+  document.getElementById("cBtn").onclick=()=>{c.classList.remove("show");then();};}
+function buildEntry(){const s=document.getElementById("slots");s.innerHTML="";
+  for(let i=0;i<SLOTS;i++){const d=document.createElement("div");d.className="slot";d.id="slot"+i;
+    d.addEventListener("click",()=>{cursor=i;render();});
+    s.appendChild(d);}
+  const p=document.getElementById("palette");p.innerHTML="";
+  COLORS.forEach((col,ci)=>{const b=document.createElement("button");b.className="pal";
+    b.style.background="radial-gradient(circle at 35% 30%,"+col+"f0,"+col+" 55%,"+col+"99)";
+    b.style.backgroundColor=col;
+    b.addEventListener("click",()=>{cur[cursor]=ci;cursor=Math.min(SLOTS-1,cursor+1);render();});
+    p.appendChild(b);});}
+function render(){for(let i=0;i<SLOTS;i++){const d=document.getElementById("slot"+i);if(!d)continue;
+    d.classList.toggle("cursor",i===cursor&&phase==="play");
+    if(cur[i]!==undefined){d.classList.add("filled");d.style.background=COLORS[cur[i]];}
+    else{d.classList.remove("filled");d.style.background="#0e1813";}}
+  document.getElementById("roundTag").textContent="Round "+round+" of 2 \u00b7 "+(mode==="set"?P[setter].name+" sets":P[guesserOf()].name+" cracks");
+  document.getElementById("goBtn").textContent=mode==="set"?"Lock it in":"Guess";
+  document.getElementById("goBtn").disabled=phase!=="play"||cur.filter(x=>x!==undefined).length<SLOTS;
+  const recs=GN.readGames(KEY);let a=0,b=0;
+  for(const r of recs){if(r.winner===P.A.name)a++;else if(r.winner===P.B.name)b++;}
+  document.getElementById("score").textContent=P.A.name+" "+a+" \u00b7 "+b+" "+P.B.name+((GS&&GS.friendly)?" \u00b7 friendly":"");}
+function setMessage(t){document.getElementById("msg").textContent=t;}
+function addRow(guess,fb){const h=document.getElementById("history");
+  const row=document.createElement("div");row.className="row";
+  row.innerHTML='<div class="gnum">'+guesses.length+'</div>';
+  const pegs=document.createElement("div");pegs.className="pegs";
+  for(const g of guess){const p=document.createElement("div");p.className="peg";
+    p.style.background="radial-gradient(circle at 35% 30%,"+COLORS[g]+"f0,"+COLORS[g]+" 55%,"+COLORS[g]+"99)";
+    p.style.backgroundColor=COLORS[g];pegs.appendChild(p);}
+  row.appendChild(pegs);
+  const f=document.createElement("div");f.className="fb";
+  for(let i=0;i<4;i++){const fp=document.createElement("div");fp.className="fbp";
+    if(i<fb.black)fp.classList.add("b");else if(i<fb.black+fb.white)fp.classList.add("w");
+    f.appendChild(fp);}
+  row.appendChild(f);h.appendChild(row);h.scrollTop=h.scrollHeight;}
+function go(){if(phase!=="play"||cur.filter(x=>x!==undefined).length<SLOTS)return;
+  if(mode==="set"){code=cur.slice();cur=[];cursor=0;mode="guess";
+    curtain(P[guesserOf()].name+" cracks it",
+      "Pass to "+P[guesserOf()].name+". You have "+MAXG+" guesses. Black peg = right color, right spot. White peg = right color, wrong spot.",
+      ()=>{setMessage(P[guesserOf()].name+": build a guess and fire.");render();});
+    render();return;}
+  const guess=cur.slice();cur=[];cursor=0;
+  guesses.push(guess);
+  const fb=feedback(code,guess);
+  addRow(guess,fb);
+  if(fb.black===SLOTS){used[guesserOf()]=guesses.length;
+    setMessage("CRACKED in "+guesses.length+"!");
+    endRound(true);return;}
+  if(guesses.length>=MAXG){used[guesserOf()]=MAXG+1;
+    setMessage("Out of guesses \u2014 the code held.");
+    endRound(false);return;}
+  setMessage((MAXG-guesses.length)+" guesses left.");render();}
+function endRound(cracked){phase="over";render();
+  setTimeout(()=>{
+    if(round===1){round=2;setter=guesserOf();startRound();}
+    else finishGame();},1400);}
+function finishGame(){
+  const w=used.A===used.B?null:(used.A<used.B?"A":"B");
+  const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
+    winner:w?P[w].name:null,loser:w?P[w==="A"?"B":"A"].name:null,draw:!w,
+    flipWinner:GS.flipWinner,
+    guesses:(function(){const s={};s[P.A.name]=used.A;s[P.B.name]=used.B;return s;})(),
+    cracked:(function(){const s={};s[P.A.name]=used.A<=MAXG?1:0;s[P.B.name]=used.B<=MAXG?1:0;return s;})()};
+  GN.recordGame(KEY,rec);
+  const fmt=u=>u>MAXG?"failed":u+" guess"+(u>1?"es":"");
+  document.getElementById("ovTitle").textContent=w?P[w].name+" out-cracks!":"Locked even!";
+  document.getElementById("ovText").textContent=P.A.name+" "+fmt(used.A)+" \u00b7 "+P.B.name+" "+fmt(used.B);
+  if(w){const box=document.getElementById("confetti"),cols=[P[w].main,P[w].light,"#f4c542","#fff"];
+    for(let i=0;i<60;i++){const d=document.createElement("div");d.className="cf";d.style.left=Math.random()*100+"%";
+      d.style.background=cols[i%cols.length];d.style.animationDuration=(2.2+Math.random()*1.8)+"s";
+      d.style.animationDelay=(Math.random()*0.8)+"s";box.appendChild(d);}}
+  document.getElementById("overlay").classList.add("show");phase="over";render();}
+document.getElementById("goBtn").addEventListener("click",go);
+document.getElementById("newBtn").addEventListener("click",newGame);
+document.getElementById("ovBtn").addEventListener("click",newGame);
+GN.rulesButton(document.getElementById("foot"),{title:"Code Breaker",sections:[
+ {h:"Goal",p:"Two rounds: each of you secretly sets a 4-peg color code, and the other tries to crack it. Fewer total guesses wins the match."},
+ {h:"Setting",p:"Pick any 4 colors from the 6 \u2014 repeats allowed (and sneaky). The phone curtains between hands like Battleship."},
+ {h:"Feedback",p:"After each guess: a BLACK peg for every peg that\u2019s the right color in the right spot, a WHITE peg for every right color in the wrong spot. The pegs don\u2019t tell you which positions \u2014 that\u2019s the puzzle."},
+ {h:"Cracking",p:"Ten guesses. Use early guesses to count colors, late guesses to lock positions. Failing scores 11, so always keep swinging."}]});
+GN.statsButton(document.getElementById("foot"),{title:"Code Breaker",key:KEY,specials:[
+ {label:"Codes cracked",of:(r,n)=>r.reduce((a,x)=>a+((x.cracked&&x.cracked[n])||0),0)},
+ {label:"Best crack (guesses)",of:(r,n)=>{const w=r.filter(x=>x.guesses&&x.guesses[n]&&x.guesses[n]<=10);return w.length?Math.min(...w.map(x=>x.guesses[n])):0;}},
+ {label:"Coin flips won",of:(r,n)=>r.filter(x=>x.flipWinner===n).length}]});
+newGame();
+</script>
+</body>
+</html>
