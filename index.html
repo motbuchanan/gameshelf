@@ -62,9 +62,9 @@
 
 <div id="shelves"></div>
 <footer>Built by Mot · one shelf, no batteries<br><button id="resetStats" style="margin-top:10px;background:none;border:none;color:#8d6f50;font-size:12px;text-decoration:underline;cursor:pointer;font-family:inherit;">Reset all stats on this device</button>
-<button id="syncBtn" style="margin-top:6px;background:none;border:none;color:#8d6f50;font-size:12px;text-decoration:underline;cursor:pointer;font-family:inherit;"></button></footer>
+<button id="syncBtn" style="margin-top:6px;background:none;border:none;color:#8d6f50;font-size:12px;text-decoration:underline;cursor:pointer;font-family:inherit;">Sync this device to the household</button></footer>
 
-<script src="gamenight.js"></script>
+<script src="gamenight.js?v=2"></script>
 <script>
 const GAMES=[
  {id:"sorry",name:"Sorry!",tag:"Slide. Bump. Sweet revenge.",href:"sorry.html",key:"sorry_games",
@@ -116,21 +116,33 @@ window.addEventListener("resize",()=>{const n=perRow();if(n!==lastN){lastN=n;bui
 // Reset stats: wipes every game ledger + the global ledger on THIS device.
 // Keeps players, TV mode, themes, rule choices, and saved games.
 (function(){const b=document.getElementById("syncBtn");
-  function label(){b.textContent=GN.sync.status()==="on"?"Household sync: ON \u2713 (tap to turn off)":"Sync this device to the household";}
+  function label(){try{b.textContent=GN.sync.status()==="on"?"Household sync: ON \u2713 (tap to turn off)":"Sync this device to the household";}catch(e){}}
   label();
   b.addEventListener("click",function(){
     if(GN.sync.status()==="on"){if(confirm("Turn off household sync on this device? Stats stay saved locally."))GN.sync.disable();label();return;}
     const code=prompt("Household passcode (same on every family device):");
     if(code&&GN.sync.enable(code)){alert("Synced! Stats now flow to the household record.");location.reload();}});})();
 document.getElementById("resetStats").addEventListener("click",function(){
-  if(!confirm("Erase ALL game records and global stats on this device? Players and settings are kept. This cannot be undone."))return;
+  const ov=document.createElement("div");
+  ov.style.cssText="position:fixed;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(10,6,2,.85);";
+  ov.innerHTML='<div style="max-width:340px;background:linear-gradient(180deg,#3a2614,#241608);border:1px solid rgba(255,220,170,.25);border-radius:14px;padding:22px;text-align:center;box-shadow:0 18px 40px rgba(0,0,0,.6);">'+
+    '<div style="font-weight:800;font-size:18px;color:#f6e7c8;margin-bottom:8px;">Erase all stats?</div>'+
+    '<div style="font-size:13px;color:#d8c3a4;line-height:1.5;margin-bottom:16px;">Every game record and the global ledger on this device will be wiped. Players and settings are kept. This cannot be undone.</div>'+
+    '<div style="display:flex;gap:10px;justify-content:center;">'+
+    '<button id="rsNo" style="font-family:inherit;font-size:15px;font-weight:bold;padding:10px 18px;border-radius:10px;border:1px solid #6b4a28;background:#241608;color:#e8d4b4;cursor:pointer;">Keep stats</button>'+
+    '<button id="rsYes" style="font-family:inherit;font-size:15px;font-weight:bold;padding:10px 18px;border-radius:10px;border:none;background:#c0392b;color:#fff;cursor:pointer;box-shadow:0 4px 0 #7e221a;">Erase everything</button>'+
+    '</div></div>';
+  document.body.appendChild(ov);
+  ov.querySelector("#rsNo").onclick=()=>ov.remove();
+  ov.addEventListener("click",e=>{if(e.target===ov)ov.remove();});
+  ov.querySelector("#rsYes").onclick=function(){ov.remove();
   try{
     for(const g of GAMES)localStorage.removeItem(g.key);
     localStorage.removeItem("sorry_skunks");
     localStorage.removeItem("gn_global");
   }catch(e){}
   try{if(GN.sync.status()==="on")GN.sync.resetCloud();}catch(e){}
-  setTimeout(()=>location.reload(),400);});
+  setTimeout(()=>location.reload(),400);};});
 // TV mode: fixed board orientation for shared screens (Fire Stick etc.)
 (function(){const btn=document.getElementById("tvToggle"),st=document.getElementById("tvState");
   function refresh(){let on=false;try{on=localStorage.getItem("shelf_tv")==="1";}catch(e){}
