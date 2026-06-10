@@ -46,6 +46,8 @@
   #ovTrophy{font-size:58px;line-height:1;}
   .ov.show #ovTrophy,.ov.show h1{animation:winpop .65s cubic-bezier(.2,1.5,.4,1) both;}
   @keyframes winpop{0%{transform:scale(.25);opacity:0;}100%{transform:scale(1);opacity:1;}}
+  .boneback{width:58px;height:30px;border-radius:5px;display:inline-block;margin:3px;
+    background:linear-gradient(135deg,#1d3a29,#0f231a);border:1px solid #355d45;box-shadow:0 2px 5px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.07);}
 </style>
 </head>
 <body>
@@ -54,7 +56,7 @@
 <div id="lineWrap"><div id="line"></div></div>
 <div id="msg"></div>
 <div class="handRow hand" id="handBot"></div>
-<div id="foot"><button class="act" id="newBtn">New game</button><button class="act ghost" id="drawBtn">Draw</button><div id="score"></div></div>
+<div id="foot"><button class="act" id="newBtn">New game</button><button class="act ghost" id="drawBtn">Draw</button><span style="font-size:13px;color:#9fbdac;border:1px solid #3a5a47;border-radius:999px;padding:6px 12px;">Rules: Draw</span><div id="score"></div></div>
 <div class="ov" id="endOv"><h2>Play it on which end?</h2><div id="endChoice"></div></div>
 <div class="ov" id="overlay"><div id="confetti"></div><div id="ovTrophy">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p><button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
 <script>
@@ -102,10 +104,12 @@ function renderAll(){
   // hands
   for(const s of["top","bot"]){const el=document.getElementById(s==="top"?"handTop":"handBot");el.innerHTML="";
     const who=document.createElement("div");who.className="who";
-    who.textContent=P[s].name.toUpperCase()+" \u00b7 "+hands[s].length+" bones \u00b7 "+pip(s)+" pips";
+    who.textContent=P[s].name.toUpperCase()+" \u00b7 "+hands[s].length+" bones"+((s===turn&&phase==="play")||phase==="over"?" \u00b7 "+pip(s)+" pips":"");
     who.style.color=P[s].light;el.appendChild(who);
-    hands[s].forEach((b,idx)=>{const be=boneEl(b,false);
-      const mine=(s===turn&&phase==="play");
+    hands[s].forEach((b,idx)=>{const mine=(s===turn&&phase==="play");
+      const reveal=mine||phase==="over";
+      if(!reveal){const bk=document.createElement("div");bk.className="boneback";el.appendChild(bk);return;}
+      const be=boneEl(b,false);
       if(mine&&playable(b))be.classList.add("playable");else if(mine)be.classList.add("idle");
       if(mine)be.addEventListener("click",()=>tryPlay(idx));
       el.appendChild(be);});}

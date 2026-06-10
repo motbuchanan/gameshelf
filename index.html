@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<title>Mot &amp; Kathy's Game Shelf</title>
+<title>The Game Shelf</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&display=swap" rel="stylesheet">
 <style>
@@ -54,7 +54,7 @@
 </head>
 <body>
 <header>
-  <h1>Mot &amp; Kathy's Game Shelf</h1>
+  <h1>The Game Shelf</h1>
   <div class="sub">Pick a box. Loser racks up the next one.</div>
   <div style="margin-top:10px;"><button id="tvToggle" class="tally" style="cursor:pointer;border:1px solid rgba(255,220,170,.25);font-family:inherit;">📺 TV mode: <b id="tvState">Off</b></button></div>
   <div class="tally" id="tally" hidden><span class="m"><b id="motW">0</b> Mot</span><span>·</span><span class="k">Kathy <b id="kathyW">0</b></span><span style="opacity:.6">all games</span></div>
@@ -118,12 +118,17 @@ window.addEventListener("resize",()=>{const n=perRow();if(n!==lastN){lastN=n;bui
   btn.addEventListener("click",()=>{try{const on=localStorage.getItem("shelf_tv")==="1";
     if(on)localStorage.removeItem("shelf_tv");else localStorage.setItem("shelf_tv","1");}catch(e){}refresh();});
   refresh();})();
-// all-games tally from every game's record store
-(function(){let m=0,k=0,any=false;
+// all-games tally: global ledger first (any players), legacy per-game scan as fallback
+(function(){const t=document.getElementById("tally");
+  try{const g=JSON.parse(localStorage.getItem("gn_global"));
+    if(g&&g.wins&&Object.keys(g.wins).length){
+      const top=Object.entries(g.wins).sort((a,b)=>b[1]-a[1]).slice(0,3);
+      t.innerHTML=top.map(([n,w],i)=>'<span style="color:'+(i===0?"#ff8d86":i===1?"#8fb8ff":"#9be3ae")+'"><b>'+w+'</b> '+n+'</span>').join('<span>\u00b7</span>')+'<span style="opacity:.6">all games</span>';
+      t.hidden=false;return;}}catch(e){}
+  let m=0,k=0,any=false;
   for(const g of GAMES){try{const list=JSON.parse(localStorage.getItem(g.key))||[];
     for(const rec of list){if(rec.winner==="Mot")m++;else if(rec.winner==="Kathy")k++;any=true;}}catch(e){}}
-  if(any){document.getElementById("motW").textContent=m;document.getElementById("kathyW").textContent=k;
-    document.getElementById("tally").hidden=false;}})();
+  if(any){document.getElementById("motW").textContent=m;document.getElementById("kathyW").textContent=k;t.hidden=false;}})();
 </script>
 </body>
 </html>

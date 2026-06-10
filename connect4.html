@@ -38,9 +38,11 @@
 <div id="wrap"><canvas id="board"></canvas></div>
 <div id="foot"><button class="act" id="newBtn">New game</button><div id="score"></div></div>
 <div class="ov" id="overlay"><div id="confetti"></div><div id="ovTrophy">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p><button class="act" id="ovBtn">Play again</button><a class="ghost" href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
+<script src="gamenight.js"></script>
 <script>
 const COLS=7,ROWS=6;
-const P={red:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},blue:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182"}};
+let P={red:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},blue:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182"}};
+function seatFrom(p){return{name:p.name,main:p.color,light:p.light,dark:p.dark};}
 const canvas=document.getElementById("board"),ctx=canvas.getContext("2d");
 let CELL=64,grid=Array.from({length:ROWS},()=>Array(COLS).fill(null)),turn="red",animating=false,over=false,winLine=null,GS=null,moves={Mot:0,Kathy:0},pulseRAF=0;
 const KEY="c4_games";let _mem=[];
@@ -50,15 +52,18 @@ function fit(){const w=Math.min(window.innerWidth-20,520),h=window.innerHeight-1
   CELL=Math.floor(Math.min(w/COLS,h/ROWS));
   canvas.width=CELL*COLS;canvas.height=CELL*ROWS;render();}
 function newGame(){grid=Array.from({length:ROWS},()=>Array(COLS).fill(null));
-  turn=Math.random()<0.5?"red":"blue";over=false;winLine=null;animating=false;moves={Mot:0,Kathy:0};
-  GS={start:Date.now()};document.getElementById("overlay").classList.remove("show");
-  document.getElementById("confetti").innerHTML="";updateBar();render();}
+  over=true;winLine=null;animating=false;moves={Mot:0,Kathy:0};
+  document.getElementById("overlay").classList.remove("show");
+  document.getElementById("confetti").innerHTML="";render();
+  GN.matchStart(function(m){P={red:seatFrom(m.a),blue:seatFrom(m.b)};
+    turn=(m.first===m.a)?"red":"blue";over=false;moves={};moves[m.a.name]=0;moves[m.b.name]=0;
+    GS={start:Date.now(),flipWinner:m.first.name,players:[m.a.name,m.b.name]};updateBar();render();});}
 function updateBar(){const pc=P[turn];document.getElementById("turnName").textContent=pc.name+"'s turn";
   const d=document.getElementById("dot");
   d.style.background="radial-gradient(circle at 35% 30%,"+pc.light+","+pc.main+" 70%,"+pc.dark+")";
   d.style.boxShadow="0 0 0 3px rgba(255,255,255,.15),0 0 14px "+pc.main;
-  const games=Store.load();let m=0,k=0;for(const g of games){if(g.winner==="Mot")m++;else if(g.winner==="Kathy")k++;}
-  document.getElementById("score").textContent="Mot "+m+" \u00b7 "+k+" Kathy";}
+  const games=Store.load();let m=0,k=0;for(const g of games){if(g.winner===P.red.name)m++;else if(g.winner===P.blue.name)k++;}
+  document.getElementById("score").textContent=P.red.name+" "+m+" \u00b7 "+k+" "+P.blue.name;}
 function cellXY(r,c){return{x:c*CELL+CELL/2,y:r*CELL+CELL/2};}
 function drawChip(x,y,color,glow){const pc=P[color],r=CELL*0.40;
   ctx.save();
@@ -92,7 +97,7 @@ function drop(c){if(animating||over)return;const r=landRow(c);if(r<0)return;
     if(y>=targetY){y=targetY;
       // small bounce
       if(Math.abs(v)>2.5*(CELL/64)){v=-v*0.32;y=targetY-0.01;}
-      else{grid[r][c]=pc;moves[P[pc].name]++;animating=false;afterDrop(r,c);return;}}
+      else{grid[r][c]=pc;moves[P[pc].name]=(moves[P[pc].name]||0)+1;animating=false;afterDrop(r,c);return;}}
     render(y,c,pc);requestAnimationFrame(step);}
   requestAnimationFrame(step);}
 function afterDrop(r,c){const w=checkWin(r,c);
@@ -107,14 +112,18 @@ function checkWin(r,c){const me=grid[r][c];
   return null;}
 function startPulse(){cancelAnimationFrame(pulseRAF);
   (function tick(){if(!over){pulseRAF=0;return;}render();pulseRAF=requestAnimationFrame(tick);})();}
+function winDirection(line){if(!line||line.length<2)return null;
+  const dr=line[1][0]-line[0][0],dc=line[1][1]-line[0][1];
+  if(dr===0)return"horizontal";if(dc===0)return"vertical";return"diagonal";}
 function finish(color){const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
-  winner:color?P[color].name:null,loser:color?P[color==="red"?"blue":"red"].name:null,draw:!color,moves:{...moves}};
-  const l=Store.load();l.push(rec);Store.save(l);
+  winner:color?P[color].name:null,loser:color?P[color==="red"?"blue":"red"].name:null,draw:!color,
+  flipWinner:GS.flipWinner,dir:winDirection(winLine),moves:{...moves}};
+  GN.recordGame(KEY,rec);
   const ov=document.getElementById("overlay");
   document.getElementById("ovTitle").textContent=color?P[color].name+" wins!":"It's a draw!";
   document.getElementById("ovTitle").style.color=color?P[color].main:"#e8f0e4";
   document.getElementById("ovTrophy").textContent=color?"\uD83C\uDFC6":"\uD83E\uDD1D";
-  document.getElementById("ovText").textContent=color?("Four in a row in "+moves[P[color].name]+" moves."):"Every column, full.";
+  document.getElementById("ovText").textContent=color?("Four in a row in "+(moves[P[color].name]||0)+" moves."):"Every column, full.";
   if(color)spawnConfetti(color);
   setTimeout(()=>ov.classList.add("show"),650);updateBar();}
 function spawnConfetti(color){const box=document.getElementById("confetti");box.innerHTML="";const pc=P[color];
@@ -127,6 +136,11 @@ canvas.addEventListener("pointerup",e=>{const rect=canvas.getBoundingClientRect(
   const c=Math.floor((e.clientX-rect.left)/rect.width*COLS);
   if(c>=0&&c<COLS)drop(c);});
 document.getElementById("newBtn").addEventListener("click",newGame);
+GN.statsButton(document.getElementById("foot"),{title:"Connect Four",key:KEY,specials:[
+  {label:"Horizontal wins",of:(r,n)=>r.filter(x=>x.winner===n&&x.dir==="horizontal").length},
+  {label:"Vertical wins",of:(r,n)=>r.filter(x=>x.winner===n&&x.dir==="vertical").length},
+  {label:"Diagonal wins",of:(r,n)=>r.filter(x=>x.winner===n&&x.dir==="diagonal").length},
+  {label:"Coin flips won",of:(r,n)=>r.filter(x=>x.flipWinner===n).length}]});
 document.getElementById("ovBtn").addEventListener("click",newGame);
 window.addEventListener("resize",fit);
 fit();newGame();
