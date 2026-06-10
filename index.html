@@ -61,8 +61,10 @@
 </header>
 
 <div id="shelves"></div>
-<footer>Built by Mot · one shelf, no batteries</footer>
+<footer>Built by Mot · one shelf, no batteries<br><button id="resetStats" style="margin-top:10px;background:none;border:none;color:#8d6f50;font-size:12px;text-decoration:underline;cursor:pointer;font-family:inherit;">Reset all stats on this device</button>
+<button id="syncBtn" style="margin-top:6px;background:none;border:none;color:#8d6f50;font-size:12px;text-decoration:underline;cursor:pointer;font-family:inherit;"></button></footer>
 
+<script src="gamenight.js"></script>
 <script>
 const GAMES=[
  {id:"sorry",name:"Sorry!",tag:"Slide. Bump. Sweet revenge.",href:"sorry.html",key:"sorry_games",
@@ -111,6 +113,24 @@ function build(){shelves.innerHTML="";const n=perRow();
     const plank=document.createElement("div");plank.className="plank";shelves.appendChild(plank);}}
 let lastN=perRow();build();
 window.addEventListener("resize",()=>{const n=perRow();if(n!==lastN){lastN=n;build();}});
+// Reset stats: wipes every game ledger + the global ledger on THIS device.
+// Keeps players, TV mode, themes, rule choices, and saved games.
+(function(){const b=document.getElementById("syncBtn");
+  function label(){b.textContent=GN.sync.status()==="on"?"Household sync: ON \u2713 (tap to turn off)":"Sync this device to the household";}
+  label();
+  b.addEventListener("click",function(){
+    if(GN.sync.status()==="on"){if(confirm("Turn off household sync on this device? Stats stay saved locally."))GN.sync.disable();label();return;}
+    const code=prompt("Household passcode (same on every family device):");
+    if(code&&GN.sync.enable(code)){alert("Synced! Stats now flow to the household record.");location.reload();}});})();
+document.getElementById("resetStats").addEventListener("click",function(){
+  if(!confirm("Erase ALL game records and global stats on this device? Players and settings are kept. This cannot be undone."))return;
+  try{
+    for(const g of GAMES)localStorage.removeItem(g.key);
+    localStorage.removeItem("sorry_skunks");
+    localStorage.removeItem("gn_global");
+  }catch(e){}
+  try{if(GN.sync.status()==="on")GN.sync.resetCloud();}catch(e){}
+  setTimeout(()=>location.reload(),400);});
 // TV mode: fixed board orientation for shared screens (Fire Stick etc.)
 (function(){const btn=document.getElementById("tvToggle"),st=document.getElementById("tvState");
   function refresh(){let on=false;try{on=localStorage.getItem("shelf_tv")==="1";}catch(e){}
