@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Connect Four — Mot vs Kathy</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  :root{--accent:#b0d235;--accentSh:#7e9a1f;--text:#e8f0e4;}
+  html,body{height:100%;}
+  body{font-family:system-ui,sans-serif;color:var(--text);display:flex;flex-direction:column;align-items:center;overflow:hidden;
+    background:radial-gradient(110% 80% at 50% 20%,#1f3327 0%,#0c1410 80%);}
+  #bar{width:100%;max-width:520px;display:flex;align-items:center;gap:10px;padding:10px 14px 4px;}
+  #bar a{color:#cfe6d8;text-decoration:none;font-size:13px;border:1px solid #3a5a47;background:#15241b;border-radius:999px;padding:6px 12px;}
+  #title{font-weight:800;font-size:17px;letter-spacing:.4px;}
+  #turn{margin-left:auto;display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px;}
+  #dot{width:14px;height:14px;border-radius:50%;animation:dp 1.8s ease-in-out infinite;}
+  @keyframes dp{0%,100%{transform:scale(1);}50%{transform:scale(1.2);}}
+  #wrap{flex:1;display:flex;align-items:center;justify-content:center;width:100%;padding:6px 10px;}
+  canvas{display:block;border-radius:16px;touch-action:none;box-shadow:0 14px 34px rgba(0,0,0,.6);}
+  #foot{padding:0 0 14px;display:flex;gap:12px;align-items:center;}
+  button.act{font-family:inherit;font-size:15px;font-weight:bold;padding:9px 16px;border-radius:10px;border:none;color:#1c2b16;background:var(--accent);cursor:pointer;box-shadow:0 4px 0 var(--accentSh),0 5px 10px rgba(0,0,0,.4);}
+  button.ghost{background:#15241b;color:#cfe6d8;box-shadow:0 4px 0 #0b160f,0 5px 10px rgba(0,0,0,.4);border:1px solid #3a5a47;}
+  #score{font-size:13px;color:#9fbdac;}
+  .ov{position:fixed;inset:0;z-index:40;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:30px;text-align:center;background:rgba(7,12,9,.88);}
+  .ov.show{display:flex;}
+  .ov h1{font-size:34px;}
+  #confetti{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
+  .cfp{position:absolute;top:-16px;width:9px;height:14px;border-radius:2px;opacity:.95;animation-name:cfall;animation-timing-function:linear;animation-fill-mode:forwards;}
+  @keyframes cfall{0%{transform:translateY(-20px) rotate(0deg);}100%{transform:translateY(108vh) rotate(680deg);}}
+  #ovTrophy{font-size:58px;line-height:1;}
+  .ov.show #ovTrophy,.ov.show h1{animation:winpop .65s cubic-bezier(.2,1.5,.4,1) both;}
+  @keyframes winpop{0%{transform:scale(.25);opacity:0;}100%{transform:scale(1);opacity:1;}}
+</style>
+</head>
+<body>
+<div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">Connect Four</div><div id="turn"><div id="dot"></div><span id="turnName"></span></div></div>
+<div id="wrap"><canvas id="board"></canvas></div>
+<div id="foot"><button class="act" id="newBtn">New game</button><div id="score"></div></div>
+<div class="ov" id="overlay"><div id="confetti"></div><div id="ovTrophy">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p><button class="act" id="ovBtn">Play again</button><a class="ghost" href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
+<script>
+const COLS=7,ROWS=6;
+const P={red:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},blue:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182"}};
+const canvas=document.getElementById("board"),ctx=canvas.getContext("2d");
+let CELL=64,grid=Array.from({length:ROWS},()=>Array(COLS).fill(null)),turn="red",animating=false,over=false,winLine=null,GS=null,moves={Mot:0,Kathy:0},pulseRAF=0;
+const KEY="c4_games";let _mem=[];
+const Store={load(){try{return JSON.parse(localStorage.getItem(KEY))||[];}catch(e){return _mem.slice();}},
+  save(l){try{localStorage.setItem(KEY,JSON.stringify(l));}catch(e){_mem=l.slice();}}};
+function fit(){const w=Math.min(window.innerWidth-20,520),h=window.innerHeight-130;
+  CELL=Math.floor(Math.min(w/COLS,h/ROWS));
+  canvas.width=CELL*COLS;canvas.height=CELL*ROWS;render();}
+function newGame(){grid=Array.from({length:ROWS},()=>Array(COLS).fill(null));
+  turn=Math.random()<0.5?"red":"blue";over=false;winLine=null;animating=false;moves={Mot:0,Kathy:0};
+  GS={start:Date.now()};document.getElementById("overlay").classList.remove("show");
+  document.getElementById("confetti").innerHTML="";updateBar();render();}
+function updateBar(){const pc=P[turn];document.getElementById("turnName").textContent=pc.name+"'s turn";
+  const d=document.getElementById("dot");
+  d.style.background="radial-gradient(circle at 35% 30%,"+pc.light+","+pc.main+" 70%,"+pc.dark+")";
+  d.style.boxShadow="0 0 0 3px rgba(255,255,255,.15),0 0 14px "+pc.main;
+  const games=Store.load();let m=0,k=0;for(const g of games){if(g.winner==="Mot")m++;else if(g.winner==="Kathy")k++;}
+  document.getElementById("score").textContent="Mot "+m+" \u00b7 "+k+" Kathy";}
+function cellXY(r,c){return{x:c*CELL+CELL/2,y:r*CELL+CELL/2};}
+function drawChip(x,y,color,glow){const pc=P[color],r=CELL*0.40;
+  ctx.save();
+  if(glow){ctx.shadowColor="#fff";ctx.shadowBlur=CELL*0.35*(0.5+0.5*Math.sin(performance.now()/250));}
+  const g=ctx.createRadialGradient(x-r*0.35,y-r*0.4,r*0.15,x,y,r);
+  g.addColorStop(0,pc.light);g.addColorStop(0.7,pc.main);g.addColorStop(1,pc.dark);
+  ctx.beginPath();ctx.arc(x,y,r,0,7);ctx.fillStyle=g;ctx.fill();
+  ctx.lineWidth=Math.max(1.5,CELL*0.04);ctx.strokeStyle=pc.dark;ctx.stroke();
+  ctx.beginPath();ctx.arc(x,y,r*0.62,0,7);ctx.strokeStyle="rgba(0,0,0,.18)";ctx.lineWidth=CELL*0.05;ctx.stroke();
+  ctx.fillStyle="rgba(255,255,255,.55)";ctx.beginPath();ctx.ellipse(x-r*0.3,y-r*0.42,r*0.2,r*0.12,-0.6,0,7);ctx.fill();
+  ctx.restore();}
+function render(dropY,dropCol,dropColor){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  // falling chip behind the frame
+  if(dropY!==undefined)drawChip(dropCol*CELL+CELL/2,dropY,dropColor,false);
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){const v=grid[r][c];if(v){const p=cellXY(r,c);
+    const hl=winLine&&winLine.some(w=>w[0]===r&&w[1]===c);drawChip(p.x,p.y,v,hl);}}
+  // frame with punched holes on top
+  ctx.save();ctx.beginPath();ctx.rect(0,0,canvas.width,canvas.height);
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){const p=cellXY(r,c);ctx.moveTo(p.x+CELL*0.42,p.y);ctx.arc(p.x,p.y,CELL*0.42,0,7);}
+  ctx.clip("evenodd");
+  const fg=ctx.createLinearGradient(0,0,0,canvas.height);fg.addColorStop(0,"#1d4f86");fg.addColorStop(1,"#11335c");
+  ctx.fillStyle=fg;ctx.fillRect(0,0,canvas.width,canvas.height);
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){const p=cellXY(r,c);
+    ctx.beginPath();ctx.arc(p.x,p.y,CELL*0.42,0,7);ctx.strokeStyle="rgba(0,0,0,.35)";ctx.lineWidth=Math.max(1.5,CELL*0.035);ctx.stroke();}
+  ctx.restore();}
+function landRow(c){for(let r=ROWS-1;r>=0;r--)if(!grid[r][c])return r;return -1;}
+function drop(c){if(animating||over)return;const r=landRow(c);if(r<0)return;
+  animating=true;const pc=turn,targetY=r*CELL+CELL/2;let y=-CELL*0.5,v=0,t0=null;
+  function step(ts){v+=2.2*(CELL/64);y+=v;
+    if(y>=targetY){y=targetY;
+      // small bounce
+      if(Math.abs(v)>2.5*(CELL/64)){v=-v*0.32;y=targetY-0.01;}
+      else{grid[r][c]=pc;moves[P[pc].name]++;animating=false;afterDrop(r,c);return;}}
+    render(y,c,pc);requestAnimationFrame(step);}
+  requestAnimationFrame(step);}
+function afterDrop(r,c){const w=checkWin(r,c);
+  if(w){winLine=w;over=true;render();startPulse();finish(grid[r][c]);return;}
+  if(grid[0].every((_,i)=>grid[0][i]!==null&&landRow(i)<0)||grid.every(row=>row.every(v=>v))){over=true;render();finish(null);return;}
+  turn=turn==="red"?"blue":"red";updateBar();render();}
+function checkWin(r,c){const me=grid[r][c];
+  for(const[dr,dc]of[[0,1],[1,0],[1,1],[1,-1]]){const line=[[r,c]];
+    for(const s of[1,-1]){let rr=r+dr*s,cc=c+dc*s;
+      while(rr>=0&&rr<ROWS&&cc>=0&&cc<COLS&&grid[rr][cc]===me){line.push([rr,cc]);rr+=dr*s;cc+=dc*s;}}
+    if(line.length>=4)return line;}
+  return null;}
+function startPulse(){cancelAnimationFrame(pulseRAF);
+  (function tick(){if(!over){pulseRAF=0;return;}render();pulseRAF=requestAnimationFrame(tick);})();}
+function finish(color){const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
+  winner:color?P[color].name:null,loser:color?P[color==="red"?"blue":"red"].name:null,draw:!color,moves:{...moves}};
+  const l=Store.load();l.push(rec);Store.save(l);
+  const ov=document.getElementById("overlay");
+  document.getElementById("ovTitle").textContent=color?P[color].name+" wins!":"It's a draw!";
+  document.getElementById("ovTitle").style.color=color?P[color].main:"#e8f0e4";
+  document.getElementById("ovTrophy").textContent=color?"\uD83C\uDFC6":"\uD83E\uDD1D";
+  document.getElementById("ovText").textContent=color?("Four in a row in "+moves[P[color].name]+" moves."):"Every column, full.";
+  if(color)spawnConfetti(color);
+  setTimeout(()=>ov.classList.add("show"),650);updateBar();}
+function spawnConfetti(color){const box=document.getElementById("confetti");box.innerHTML="";const pc=P[color];
+  const cols=[pc.main,pc.light,"#f4c542","#ffffff"];
+  for(let i=0;i<90;i++){const d=document.createElement("div");d.className="cfp";
+    d.style.left=(Math.random()*100)+"%";d.style.background=cols[i%cols.length];
+    d.style.animationDuration=(2.4+Math.random()*1.8)+"s";d.style.animationDelay=(Math.random()*0.9)+"s";
+    d.style.transform="rotate("+Math.floor(Math.random()*360)+"deg)";box.appendChild(d);}}
+canvas.addEventListener("pointerup",e=>{const rect=canvas.getBoundingClientRect();
+  const c=Math.floor((e.clientX-rect.left)/rect.width*COLS);
+  if(c>=0&&c<COLS)drop(c);});
+document.getElementById("newBtn").addEventListener("click",newGame);
+document.getElementById("ovBtn").addEventListener("click",newGame);
+window.addEventListener("resize",fit);
+fit();newGame();
+</script>
+</body>
+</html>

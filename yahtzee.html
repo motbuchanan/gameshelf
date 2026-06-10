@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Yahtzee — Mot vs Kathy</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  :root{--accent:#b0d235;--accentSh:#7e9a1f;--text:#e8f0e4;}
+  html,body{height:100%;}
+  body{font-family:system-ui,sans-serif;color:var(--text);display:flex;flex-direction:column;overflow:hidden;
+    background:radial-gradient(110% 80% at 50% 20%,#1f3327 0%,#0c1410 80%);}
+  #bar{display:flex;align-items:center;gap:10px;padding:10px 14px 2px;}
+  #bar a{color:#cfe6d8;text-decoration:none;font-size:13px;border:1px solid #3a5a47;background:#15241b;border-radius:999px;padding:6px 12px;}
+  #title{font-weight:800;font-size:17px;}
+  #turn{margin-left:auto;display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;}
+  #dot{width:13px;height:13px;border-radius:50%;animation:dp 1.8s ease-in-out infinite;}
+  @keyframes dp{0%,100%{transform:scale(1);}50%{transform:scale(1.2);}}
+  #card{flex:1;overflow-y:auto;padding:4px 10px;}
+  table{width:100%;max-width:480px;margin:0 auto;border-collapse:collapse;font-size:13.5px;}
+  th,td{padding:5px 7px;border-bottom:1px solid #233a2c;text-align:center;}
+  th:first-child,td:first-child{text-align:left;}
+  th{color:#9fbdac;font-size:12px;letter-spacing:.4px;}
+  td.cat{color:#cfe6d8;}
+  td.cell{width:64px;font-variant-numeric:tabular-nums;}
+  td.cell.open{color:#5f7d6b;}
+  td.cell.mine{cursor:pointer;color:#f7f3da;background:rgba(247,243,218,.07);border-radius:6px;
+    box-shadow:inset 0 0 0 1px rgba(247,243,218,.4);animation:cellpulse 1.6s ease-in-out infinite;}
+  @keyframes cellpulse{0%,100%{box-shadow:inset 0 0 0 1px rgba(247,243,218,.35);}50%{box-shadow:inset 0 0 0 2px rgba(247,243,218,.8);}}
+  td.cell.done{color:#e8f0e4;font-weight:700;}
+  tr.section td{background:rgba(0,0,0,.22);color:#9fbdac;font-size:12px;font-weight:700;}
+  tr.total td{font-weight:800;font-size:15px;border-top:2px solid #3a5a47;}
+  #diceRow{display:flex;justify-content:center;gap:10px;padding:8px 0 2px;}
+  .die{width:52px;height:52px;background:#fbf8f0;border-radius:12px;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);
+    padding:8px;box-shadow:0 4px 9px rgba(0,0,0,.45);cursor:pointer;position:relative;transition:transform .12s;border:none;}
+  .die i{border-radius:50%;background:#b3211b;visibility:hidden;margin:1px;}
+  .die.held{transform:translateY(6px);box-shadow:0 2px 4px rgba(0,0,0,.5),0 0 0 3px var(--accent);}
+  .die.rolling{animation:sh .42s ease;}
+  @keyframes sh{0%{transform:translateY(-14px) rotate(-14deg);}40%{transform:translateY(4px) rotate(10deg);}70%{transform:translateY(-3px) rotate(-5deg);}100%{transform:none;}}
+  #msg{min-height:18px;font-size:13.5px;color:#cfe6d8;text-align:center;padding:2px 12px;}
+  #foot{padding:4px 0 12px;display:flex;gap:12px;align-items:center;justify-content:center;}
+  button.act{font-family:inherit;font-size:15px;font-weight:bold;padding:9px 18px;border-radius:10px;border:none;color:#1c2b16;background:var(--accent);cursor:pointer;box-shadow:0 4px 0 var(--accentSh),0 5px 10px rgba(0,0,0,.4);}
+  button.act:disabled{opacity:.45;}
+  .ov{position:fixed;inset:0;z-index:40;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:30px;text-align:center;background:rgba(7,12,9,.9);}
+  .ov.show{display:flex;}
+  .ov h1{font-size:32px;}
+  #confetti{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
+  .cfp{position:absolute;top:-16px;width:9px;height:14px;border-radius:2px;opacity:.95;animation-name:cfall;animation-timing-function:linear;animation-fill-mode:forwards;}
+  @keyframes cfall{0%{transform:translateY(-20px) rotate(0deg);}100%{transform:translateY(108vh) rotate(680deg);}}
+  #ovTrophy{font-size:58px;line-height:1;}
+  .ov.show #ovTrophy,.ov.show h1{animation:winpop .65s cubic-bezier(.2,1.5,.4,1) both;}
+  @keyframes winpop{0%{transform:scale(.25);opacity:0;}100%{transform:scale(1);opacity:1;}}
+</style>
+</head>
+<body>
+<div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">Yahtzee</div><div id="turn"><div id="dot"></div><span id="turnName"></span></div></div>
+<div id="card"></div>
+<div id="diceRow"></div>
+<div id="msg"></div>
+<div id="foot"><button class="act" id="rollBtn">Roll</button></div>
+<div class="ov" id="overlay"><div id="confetti"></div><div id="ovTrophy">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p><button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
+<script>
+const P={A:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},B:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182"}};
+const CATS=[
+ {id:"ones",label:"Ones",upper:1},{id:"twos",label:"Twos",upper:2},{id:"threes",label:"Threes",upper:3},
+ {id:"fours",label:"Fours",upper:4},{id:"fives",label:"Fives",upper:5},{id:"sixes",label:"Sixes",upper:6},
+ {id:"three",label:"3 of a kind"},{id:"four",label:"4 of a kind"},{id:"full",label:"Full house"},
+ {id:"small",label:"Sm straight"},{id:"large",label:"Lg straight"},{id:"yahtzee",label:"YAHTZEE"},{id:"chance",label:"Chance"}];
+let dice=[1,1,1,1,1],held=[false,false,false,false,false],rolls=0,turn="A",cards={},phase="turn",GS=null;
+const KEY="yahtzee_games";let _mem=[];
+const Store={load(){try{return JSON.parse(localStorage.getItem(KEY))||[];}catch(e){return _mem.slice();}},
+  save(l){try{localStorage.setItem(KEY,JSON.stringify(l));}catch(e){_mem=l.slice();}}};
+function counts(d){const c=[0,0,0,0,0,0,0];for(const v of d)c[v]++;return c;}
+function scoreFor(cat,d){const c=counts(d),sum=d.reduce((a,b)=>a+b,0);
+  const def=CATS.find(x=>x.id===cat);
+  if(def.upper)return c[def.upper]*def.upper;
+  const max=Math.max(...c.slice(1));
+  switch(cat){
+    case "three":return max>=3?sum:0;
+    case "four":return max>=4?sum:0;
+    case "full":{const has3=c.indexOf(3,1)>0,has2=c.some((n,i)=>i>0&&n===2);
+      return (max===5)||(has3&&has2)?25:0;}
+    case "small":{for(const run of[[1,2,3,4],[2,3,4,5],[3,4,5,6]])if(run.every(v=>c[v]>0))return 30;return 0;}
+    case "large":{for(const run of[[1,2,3,4,5],[2,3,4,5,6]])if(run.every(v=>c[v]>0))return 40;return 0;}
+    case "yahtzee":return max===5?50:0;
+    case "chance":return sum;}
+  return 0;}
+function upperSum(card){return CATS.filter(c=>c.upper).reduce((s,c)=>s+(card[c.id]??0),0);}
+function totalOf(card){const up=upperSum(card),bonus=up>=63?35:0;
+  return up+bonus+CATS.filter(c=>!c.upper).reduce((s,c)=>s+(card[c.id]??0),0);}
+function roundsDone(card){return CATS.filter(c=>card[c.id]!==undefined).length;}
+function newGame(){cards={A:{},B:{}};turn=Math.random()<0.5?"A":"B";
+  dice=[1,2,3,4,5];held=[false,false,false,false,false];rolls=0;phase="turn";
+  GS={start:Date.now()};
+  document.getElementById("overlay").classList.remove("show");document.getElementById("confetti").innerHTML="";
+  startTurn();}
+function startTurn(){held=[false,false,false,false,false];rolls=0;phase="turn";
+  updateBar();setMessage(P[turn].name+" \u2014 roll the dice");renderDice(false);renderCard();
+  document.getElementById("rollBtn").disabled=false;document.getElementById("rollBtn").textContent="Roll";}
+function updateBar(){const pc=P[turn];document.getElementById("turnName").textContent=pc.name+" \u00b7 round "+(roundsDone(cards[turn])+1)+"/13";
+  const d=document.getElementById("dot");
+  d.style.background="radial-gradient(circle at 35% 30%,"+pc.light+","+pc.main+" 70%,"+pc.dark+")";
+  d.style.boxShadow="0 0 0 3px rgba(255,255,255,.15),0 0 14px "+pc.main;}
+function setMessage(t){document.getElementById("msg").textContent=t;}
+function roll(){if(rolls>=3||phase!=="turn")return;
+  rolls++;document.getElementById("rollBtn").disabled=true;
+  const els=[...document.querySelectorAll(".die")];
+  els.forEach((el,i)=>{if(!held[i])el.classList.add("rolling");});
+  let n=0;const iv=setInterval(()=>{for(let i=0;i<5;i++)if(!held[i])dice[i]=1+Math.floor(Math.random()*6);
+    renderDice(true);if(++n>=6){clearInterval(iv);
+      renderDice(true);renderCard();
+      const left=3-rolls;
+      document.getElementById("rollBtn").disabled=(left===0);
+      document.getElementById("rollBtn").textContent=left?("Roll again ("+left+" left)"):"Roll";
+      setMessage(left?P[turn].name+" \u2014 hold dice, roll again, or score":P[turn].name+" \u2014 pick a row to score");}},70);}
+function renderDice(showHolds){const row=document.getElementById("diceRow");row.innerHTML="";
+  dice.forEach((v,i)=>{const d=document.createElement("button");d.className="die"+(held[i]?" held":"");
+    const ON={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]}[v];
+    for(let k=0;k<9;k++){const p=document.createElement("i");if(ON.includes(k))p.style.visibility="visible";d.appendChild(p);}
+    d.addEventListener("click",()=>{if(rolls===0||rolls>=3&&false)return;if(rolls===0)return;
+      held[i]=!held[i];renderDice(true);});
+    row.appendChild(d);});}
+function renderCard(){const host=document.getElementById("card");
+  let h='<table><tr><th>Category</th><th style="color:'+P.A.light+'">Mot</th><th style="color:'+P.B.light+'">Kathy</th></tr>';
+  const row=(cat)=>{let cells="";
+    for(const pl of["A","B"]){const v=cards[pl][cat.id];
+      if(v!==undefined)cells+='<td class="cell done">'+v+'</td>';
+      else if(pl===turn&&rolls>0&&phase==="turn"){const pot=scoreFor(cat.id,dice);
+        cells+='<td class="cell mine" data-cat="'+cat.id+'">'+pot+'</td>';}
+      else cells+='<td class="cell open">\u2013</td>';}
+    return '<tr><td class="cat">'+cat.label+'</td>'+cells+'</tr>';};
+  CATS.filter(c=>c.upper).forEach(c=>h+=row(c));
+  h+='<tr class="section"><td>Upper bonus (63+ \u2192 35)</td><td>'+(upperSum(cards.A)>=63?35:upperSum(cards.A)+"/63")+'</td><td>'+(upperSum(cards.B)>=63?35:upperSum(cards.B)+"/63")+'</td></tr>';
+  CATS.filter(c=>!c.upper).forEach(c=>h+=row(c));
+  h+='<tr class="total"><td>TOTAL</td><td style="color:'+P.A.light+'">'+totalOf(cards.A)+'</td><td style="color:'+P.B.light+'">'+totalOf(cards.B)+'</td></tr></table>';
+  host.innerHTML=h;
+  host.querySelectorAll("td.mine").forEach(td=>td.addEventListener("click",()=>scoreCat(td.dataset.cat)));}
+function scoreCat(cat){if(rolls===0||phase!=="turn")return;
+  cards[turn][cat]=scoreFor(cat,dice);
+  if(roundsDone(cards.A)===13&&roundsDone(cards.B)===13){renderCard();finish();return;}
+  turn=turn==="A"?"B":"A";startTurn();}
+function finish(){phase="over";
+  const a=totalOf(cards.A),b=totalOf(cards.B);
+  const win=a>b?"A":b>a?"B":null;
+  const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
+    winner:win?P[win].name:null,loser:win?P[win==="A"?"B":"A"].name:null,draw:!win,score:{Mot:a,Kathy:b}};
+  const l=Store.load();l.push(rec);Store.save(l);
+  document.getElementById("ovTitle").textContent=win?P[win].name+" wins!":"Dead tie!";
+  document.getElementById("ovTitle").style.color=win?P[win].main:"#e8f0e4";
+  document.getElementById("ovTrophy").textContent=win?"\uD83C\uDFC6":"\uD83E\uDD1D";
+  document.getElementById("ovText").textContent="Mot "+a+" \u00b7 "+b+" Kathy";
+  if(win)spawnConfetti(win);
+  setTimeout(()=>document.getElementById("overlay").classList.add("show"),500);}
+function spawnConfetti(pl){const box=document.getElementById("confetti");box.innerHTML="";const pc=P[pl];
+  const cols=[pc.main,pc.light,"#f4c542","#ffffff"];
+  for(let i=0;i<90;i++){const d=document.createElement("div");d.className="cfp";
+    d.style.left=(Math.random()*100)+"%";d.style.background=cols[i%cols.length];
+    d.style.animationDuration=(2.4+Math.random()*1.8)+"s";d.style.animationDelay=(Math.random()*0.9)+"s";
+    d.style.transform="rotate("+Math.floor(Math.random()*360)+"deg)";box.appendChild(d);}}
+document.getElementById("rollBtn").addEventListener("click",roll);
+document.getElementById("ovBtn").addEventListener("click",newGame);
+newGame();
+</script>
+</body>
+</html>

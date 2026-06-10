@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Dominoes — Mot vs Kathy</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  :root{--accent:#b0d235;--accentSh:#7e9a1f;--text:#e8f0e4;}
+  html,body{height:100%;}
+  body{font-family:system-ui,sans-serif;color:var(--text);display:flex;flex-direction:column;overflow:hidden;
+    background:radial-gradient(110% 80% at 50% 20%,#1f3327 0%,#0c1410 80%);}
+  #bar{display:flex;align-items:center;gap:10px;padding:10px 14px 4px;}
+  #bar a{color:#cfe6d8;text-decoration:none;font-size:13px;border:1px solid #3a5a47;background:#15241b;border-radius:999px;padding:6px 12px;}
+  #title{font-weight:800;font-size:17px;}
+  #turn{margin-left:auto;display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px;}
+  #dot{width:14px;height:14px;border-radius:50%;animation:dp 1.8s ease-in-out infinite;}
+  @keyframes dp{0%,100%{transform:scale(1);}50%{transform:scale(1.2);}}
+  .handRow{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;padding:8px 8px;min-height:74px;align-content:center;}
+  .handRow .who{width:100%;text-align:center;font-size:12px;color:#9fbdac;font-weight:700;letter-spacing:.5px;}
+  #lineWrap{flex:1;overflow-x:auto;overflow-y:hidden;display:flex;align-items:center;background:rgba(0,0,0,.25);
+    border-top:1px solid #28402f;border-bottom:1px solid #28402f;}
+  #line{display:flex;align-items:center;gap:4px;padding:14px 24px;margin:0 auto;}
+  .bone{position:relative;background:linear-gradient(170deg,#fbf8f0,#e6e0d2);border:1px solid #b9b2a2;border-radius:7px;
+    display:flex;box-shadow:0 3px 7px rgba(0,0,0,.4);flex:0 0 auto;}
+  .bone.v{flex-direction:column;}
+  .bone .half{width:34px;height:34px;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);padding:5px;}
+  .bone.h .half:first-child{border-right:1.5px solid #a59d8c;}
+  .bone.v .half:first-child{border-bottom:1.5px solid #a59d8c;}
+  .half i{border-radius:50%;background:#23292f;visibility:hidden;margin:1px;}
+  .hand .bone{cursor:pointer;}
+  .hand .bone.playable{box-shadow:0 0 0 2px #f7f3da,0 0 14px rgba(247,243,218,.7),0 3px 7px rgba(0,0,0,.4);}
+  .hand .bone.idle{opacity:.78;}
+  #msg{min-height:20px;font-size:14px;color:#cfe6d8;text-align:center;padding:3px 12px;}
+  #foot{padding:4px 0 12px;display:flex;gap:12px;align-items:center;justify-content:center;}
+  button.act{font-family:inherit;font-size:14px;font-weight:bold;padding:8px 14px;border-radius:10px;border:none;color:#1c2b16;background:var(--accent);cursor:pointer;box-shadow:0 4px 0 var(--accentSh),0 5px 10px rgba(0,0,0,.4);}
+  button.ghost{background:#15241b;color:#cfe6d8;box-shadow:0 4px 0 #0b160f;border:1px solid #3a5a47;}
+  #score{font-size:13px;color:#9fbdac;}
+  .ov{position:fixed;inset:0;z-index:40;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:30px;text-align:center;background:rgba(7,12,9,.9);}
+  .ov.show{display:flex;}
+  .ov h1{font-size:32px;}
+  #endChoice{display:flex;gap:14px;}
+  #confetti{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
+  .cfp{position:absolute;top:-16px;width:9px;height:14px;border-radius:2px;opacity:.95;animation-name:cfall;animation-timing-function:linear;animation-fill-mode:forwards;}
+  @keyframes cfall{0%{transform:translateY(-20px) rotate(0deg);}100%{transform:translateY(108vh) rotate(680deg);}}
+  #ovTrophy{font-size:58px;line-height:1;}
+  .ov.show #ovTrophy,.ov.show h1{animation:winpop .65s cubic-bezier(.2,1.5,.4,1) both;}
+  @keyframes winpop{0%{transform:scale(.25);opacity:0;}100%{transform:scale(1);opacity:1;}}
+</style>
+</head>
+<body>
+<div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">Dominoes</div><div id="turn"><div id="dot"></div><span id="turnName"></span></div></div>
+<div class="handRow hand" id="handTop"></div>
+<div id="lineWrap"><div id="line"></div></div>
+<div id="msg"></div>
+<div class="handRow hand" id="handBot"></div>
+<div id="foot"><button class="act" id="newBtn">New game</button><button class="act ghost" id="drawBtn">Draw</button><div id="score"></div></div>
+<div class="ov" id="endOv"><h2>Play it on which end?</h2><div id="endChoice"></div></div>
+<div class="ov" id="overlay"><div id="confetti"></div><div id="ovTrophy">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p><button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
+<script>
+const P={top:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},bot:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182"}};
+let hands={top:[],bot:[]},line=[],yard=[],turn="bot",phase="play",passes=0,GS=null,pendingBone=null;
+const KEY="dom_games";let _mem=[];
+const Store={load(){try{return JSON.parse(localStorage.getItem(KEY))||[];}catch(e){return _mem.slice();}},
+  save(l){try{localStorage.setItem(KEY,JSON.stringify(l));}catch(e){_mem=l.slice();}}};
+function allBones(){const a=[];for(let i=0;i<=6;i++)for(let j=i;j<=6;j++)a.push([i,j]);return a;}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function ends(){if(!line.length)return null;return{L:line[0].l,R:line[line.length-1].r};}
+function fits(b){const e=ends();if(!e)return{L:true,R:true};
+  return{L:b[0]===e.L||b[1]===e.L,R:b[0]===e.R||b[1]===e.R};}
+function playable(b){const f=fits(b);return f.L||f.R;}
+function pip(side){return hands[side].reduce((s,b)=>s+b[0]+b[1],0);}
+function newGame(){yard=shuffle(allBones());hands={top:yard.splice(0,7),bot:yard.splice(0,7)};line=[];passes=0;pendingBone=null;
+  // highest double opens; if none, highest pip total bone's owner
+  let opener=null,best=-1;
+  for(const s of["top","bot"])for(const b of hands[s]){const score=(b[0]===b[1])?100+b[0]:b[0]+b[1];
+    if(score>best){best=score;opener=s;}}
+  turn=opener;phase="play";
+  GS={start:Date.now(),draws:{Mot:0,Kathy:0},plays:{Mot:0,Kathy:0}};
+  document.getElementById("overlay").classList.remove("show");
+  document.getElementById("endOv").classList.remove("show");
+  document.getElementById("confetti").innerHTML="";
+  updateBar();setMessage(P[turn].name+" opens \u2014 "+(best>=100?"highest double":"heaviest bone"));renderAll();}
+function setMessage(t){document.getElementById("msg").textContent=t;}
+function updateBar(){const pc=P[turn];document.getElementById("turnName").textContent=pc.name+"'s turn";
+  const d=document.getElementById("dot");
+  d.style.background="radial-gradient(circle at 35% 30%,"+pc.light+","+pc.main+" 70%,"+pc.dark+")";
+  d.style.boxShadow="0 0 0 3px rgba(255,255,255,.15),0 0 14px "+pc.main;
+  const g=Store.load();let m=0,k=0;for(const r of g){if(r.winner==="Mot")m++;else if(r.winner==="Kathy")k++;}
+  document.getElementById("score").textContent="Mot "+m+" \u00b7 "+k+" Kathy \u00b7 boneyard "+yard.length;}
+function boneEl(b,vert){const d=document.createElement("div");d.className="bone "+(vert?"v":"h");
+  for(const v of b){const h=document.createElement("div");h.className="half";
+    const ON={0:[],1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]}[v];
+    for(let i=0;i<9;i++){const p=document.createElement("i");if(ON.includes(i))p.style.visibility="visible";h.appendChild(p);}
+    d.appendChild(h);}
+  return d;}
+function renderAll(){
+  // line
+  const ln=document.getElementById("line");ln.innerHTML="";
+  for(const t of line){const el=boneEl([t.l,t.r],t.l===t.r);ln.appendChild(el);}
+  if(!line.length){const ph=document.createElement("div");ph.style.cssText="color:#5f7d6b;font-size:13px;";ph.textContent="first bone lands here";ln.appendChild(ph);}
+  // hands
+  for(const s of["top","bot"]){const el=document.getElementById(s==="top"?"handTop":"handBot");el.innerHTML="";
+    const who=document.createElement("div");who.className="who";
+    who.textContent=P[s].name.toUpperCase()+" \u00b7 "+hands[s].length+" bones \u00b7 "+pip(s)+" pips";
+    who.style.color=P[s].light;el.appendChild(who);
+    hands[s].forEach((b,idx)=>{const be=boneEl(b,false);
+      const mine=(s===turn&&phase==="play");
+      if(mine&&playable(b))be.classList.add("playable");else if(mine)be.classList.add("idle");
+      if(mine)be.addEventListener("click",()=>tryPlay(idx));
+      el.appendChild(be);});}
+  document.getElementById("drawBtn").style.visibility=(phase==="play"&&!hands[turn].some(playable)&&yard.length)?"visible":"hidden";
+  const wrap=document.getElementById("lineWrap");wrap.scrollLeft=wrap.scrollWidth;}
+function orient(b,end){ // returns {l,r} tile oriented for that end
+  const e=ends();
+  if(!e)return{l:b[0],r:b[1]};
+  if(end==="L"){const v=e.L;return(b[1]===v)?{l:b[0],r:b[1]}:{l:b[1],r:b[0]};}
+  const v=e.R;return(b[0]===v)?{l:b[0],r:b[1]}:{l:b[1],r:b[0]};}
+function tryPlay(idx){const b=hands[turn][idx];if(!playable(b))return;
+  const f=fits(b),e=ends();
+  if(!e){commit(idx,"R");return;}
+  if(f.L&&f.R&&e.L!==e.R){ // genuine choice
+    pendingBone=idx;const ov=document.getElementById("endOv"),ch=document.getElementById("endChoice");ch.innerHTML="";
+    for(const end of["L","R"]){const btn=document.createElement("button");btn.className="act";
+      btn.textContent=(end==="L"?"Left end ("+e.L+")":"Right end ("+e.R+")");
+      btn.addEventListener("click",()=>{ov.classList.remove("show");commit(pendingBone,end);});ch.appendChild(btn);}
+    ov.classList.add("show");return;}
+  commit(idx,f.L?"L":"R");}
+function commit(idx,end){const b=hands[turn].splice(idx,1)[0],t=orient(b,end);
+  if(end==="L")line.unshift(t);else line.push(t);
+  GS.plays[P[turn].name]++;passes=0;
+  if(!hands[turn].length){gameOver(turn,"Domino! Empty hand");return;}
+  nextTurn();}
+function nextTurn(){turn=turn==="top"?"bot":"top";checkStuck();}
+function checkStuck(){updateBar();
+  if(hands[turn].some(playable)){setMessage(P[turn].name+" \u2014 tap a glowing bone");renderAll();return;}
+  if(yard.length){setMessage(P[turn].name+" can't play \u2014 draw from the boneyard");renderAll();return;}
+  passes++;setMessage(P[turn].name+" passes (nothing fits)");renderAll();
+  if(passes>=2){blockedEnd();return;}
+  setTimeout(nextTurn,900);}
+function drawBone(){if(phase!=="play"||!yard.length||hands[turn].some(playable))return;
+  hands[turn].push(yard.pop());GS.draws[P[turn].name]++;
+  setMessage(P[turn].name+" draws...");checkStuck();}
+function blockedEnd(){const m=pip("top"),k=pip("bot");
+  const winSide=m<k?"top":k<m?"bot":null;
+  finish(winSide,"Blocked \u2014 Mot "+m+" pips, Kathy "+k);}
+function gameOver(winSide,why){finish(winSide,why);}
+function finish(winSide,why){phase="over";
+  const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
+    winner:winSide?P[winSide].name:null,loser:winSide?P[winSide==="top"?"bot":"top"].name:null,
+    draw:!winSide,pips:{Mot:pip("top"),Kathy:pip("bot")},plays:GS.plays,draws:GS.draws};
+  const l=Store.load();l.push(rec);Store.save(l);
+  document.getElementById("ovTitle").textContent=winSide?P[winSide].name+" wins!":"Dead tie!";
+  document.getElementById("ovTitle").style.color=winSide?P[winSide].main:"#e8f0e4";
+  document.getElementById("ovTrophy").textContent=winSide?"\uD83C\uDFC6":"\uD83E\uDD1D";
+  document.getElementById("ovText").textContent=why;
+  if(winSide)spawnConfetti(winSide);updateBar();
+  setTimeout(()=>document.getElementById("overlay").classList.add("show"),500);}
+function spawnConfetti(side){const box=document.getElementById("confetti");box.innerHTML="";const pc=P[side];
+  const cols=[pc.main,pc.light,"#f4c542","#ffffff"];
+  for(let i=0;i<90;i++){const d=document.createElement("div");d.className="cfp";
+    d.style.left=(Math.random()*100)+"%";d.style.background=cols[i%cols.length];
+    d.style.animationDuration=(2.4+Math.random()*1.8)+"s";d.style.animationDelay=(Math.random()*0.9)+"s";
+    d.style.transform="rotate("+Math.floor(Math.random()*360)+"deg)";box.appendChild(d);}}
+document.getElementById("newBtn").addEventListener("click",newGame);
+document.getElementById("ovBtn").addEventListener("click",newGame);
+document.getElementById("drawBtn").addEventListener("click",drawBone);
+newGame();
+</script>
+</body>
+</html>

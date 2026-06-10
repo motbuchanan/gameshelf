@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Chinese Checkers — Mot vs Kathy</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  :root{--accent:#b0d235;--accentSh:#7e9a1f;--text:#e8f0e4;}
+  html,body{height:100%;}
+  body{font-family:system-ui,sans-serif;color:var(--text);display:flex;flex-direction:column;align-items:center;overflow:hidden;
+    background:radial-gradient(110% 80% at 50% 20%,#1c2e40 0%,#0b1520 80%);}
+  #bar{width:100%;max-width:560px;display:flex;align-items:center;gap:10px;padding:10px 14px 4px;}
+  #bar a{color:#cfe2f0;text-decoration:none;font-size:13px;border:1px solid #2f4d66;background:#0e2235;border-radius:999px;padding:6px 12px;}
+  #title{font-weight:800;font-size:17px;}
+  #turn{margin-left:auto;display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px;}
+  #dot{width:14px;height:14px;border-radius:50%;animation:dp 1.8s ease-in-out infinite;}
+  @keyframes dp{0%,100%{transform:scale(1);}50%{transform:scale(1.2);}}
+  #wrap{flex:1;display:flex;align-items:center;justify-content:center;width:100%;padding:4px 8px;}
+  canvas{display:block;border-radius:18px;touch-action:none;box-shadow:0 14px 34px rgba(0,0,0,.6);}
+  #msg{min-height:20px;font-size:14px;color:#cfe2f0;text-align:center;padding:2px 12px;}
+  #foot{padding:0 0 14px;display:flex;gap:12px;align-items:center;}
+  button.act{font-family:inherit;font-size:15px;font-weight:bold;padding:9px 16px;border-radius:10px;border:none;color:#10202e;background:#7fc2e8;cursor:pointer;box-shadow:0 4px 0 #4a89ad,0 5px 10px rgba(0,0,0,.4);}
+  #score{font-size:13px;color:#8fb0c8;}
+  .ov{position:fixed;inset:0;z-index:40;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:30px;text-align:center;background:rgba(4,10,16,.92);}
+  .ov.show{display:flex;}
+  .ov h1{font-size:34px;}
+  #confetti{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
+  .cfp{position:absolute;top:-16px;width:9px;height:14px;border-radius:2px;opacity:.95;animation-name:cfall;animation-timing-function:linear;animation-fill-mode:forwards;}
+  @keyframes cfall{0%{transform:translateY(-20px) rotate(0deg);}100%{transform:translateY(108vh) rotate(680deg);}}
+  #ovTrophy{font-size:58px;line-height:1;}
+  .ov.show #ovTrophy,.ov.show h1{animation:winpop .65s cubic-bezier(.2,1.5,.4,1) both;}
+  @keyframes winpop{0%{transform:scale(.25);opacity:0;}100%{transform:scale(1);opacity:1;}}
+</style>
+</head>
+<body>
+<div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">Chinese Checkers</div><div id="turn"><div id="dot"></div><span id="turnName"></span></div></div>
+<div id="wrap"><canvas id="board"></canvas></div>
+<div id="msg"></div>
+<div id="foot"><button class="act" id="newBtn">New game</button><div id="score"></div></div>
+<div class="ov" id="overlay"><div id="confetti"></div><div id="ovTrophy">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p><button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #2f4d66;background:#0e2235;color:#cfe2f0;text-decoration:none;">Back to shelf</a></div>
+<script>
+const ROWLEN=[1,2,3,4,13,12,11,10,9,10,11,12,13,4,3,2,1];
+const P={red:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},blue:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182"}};
+const canvas=document.getElementById("board"),ctx=canvas.getContext("2d");
+// build holes: key "r:x2" where x2 = 2*x offset (integers), x centered per row
+const holes=new Map(); // key -> {r, x2}
+for(let r=0;r<17;r++){const len=ROWLEN[r];
+  for(let i=0;i<len;i++){const x2=-(len-1)+2*i;holes.set(r+":"+x2,{r,x2});}}
+const DIRS=[[0,2],[0,-2],[1,1],[1,-1],[-1,1],[-1,-1]];
+const TOP=[...holes.keys()].filter(k=>holes.get(k).r<=3);     // 10
+const BOT=[...holes.keys()].filter(k=>holes.get(k).r>=13);    // 10
+let SZ=420,occ=new Map(),turn="blue",sel=null,targets=[],phase="pick",animFly=null,pulsing=false,GS=null;
+let boardAngle=0,boardTarget=0,spinning=false;
+const KEY="cc_games";let _mem=[];
+const Store={load(){try{return JSON.parse(localStorage.getItem(KEY))||[];}catch(e){return _mem.slice();}},
+  save(l){try{localStorage.setItem(KEY,JSON.stringify(l));}catch(e){_mem=l.slice();}}};
+const TVMODE=(function(){try{if(new URLSearchParams(location.search).get("tv")==="1")return true;return localStorage.getItem("shelf_tv")==="1";}catch(e){return false;}})();
+const PULSE=()=>0.5+0.5*Math.sin(performance.now()/280);
+function neigh(key,d){const h=holes.get(key);const nk=(h.r+d[0])+":"+(h.x2+d[1]);return holes.has(nk)?nk:null;}
+function destsFor(key){ // single steps + BFS hop closure
+  const out=new Set();
+  for(const d of DIRS){const n=neigh(key,d);if(n&&!occ.has(n))out.add(n);}
+  const seen=new Set([key]),queue=[key];
+  while(queue.length){const cur=queue.shift();
+    for(const d of DIRS){const over=neigh(cur,d);if(!over||!occ.has(over))continue;
+      const land=neigh(over,d);if(!land||occ.has(land)||seen.has(land))continue;
+      seen.add(land);out.add(land);queue.push(land);}}
+  out.delete(key);return[...out];}
+function holeXY(key){const h=holes.get(key);const s=SZ/14.6;
+  return{x:SZ/2+h.x2*s/2*1.04,y:SZ/2+(h.r-8)*s*0.9};}
+function newGame(){occ=new Map();
+  for(const k of TOP)occ.set(k,"red");
+  for(const k of BOT)occ.set(k,"blue");
+  turn=Math.random()<0.5?"red":"blue";sel=null;targets=[];phase="pick";animFly=null;
+  GS={start:Date.now(),moves:{Mot:0,Kathy:0},hops:{Mot:0,Kathy:0}};
+  document.getElementById("overlay").classList.remove("show");document.getElementById("confetti").innerHTML="";
+  boardAngle=boardTarget=(TVMODE?0:(turn==="red"?Math.PI:0));
+  updateBar();setMessage(P[turn].name+" starts \u2014 tap a marble");render();ensurePulse();}
+function setMessage(t){document.getElementById("msg").textContent=t;}
+function updateBar(){const pc=P[turn];document.getElementById("turnName").textContent=pc.name+"'s turn";
+  const d=document.getElementById("dot");
+  d.style.background="radial-gradient(circle at 35% 30%,"+pc.light+","+pc.main+" 70%,"+pc.dark+")";
+  d.style.boxShadow="0 0 0 3px rgba(255,255,255,.15),0 0 14px "+pc.main;
+  const g=Store.load();let m=0,k=0;for(const r of g){if(r.winner==="Mot")m++;else if(r.winner==="Kathy")k++;}
+  document.getElementById("score").textContent="Mot "+m+" \u00b7 "+k+" Kathy";}
+function applyOrientation(){if(TVMODE)return;const want=(turn==="red"?Math.PI:0);
+  const cur=((boardTarget%(2*Math.PI))+2*Math.PI)%(2*Math.PI);
+  if(Math.abs(cur-want)<0.01)return;
+  boardTarget+=Math.PI;spinning=true;const from=boardAngle,to=boardTarget;let t0=null;
+  (function s(ts){if(t0===null)t0=ts;const p=Math.min(1,(ts-t0)/520),e=1-Math.pow(1-p,3);
+    boardAngle=from+(to-from)*e;render();
+    if(p<1)requestAnimationFrame(s);else{spinning=false;render();}})(0);}
+function fit(){SZ=Math.floor(Math.min(window.innerWidth-18,window.innerHeight-150,560));
+  canvas.width=SZ;canvas.height=SZ;render();}
+function drawMarble(x,y,color,glow){const pc=P[color],r=SZ*0.021;
+  ctx.save();
+  if(glow!==undefined){ctx.shadowColor="#f7f3da";ctx.shadowBlur=SZ*0.02*glow;}
+  ctx.beginPath();ctx.ellipse(x,y+r*0.85,r*0.85,r*0.4,0,0,7);ctx.fillStyle="rgba(0,0,0,.35)";ctx.fill();
+  const g=ctx.createRadialGradient(x-r*0.35,y-r*0.4,r*0.12,x,y,r);
+  g.addColorStop(0,"#fff");g.addColorStop(0.25,pc.light);g.addColorStop(0.8,pc.main);g.addColorStop(1,pc.dark);
+  ctx.beginPath();ctx.arc(x,y,r,0,7);ctx.fillStyle=g;ctx.fill();
+  ctx.restore();}
+function render(){ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,SZ,SZ);
+  // platter
+  const bg=ctx.createRadialGradient(SZ/2,SZ/2-SZ*0.1,SZ*0.1,SZ/2,SZ/2,SZ*0.55);
+  bg.addColorStop(0,"#11283c");bg.addColorStop(1,"#0a1827");
+  ctx.fillStyle=bg;ctx.beginPath();ctx.roundRect(0,0,SZ,SZ,18);ctx.fill();
+  const C=SZ/2;ctx.translate(C,C);ctx.rotate(boardAngle);ctx.translate(-C,-C);
+  // star outline glow under triangles
+  for(const[keys,col]of[[TOP,P.red.main],[BOT,P.blue.main]]){ctx.save();ctx.globalAlpha=0.12;ctx.fillStyle=col;
+    for(const k of keys){const p=holeXY(k);ctx.beginPath();ctx.arc(p.x,p.y,SZ*0.027,0,7);ctx.fill();}ctx.restore();}
+  // holes
+  for(const k of holes.keys()){const p=holeXY(k);
+    ctx.beginPath();ctx.arc(p.x,p.y,SZ*0.013,0,7);
+    ctx.fillStyle="rgba(0,0,0,.5)";ctx.fill();
+    ctx.strokeStyle="rgba(255,255,255,.08)";ctx.lineWidth=1;ctx.stroke();}
+  const pu=PULSE();
+  // targets
+  if(phase==="moveTo"&&!animFly){for(const t of targets){const p=holeXY(t);
+    ctx.save();ctx.globalAlpha=0.5+0.4*pu;ctx.fillStyle="#f7f3da";
+    ctx.beginPath();ctx.arc(p.x,p.y,SZ*(0.014+0.004*pu),0,7);ctx.fill();ctx.restore();}}
+  // marbles
+  for(const[k,c]of occ){if(animFly&&animFly.from===k)continue;const p=holeXY(k);
+    const movable=(phase==="pick"||phase==="moveTo")&&c===turn;
+    const isSel=sel===k;
+    drawMarble(p.x,p.y,c,isSel?1.6:movable?pu*0.9:undefined);
+    if(isSel){ctx.save();ctx.strokeStyle="#f7f3da";ctx.lineWidth=Math.max(1.5,SZ*0.004);
+      ctx.beginPath();ctx.arc(p.x,p.y,SZ*0.028,0,7);ctx.stroke();ctx.restore();}}
+  if(animFly){const a=holeXY(animFly.from),b=holeXY(animFly.to),k2=animFly.k;
+    const e=k2<0.5?2*k2*k2:1-Math.pow(-2*k2+2,2)/2;
+    drawMarble(a.x+(b.x-a.x)*e,a.y+(b.y-a.y)*e-Math.sin(k2*Math.PI)*SZ*0.03,animFly.color);}
+  ctx.restore();}
+function ensurePulse(){if(pulsing)return;pulsing=true;
+  (function tick(){if(phase==="over"){pulsing=false;return;}render();requestAnimationFrame(tick);})();}
+function boardPt(cx,cy){const rect=canvas.getBoundingClientRect(),f=canvas.width/rect.width;
+  let px=(cx-rect.left)*f,py=(cy-rect.top)*f;const C=SZ/2;
+  const a=-boardAngle,dx=px-C,dy=py-C;
+  return{x:C+dx*Math.cos(a)-dy*Math.sin(a),y:C+dx*Math.sin(a)+dy*Math.cos(a)};}
+canvas.addEventListener("pointerup",e=>{if(animFly||spinning||phase==="over")return;
+  const pt=boardPt(e.clientX,e.clientY);
+  let best=null,bd=1e9,kind=null;
+  if(phase==="moveTo"){for(const t of targets){const p=holeXY(t),d=Math.hypot(pt.x-p.x,pt.y-p.y);
+    if(d<SZ*0.045&&d<bd){bd=d;best=t;kind="target";}}}
+  for(const[k,c]of occ){if(c!==turn)continue;const p=holeXY(k),d=Math.hypot(pt.x-p.x,pt.y-p.y);
+    if(d<SZ*0.040&&d<bd){bd=d;best=k;kind="marble";}}
+  if(!best)return;
+  if(kind==="marble"){sel=best;targets=destsFor(best);phase=targets.length?"moveTo":"pick";render();return;}
+  doMove(sel,best);});
+function doMove(from,to){phase="anim";const color=occ.get(from);
+  const isHop=!DIRS.some(d=>neigh(from,d)===to);
+  animFly={from,to,color,k:0};const t0=performance.now();
+  (function step(ts){animFly.k=Math.min(1,(ts-t0)/320);render();
+    if(animFly.k<1){requestAnimationFrame(step);return;}
+    occ.delete(from);occ.set(to,color);animFly=null;sel=null;targets=[];
+    GS.moves[P[turn].name]++;if(isHop)GS.hops[P[turn].name]++;
+    const goal=turn==="red"?BOT:TOP;
+    if(goal.every(k=>occ.get(k)===turn)){gameOver(turn);return;}
+    turn=turn==="red"?"blue":"red";phase="pick";
+    applyOrientation();updateBar();setMessage(P[turn].name+"'s move");render();ensurePulse();})(t0);}
+function gameOver(winColor){phase="over";
+  const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
+    winner:P[winColor].name,loser:P[winColor==="red"?"blue":"red"].name,moves:GS.moves,hops:GS.hops};
+  const l=Store.load();l.push(rec);Store.save(l);
+  document.getElementById("ovTitle").textContent=P[winColor].name+" wins!";
+  document.getElementById("ovTitle").style.color=P[winColor].main;
+  document.getElementById("ovText").textContent="Crossed the star in "+GS.moves[P[winColor].name]+" moves";
+  spawnConfetti(winColor);updateBar();
+  setTimeout(()=>document.getElementById("overlay").classList.add("show"),500);}
+function spawnConfetti(color){const box=document.getElementById("confetti");box.innerHTML="";const pc=P[color];
+  const cols=[pc.main,pc.light,"#f4c542","#ffffff"];
+  for(let i=0;i<90;i++){const d=document.createElement("div");d.className="cfp";
+    d.style.left=(Math.random()*100)+"%";d.style.background=cols[i%cols.length];
+    d.style.animationDuration=(2.4+Math.random()*1.8)+"s";d.style.animationDelay=(Math.random()*0.9)+"s";
+    d.style.transform="rotate("+Math.floor(Math.random()*360)+"deg)";box.appendChild(d);}}
+document.getElementById("newBtn").addEventListener("click",newGame);
+document.getElementById("ovBtn").addEventListener("click",newGame);
+window.addEventListener("resize",fit);
+fit();newGame();
+</script>
+</body>
+</html>

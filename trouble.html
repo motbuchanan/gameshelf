@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Trouble — Mot vs Kathy</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  :root{--accent:#b0d235;--accentSh:#7e9a1f;--text:#e8f0e4;}
+  html,body{height:100%;}
+  body{font-family:system-ui,sans-serif;color:var(--text);display:flex;flex-direction:column;align-items:center;overflow:hidden;
+    background:radial-gradient(110% 80% at 50% 20%,#1f3327 0%,#0c1410 80%);}
+  #bar{width:100%;max-width:560px;display:flex;align-items:center;gap:10px;padding:10px 14px 4px;}
+  #bar a{color:#cfe6d8;text-decoration:none;font-size:13px;border:1px solid #3a5a47;background:#15241b;border-radius:999px;padding:6px 12px;}
+  #title{font-weight:800;font-size:17px;}
+  #turn{margin-left:auto;display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px;}
+  #dot{width:14px;height:14px;border-radius:50%;animation:dp 1.8s ease-in-out infinite;}
+  @keyframes dp{0%,100%{transform:scale(1);}50%{transform:scale(1.2);}}
+  #wrap{flex:1;display:flex;align-items:center;justify-content:center;width:100%;padding:6px 10px;position:relative;}
+  canvas{display:block;border-radius:50%;touch-action:none;}
+  #dome{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border:none;cursor:pointer;border-radius:50%;
+    background:radial-gradient(circle at 38% 30%,rgba(255,255,255,.9),rgba(220,232,245,.45) 38%,rgba(150,175,200,.30) 70%,rgba(90,110,135,.45));
+    box-shadow:inset 0 -6px 14px rgba(40,60,90,.35),inset 0 4px 8px rgba(255,255,255,.7),0 8px 18px rgba(0,0,0,.45);
+    display:flex;align-items:center;justify-content:center;}
+  #dome:active{transform:translate(-50%,-50%) scale(.94);}
+  #dome.popping{animation:pop .34s ease;}
+  @keyframes pop{0%{transform:translate(-50%,-50%) scale(.88,.78);}55%{transform:translate(-50%,-50%) scale(1.06,1.1);}100%{transform:translate(-50%,-50%) scale(1,1);}}
+  #die{background:#fff;border-radius:18%;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);padding:9%;box-shadow:0 3px 6px rgba(0,0,0,.4);}
+  #die i{border-radius:50%;background:#1b2330;visibility:hidden;}
+  #msg{min-height:20px;font-size:14px;color:#cfe6d8;text-align:center;padding:2px 12px;}
+  #foot{padding:0 0 14px;display:flex;gap:12px;align-items:center;}
+  button.act{font-family:inherit;font-size:15px;font-weight:bold;padding:9px 16px;border-radius:10px;border:none;color:#1c2b16;background:var(--accent);cursor:pointer;box-shadow:0 4px 0 var(--accentSh),0 5px 10px rgba(0,0,0,.4);}
+  #score{font-size:13px;color:#9fbdac;}
+  .ov{position:fixed;inset:0;z-index:40;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:30px;text-align:center;background:rgba(7,12,9,.88);}
+  .ov.show{display:flex;}
+  .ov h1{font-size:34px;}
+  #confetti{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
+  .cfp{position:absolute;top:-16px;width:9px;height:14px;border-radius:2px;opacity:.95;animation-name:cfall;animation-timing-function:linear;animation-fill-mode:forwards;}
+  @keyframes cfall{0%{transform:translateY(-20px) rotate(0deg);}100%{transform:translateY(108vh) rotate(680deg);}}
+  #ovTrophy{font-size:58px;line-height:1;}
+  .ov.show #ovTrophy,.ov.show h1{animation:winpop .65s cubic-bezier(.2,1.5,.4,1) both;}
+  @keyframes winpop{0%{transform:scale(.25);opacity:0;}100%{transform:scale(1);opacity:1;}}
+</style>
+</head>
+<body>
+<div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">Trouble</div><div id="turn"><div id="dot"></div><span id="turnName"></span></div></div>
+<div id="wrap"><canvas id="board"></canvas><button id="dome" aria-label="Pop the die"><div id="die"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></button></div>
+<div id="msg"></div>
+<div id="foot"><button class="act" id="newBtn">New game</button><div id="score"></div></div>
+<div class="ov" id="overlay"><div id="confetti"></div><div id="ovTrophy">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p><button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
+<script>
+const TRACK=28,FIN=4;
+const P={red:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19",entry:0},
+         blue:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182",entry:14}};
+const canvas=document.getElementById("board"),ctx=canvas.getContext("2d");
+let SZ=320,R=130,pegs=[],turn="blue",die=0,phase="roll",movable=[],animFly=null,pulsing=false,GS=null,extra=false;
+const KEY="trouble_games";let _mem=[];
+const Store={load(){try{return JSON.parse(localStorage.getItem(KEY))||[];}catch(e){return _mem.slice();}},
+  save(l){try{localStorage.setItem(KEY,JSON.stringify(l));}catch(e){_mem=l.slice();}}};
+const PULSE=()=>0.5+0.5*Math.sin(performance.now()/280);
+function fit(){SZ=Math.floor(Math.min(window.innerWidth-24,window.innerHeight-170,520));
+  canvas.width=SZ;canvas.height=SZ;R=SZ*0.40;
+  const dome=document.getElementById("dome"),d=SZ*0.34;
+  dome.style.width=d+"px";dome.style.height=d+"px";
+  const die=document.getElementById("die");die.style.width=(d*0.46)+"px";die.style.height=(d*0.46)+"px";
+  render();}
+function holeXY(i){const a=-Math.PI/2+i/TRACK*2*Math.PI;return{x:SZ/2+R*Math.cos(a),y:SZ/2+R*Math.sin(a)};}
+function finXY(color,i){const e=P[color].entry,a=-Math.PI/2+e/TRACK*2*Math.PI;
+  const rr=R*(0.78-i*0.155);return{x:SZ/2+rr*Math.cos(a),y:SZ/2+rr*Math.sin(a)};}
+function homeXY(color,i){const e=P[color].entry,a=-Math.PI/2+(e-2.6)/TRACK*2*Math.PI;
+  const rr=R*1.22;const sp=0.16*(i-1.5);
+  return{x:SZ/2+rr*Math.cos(a+sp),y:SZ/2+rr*Math.sin(a+sp)};}
+function pegXY(p){if(p.loc.state==="home")return homeXY(p.color,p.hi);
+  if(p.loc.state==="track")return holeXY(p.loc.idx);return finXY(p.color,p.loc.i);}
+function newGame(){pegs=[];for(const c of["red","blue"])for(let i=0;i<4;i++)pegs.push({color:c,hi:i,t:0,loc:{state:"home"}});
+  turn=Math.random()<0.5?"red":"blue";die=0;phase="roll";movable=[];animFly=null;extra=false;
+  GS={start:Date.now(),pops:{Mot:0,Kathy:0},bumps:{Mot:0,Kathy:0}};
+  document.getElementById("overlay").classList.remove("show");document.getElementById("confetti").innerHTML="";
+  updateBar();setMessage(P[turn].name+" pops first");render();}
+function setMessage(t){document.getElementById("msg").textContent=t;}
+function updateBar(){const pc=P[turn];document.getElementById("turnName").textContent=pc.name+"'s turn";
+  const d=document.getElementById("dot");
+  d.style.background="radial-gradient(circle at 35% 30%,"+pc.light+","+pc.main+" 70%,"+pc.dark+")";
+  d.style.boxShadow="0 0 0 3px rgba(255,255,255,.15),0 0 14px "+pc.main;
+  const g=Store.load();let m=0,k=0;for(const r of g){if(r.winner==="Mot")m++;else if(r.winner==="Kathy")k++;}
+  document.getElementById("score").textContent="Mot "+m+" \u00b7 "+k+" Kathy";}
+function occTrack(idx){return pegs.find(p=>p.loc.state==="track"&&p.loc.idx===idx)||null;}
+function moveOf(p,n){ // returns {to,bump}|null
+  if(p.loc.state==="fin")return null;
+  if(p.loc.state==="home"){if(n!==6)return null;const idx=P[p.color].entry,o=occTrack(idx);
+    if(o&&o.color===p.color)return null;return{to:{state:"track",idx},bump:o,t:0};}
+  const t=p.t+n;
+  if(t<TRACK){const idx=(P[p.color].entry+t)%TRACK,o=occTrack(idx);
+    if(o&&o.color===p.color)return null;return{to:{state:"track",idx},bump:o,t};}
+  const f=t-TRACK;if(f>=FIN)return null;
+  for(let i=0;i<=f;i++)if(pegs.find(q=>q.color===p.color&&q.loc.state==="fin"&&q.loc.i===i))return null;
+  return{to:{state:"fin",i:f},bump:null,t};}
+function rollDie(){if(phase!=="roll"||animFly)return;
+  const dome=document.getElementById("dome");dome.classList.remove("popping");void dome.offsetWidth;dome.classList.add("popping");
+  GS.pops[P[turn].name]++;
+  let n=0;const iv=setInterval(()=>{showDie(1+Math.floor(Math.random()*6));if(++n>=7){clearInterval(iv);
+    die=1+Math.floor(Math.random()*6);showDie(die);afterRoll();}},45);}
+function showDie(v){const pips=document.querySelectorAll("#die i");
+  const ON={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]}[v];
+  pips.forEach((p,i)=>p.style.visibility=ON.includes(i)?"visible":"hidden");}
+function afterRoll(){extra=(die===6);
+  movable=pegs.filter(p=>p.color===turn&&moveOf(p,die));
+  if(!movable.length){setMessage(P[turn].name+" rolled "+die+" \u2014 no moves");
+    setTimeout(()=>{if(extra){phase="roll";setMessage(P[turn].name+" rolled 6, pop again!");}else passTurn();},900);
+    phase="wait";render();return;}
+  phase="move";setMessage(P[turn].name+" rolled "+die+" \u2014 tap a glowing peg");render();ensurePulse();}
+function passTurn(){turn=turn==="red"?"blue":"red";die=0;phase="roll";movable=[];
+  updateBar();setMessage(P[turn].name+" \u2014 pop the die");render();}
+function doMove(p){const mv=moveOf(p,die);if(!mv)return;
+  phase="anim";const from=pegXY(p),to=(mv.to.state==="track")?holeXY(mv.to.idx):finXY(p.color,mv.to.i);
+  animFly={p,from,to,k:0};const t0=performance.now();
+  (function step(ts){animFly.k=Math.min(1,(ts-t0)/300);render();
+    if(animFly.k<1){requestAnimationFrame(step);return;}
+    if(mv.bump){mv.bump.loc={state:"home"};mv.bump.t=0;GS.bumps[P[turn].name]++;setMessage(P[turn].name+" bumped "+P[mv.bump.color].name+"!");}
+    p.loc=mv.to;p.t=mv.t;animFly=null;
+    if(pegs.filter(q=>q.color===turn&&q.loc.state==="fin").length===4){gameOver(turn);return;}
+    if(extra){phase="roll";setMessage(P[turn].name+" rolled 6 \u2014 pop again!");render();return;}
+    passTurn();})(t0);}
+function drawHole(x,y,r,fill){ctx.beginPath();ctx.arc(x,y,r,0,7);
+  const g=ctx.createRadialGradient(x,y-r*0.3,r*0.2,x,y,r);
+  g.addColorStop(0,"rgba(0,0,0,.55)");g.addColorStop(1,fill||"rgba(0,0,0,.25)");
+  ctx.fillStyle=g;ctx.fill();ctx.strokeStyle="rgba(255,255,255,.12)";ctx.lineWidth=1;ctx.stroke();}
+function drawPeg(x,y,color,glow){const pc=P[color],r=SZ*0.030;
+  ctx.save();
+  if(glow!==undefined){ctx.shadowColor="#f7f3da";ctx.shadowBlur=SZ*0.03*glow;}
+  ctx.beginPath();ctx.ellipse(x,y+r*1.15,r*0.9,r*0.4,0,0,7);ctx.fillStyle="rgba(0,0,0,.3)";ctx.fill();
+  const g=ctx.createLinearGradient(x-r,y,x+r,y);g.addColorStop(0,pc.dark);g.addColorStop(0.45,pc.light);g.addColorStop(1,pc.dark);
+  ctx.beginPath();ctx.moveTo(x-r*0.8,y+r);ctx.quadraticCurveTo(x-r*0.5,y-r*0.2,x-r*0.34,y-r*0.7);
+  ctx.lineTo(x+r*0.34,y-r*0.7);ctx.quadraticCurveTo(x+r*0.5,y-r*0.2,x+r*0.8,y+r);ctx.closePath();
+  ctx.fillStyle=g;ctx.fill();
+  const hg=ctx.createRadialGradient(x-r*0.25,y-r*1.15,r*0.1,x,y-r*0.95,r*0.55);
+  hg.addColorStop(0,"#fff");hg.addColorStop(0.25,pc.light);hg.addColorStop(1,pc.main);
+  ctx.beginPath();ctx.arc(x,y-r*0.95,r*0.55,0,7);ctx.fillStyle=hg;ctx.fill();
+  ctx.restore();}
+function render(){ctx.clearRect(0,0,SZ,SZ);
+  // platter
+  const g=ctx.createRadialGradient(SZ/2,SZ/2-SZ*0.1,SZ*0.1,SZ/2,SZ/2,SZ/2);
+  g.addColorStop(0,"#f3efe6");g.addColorStop(0.8,"#ddd5c4");g.addColorStop(1,"#beb49e");
+  ctx.beginPath();ctx.arc(SZ/2,SZ/2,SZ/2-2,0,7);ctx.fillStyle=g;ctx.fill();
+  ctx.strokeStyle="rgba(0,0,0,.25)";ctx.lineWidth=3;ctx.stroke();
+  // colored quadrants near entries
+  for(const c of["red","blue"]){const pc=P[c],e=pc.entry;
+    ctx.save();ctx.beginPath();ctx.arc(SZ/2,SZ/2,SZ/2-4,-Math.PI/2+(e-3.4)/TRACK*2*Math.PI,-Math.PI/2+(e+3.4)/TRACK*2*Math.PI);
+    ctx.arc(SZ/2,SZ/2,R*0.62,-Math.PI/2+(e+3.4)/TRACK*2*Math.PI,-Math.PI/2+(e-3.4)/TRACK*2*Math.PI,true);
+    ctx.closePath();ctx.globalAlpha=0.16;ctx.fillStyle=pc.main;ctx.fill();ctx.restore();}
+  // track holes
+  for(let i=0;i<TRACK;i++){const h=holeXY(i);
+    const isEntry=(i===P.red.entry)?P.red:(i===P.blue.entry)?P.blue:null;
+    drawHole(h.x,h.y,SZ*0.026,isEntry?isEntry.main+"55":null);}
+  // finish + home holes
+  for(const c of["red","blue"]){for(let i=0;i<FIN;i++){const f=finXY(c,i);drawHole(f.x,f.y,SZ*0.024,P[c].main+"44");}
+    for(let i=0;i<4;i++){const h=homeXY(c,i);drawHole(h.x,h.y,SZ*0.024,P[c].main+"33");}}
+  // pegs
+  const pu=PULSE();
+  for(const p of pegs){if(animFly&&animFly.p===p)continue;const xy=pegXY(p);
+    const mv=(phase==="move"&&movable.includes(p));
+    drawPeg(xy.x,xy.y,p.color,mv?pu*1.4:undefined);
+    if(mv){ctx.save();ctx.strokeStyle="#f7f3da";ctx.globalAlpha=0.5+0.45*pu;
+      ctx.lineWidth=Math.max(2,SZ*0.008);ctx.beginPath();ctx.arc(xy.x,xy.y-SZ*0.012,SZ*(0.042+0.005*pu),0,7);ctx.stroke();ctx.restore();}}
+  if(animFly){const a=animFly.from,b=animFly.to,k=animFly.k,e=k<0.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
+    drawPeg(a.x+(b.x-a.x)*e,a.y+(b.y-a.y)*e-Math.sin(k*Math.PI)*SZ*0.04,animFly.p.color);}}
+function ensurePulse(){if(pulsing)return;pulsing=true;
+  (function tick(){if(phase!=="move"){pulsing=false;render();return;}render();requestAnimationFrame(tick);})();}
+canvas.addEventListener("pointerup",e=>{if(phase!=="move")return;
+  const rect=canvas.getBoundingClientRect(),f=canvas.width/rect.width;
+  const x=(e.clientX-rect.left)*f,y=(e.clientY-rect.top)*f;
+  let best=null,bd=1e9;
+  for(const p of movable){const xy=pegXY(p),d=Math.hypot(x-xy.x,y-xy.y);
+    if(d<SZ*0.09&&d<bd){bd=d;best=p;}}
+  if(best)doMove(best);});
+document.getElementById("dome").addEventListener("click",rollDie);
+function gameOver(winColor){phase="over";
+  const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
+    winner:P[winColor].name,loser:P[winColor==="red"?"blue":"red"].name,pops:GS.pops,bumps:GS.bumps};
+  const l=Store.load();l.push(rec);Store.save(l);
+  document.getElementById("ovTitle").textContent=P[winColor].name+" wins!";
+  document.getElementById("ovTitle").style.color=P[winColor].main;
+  document.getElementById("ovText").textContent="All four pegs home \u00b7 "+GS.bumps[P[winColor].name]+" bumps dealt";
+  spawnConfetti(winColor);updateBar();
+  setTimeout(()=>document.getElementById("overlay").classList.add("show"),500);}
+function spawnConfetti(color){const box=document.getElementById("confetti");box.innerHTML="";const pc=P[color];
+  const cols=[pc.main,pc.light,"#f4c542","#ffffff"];
+  for(let i=0;i<90;i++){const d=document.createElement("div");d.className="cfp";
+    d.style.left=(Math.random()*100)+"%";d.style.background=cols[i%cols.length];
+    d.style.animationDuration=(2.4+Math.random()*1.8)+"s";d.style.animationDelay=(Math.random()*0.9)+"s";
+    d.style.transform="rotate("+Math.floor(Math.random()*360)+"deg)";box.appendChild(d);}}
+document.getElementById("newBtn").addEventListener("click",newGame);
+document.getElementById("ovBtn").addEventListener("click",newGame);
+window.addEventListener("resize",fit);
+fit();newGame();showDie(6);
+</script>
+</body>
+</html>

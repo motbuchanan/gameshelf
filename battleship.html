@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Battleship — Mot vs Kathy</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  :root{--accent:#b0d235;--accentSh:#7e9a1f;--text:#e8f0e4;}
+  html,body{height:100%;}
+  body{font-family:system-ui,sans-serif;color:var(--text);display:flex;flex-direction:column;overflow:hidden;
+    background:radial-gradient(110% 80% at 50% 20%,#0e2438 0%,#081420 80%);}
+  #bar{display:flex;align-items:center;gap:10px;padding:10px 14px 4px;}
+  #bar a{color:#cfe2f0;text-decoration:none;font-size:13px;border:1px solid #2f4d66;background:#0e2235;border-radius:999px;padding:6px 12px;}
+  #title{font-weight:800;font-size:17px;}
+  #turn{margin-left:auto;display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px;}
+  #dot{width:14px;height:14px;border-radius:50%;animation:dp 1.8s ease-in-out infinite;}
+  @keyframes dp{0%,100%{transform:scale(1);}50%{transform:scale(1.2);}}
+  #stage{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:6px;overflow-y:auto;}
+  .gridTitle{font-size:12.5px;color:#9cb8cc;font-weight:700;letter-spacing:.5px;}
+  .grid{display:grid;grid-template-columns:repeat(10,1fr);gap:2px;background:#0a1a2a;padding:4px;border-radius:10px;
+    box-shadow:0 8px 22px rgba(0,0,0,.5);}
+  .grid button{aspect-ratio:1;border:none;border-radius:3px;background:#15375a;cursor:pointer;position:relative;font-size:11px;color:#fff;padding:0;}
+  .grid.big{width:min(92vw,440px);}
+  .grid.small{width:min(58vw,260px);}
+  .grid button.ship{background:#5d7689;}
+  .grid button.miss{background:#0d2740;}
+  .grid button.miss::after{content:"\00b7";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#5d87ad;font-size:18px;font-weight:900;}
+  .grid button.hit{background:#7a1f17;}
+  .grid button.hit::after{content:"\2715";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#ffb3a8;font-weight:900;}
+  .grid button.sunk{background:#3a0d08;}
+  .grid button.sunk::after{content:"\2715";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#ff6f5e;font-weight:900;}
+  #msg{min-height:20px;font-size:14px;color:#cfe2f0;text-align:center;padding:2px 12px;}
+  #foot{padding:4px 0 12px;display:flex;gap:12px;align-items:center;justify-content:center;}
+  button.act{font-family:inherit;font-size:15px;font-weight:bold;padding:9px 18px;border-radius:10px;border:none;color:#10202e;background:#7fc2e8;cursor:pointer;box-shadow:0 4px 0 #4a89ad,0 5px 10px rgba(0,0,0,.4);}
+  button.ghost{background:#0e2235;color:#cfe2f0;box-shadow:0 4px 0 #07121d;border:1px solid #2f4d66;}
+  #score{font-size:13px;color:#8fb0c8;}
+  .ov{position:fixed;inset:0;z-index:40;display:none;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:30px;text-align:center;background:rgba(4,10,16,.97);}
+  .ov.show{display:flex;}
+  .ov h1{font-size:32px;}
+  .ov h2{font-size:24px;}
+  #confetti{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
+  .cfp{position:absolute;top:-16px;width:9px;height:14px;border-radius:2px;opacity:.95;animation-name:cfall;animation-timing-function:linear;animation-fill-mode:forwards;}
+  @keyframes cfall{0%{transform:translateY(-20px) rotate(0deg);}100%{transform:translateY(108vh) rotate(680deg);}}
+  #ovTrophy{font-size:58px;line-height:1;}
+  .ov.show #ovTrophy,.ov.show h1{animation:winpop .65s cubic-bezier(.2,1.5,.4,1) both;}
+  @keyframes winpop{0%{transform:scale(.25);opacity:0;}100%{transform:scale(1);opacity:1;}}
+</style>
+</head>
+<body>
+<div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">Battleship</div><div id="turn"><div id="dot"></div><span id="turnName"></span></div></div>
+<div id="stage"></div>
+<div id="msg"></div>
+<div id="foot"><button class="act" id="mainBtn">New game</button><div id="score"></div></div>
+<div class="ov" id="curtain"><h2 id="curTitle"></h2><p id="curText" style="color:#8fb0c8;"></p><button class="act" id="curBtn">I'm ready</button></div>
+<div class="ov" id="overlay"><div id="confetti"></div><div id="ovTrophy">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p><button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #2f4d66;background:#0e2235;color:#cfe2f0;text-decoration:none;">Back to shelf</a></div>
+<script>
+const N=10,FLEET=[["Carrier",5],["Battleship",4],["Cruiser",3],["Submarine",3],["Destroyer",2]];
+const P={A:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},B:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182"}};
+let ships={A:[],B:[]},shots={A:new Set(),B:new Set()},turn="A",phase="placeA",GS=null,counts={A:0,B:0};
+const KEY="bs_games";let _mem=[];
+const Store={load(){try{return JSON.parse(localStorage.getItem(KEY))||[];}catch(e){return _mem.slice();}},
+  save(l){try{localStorage.setItem(KEY,JSON.stringify(l));}catch(e){_mem=l.slice();}}};
+const k=(r,c)=>r+","+c;
+function randomFleet(){for(let tries=0;tries<400;tries++){const taken=new Set(),out=[];let ok=true;
+  for(const[name,len]of FLEET){let placed=false;
+    for(let t=0;t<200&&!placed;t++){const horiz=Math.random()<0.5;
+      const r=Math.floor(Math.random()*(horiz?N:N-len+1)),c=Math.floor(Math.random()*(horiz?N-len+1:N));
+      const cells=[];let clear=true;
+      for(let i=0;i<len;i++){const key=k(horiz?r:r+i,horiz?c+i:c);if(taken.has(key)){clear=false;break;}cells.push(key);}
+      if(clear){cells.forEach(x=>taken.add(x));out.push({name,cells,hits:[]});placed=true;}}
+    if(!placed){ok=false;break;}}
+  if(ok)return out;}
+  return null;}
+function shipAt(side,key){return ships[side].find(s=>s.cells.includes(key))||null;}
+function fleetSunk(side){return ships[side].every(s=>s.hits.length===s.cells.length);}
+function newGame(){ships={A:randomFleet(),B:randomFleet()};shots={A:new Set(),B:new Set()};
+  counts={A:0,B:0};turn="A";phase="placeA";GS={start:Date.now(),hits:{Mot:0,Kathy:0}};
+  document.getElementById("overlay").classList.remove("show");document.getElementById("confetti").innerHTML="";
+  renderPlace("A");}
+function setMessage(t){document.getElementById("msg").textContent=t;}
+function updateBar(side,label){const pc=P[side];document.getElementById("turnName").textContent=pc.name+(label||"");
+  const d=document.getElementById("dot");
+  d.style.background="radial-gradient(circle at 35% 30%,"+pc.light+","+pc.main+" 70%,"+pc.dark+")";
+  d.style.boxShadow="0 0 0 3px rgba(255,255,255,.15),0 0 14px "+pc.main;
+  const g=Store.load();let m=0,kk=0;for(const r of g){if(r.winner==="Mot")m++;else if(r.winner==="Kathy")kk++;}
+  document.getElementById("score").textContent="Mot "+m+" \u00b7 "+kk+" Kathy";}
+function gridEl(side,opts){const g=document.createElement("div");g.className="grid "+(opts.big?"big":"small");
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){const b=document.createElement("button");const key=k(r,c);
+    if(opts.showShips&&shipAt(side,key))b.classList.add("ship");
+    const firedBy=opts.shotsFrom;
+    if(firedBy&&shots[firedBy].has(key)){const s=shipAt(side,key);
+      if(s){b.classList.add(s.hits.length===s.cells.length?"sunk":"hit");}else b.classList.add("miss");}
+    if(opts.onFire)b.addEventListener("click",()=>opts.onFire(key,b));
+    g.appendChild(b);}
+  return g;}
+function renderPlace(side){phase="place"+side;updateBar(side," places ships");
+  const st=document.getElementById("stage");st.innerHTML="";
+  const t=document.createElement("div");t.className="gridTitle";t.textContent=P[side].name.toUpperCase()+"'S FLEET \u2014 don't show "+(side==="A"?P.B.name:P.A.name)+"!";
+  st.appendChild(t);st.appendChild(gridEl(side,{big:true,showShips:true}));
+  setMessage("Happy with the layout? Shuffle or lock it in.");
+  const f=document.getElementById("foot");f.innerHTML="";
+  const sh=document.createElement("button");sh.className="act ghost";sh.textContent="Shuffle";
+  sh.addEventListener("click",()=>{ships[side]=randomFleet();renderPlace(side);});
+  const ok=document.createElement("button");ok.className="act";ok.textContent="Lock it in";
+  ok.addEventListener("click",()=>{if(side==="A")curtainTo(()=>renderPlace("B"),"Pass to "+P.B.name,"She places her fleet next.");
+    else curtainTo(()=>startFire(),"Pass to "+P[turn].name,P[turn].name+" fires first.");});
+  f.appendChild(sh);f.appendChild(ok);
+  const score=document.createElement("div");score.id="score";f.appendChild(score);}
+function curtainTo(fn,title,text){const cur=document.getElementById("curtain");
+  document.getElementById("curTitle").textContent=title;
+  document.getElementById("curText").textContent=text||"";
+  cur.classList.add("show");
+  document.getElementById("curBtn").onclick=()=>{cur.classList.remove("show");fn();};}
+function startFire(){phase="fire";updateBar(turn," takes aim");
+  const opp=turn==="A"?"B":"A";
+  const st=document.getElementById("stage");st.innerHTML="";
+  const t1=document.createElement("div");t1.className="gridTitle";t1.textContent="ENEMY WATERS \u2014 tap to fire";
+  st.appendChild(t1);
+  st.appendChild(gridEl(opp,{big:true,shotsFrom:turn,onFire:fire}));
+  const t2=document.createElement("div");t2.className="gridTitle";t2.textContent="YOUR FLEET";
+  st.appendChild(t2);
+  st.appendChild(gridEl(turn,{small:true,showShips:true,shotsFrom:opp}));
+  setMessage(P[turn].name+" \u2014 one shot. Make it count.");
+  const f=document.getElementById("foot");f.innerHTML="";
+  const score=document.createElement("div");score.id="score";f.appendChild(score);updateBar(turn," takes aim");}
+function fire(key){if(phase!=="fire")return;const opp=turn==="A"?"B":"A";
+  if(shots[turn].has(key)){setMessage("Already fired there.");return;}
+  phase="resolve";shots[turn].add(key);counts[turn]++;
+  const s=shipAt(opp,key);let msg;
+  if(s){s.hits.push(key);GS.hits[P[turn].name]++;
+    msg=s.hits.length===s.cells.length?("SUNK! "+P[opp].name+"'s "+s.name+" goes down!"):"HIT!";}
+  else msg="Miss. Splash.";
+  startFireRefresh();setMessage(msg);
+  if(fleetSunk(opp)){setTimeout(()=>gameOver(turn),900);return;}
+  setTimeout(()=>{turn=opp;curtainTo(()=>startFire(),"Pass to "+P[turn].name,msg);},1100);}
+function startFireRefresh(){const opp=turn==="A"?"B":"A";
+  const st=document.getElementById("stage");st.innerHTML="";
+  const t1=document.createElement("div");t1.className="gridTitle";t1.textContent="ENEMY WATERS";
+  st.appendChild(t1);st.appendChild(gridEl(opp,{big:true,shotsFrom:turn}));
+  const t2=document.createElement("div");t2.className="gridTitle";t2.textContent="YOUR FLEET";
+  st.appendChild(t2);st.appendChild(gridEl(turn,{small:true,showShips:true,shotsFrom:opp}));}
+function gameOver(winSide){phase="over";
+  const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
+    winner:P[winSide].name,loser:P[winSide==="A"?"B":"A"].name,
+    shots:{Mot:counts.A,Kathy:counts.B},hits:GS.hits};
+  const l=Store.load();l.push(rec);Store.save(l);
+  document.getElementById("ovTitle").textContent=P[winSide].name+" wins!";
+  document.getElementById("ovTitle").style.color=P[winSide].main;
+  document.getElementById("ovText").textContent="Fleet destroyed in "+counts[winSide]+" shots ("+GS.hits[P[winSide].name]+" hits)";
+  spawnConfetti(winSide);
+  setTimeout(()=>document.getElementById("overlay").classList.add("show"),600);
+  const f=document.getElementById("foot");f.innerHTML="";
+  const nb=document.createElement("button");nb.className="act";nb.textContent="New game";nb.addEventListener("click",newGame);f.appendChild(nb);}
+function spawnConfetti(side){const box=document.getElementById("confetti");box.innerHTML="";const pc=P[side];
+  const cols=[pc.main,pc.light,"#f4c542","#ffffff"];
+  for(let i=0;i<90;i++){const d=document.createElement("div");d.className="cfp";
+    d.style.left=(Math.random()*100)+"%";d.style.background=cols[i%cols.length];
+    d.style.animationDuration=(2.4+Math.random()*1.8)+"s";d.style.animationDelay=(Math.random()*0.9)+"s";
+    d.style.transform="rotate("+Math.floor(Math.random()*360)+"deg)";box.appendChild(d);}}
+document.getElementById("mainBtn").addEventListener("click",newGame);
+document.getElementById("ovBtn").addEventListener("click",newGame);
+newGame();
+</script>
+</body>
+</html>
