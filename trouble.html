@@ -48,9 +48,10 @@
 <div id="msg"></div>
 <div id="foot"><button class="act" id="newBtn">New game</button><div id="score"></div></div>
 <div class="ov" id="overlay"><div id="confetti"></div><div id="ovTrophy">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p><button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
+<script src="gamenight.js"></script>
 <script>
 const TRACK=28,FIN=4;
-const P={red:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19",entry:0},
+let P={red:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19",entry:0},
          blue:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182",entry:14}};
 const canvas=document.getElementById("board"),ctx=canvas.getContext("2d");
 let SZ=320,R=130,pegs=[],turn="blue",die=0,phase="roll",movable=[],animFly=null,pulsing=false,GS=null,extra=false;
@@ -72,17 +73,21 @@ function homeXY(color,i){const e=P[color].entry,a=-Math.PI/2+(e-2.6)/TRACK*2*Mat
   return{x:SZ/2+rr*Math.cos(a+sp),y:SZ/2+rr*Math.sin(a+sp)};}
 function pegXY(p){if(p.loc.state==="home")return homeXY(p.color,p.hi);
   if(p.loc.state==="track")return holeXY(p.loc.idx);return finXY(p.color,p.loc.i);}
+function seatFrom(p,seat){return Object.assign({},seat,{name:p.name,main:p.color,light:p.light,dark:p.dark});}
 function newGame(){pegs=[];for(const c of["red","blue"])for(let i=0;i<4;i++)pegs.push({color:c,hi:i,t:0,loc:{state:"home"}});
-  turn=Math.random()<0.5?"red":"blue";die=0;phase="roll";movable=[];animFly=null;extra=false;
-  GS={start:Date.now(),pops:{Mot:0,Kathy:0},bumps:{Mot:0,Kathy:0}};
-  document.getElementById("overlay").classList.remove("show");document.getElementById("confetti").innerHTML="";
-  updateBar();setMessage(P[turn].name+" pops first");render();}
+  die=0;phase="over";movable=[];animFly=null;extra=false;
+  document.getElementById("overlay").classList.remove("show");document.getElementById("confetti").innerHTML="";render();
+  GN.matchStart(function(m){P={red:seatFrom(m.a,P.red),blue:seatFrom(m.b,P.blue)};
+    turn=(m.first===m.a)?"red":"blue";phase="roll";
+    GS={start:Date.now(),flipWinner:m.first.name,pops:{},bumps:{}};
+    GS.pops[m.a.name]=0;GS.pops[m.b.name]=0;GS.bumps[m.a.name]=0;GS.bumps[m.b.name]=0;
+    updateBar();setMessage(P[turn].name+" pops first");render();});}
 function setMessage(t){document.getElementById("msg").textContent=t;}
 function updateBar(){const pc=P[turn];document.getElementById("turnName").textContent=pc.name+"'s turn";
   const d=document.getElementById("dot");
   d.style.background="radial-gradient(circle at 35% 30%,"+pc.light+","+pc.main+" 70%,"+pc.dark+")";
   d.style.boxShadow="0 0 0 3px rgba(255,255,255,.15),0 0 14px "+pc.main;
-  const g=Store.load();let m=0,k=0;for(const r of g){if(r.winner==="Mot")m++;else if(r.winner==="Kathy")k++;}
+  const g=Store.load();let m=0,k=0;for(const r of g){if(r.winner===P.red.name)m++;else if(r.winner===P.blue.name)k++;}
   document.getElementById("score").textContent="Mot "+m+" \u00b7 "+k+" Kathy";}
 function occTrack(idx){return pegs.find(p=>p.loc.state==="track"&&p.loc.idx===idx)||null;}
 function moveOf(p,n){ // returns {to,bump}|null
@@ -99,7 +104,7 @@ function rollDie(){if(phase!=="roll"||animFly)return;
   const dome=document.getElementById("dome");dome.classList.remove("popping");void dome.offsetWidth;dome.classList.add("popping");
   GS.pops[P[turn].name]++;
   let n=0;const iv=setInterval(()=>{showDie(1+Math.floor(Math.random()*6));if(++n>=7){clearInterval(iv);
-    die=1+Math.floor(Math.random()*6);showDie(die);afterRoll();}},45);}
+    die=1+Math.floor(Math.random()*6);showDie(die);if(!GN.friendly)GN.g.addDice([die]);afterRoll();}},45);}
 function showDie(v){const pips=document.querySelectorAll("#die i");
   const ON={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]}[v];
   pips.forEach((p,i)=>p.style.visibility=ON.includes(i)?"visible":"hidden");}
@@ -116,7 +121,7 @@ function doMove(p){const mv=moveOf(p,die);if(!mv)return;
   animFly={p,from,to,k:0};const t0=performance.now();
   (function step(ts){animFly.k=Math.min(1,(ts-t0)/300);render();
     if(animFly.k<1){requestAnimationFrame(step);return;}
-    if(mv.bump){mv.bump.loc={state:"home"};mv.bump.t=0;GS.bumps[P[turn].name]++;setMessage(P[turn].name+" bumped "+P[mv.bump.color].name+"!");}
+    if(mv.bump){mv.bump.loc={state:"home"};mv.bump.t=0;GS.bumps[P[turn].name]++;if(!GN.friendly)GN.g.addSentHome(1);setMessage(P[turn].name+" bumped "+P[mv.bump.color].name+"!");}
     p.loc=mv.to;p.t=mv.t;animFly=null;
     if(pegs.filter(q=>q.color===turn&&q.loc.state==="fin").length===4){gameOver(turn);return;}
     if(extra){phase="roll";setMessage(P[turn].name+" rolled 6 \u2014 pop again!");render();return;}
@@ -176,8 +181,8 @@ canvas.addEventListener("pointerup",e=>{if(phase!=="move")return;
 document.getElementById("dome").addEventListener("click",rollDie);
 function gameOver(winColor){phase="over";
   const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
-    winner:P[winColor].name,loser:P[winColor==="red"?"blue":"red"].name,pops:GS.pops,bumps:GS.bumps};
-  const l=Store.load();l.push(rec);Store.save(l);
+    winner:P[winColor].name,loser:P[winColor==="red"?"blue":"red"].name,flipWinner:GS.flipWinner,pops:GS.pops,bumps:GS.bumps};
+  GN.recordGame(KEY,rec);
   document.getElementById("ovTitle").textContent=P[winColor].name+" wins!";
   document.getElementById("ovTitle").style.color=P[winColor].main;
   document.getElementById("ovText").textContent="All four pegs home \u00b7 "+GS.bumps[P[winColor].name]+" bumps dealt";
@@ -190,6 +195,15 @@ function spawnConfetti(color){const box=document.getElementById("confetti");box.
     d.style.animationDuration=(2.4+Math.random()*1.8)+"s";d.style.animationDelay=(Math.random()*0.9)+"s";
     d.style.transform="rotate("+Math.floor(Math.random()*360)+"deg)";box.appendChild(d);}}
 document.getElementById("newBtn").addEventListener("click",newGame);
+GN.rulesButton(document.getElementById("foot"),{title:"Trouble",sections:[
+ {h:"Goal",p:"Race all four pegs from Home, once around the track, and into your Finish line."},
+ {h:"Popping",p:"Tap the dome to pop the die. A 6 lets a peg leave Home onto your start space \u2014 and earns another pop."},
+ {h:"Moving",p:"Move one peg forward by the number popped. You can\u2019t land on your own peg, and you can\u2019t jump over pegs already sitting in your Finish line."},
+ {h:"Bumping",p:"Land on an enemy peg and it goes all the way back to Home. The Finish line is safe \u2014 nothing can be bumped there."}]});
+GN.statsButton(document.getElementById("foot"),{title:"Trouble",key:KEY,specials:[
+  {label:"Bumps dealt",of:(r,n)=>r.reduce((a,x)=>a+((x.bumps&&x.bumps[n])||0),0)},
+  {label:"Pops taken",of:(r,n)=>r.reduce((a,x)=>a+((x.pops&&x.pops[n])||0),0)},
+  {label:"Coin flips won",of:(r,n)=>r.filter(x=>x.flipWinner===n).length}]});
 document.getElementById("ovBtn").addEventListener("click",newGame);
 window.addEventListener("resize",fit);
 fit();newGame();showDie(6);

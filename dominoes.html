@@ -59,8 +59,9 @@
 <div id="foot"><button class="act" id="newBtn">New game</button><button class="act ghost" id="drawBtn">Draw</button><span style="font-size:13px;color:#9fbdac;border:1px solid #3a5a47;border-radius:999px;padding:6px 12px;">Rules: Draw</span><div id="score"></div></div>
 <div class="ov" id="endOv"><h2>Play it on which end?</h2><div id="endChoice"></div></div>
 <div class="ov" id="overlay"><div id="confetti"></div><div id="ovTrophy">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p><button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
+<script src="gamenight.js"></script>
 <script>
-const P={top:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},bot:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182"}};
+let P={top:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},bot:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182"}};
 let hands={top:[],bot:[]},line=[],yard=[],turn="bot",phase="play",passes=0,GS=null,pendingBone=null;
 const KEY="dom_games";let _mem=[];
 const Store={load(){try{return JSON.parse(localStorage.getItem(KEY))||[];}catch(e){return _mem.slice();}},
@@ -72,24 +73,24 @@ function fits(b){const e=ends();if(!e)return{L:true,R:true};
   return{L:b[0]===e.L||b[1]===e.L,R:b[0]===e.R||b[1]===e.R};}
 function playable(b){const f=fits(b);return f.L||f.R;}
 function pip(side){return hands[side].reduce((s,b)=>s+b[0]+b[1],0);}
+function seatFrom(p){return{name:p.name,main:p.color,light:p.light,dark:p.dark};}
 function newGame(){yard=shuffle(allBones());hands={top:yard.splice(0,7),bot:yard.splice(0,7)};line=[];passes=0;pendingBone=null;
-  // highest double opens; if none, highest pip total bone's owner
-  let opener=null,best=-1;
-  for(const s of["top","bot"])for(const b of hands[s]){const score=(b[0]===b[1])?100+b[0]:b[0]+b[1];
-    if(score>best){best=score;opener=s;}}
-  turn=opener;phase="play";
-  GS={start:Date.now(),draws:{Mot:0,Kathy:0},plays:{Mot:0,Kathy:0}};
+  phase="over";
+  GN.matchStart(function(m){P={top:seatFrom(m.a),bot:seatFrom(m.b)};
+  turn=(m.first===m.a)?"top":"bot";phase="play";
+  GS={start:Date.now(),flipWinner:m.first.name,draws:{},plays:{}};
+  GS.draws[m.a.name]=0;GS.draws[m.b.name]=0;GS.plays[m.a.name]=0;GS.plays[m.b.name]=0;
   document.getElementById("overlay").classList.remove("show");
   document.getElementById("endOv").classList.remove("show");
   document.getElementById("confetti").innerHTML="";
-  updateBar();setMessage(P[turn].name+" opens \u2014 "+(best>=100?"highest double":"heaviest bone"));renderAll();}
+  updateBar();setMessage(P[turn].name+" won the flip \u2014 opens with any bone");renderAll();});}
 function setMessage(t){document.getElementById("msg").textContent=t;}
 function updateBar(){const pc=P[turn];document.getElementById("turnName").textContent=pc.name+"'s turn";
   const d=document.getElementById("dot");
   d.style.background="radial-gradient(circle at 35% 30%,"+pc.light+","+pc.main+" 70%,"+pc.dark+")";
   d.style.boxShadow="0 0 0 3px rgba(255,255,255,.15),0 0 14px "+pc.main;
-  const g=Store.load();let m=0,k=0;for(const r of g){if(r.winner==="Mot")m++;else if(r.winner==="Kathy")k++;}
-  document.getElementById("score").textContent="Mot "+m+" \u00b7 "+k+" Kathy \u00b7 boneyard "+yard.length;}
+  const g=Store.load();let m=0,k=0;for(const r of g){if(r.winner===P.top.name)m++;else if(r.winner===P.bot.name)k++;}
+  document.getElementById("score").textContent=P.top.name+" "+m+" \u00b7 "+k+" "+P.bot.name+" \u00b7 boneyard "+yard.length;}
 function boneEl(b,vert){const d=document.createElement("div");d.className="bone "+(vert?"v":"h");
   for(const v of b){const h=document.createElement("div");h.className="half";
     const ON={0:[],1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]}[v];
@@ -147,13 +148,13 @@ function drawBone(){if(phase!=="play"||!yard.length||hands[turn].some(playable))
   setMessage(P[turn].name+" draws...");checkStuck();}
 function blockedEnd(){const m=pip("top"),k=pip("bot");
   const winSide=m<k?"top":k<m?"bot":null;
-  finish(winSide,"Blocked \u2014 Mot "+m+" pips, Kathy "+k);}
+  finish(winSide,"Blocked \u2014 "+P.top.name+" "+m+" pips, "+P.bot.name+" "+k,true);}
 function gameOver(winSide,why){finish(winSide,why);}
-function finish(winSide,why){phase="over";
+function finish(winSide,why,wasBlocked){phase="over";
   const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
     winner:winSide?P[winSide].name:null,loser:winSide?P[winSide==="top"?"bot":"top"].name:null,
-    draw:!winSide,pips:{Mot:pip("top"),Kathy:pip("bot")},plays:GS.plays,draws:GS.draws};
-  const l=Store.load();l.push(rec);Store.save(l);
+    draw:!winSide,flipWinner:GS.flipWinner,blocked:wasBlocked,pips:(function(){const s={};s[P.top.name]=pip("top");s[P.bot.name]=pip("bot");return s;})(),plays:GS.plays,draws:GS.draws};
+  GN.recordGame(KEY,rec);
   document.getElementById("ovTitle").textContent=winSide?P[winSide].name+" wins!":"Dead tie!";
   document.getElementById("ovTitle").style.color=winSide?P[winSide].main:"#e8f0e4";
   document.getElementById("ovTrophy").textContent=winSide?"\uD83C\uDFC6":"\uD83E\uDD1D";
@@ -167,6 +168,15 @@ function spawnConfetti(side){const box=document.getElementById("confetti");box.i
     d.style.animationDuration=(2.4+Math.random()*1.8)+"s";d.style.animationDelay=(Math.random()*0.9)+"s";
     d.style.transform="rotate("+Math.floor(Math.random()*360)+"deg)";box.appendChild(d);}}
 document.getElementById("newBtn").addEventListener("click",newGame);
+GN.rulesButton(document.getElementById("foot"),{title:"Dominoes (Draw)",sections:[
+ {h:"Goal",p:"Be first to play every bone in your hand \u2014 or hold the fewest pips when the line locks."},
+ {h:"Playing",p:"Each bone must match an open end of the line: a 4 connects to a 4. Doubles sit crosswise. The coin-flip winner opens with any bone."},
+ {h:"Drawing",p:"Can\u2019t play? Draw from the boneyard until you can. If the boneyard is empty, you pass."},
+ {h:"Blocked games",p:"If both players pass in a row, the game is blocked: count the pips left in each hand \u2014 the lighter hand wins."}]});
+GN.statsButton(document.getElementById("foot"),{title:"Dominoes",key:KEY,specials:[
+  {label:"Blocked-game wins",of:(r,n)=>r.filter(x=>x.winner===n&&x.blocked).length},
+  {label:"Bones drawn",of:(r,n)=>r.reduce((a,x)=>a+((x.draws&&x.draws[n])||0),0)},
+  {label:"Coin flips won",of:(r,n)=>r.filter(x=>x.flipWinner===n).length}]});
 document.getElementById("ovBtn").addEventListener("click",newGame);
 document.getElementById("drawBtn").addEventListener("click",drawBone);
 newGame();

@@ -39,9 +39,12 @@
 <div id="msg"></div>
 <div id="foot"><button class="act" id="newBtn">New game</button><div id="score"></div></div>
 <div class="ov" id="overlay"><div id="confetti"></div><div id="ovTrophy">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p><button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #2f4d66;background:#0e2235;color:#cfe2f0;text-decoration:none;">Back to shelf</a></div>
+<script src="gamenight.js"></script>
 <script>
 const ROWLEN=[1,2,3,4,13,12,11,10,9,10,11,12,13,4,3,2,1];
-const P={red:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},blue:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182"}};
+let P={red:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},blue:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182"}};
+function seatFrom(p){return{name:p.name,main:p.color,light:p.light,dark:p.dark};}
+
 const canvas=document.getElementById("board"),ctx=canvas.getContext("2d");
 // build holes: key "r:x2" where x2 = 2*x offset (integers), x centered per row
 const holes=new Map(); // key -> {r, x2}
@@ -72,17 +75,20 @@ function holeXY(key){const h=holes.get(key);const s=SZ/15.6;
 function newGame(){occ=new Map();
   for(const k of TOP)occ.set(k,"red");
   for(const k of BOT)occ.set(k,"blue");
-  turn=Math.random()<0.5?"red":"blue";sel=null;targets=[];phase="pick";animFly=null;
-  GS={start:Date.now(),moves:{Mot:0,Kathy:0},hops:{Mot:0,Kathy:0}};
-  document.getElementById("overlay").classList.remove("show");document.getElementById("confetti").innerHTML="";
-  boardAngle=boardTarget=(TVMODE?0:(turn==="red"?Math.PI:0));
-  updateBar();setMessage(P[turn].name+" starts \u2014 tap a marble");render();ensurePulse();}
+  sel=null;targets=[];phase="over";animFly=null;
+  document.getElementById("overlay").classList.remove("show");document.getElementById("confetti").innerHTML="";render();
+  GN.matchStart(function(m){P={red:seatFrom(m.a),blue:seatFrom(m.b)};
+    turn=(m.first===m.a)?"red":"blue";phase="pick";
+    GS={start:Date.now(),flipWinner:m.first.name,moves:{},hops:{}};
+    GS.moves[m.a.name]=0;GS.moves[m.b.name]=0;GS.hops[m.a.name]=0;GS.hops[m.b.name]=0;
+    boardAngle=boardTarget=(TVMODE?0:(turn==="red"?Math.PI:0));
+    updateBar();setMessage(P[turn].name+" starts \u2014 tap a marble");render();ensurePulse();});}
 function setMessage(t){document.getElementById("msg").textContent=t;}
 function updateBar(){const pc=P[turn];document.getElementById("turnName").textContent=pc.name+"'s turn";
   const d=document.getElementById("dot");
   d.style.background="radial-gradient(circle at 35% 30%,"+pc.light+","+pc.main+" 70%,"+pc.dark+")";
   d.style.boxShadow="0 0 0 3px rgba(255,255,255,.15),0 0 14px "+pc.main;
-  const g=Store.load();let m=0,k=0;for(const r of g){if(r.winner==="Mot")m++;else if(r.winner==="Kathy")k++;}
+  const g=Store.load();let m=0,k=0;for(const r of g){if(r.winner===P.red.name)m++;else if(r.winner===P.blue.name)k++;}
   document.getElementById("score").textContent="Mot "+m+" \u00b7 "+k+" Kathy";}
 function applyOrientation(){if(TVMODE)return;const want=(turn==="red"?Math.PI:0);
   const cur=((boardTarget%(2*Math.PI))+2*Math.PI)%(2*Math.PI);
@@ -160,8 +166,8 @@ function doMove(from,to){phase="anim";const color=occ.get(from);
     applyOrientation();updateBar();setMessage(P[turn].name+"'s move");render();ensurePulse();})(t0);}
 function gameOver(winColor){phase="over";
   const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
-    winner:P[winColor].name,loser:P[winColor==="red"?"blue":"red"].name,moves:GS.moves,hops:GS.hops};
-  const l=Store.load();l.push(rec);Store.save(l);
+    winner:P[winColor].name,loser:P[winColor==="red"?"blue":"red"].name,flipWinner:GS.flipWinner,moves:GS.moves,hops:GS.hops};
+  GN.recordGame(KEY,rec);
   document.getElementById("ovTitle").textContent=P[winColor].name+" wins!";
   document.getElementById("ovTitle").style.color=P[winColor].main;
   document.getElementById("ovText").textContent="Crossed the star in "+GS.moves[P[winColor].name]+" moves";
@@ -174,6 +180,15 @@ function spawnConfetti(color){const box=document.getElementById("confetti");box.
     d.style.animationDuration=(2.4+Math.random()*1.8)+"s";d.style.animationDelay=(Math.random()*0.9)+"s";
     d.style.transform="rotate("+Math.floor(Math.random()*360)+"deg)";box.appendChild(d);}}
 document.getElementById("newBtn").addEventListener("click",newGame);
+GN.rulesButton(document.getElementById("foot"),{title:"Chinese Checkers",sections:[
+ {h:"Goal",p:"March all ten marbles across the star into your opponent\u2019s home triangle first."},
+ {h:"Moving",p:"A marble steps to any adjacent empty hole \u2014 or hops over one adjacent marble (any color) into the empty hole beyond."},
+ {h:"Chain hops",p:"Hops can chain: keep leaping as long as each jump clears exactly one marble into an empty hole. Long chains across the board are the heart of the game."},
+ {h:"No blocking",p:"You can pass through any triangle on the way, but the race only counts marbles that finish inside the target triangle."}]});
+GN.statsButton(document.getElementById("foot"),{title:"Chinese Checkers",key:KEY,specials:[
+  {label:"Hop moves",of:(r,n)=>r.reduce((a,x)=>a+((x.hops&&x.hops[n])||0),0)},
+  {label:"Fastest win (moves)",of:(r,n)=>{const w=r.filter(x=>x.winner===n&&x.moves&&x.moves[n]);return w.length?Math.min(...w.map(x=>x.moves[n])):0;}},
+  {label:"Coin flips won",of:(r,n)=>r.filter(x=>x.flipWinner===n).length}]});
 document.getElementById("ovBtn").addEventListener("click",newGame);
 window.addEventListener("resize",fit);
 fit();newGame();

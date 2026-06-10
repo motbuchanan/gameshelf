@@ -25,7 +25,9 @@ GN.addPlayer=function(name){name=(name||"").trim();if(!name)return null;
   const l=pload();if(l.some(p=>p.name.toLowerCase()===name.toLowerCase()))return l.find(p=>p.name.toLowerCase()===name.toLowerCase());
   const used=new Set(l.map(p=>p.color));
   const pal=PALETTE.find(c=>!used.has(c.color))||PALETTE[l.length%PALETTE.length];
-  const p={name,...pal};l.push(p);psave(l);return p;};
+  const p={name,...pal};l.push(p);psave(l);
+  mirror(()=>_db.doc("households/"+_hh+"/state/players").set({list:FV().arrayUnion(p)},{merge:true}));
+  return p;};
 GN.lastPair=function(){try{const pr=JSON.parse(localStorage.getItem(PAIRKEY));
     if(pr&&pr.length===2){const l=pload();
       const a=l.find(p=>p.name===pr[0]),b=l.find(p=>p.name===pr[1]);
@@ -45,21 +47,33 @@ GN.g={
   addFlip(winnerName){const g=gload();g.flips.n++;
     g.flips.won[winnerName]=(g.flips.won[winnerName]||0)+1;
     if(g.flips.streak.who===winnerName)g.flips.streak.len++;else g.flips.streak={who:winnerName,len:1};
-    gsave(g);},
+    gsave(g);
+    mirror(()=>_db.doc("households/"+_hh+"/state/global").update({"flips.n":FV().increment(1),
+      ["flips.won."+winnerName]:FV().increment(1),"flips.streak":g.flips.streak}));},
   addDice(vals){const g=gload();g.dice.rolled+=vals.length;
-    for(const v of vals)if(v===6)g.dice.sixes++;
-    if(vals.length===2&&vals[0]===vals[1])g.dice.doubles++;
-    gsave(g);},
-  addSentHome(n){const g=gload();g.sentHome+=(n||1);gsave(g);},
+    let sx=0;for(const v of vals)if(v===6){g.dice.sixes++;sx++;}
+    const db=(vals.length===2&&vals[0]===vals[1])?1:0;if(db)g.dice.doubles++;
+    gsave(g);
+    mirror(()=>_db.doc("households/"+_hh+"/state/global").update({"dice.rolled":FV().increment(vals.length),
+      "dice.sixes":FV().increment(sx),"dice.doubles":FV().increment(db)}));},
+  addSentHome(n){const g=gload();g.sentHome+=(n||1);gsave(g);
+    mirror(()=>_db.doc("households/"+_hh+"/state/global").update({sentHome:FV().increment(n||1)}));},
   addResult(winner,loser,durMs){const g=gload();
     if(winner)g.wins[winner]=(g.wins[winner]||0)+1;
-    g.games++;g.timeMs+=(durMs||0);gsave(g);},
+    g.games++;g.timeMs+=(durMs||0);gsave(g);
+    mirror(()=>{const u={games:FV().increment(1),timeMs:FV().increment(durMs||0)};
+      if(winner)u["wins."+winner]=FV().increment(1);
+      _db.doc("households/"+_hh+"/state/global").update(u);});},
   read(){return gload();}};
 
+GN.friendly=false;
 GN.recordGame=function(key,rec){
+  if(GN.friendly)return; // friendly games leave no trace
+
   let l=[];try{l=JSON.parse(localStorage.getItem(key))||[];}catch(e){}
   l.push(rec);
   try{localStorage.setItem(key,JSON.stringify(l));}catch(e){}
+  mirror(()=>_db.doc("households/"+_hh+"/records/"+key).set({list:FV().arrayUnion(rec)},{merge:true}));
   GN.g.addResult(rec.winner,rec.loser,rec.durationMs);};
 GN.readGames=function(key){try{return JSON.parse(localStorage.getItem(key))||[];}catch(e){return[];}};
 
@@ -110,6 +124,7 @@ GN.matchStart=function(done){injectCSS();
   ov.innerHTML='<div class="gnTitle" id="gnT">Who\u2019s playing?</div>'+
     '<div class="gnSeats"><button class="gnSeat" id="gnA"></button><span class="gnVs">vs</span><button class="gnSeat" id="gnB"></button></div>'+
     '<button class="gnAdd" id="gnNew">+ add a player</button>'+
+    '<button class="gnAdd" id="gnFr" style="color:#cfe6d8;">\u2713 Counts for the record</button>'+
     '<div class="gnScene" style="display:none" id="gnSc"><div class="gnCoin" id="gnC"></div><div class="gnShadow"></div></div>'+
     '<button class="gnBtn" id="gnGo">Flip for first</button>';
   document.body.appendChild(ov);
@@ -124,6 +139,10 @@ GN.matchStart=function(done){injectCSS();
   eB.onclick=()=>{b=cycle(b,a);refresh();};
   ov.querySelector("#gnNew").onclick=()=>{const n=prompt("Player name?");
     const p=GN.addPlayer(n);if(p&&p.name!==a.name){b=p;refresh();}};
+  let friendly=false;const fr=ov.querySelector("#gnFr");
+  fr.onclick=()=>{friendly=!friendly;
+    fr.textContent=friendly?"\u26a0 Friendly game \u2014 not recorded":"\u2713 Counts for the record";
+    fr.style.color=friendly?"#f4c542":"#cfe6d8";};
   refresh();
   go.onclick=function(){savePair(a,b);
     eA.disabled=true;eB.disabled=true;ov.querySelector("#gnNew").style.display="none";
@@ -154,10 +173,11 @@ GN.matchStart=function(done){injectCSS();
       if(p<1){requestAnimationFrame(land);return;}
       coin.style.transform="rotateX("+finalDeg+"deg)";
       const first=heads?a:b;
-      GN.g.addFlip(first.name);
+      GN.friendly=friendly;
+      if(!friendly)GN.g.addFlip(first.name);
       title.textContent=first.name+" goes first!";title.style.color=first.color;
       go.textContent="Begin";go.style.visibility="visible";
-      go.onclick=function(){ov.remove();done({a,b,first});};}
+      go.onclick=function(){ov.remove();done({a,b,first,friendly});};}
     requestAnimationFrame(toss);};};
 
 /* ---------- stats overlay ---------- */
@@ -195,4 +215,74 @@ GN.statsButton=function(container,cfg){injectCSS();
   const b=document.createElement("button");b.className="gnBtn ghost";b.textContent="Stats";
   b.style.fontSize="15px";b.style.padding="9px 16px";
   b.onclick=()=>GN.openStats(cfg);container.appendChild(b);return b;};
+
+/* ---------- household cloud sync (Firebase, opt-in per device) ---------- */
+const FB_CONFIG={apiKey:"AIzaSyBcQedEEuBlsxaPke8y49QZXU42SVP1kiE",
+  authDomain:"buchanan-gameshelf.firebaseapp.com",projectId:"buchanan-gameshelf",
+  storageBucket:"buchanan-gameshelf.firebasestorage.app",
+  messagingSenderId:"391867096201",appId:"1:391867096201:web:3ceafef2bb7d6cbfe97a58"};
+const FB_CDN="https://www.gstatic.com/firebasejs/10.12.2/";
+let _db=null,_hh=null,_fbReady=false;
+function hhId(code){let h=5381;for(let i=0;i<code.length;i++)h=((h<<5)+h+code.charCodeAt(i))>>>0;return"hh_"+h.toString(36);}
+function loadScript(u){return new Promise((res,rej)=>{const s=document.createElement("script");
+  s.src=u;s.onload=res;s.onerror=rej;document.head.appendChild(s);});}
+const GAME_KEYS=["sorry_games","checkers_games","c4_games","trouble_games","mancala_games",
+  "dom_games","yahtzee_games","bs_games","cc_games","bg_games"];
+GN.sync={
+  status(){try{return localStorage.getItem("gn_sync_hh")?"on":"off";}catch(e){return"off";}},
+  enable(code){if(!code||!code.trim())return false;
+    try{localStorage.setItem("gn_sync_hh",hhId(code.trim()));}catch(e){return false;}
+    bootSync();return true;},
+  disable(){try{localStorage.removeItem("gn_sync_hh");}catch(e){}_db=null;_hh=null;_fbReady=false;},
+  resetCloud(){if(!_fbReady)return;
+    _db.doc("households/"+_hh+"/state/global").set(blank());
+    for(const k of GAME_KEYS)_db.doc("households/"+_hh+"/records/"+k).set({list:[]});}
+};
+async function bootSync(){
+  let hh=null;try{hh=localStorage.getItem("gn_sync_hh");}catch(e){}
+  if(!hh||typeof window==="undefined")return;
+  try{
+    if(!window.firebase){await loadScript(FB_CDN+"firebase-app-compat.js");
+      await loadScript(FB_CDN+"firebase-auth-compat.js");
+      await loadScript(FB_CDN+"firebase-firestore-compat.js");}
+    if(!firebase.apps.length)firebase.initializeApp(FB_CONFIG);
+    await firebase.auth().signInAnonymously();
+    _db=firebase.firestore();_hh=hh;
+    try{await _db.enablePersistence({synchronizeTabs:true});}catch(e){}
+    // first contact: device with history seeds the cloud; empty devices adopt it
+    const gref=_db.doc("households/"+_hh+"/state/global");
+    const snap=await gref.get();
+    if(!snap.exists){await gref.set(gload());
+      for(const k of GAME_KEYS){const l=GN.readGames(k);
+        if(l.length)await _db.doc("households/"+_hh+"/records/"+k).set({list:l});}
+      const pl=pload();await _db.doc("households/"+_hh+"/state/players").set({list:pl});}
+    _fbReady=true;
+    // live adoption: cloud is the household truth once synced
+    gref.onSnapshot(s=>{if(s.exists)gsave(s.data());});
+    _db.collection("households/"+_hh+"/records").onSnapshot(q=>{
+      q.forEach(d=>{try{localStorage.setItem(d.id,JSON.stringify(d.data().list||[]));}catch(e){}});});
+    _db.doc("households/"+_hh+"/state/players").onSnapshot(s=>{
+      if(s.exists&&s.data().list&&s.data().list.length)psave(s.data().list);});
+  }catch(e){/* offline or blocked: localStorage carries on */}
+}
+function mirror(fn){if(_fbReady){try{fn();}catch(e){}}}
+function FV(){return firebase.firestore.FieldValue;}
+if(typeof window!=="undefined")setTimeout(bootSync,0);
+
+/* ---------- rules overlay ---------- */
+/* GN.openRules({title,sections:[{h,p}]}) */
+GN.openRules=function(cfg){injectCSS();
+  const old=document.getElementById("gnRules");if(old)old.remove();
+  const wrap=document.createElement("div");wrap.className="gnStats";wrap.id="gnRules";
+  let h='<h1>'+cfg.title+' \u2014 How to play</h1>';
+  for(const s of cfg.sections){
+    h+='<div class="gnSec">'+s.h+'</div>';
+    h+='<div class="gnMeta" style="text-align:left;line-height:1.55;font-size:14px;color:#d8e8dd;">'+s.p+'</div>';}
+  h+='<button class="gnBtn" id="gnRX" style="margin-top:12px;">Close</button>';
+  wrap.innerHTML=h;document.body.appendChild(wrap);
+  wrap.querySelector("#gnRX").onclick=()=>wrap.remove();};
+GN.rulesButton=function(container,cfg){injectCSS();
+  const b=document.createElement("button");b.className="gnBtn ghost";b.textContent="Rules";
+  b.style.fontSize="15px";b.style.padding="9px 16px";
+  b.onclick=()=>GN.openRules(cfg);container.appendChild(b);return b;};
 })();

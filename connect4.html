@@ -57,15 +57,19 @@ function newGame(){grid=Array.from({length:ROWS},()=>Array(COLS).fill(null));
   document.getElementById("confetti").innerHTML="";render();
   GN.matchStart(function(m){P={red:seatFrom(m.a),blue:seatFrom(m.b)};
     turn=(m.first===m.a)?"red":"blue";over=false;moves={};moves[m.a.name]=0;moves[m.b.name]=0;
-    GS={start:Date.now(),flipWinner:m.first.name,players:[m.a.name,m.b.name]};updateBar();render();});}
+    GS={start:Date.now(),flipWinner:m.first.name,players:[m.a.name,m.b.name],friendly:m.friendly};updateBar();render();});}
 function updateBar(){const pc=P[turn];document.getElementById("turnName").textContent=pc.name+"'s turn";
   const d=document.getElementById("dot");
   d.style.background="radial-gradient(circle at 35% 30%,"+pc.light+","+pc.main+" 70%,"+pc.dark+")";
   d.style.boxShadow="0 0 0 3px rgba(255,255,255,.15),0 0 14px "+pc.main;
   const games=Store.load();let m=0,k=0;for(const g of games){if(g.winner===P.red.name)m++;else if(g.winner===P.blue.name)k++;}
-  document.getElementById("score").textContent=P.red.name+" "+m+" \u00b7 "+k+" "+P.blue.name;}
+  document.getElementById("score").textContent=P.red.name+" "+m+" \u00b7 "+k+" "+P.blue.name+((GS&&GS.friendly)?" \u00b7 friendly":"");}
 function cellXY(r,c){return{x:c*CELL+CELL/2,y:r*CELL+CELL/2};}
 function drawChip(x,y,color,glow){const pc=P[color],r=CELL*0.40;
+  // soft contact shade behind chip
+  ctx.save();const cs=ctx.createRadialGradient(x,y+r*0.25,r*0.2,x,y+r*0.25,r*1.05);
+  cs.addColorStop(0,"rgba(0,0,0,.28)");cs.addColorStop(1,"rgba(0,0,0,0)");
+  ctx.fillStyle=cs;ctx.beginPath();ctx.arc(x,y+r*0.18,r*1.05,0,7);ctx.fill();ctx.restore();
   ctx.save();
   if(glow){ctx.shadowColor="#fff";ctx.shadowBlur=CELL*0.35*(0.5+0.5*Math.sin(performance.now()/250));}
   const g=ctx.createRadialGradient(x-r*0.35,y-r*0.4,r*0.15,x,y,r);
@@ -87,8 +91,17 @@ function render(dropY,dropCol,dropColor){
   ctx.clip("evenodd");
   const fg=ctx.createLinearGradient(0,0,0,canvas.height);fg.addColorStop(0,"#1d4f86");fg.addColorStop(1,"#11335c");
   ctx.fillStyle=fg;ctx.fillRect(0,0,canvas.width,canvas.height);
+  // plastic sheen sweeping the frame
+  const sheen=ctx.createLinearGradient(0,0,canvas.width,canvas.height);
+  sheen.addColorStop(0,"rgba(255,255,255,.16)");sheen.addColorStop(0.25,"rgba(255,255,255,.03)");
+  sheen.addColorStop(0.55,"rgba(0,0,0,.06)");sheen.addColorStop(1,"rgba(0,0,0,.18)");
+  ctx.fillStyle=sheen;ctx.fillRect(0,0,canvas.width,canvas.height);
   for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){const p=cellXY(r,c);
-    ctx.beginPath();ctx.arc(p.x,p.y,CELL*0.42,0,7);ctx.strokeStyle="rgba(0,0,0,.35)";ctx.lineWidth=Math.max(1.5,CELL*0.035);ctx.stroke();}
+    // hole shadow (upper-left) and catch-light (lower-right) bevel
+    ctx.beginPath();ctx.arc(p.x,p.y,CELL*0.42,Math.PI*0.65,Math.PI*1.65);
+    ctx.strokeStyle="rgba(0,0,0,.5)";ctx.lineWidth=Math.max(2,CELL*0.05);ctx.stroke();
+    ctx.beginPath();ctx.arc(p.x,p.y,CELL*0.42,Math.PI*1.7,Math.PI*0.6);
+    ctx.strokeStyle="rgba(160,205,255,.35)";ctx.lineWidth=Math.max(1.5,CELL*0.035);ctx.stroke();}
   ctx.restore();}
 function landRow(c){for(let r=ROWS-1;r>=0;r--)if(!grid[r][c])return r;return -1;}
 function drop(c){if(animating||over)return;const r=landRow(c);if(r<0)return;
@@ -136,6 +149,11 @@ canvas.addEventListener("pointerup",e=>{const rect=canvas.getBoundingClientRect(
   const c=Math.floor((e.clientX-rect.left)/rect.width*COLS);
   if(c>=0&&c<COLS)drop(c);});
 document.getElementById("newBtn").addEventListener("click",newGame);
+GN.rulesButton(document.getElementById("foot"),{title:"Connect Four",sections:[
+ {h:"Goal",p:"Be first to connect four of your discs in a line \u2014 across, down, or diagonally."},
+ {h:"Your turn",p:"Tap any column. Your disc drops to the lowest open slot in that column."},
+ {h:"Winning",p:"Four in a row wins instantly. If all 42 slots fill with no line, the game is a draw."},
+ {h:"Tips",p:"The center column touches the most possible lines \u2014 fight for it. Watch for double threats: two ways to win that can\u2019t both be blocked."}]});
 GN.statsButton(document.getElementById("foot"),{title:"Connect Four",key:KEY,specials:[
   {label:"Horizontal wins",of:(r,n)=>r.filter(x=>x.winner===n&&x.dir==="horizontal").length},
   {label:"Vertical wins",of:(r,n)=>r.filter(x=>x.winner===n&&x.dir==="vertical").length},

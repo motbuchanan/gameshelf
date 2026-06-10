@@ -39,9 +39,12 @@
 <div id="msg"></div>
 <div id="foot"><button class="act" id="newBtn">New game</button><div id="score"></div></div>
 <div class="ov" id="overlay"><div id="confetti"></div><div id="ovTrophy">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p><button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
+<script src="gamenight.js"></script>
 <script>
 const N=8;
-const P={red:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},blue:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182"}};
+let P={red:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},blue:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182"}};
+function seatFrom(p){return{name:p.name,main:p.color,light:p.light,dark:p.dark};}
+
 const canvas=document.getElementById("board"),ctx=canvas.getContext("2d");
 let SQ=56,board=Array.from({length:N},()=>Array(N).fill(null)),turn="blue",sel=null,targets=[],phase="pick",chainPiece=null,animFly=null;
 let boardAngle=0,boardTarget=0,spinning=false,pulsing=false,GS=null;
@@ -55,11 +58,14 @@ function fit(){const w=Math.min(window.innerWidth-20,560),h=window.innerHeight-1
 function newGame(){board=Array.from({length:N},()=>Array(N).fill(null));
   for(let r=0;r<3;r++)for(let c=0;c<N;c++)if((r+c)%2)board[r][c]={color:"red",king:false};
   for(let r=5;r<N;r++)for(let c=0;c<N;c++)if((r+c)%2)board[r][c]={color:"blue",king:false};
-  turn=Math.random()<0.5?"red":"blue";sel=null;targets=[];phase="pick";chainPiece=null;animFly=null;
-  GS={start:Date.now(),stats:{Mot:{captures:0,kings:0},Kathy:{captures:0,kings:0}}};
-  document.getElementById("overlay").classList.remove("show");document.getElementById("confetti").innerHTML="";
-  boardAngle=boardTarget=(TVMODE?0:(turn==="red"?Math.PI:0));
-  beginTurn(true);}
+  sel=null;targets=[];phase="over";chainPiece=null;animFly=null;
+  document.getElementById("overlay").classList.remove("show");document.getElementById("confetti").innerHTML="";render();
+  GN.matchStart(function(m){P={red:seatFrom(m.a),blue:seatFrom(m.b)};
+    turn=(m.first===m.a)?"red":"blue";phase="pick";
+    GS={start:Date.now(),flipWinner:m.first.name,stats:{}};
+    GS.stats[m.a.name]={captures:0,kings:0};GS.stats[m.b.name]={captures:0,kings:0};
+    boardAngle=boardTarget=(TVMODE?0:(turn==="red"?Math.PI:0));
+    beginTurn(true);});}
 function fwdDir(color){return color==="red"?1:-1;}
 function inB(r,c){return r>=0&&r<N&&c>=0&&c<N;}
 function capsFor(r,c){const p=board[r][c],out=[];if(!p)return out;
@@ -88,8 +94,8 @@ function updateBar(){const pc=P[turn];document.getElementById("turnName").textCo
   const d=document.getElementById("dot");
   d.style.background="radial-gradient(circle at 35% 30%,"+pc.light+","+pc.main+" 70%,"+pc.dark+")";
   d.style.boxShadow="0 0 0 3px rgba(255,255,255,.15),0 0 14px "+pc.main;
-  const games=Store.load();let m=0,k=0;for(const g of games){if(g.winner==="Mot")m++;else if(g.winner==="Kathy")k++;}
-  document.getElementById("score").textContent="Mot "+m+" \u00b7 "+k+" Kathy";}
+  const games=Store.load();let m=0,k=0;for(const g of games){if(g.winner===P.red.name)m++;else if(g.winner===P.blue.name)k++;}
+  document.getElementById("score").textContent=P.red.name+" "+m+" \u00b7 "+k+" "+P.blue.name;}
 function applyOrientation(snap){if(TVMODE)return;const want=(turn==="red"?Math.PI:0);
   if(Math.abs(((boardTarget%(2*Math.PI))+2*Math.PI)%(2*Math.PI)-want)<0.01)return;
   boardTarget+=Math.PI;
@@ -129,8 +135,17 @@ function render(){ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,can
     const x=c*SQ,y=r*SQ;
     if(dark){const g=ctx.createLinearGradient(x,y,x,y+SQ);g.addColorStop(0,"#6e4423");g.addColorStop(1,"#5a3519");ctx.fillStyle=g;}
     else{const g=ctx.createLinearGradient(x,y,x,y+SQ);g.addColorStop(0,"#e8d6ae");g.addColorStop(1,"#dcc699");ctx.fillStyle=g;}
-    ctx.fillRect(x,y,SQ,SQ);}
-  ctx.strokeStyle="rgba(0,0,0,.4)";ctx.lineWidth=2;ctx.strokeRect(1,1,canvas.width-2,canvas.height-2);
+    ctx.fillRect(x,y,SQ,SQ);
+    // square bevel: light top edge, dark bottom edge
+    ctx.fillStyle=dark?"rgba(255,235,200,.07)":"rgba(255,255,255,.25)";ctx.fillRect(x,y,SQ,1.5);
+    ctx.fillStyle="rgba(0,0,0,"+(dark?".22":".10")+")";ctx.fillRect(x,y+SQ-1.5,SQ,1.5);}
+  // vignette pulls the eye to center like table light
+  const vg=ctx.createRadialGradient(canvas.width/2,canvas.height/2,canvas.width*0.32,canvas.width/2,canvas.height/2,canvas.width*0.75);
+  vg.addColorStop(0,"rgba(0,0,0,0)");vg.addColorStop(1,"rgba(0,0,0,.28)");
+  ctx.fillStyle=vg;ctx.fillRect(0,0,canvas.width,canvas.height);
+  // inner frame line + worn edge highlight
+  ctx.strokeStyle="rgba(0,0,0,.5)";ctx.lineWidth=3;ctx.strokeRect(1.5,1.5,canvas.width-3,canvas.height-3);
+  ctx.strokeStyle="rgba(255,225,170,.18)";ctx.lineWidth=1;ctx.strokeRect(4,4,canvas.width-8,canvas.height-8);
   const pu=PULSE();
   // selectable pieces glow
   if(phase==="pick"&&!animFly){for(const m of movablePieces(turn)){const p=sqXY(m.r,m.c);
@@ -184,7 +199,7 @@ function doMove(t){const fr=sel.r,fc=sel.c,p=board[fr][fc];
   (function step(ts){animFly.k=Math.min(1,(ts-t0)/dur);render();
     if(animFly.k<1){requestAnimationFrame(step);return;}
     board[t.r][t.c]=p;board[fr][fc]=null;
-    if(t.cap){board[t.cap.r][t.cap.c]=null;GS.stats[P[turn].name].captures++;}
+    if(t.cap){board[t.cap.r][t.cap.c]=null;GS.stats[P[turn].name].captures++;if(!GN.friendly)GN.g.addSentHome(1);}
     let kinged=false;
     if(!p.king&&((p.color==="red"&&t.r===N-1)||(p.color==="blue"&&t.r===0))){p.king=true;kinged=true;GS.stats[P[turn].name].kings++;}
     animFly=null;sel=null;
@@ -200,8 +215,8 @@ function endTurnCheck(){const opp=turn==="red"?"blue":"red";
 function gameOver(winColor,why){phase="over";
   const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
     winner:P[winColor].name,loser:P[winColor==="red"?"blue":"red"].name,
-    stats:GS.stats,reason:why};
-  const l=Store.load();l.push(rec);Store.save(l);
+    flipWinner:GS.flipWinner,stats:GS.stats,reason:why};
+  GN.recordGame(KEY,rec);
   document.getElementById("ovTitle").textContent=P[winColor].name+" wins!";
   document.getElementById("ovTitle").style.color=P[winColor].main;
   document.getElementById("ovText").textContent=why+" \u00b7 "+GS.stats[P[winColor].name].captures+" captures";
@@ -214,6 +229,15 @@ function spawnConfetti(color){const box=document.getElementById("confetti");box.
     d.style.animationDuration=(2.4+Math.random()*1.8)+"s";d.style.animationDelay=(Math.random()*0.9)+"s";
     d.style.transform="rotate("+Math.floor(Math.random()*360)+"deg)";box.appendChild(d);}}
 document.getElementById("newBtn").addEventListener("click",newGame);
+GN.rulesButton(document.getElementById("foot"),{title:"Checkers",sections:[
+ {h:"Goal",p:"Capture every enemy piece, or leave your opponent with no legal move."},
+ {h:"Moving",p:"Pieces slide one square diagonally forward onto dark squares. Kings (crowned on the far row) move diagonally forward or backward."},
+ {h:"Jumping",p:"Capture by leaping over an adjacent enemy piece into the empty square beyond. If a jump is available you MUST take one \u2014 and if the same piece can keep jumping, the chain continues in the same turn."},
+ {h:"Kings",p:"Reach the far row and the piece is crowned. Reaching it mid-jump ends that jump chain immediately."}]});
+GN.statsButton(document.getElementById("foot"),{title:"Checkers",key:KEY,specials:[
+  {label:"Captures",of:(r,n)=>r.reduce((a,x)=>a+((x.stats&&x.stats[n])?x.stats[n].captures:0),0)},
+  {label:"Kings crowned",of:(r,n)=>r.reduce((a,x)=>a+((x.stats&&x.stats[n])?x.stats[n].kings:0),0)},
+  {label:"Coin flips won",of:(r,n)=>r.filter(x=>x.flipWinner===n).length}]});
 document.getElementById("ovBtn").addEventListener("click",newGame);
 window.addEventListener("resize",fit);
 fit();newGame();

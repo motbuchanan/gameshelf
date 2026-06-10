@@ -39,9 +39,10 @@
 <div id="msg"></div>
 <div id="foot"><button class="act" id="newBtn">New game</button><button class="act" id="modeBtn" style="background:#15241b;color:#cfe6d8;box-shadow:0 4px 0 #0b160f,0 5px 10px rgba(0,0,0,.4);border:1px solid #3a5a47;">Rules: Kalah</button><div id="score"></div></div>
 <div class="ov" id="overlay"><div id="confetti"></div><div id="ovTrophy">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p><button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
+<script src="gamenight.js"></script>
 <script>
 // pits 0-5 Kathy (bottom, left->right), 6 Kathy store, 7-12 Mot (top, right->left visually), 13 Mot store
-const P={top:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19",pits:[7,8,9,10,11,12],store:13},
+let P={top:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19",pits:[7,8,9,10,11,12],store:13},
          bot:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182",pits:[0,1,2,3,4,5],store:6}};
 const canvas=document.getElementById("board"),ctx=canvas.getContext("2d");
 let W=600,H=300,pits=[],turn="bot",phase="pick",pulsing=false,GS=null,sowing=null;
@@ -57,18 +58,22 @@ function pitXY(i){const m=W*0.16,span=W-2*m,step=span/5;
   if(i===13)return{x:W*0.085,y:H/2,store:true};
   if(i<6)return{x:m+i*step,y:H*0.72};
   return{x:m+(12-i)*step,y:H*0.28};}
+function seatFrom(p,seat){return Object.assign({},seat,{name:p.name,main:p.color,light:p.light,dark:p.dark});}
 function newGame(){pits=Array(14).fill(4);pits[6]=0;pits[13]=0;
-  turn=Math.random()<0.5?"top":"bot";phase="pick";sowing=null;
-  GS={start:Date.now(),mode:MODE,captures:{Mot:0,Kathy:0},extras:{Mot:0,Kathy:0}};
-  document.getElementById("overlay").classList.remove("show");document.getElementById("confetti").innerHTML="";
-  updateBar();setMode(MODE);setMessage(P[turn].name+" sows first ("+(MODE==="kalah"?"Kalah":"Avalanche")+" rules) \u2014 tap one of your pits");render();ensurePulse();}
+  phase="over";sowing=null;
+  document.getElementById("overlay").classList.remove("show");document.getElementById("confetti").innerHTML="";render();
+  GN.matchStart(function(m){P={top:seatFrom(m.a,P.top),bot:seatFrom(m.b,P.bot)};
+    turn=(m.first===m.a)?"top":"bot";phase="pick";
+    GS={start:Date.now(),flipWinner:m.first.name,mode:MODE,captures:{},extras:{}};
+    GS.captures[m.a.name]=0;GS.captures[m.b.name]=0;GS.extras[m.a.name]=0;GS.extras[m.b.name]=0;
+    updateBar();setMode(MODE);setMessage(P[turn].name+" sows first ("+(MODE==="kalah"?"Kalah":"Avalanche")+" rules) \u2014 tap one of your pits");render();ensurePulse();});}
 function setMessage(t){document.getElementById("msg").textContent=t;}
 function updateBar(){const pc=P[turn];document.getElementById("turnName").textContent=pc.name+"'s turn";
   const d=document.getElementById("dot");
   d.style.background="radial-gradient(circle at 35% 30%,"+pc.light+","+pc.main+" 70%,"+pc.dark+")";
   d.style.boxShadow="0 0 0 3px rgba(255,255,255,.15),0 0 14px "+pc.main;
-  const g=Store.load();let m=0,k=0;for(const r of g){if(r.winner==="Mot")m++;else if(r.winner==="Kathy")k++;}
-  document.getElementById("score").textContent="Mot "+m+" \u00b7 "+k+" Kathy";}
+  const g=Store.load();let m=0,k=0;for(const r of g){if(r.winner===P.top.name)m++;else if(r.winner===P.bot.name)k++;}
+  document.getElementById("score").textContent=P.top.name+" "+m+" \u00b7 "+k+" "+P.bot.name;}
 function oppOf(i){return 12-i;} // opposite pit across the board (0..5 <-> 12..7)
 let MODE=(function(){try{return localStorage.getItem("mancala_mode")||"kalah";}catch(e){return "kalah";}})();
 function setMode(m){MODE=m;try{localStorage.setItem("mancala_mode",m);}catch(e){}
@@ -119,12 +124,12 @@ function endGame(){phase="over";
   const winSide=m>k?"top":k>m?"bot":null;
   const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
     winner:winSide?P[winSide].name:null,loser:winSide?P[winSide==="top"?"bot":"top"].name:null,
-    draw:!winSide,score:{Mot:m,Kathy:k},captures:GS.captures,extras:GS.extras};
-  const l=Store.load();l.push(rec);Store.save(l);
+    draw:!winSide,flipWinner:GS.flipWinner,mode:GS.mode,score:(function(){const s={};s[P.top.name]=m;s[P.bot.name]=k;return s;})(),captures:GS.captures,extras:GS.extras};
+  GN.recordGame(KEY,rec);
   document.getElementById("ovTitle").textContent=winSide?P[winSide].name+" wins!":"It's a tie!";
   document.getElementById("ovTitle").style.color=winSide?P[winSide].main:"#e8f0e4";
   document.getElementById("ovTrophy").textContent=winSide?"\uD83C\uDFC6":"\uD83E\uDD1D";
-  document.getElementById("ovText").textContent="Mot "+m+" \u00b7 "+k+" Kathy";
+  document.getElementById("ovText").textContent=P.top.name+" "+m+" \u00b7 "+k+" "+P.bot.name;
   if(winSide)spawnConfetti(winSide);updateBar();
   setTimeout(()=>document.getElementById("overlay").classList.add("show"),500);}
 function stonesIn(x,y,rx,ry,n,seedI){
@@ -145,6 +150,11 @@ function render(){ctx.clearRect(0,0,W,H);
   for(let i=0;i<8;i++){ctx.beginPath();ctx.moveTo(0,H*(0.1+i*0.11));
     ctx.bezierCurveTo(W*0.3,H*(0.08+i*0.11),W*0.7,H*(0.14+i*0.11),W,H*(0.1+i*0.11));ctx.stroke();}
   ctx.restore();
+  // table-light vignette over the wood
+  const vg=ctx.createRadialGradient(W/2,H/2,W*0.25,W/2,H/2,W*0.62);
+  vg.addColorStop(0,"rgba(0,0,0,0)");vg.addColorStop(1,"rgba(0,0,0,.22)");
+  ctx.save();ctx.beginPath();ctx.roundRect(0,0,W,H,24);ctx.clip();
+  ctx.fillStyle=vg;ctx.fillRect(0,0,W,H);ctx.restore();
   const pu=PULSE(),legal=phase==="pick"?legalPits(turn):[];
   for(let i=0;i<14;i++){const p=pitXY(i),store=!!p.store;
     const rx=store?W*0.052:W*0.055,ry=store?H*0.36:H*0.155;
@@ -152,7 +162,15 @@ function render(){ctx.clearRect(0,0,W,H);
     const pg=ctx.createRadialGradient(p.x,p.y-ry*0.2,Math.min(rx,ry)*0.2,p.x,p.y,Math.max(rx,ry));
     pg.addColorStop(0,"#241105");pg.addColorStop(1,"#3a1f0c");
     ctx.beginPath();ctx.ellipse(p.x,p.y,rx,ry,0,0,7);ctx.fillStyle=pg;ctx.fill();
-    ctx.strokeStyle="rgba(0,0,0,.5)";ctx.lineWidth=2;ctx.stroke();
+    // carved depth: heavy shadow rolling in from the top lip
+    ctx.save();ctx.beginPath();ctx.ellipse(p.x,p.y,rx,ry,0,0,7);ctx.clip();
+    const lip=ctx.createLinearGradient(0,p.y-ry,0,p.y+ry*0.35);
+    lip.addColorStop(0,"rgba(0,0,0,.55)");lip.addColorStop(1,"rgba(0,0,0,0)");
+    ctx.fillStyle=lip;ctx.fillRect(p.x-rx,p.y-ry,rx*2,ry*1.4);ctx.restore();
+    ctx.strokeStyle="rgba(0,0,0,.55)";ctx.lineWidth=2.5;ctx.stroke();
+    // sunlight catching the bottom rim
+    ctx.beginPath();ctx.ellipse(p.x,p.y,rx,ry,0,Math.PI*0.15,Math.PI*0.85);
+    ctx.strokeStyle="rgba(255,215,160,.30)";ctx.lineWidth=1.8;ctx.stroke();
     if(legal.includes(i)){ctx.save();ctx.strokeStyle="#f7f3da";ctx.globalAlpha=0.5+0.45*pu;
       ctx.lineWidth=Math.max(2,W*0.006);ctx.beginPath();ctx.ellipse(p.x,p.y,rx+4+2*pu,ry+4+2*pu,0,0,7);ctx.stroke();ctx.restore();}
     stonesIn(p.x,p.y,rx,ry,pits[i],i);
@@ -175,6 +193,16 @@ canvas.addEventListener("pointerup",e=>{if(phase!=="pick")return;
     if(d<W*0.085&&d<bd){bd=d;best=i;}}
   if(best!==null)doSow(best);});
 document.getElementById("newBtn").addEventListener("click",newGame);
+GN.rulesButton(document.getElementById("foot"),{title:"Mancala",sections:[
+ {h:"Goal",p:"Bank more stones in your store (the big pit on your right) than your opponent."},
+ {h:"Sowing",p:"Tap one of your six pits. Its stones are sown one-by-one counter-clockwise, including your own store but skipping your opponent\u2019s."},
+ {h:"Kalah rules",p:"Last stone in your store: free turn. Last stone in an empty pit on YOUR side: capture that stone plus everything in the pit directly opposite. When one side empties, the other player sweeps their remaining stones \u2014 highest store wins."},
+ {h:"Avalanche rules",p:"Last stone landing in any occupied pit scoops that pit and keeps sowing. The chain only ends in your store (free turn) or an empty pit. No captures \u2014 the chains are everything."}]});
+GN.statsButton(document.getElementById("foot"),{title:"Mancala",key:KEY,specials:[
+  {label:"Stones captured",of:(r,n)=>r.reduce((a,x)=>a+((x.captures&&x.captures[n])||0),0)},
+  {label:"Free turns",of:(r,n)=>r.reduce((a,x)=>a+((x.extras&&x.extras[n])||0),0)},
+  {label:"Kalah wins",of:(r,n)=>r.filter(x=>x.winner===n&&x.mode!=="avalanche").length},
+  {label:"Avalanche wins",of:(r,n)=>r.filter(x=>x.winner===n&&x.mode==="avalanche").length}]});
 document.getElementById("modeBtn").addEventListener("click",()=>{setMode(MODE==="kalah"?"avalanche":"kalah");newGame();});
 document.getElementById("ovBtn").addEventListener("click",newGame);
 window.addEventListener("resize",fit);

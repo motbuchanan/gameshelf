@@ -59,8 +59,9 @@
 <div id="msg"></div>
 <div id="foot"><button class="act" id="rollBtn">Roll</button></div>
 <div class="ov" id="overlay"><div id="confetti"></div><div id="ovTrophy">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p><button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
+<script src="gamenight.js"></script>
 <script>
-const P={A:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},B:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182"}};
+let P={A:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},B:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182"}};
 const CATS=[
  {id:"ones",label:"Ones",upper:1},{id:"twos",label:"Twos",upper:2},{id:"threes",label:"Threes",upper:3},
  {id:"fours",label:"Fours",upper:4},{id:"fives",label:"Fives",upper:5},{id:"sixes",label:"Sixes",upper:6},
@@ -89,11 +90,14 @@ function upperSum(card){return CATS.filter(c=>c.upper).reduce((s,c)=>s+(card[c.i
 function totalOf(card){const up=upperSum(card),bonus=up>=63?35:0;
   return up+bonus+CATS.filter(c=>!c.upper).reduce((s,c)=>s+(card[c.id]??0),0);}
 function roundsDone(card){return CATS.filter(c=>card[c.id]!==undefined).length;}
-function newGame(){cards={A:{},B:{}};turn=Math.random()<0.5?"A":"B";
-  dice=[1,2,3,4,5];held=[false,false,false,false,false];rolls=0;phase="turn";
-  GS={start:Date.now()};
+function seatFrom(p){return{name:p.name,main:p.color,light:p.light,dark:p.dark};}
+function newGame(){cards={A:{},B:{}};
+  dice=[1,2,3,4,5];held=[false,false,false,false,false];rolls=0;phase="over";
   document.getElementById("overlay").classList.remove("show");document.getElementById("confetti").innerHTML="";
-  startTurn();}
+  GN.matchStart(function(m){P={A:seatFrom(m.a),B:seatFrom(m.b)};
+    turn=(m.first===m.a)?"A":"B";phase="turn";
+    GS={start:Date.now(),flipWinner:m.first.name};
+    startTurn();});}
 function startTurn(){held=[false,false,false,false,false];rolls=0;phase="turn";
   updateBar();setMessage(P[turn].name+" \u2014 roll the dice");renderDice(false);renderCard();
   document.getElementById("rollBtn").disabled=false;document.getElementById("rollBtn").textContent="Roll";}
@@ -109,6 +113,7 @@ function roll(){if(rolls>=3||phase!=="turn")return;
   let n=0;const iv=setInterval(()=>{for(let i=0;i<5;i++)if(!held[i])dice[i]=1+Math.floor(Math.random()*6);
     renderDice(true);if(++n>=6){clearInterval(iv);
       renderDice(true);renderCard();
+      if(!GN.friendly)GN.g.addDice(dice.filter((v,i)=>!held[i]));
       const left=3-rolls;
       document.getElementById("rollBtn").disabled=(left===0);
       document.getElementById("rollBtn").textContent=left?("Roll again ("+left+" left)"):"Roll";
@@ -143,12 +148,12 @@ function finish(){phase="over";
   const a=totalOf(cards.A),b=totalOf(cards.B);
   const win=a>b?"A":b>a?"B":null;
   const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
-    winner:win?P[win].name:null,loser:win?P[win==="A"?"B":"A"].name:null,draw:!win,score:{Mot:a,Kathy:b}};
-  const l=Store.load();l.push(rec);Store.save(l);
+    winner:win?P[win].name:null,loser:win?P[win==="A"?"B":"A"].name:null,draw:!win,flipWinner:GS.flipWinner,yahtzees:(function(){const s={};s[P.A.name]=(cards.A.yahtzee>=50?1:0);s[P.B.name]=(cards.B.yahtzee>=50?1:0);return s;})(),bonus:(function(){const s={};s[P.A.name]=upperSum(cards.A)>=63?1:0;s[P.B.name]=upperSum(cards.B)>=63?1:0;return s;})(),score:(function(){const s={};s[P.A.name]=a;s[P.B.name]=b;return s;})()};
+  GN.recordGame(KEY,rec);
   document.getElementById("ovTitle").textContent=win?P[win].name+" wins!":"Dead tie!";
   document.getElementById("ovTitle").style.color=win?P[win].main:"#e8f0e4";
   document.getElementById("ovTrophy").textContent=win?"\uD83C\uDFC6":"\uD83E\uDD1D";
-  document.getElementById("ovText").textContent="Mot "+a+" \u00b7 "+b+" Kathy";
+  document.getElementById("ovText").textContent=P.A.name+" "+a+" \u00b7 "+b+" "+P.B.name;
   if(win)spawnConfetti(win);
   setTimeout(()=>document.getElementById("overlay").classList.add("show"),500);}
 function spawnConfetti(pl){const box=document.getElementById("confetti");box.innerHTML="";const pc=P[pl];
@@ -159,6 +164,16 @@ function spawnConfetti(pl){const box=document.getElementById("confetti");box.inn
     d.style.transform="rotate("+Math.floor(Math.random()*360)+"deg)";box.appendChild(d);}}
 document.getElementById("rollBtn").addEventListener("click",roll);
 document.getElementById("ovBtn").addEventListener("click",newGame);
+GN.rulesButton(document.getElementById("foot"),{title:"Yahtzee",sections:[
+ {h:"Goal",p:"Highest total after 13 rounds. Each round you fill exactly one category \u2014 even if it scores zero."},
+ {h:"Rolling",p:"Up to three rolls per turn. After each roll, tap dice to hold them; the rest re-roll."},
+ {h:"Upper section",p:"Ones through Sixes score the matching dice only. Reach 63 up there (three of each) and a 35-point bonus lands."},
+ {h:"Lower section",p:"3/4 of a kind score all five dice. Full house 25, small straight 30, large straight 40, Chance totals everything, and five of a kind \u2014 YAHTZEE \u2014 is 50."}]});
+GN.statsButton(document.getElementById("foot"),{title:"Yahtzee",key:KEY,specials:[
+  {label:"Yahtzees rolled",of:(r,n)=>r.reduce((a,x)=>a+((x.yahtzees&&x.yahtzees[n])||0),0)},
+  {label:"63+ bonuses",of:(r,n)=>r.reduce((a,x)=>a+((x.bonus&&x.bonus[n])||0),0)},
+  {label:"Best total",of:(r,n)=>r.reduce((a,x)=>Math.max(a,(x.score&&x.score[n])||0),0)},
+  {label:"Coin flips won",of:(r,n)=>r.filter(x=>x.flipWinner===n).length}]});
 newGame();
 </script>
 </body>

@@ -40,8 +40,9 @@
 <div id="msg"></div>
 <div id="foot"><button class="act" id="rollBtn">Roll</button><button class="act" id="newBtn">New game</button><div id="score"></div></div>
 <div class="ov" id="overlay"><div id="confetti"></div><div id="ovTrophy">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p><button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
+<script src="gamenight.js"></script>
 <script>
-const P={red:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19",dir:-1,home:[1,6]},
+let P={red:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19",dir:-1,home:[1,6]},
         blue:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182",dir:1,home:[19,24]}};
 const canvas=document.getElementById("board"),ctx=canvas.getContext("2d");
 let W=620,H=420,pts=[],barC={red:0,blue:0},off={red:0,blue:0};
@@ -54,18 +55,23 @@ const TVMODE=(function(){try{if(new URLSearchParams(location.search).get("tv")==
 const PULSE=()=>0.5+0.5*Math.sin(performance.now()/280);
 function fit(){const w=Math.min(window.innerWidth-16,640),h=window.innerHeight-160;
   W=Math.floor(w);H=Math.floor(Math.min(h,w*0.68));canvas.width=W;canvas.height=H;render();}
+function seatFrom(p,seat){return Object.assign({},seat,{name:p.name,main:p.color,light:p.light,dark:p.dark});}
 function newGame(){pts=Array(25).fill(null);
   const put=(i,c,n)=>pts[i]={c,n};
   put(1,"blue",2);put(12,"blue",5);put(17,"blue",3);put(19,"blue",5);
   put(24,"red",2);put(13,"red",5);put(8,"red",3);put(6,"red",5);
   barC={red:0,blue:0};off={red:0,blue:0};dice=[];used=[];sel=null;targets=[];animFly=null;
-  GS={start:Date.now(),stats:{Mot:{hits:0,rolls:0},Kathy:{hits:0,rolls:0}}};
   document.getElementById("overlay").classList.remove("show");document.getElementById("confetti").innerHTML="";
-  // opening: each rolls one die, higher starts and plays both
-  let a,b;do{a=1+Math.floor(Math.random()*6);b=1+Math.floor(Math.random()*6);}while(a===b);
-  turn=a>b?"red":"blue";dice=[a,b];used=[];
-  boardAngle=boardTarget=(TVMODE?0:(turn==="red"?Math.PI:0));
-  phase="move";afterRollSetup(P[turn].name+" wins the opening roll ("+a+"-"+b+")");}
+  phase="over";render();
+  GN.matchStart(function(m){P={red:seatFrom(m.a,P.red),blue:seatFrom(m.b,P.blue)};
+    turn=(m.first===m.a)?"red":"blue";
+    GS={start:Date.now(),flipWinner:m.first.name,stats:{}};
+    GS.stats[m.a.name]={hits:0,rolls:0};GS.stats[m.b.name]={hits:0,rolls:0};
+    let a,b;do{a=1+Math.floor(Math.random()*6);b=1+Math.floor(Math.random()*6);}while(a===b);
+    if(!GN.friendly)GN.g.addDice([a,b]);
+    dice=[a,b];used=[];GS.stats[P[turn].name].rolls++;
+    boardAngle=boardTarget=(TVMODE?0:(turn==="red"?Math.PI:0));
+    phase="move";afterRollSetup(P[turn].name+" won the flip \u2014 opening roll "+a+"-"+b);});}
 /* ===== rules ===== */
 function cloneState(){return{pts:pts.map(p=>p?{c:p.c,n:p.n}:null),barC:{...barC},off:{...off}};}
 function restore(s){pts=s.pts.map(p=>p?{c:p.c,n:p.n}:null);barC={...s.barC};off={...s.off};}
@@ -92,7 +98,7 @@ function applyMove(color,m){let hit=false;
   else{pts[m.from].n--;if(!pts[m.from].n)pts[m.from]=null;}
   if(m.to==="off")off[color]++;
   else{const p=pts[m.to];
-    if(p&&p.c!==color){barC[p.c]++;pts[m.to]={c:color,n:1};hit=true;}
+    if(p&&p.c!==color){barC[p.c]++;pts[m.to]={c:color,n:1};hit=true;if(!GN.friendly)GN.g.addSentHome(1);}
     else if(p)p.n++;
     else pts[m.to]={c:color,n:1};}
   return hit;}
@@ -121,7 +127,7 @@ function allowedMoves(color,diceLeft){const L=bestLen(color,diceLeft);if(!L)retu
 function diceLeft(){const l=dice.slice();for(const u of used){const i=l.indexOf(u);if(i>=0)l.splice(i,1);}return l;}
 function roll(){if(phase!=="roll"||spinning||animFly)return;
   const a=1+Math.floor(Math.random()*6),b=1+Math.floor(Math.random()*6);
-  dice=a===b?[a,a,a,a]:[a,b];used=[];GS.stats[P[turn].name].rolls++;
+  dice=a===b?[a,a,a,a]:[a,b];used=[];GS.stats[P[turn].name].rolls++;if(!GN.friendly)GN.g.addDice([a,b]);
   phase="move";afterRollSetup(P[turn].name+" rolled "+a+"-"+b+(a===b?" \u2014 doubles!":""));}
 function afterRollSetup(msgText){document.getElementById("rollBtn").disabled=true;
   const moves=allowedMoves(turn,diceLeft());
@@ -155,8 +161,8 @@ function gameOver(winColor){phase="over";
   const loseColor=winColor==="red"?"blue":"red";
   const gammon=off[loseColor]===0;
   const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
-    winner:P[winColor].name,loser:P[loseColor].name,gammon,stats:GS.stats};
-  const l=Store.load();l.push(rec);Store.save(l);
+    winner:P[winColor].name,loser:P[loseColor].name,flipWinner:GS.flipWinner,gammon,stats:GS.stats};
+  GN.recordGame(KEY,rec);
   document.getElementById("ovTitle").textContent=P[winColor].name+" wins"+(gammon?" a gammon!":"!");
   document.getElementById("ovTitle").style.color=P[winColor].main;
   document.getElementById("ovText").textContent=GS.stats[P[winColor].name].hits+" hits \u00b7 "+GS.stats[P[winColor].name].rolls+" rolls";
@@ -204,15 +210,33 @@ function render(){ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,W,H
   ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
   ctx.fillStyle="#27583e";ctx.fillRect(g.m,g.m,g.midL-g.m,H-2*g.m);
   ctx.fillRect(g.midR,g.m,W-g.trayW-g.m*1.3-g.midR,H-2*g.m);
-  // tray
+  // tray with inner shadow lip
   ctx.fillStyle="#1c3a29";ctx.fillRect(W-g.trayW-g.m*0.3,g.m,g.trayW,H-2*g.m);
+  const trx=W-g.trayW-g.m*0.3;
+  const tsh=ctx.createLinearGradient(trx,0,trx+g.trayW*0.5,0);
+  tsh.addColorStop(0,"rgba(0,0,0,.45)");tsh.addColorStop(1,"rgba(0,0,0,0)");
+  ctx.fillStyle=tsh;ctx.fillRect(trx,g.m,g.trayW*0.5,H-2*g.m);
+  ctx.strokeStyle="rgba(255,225,170,.14)";ctx.lineWidth=1;ctx.strokeRect(trx+1,g.m+1,g.trayW-2,H-2*g.m-2);
   // points
   for(let i=1;i<=24;i++){const x=pointX(i),top=pointTop(i),pw=g.pw;
-    const col=(i%2===0)?"#d9c49a":"#8c3b24";
+    const lt=(i%2===0);
     ctx.beginPath();
     if(top){ctx.moveTo(x-pw/2,g.m);ctx.lineTo(x+pw/2,g.m);ctx.lineTo(x,g.m+H*0.38);}
     else{ctx.moveTo(x-pw/2,H-g.m);ctx.lineTo(x+pw/2,H-g.m);ctx.lineTo(x,H-g.m-H*0.38);}
-    ctx.closePath();ctx.fillStyle=col;ctx.globalAlpha=0.92;ctx.fill();ctx.globalAlpha=1;}
+    ctx.closePath();
+    // inlaid wood look: base fades toward the tip, fine outline, base shadow
+    const y0=top?g.m:H-g.m,y1=top?(g.m+H*0.38):(H-g.m-H*0.38);
+    const tg=ctx.createLinearGradient(0,y0,0,y1);
+    if(lt){tg.addColorStop(0,"#e6d2a8");tg.addColorStop(1,"#c4ab78");}
+    else{tg.addColorStop(0,"#9a4226");tg.addColorStop(1,"#702c16");}
+    ctx.fillStyle=tg;ctx.fill();
+    ctx.strokeStyle="rgba(0,0,0,.35)";ctx.lineWidth=1.2;ctx.stroke();
+    ctx.beginPath();ctx.moveTo(x-pw/2,y0);ctx.lineTo(x+pw/2,y0);
+    ctx.strokeStyle="rgba(0,0,0,.4)";ctx.lineWidth=2.5;ctx.stroke();}
+  // felt vignette on both halves
+  const fv=ctx.createRadialGradient(W/2,H/2,W*0.18,W/2,H/2,W*0.62);
+  fv.addColorStop(0,"rgba(0,0,0,0)");fv.addColorStop(1,"rgba(0,0,0,.25)");
+  ctx.fillStyle=fv;ctx.fillRect(g.m,g.m,W-g.m*2,H-g.m*2);
   // bar
   ctx.fillStyle=bg;ctx.fillRect(g.midL,0,g.barW,H);
   ctx.strokeStyle="rgba(0,0,0,.35)";ctx.lineWidth=2;ctx.strokeRect(g.midL,0,g.barW,H);
@@ -273,8 +297,8 @@ function updateBar(){const pc=P[turn];document.getElementById("turnName").textCo
   const d=document.getElementById("dot");
   d.style.background="radial-gradient(circle at 35% 30%,"+pc.light+","+pc.main+" 70%,"+pc.dark+")";
   d.style.boxShadow="0 0 0 3px rgba(255,255,255,.15),0 0 14px "+pc.main;
-  const games=Store.load();let m=0,k=0;for(const g of games){if(g.winner==="Mot")m++;else if(g.winner==="Kathy")k++;}
-  document.getElementById("score").textContent="Mot "+m+" \u00b7 "+k+" Kathy";}
+  const games=Store.load();let m=0,k=0;for(const g of games){if(g.winner===P.red.name)m++;else if(g.winner===P.blue.name)k++;}
+  document.getElementById("score").textContent=P.red.name+" "+m+" \u00b7 "+k+" "+P.blue.name;}
 function applyOrientation(snap){if(TVMODE)return;const want=(turn==="red"?Math.PI:0);
   if(Math.abs(((boardTarget%(2*Math.PI))+2*Math.PI)%(2*Math.PI)-want)<0.01)return;
   boardTarget+=Math.PI;
@@ -314,6 +338,15 @@ canvas.addEventListener("pointerup",e=>{if(phase!=="move"||spinning||animFly)ret
   else{sel=null;targets=[];render();}});
 document.getElementById("rollBtn").addEventListener("click",roll);
 document.getElementById("newBtn").addEventListener("click",newGame);
+GN.rulesButton(document.getElementById("foot"),{title:"Backgammon",sections:[
+ {h:"Goal",p:"Bring all 15 checkers home, then bear them off the board first."},
+ {h:"Moving",p:"Roll two dice; each die moves one checker that many points (one checker may use both). Doubles play four moves. You can land anywhere except a point holding two or more enemy checkers."},
+ {h:"Hitting",p:"Land on a lone enemy checker and it\u2019s sent to the bar. A barred checker must re-enter in the opponent\u2019s home board before its owner can do anything else \u2014 rolling no entry is a dance."},
+ {h:"Bearing off",p:"Once all your checkers reach your home board, dice remove them. Win before your opponent bears off a single checker and it\u2019s a gammon \u2014 a double win."}]});
+GN.statsButton(document.getElementById("foot"),{title:"Backgammon",key:KEY,specials:[
+  {label:"Hits",of:(r,n)=>r.reduce((a,x)=>a+((x.stats&&x.stats[n])?x.stats[n].hits:0),0)},
+  {label:"Gammon wins",of:(r,n)=>r.filter(x=>x.winner===n&&x.gammon).length},
+  {label:"Coin flips won",of:(r,n)=>r.filter(x=>x.flipWinner===n).length}]});
 document.getElementById("ovBtn").addEventListener("click",newGame);
 window.addEventListener("resize",fit);
 fit();newGame();

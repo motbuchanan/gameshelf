@@ -138,6 +138,7 @@
 </div>
 <div id="menuOv" class="ov"><h2>Menu</h2><div id="menuGrid">
   <button id="menuStats">Scoreboard</button>
+  <button id="menuRules">How to play</button>
   <button id="menuQuit">Quit to home</button>
 </div><button class="act ghost" id="menuClose">Close</button></div>
 <div id="homeOv" class="ov">
@@ -164,6 +165,7 @@
   <div class="statsfoot"><button class="act" id="statsClose">Close</button><button class="clearbtn" id="statsClear">Clear records</button></div>
 </div>
 
+<script src="gamenight.js"></script>
 <script>
 /* ===== THEME REGISTRY ===== */
 function basePlayers(){return{
@@ -748,6 +750,12 @@ function addBtn(parent,label,cls,fn){const b=document.createElement("button");b.
   document.getElementById("menuBtn").onclick=()=>ov.classList.add("show");
   document.getElementById("menuClose").onclick=()=>ov.classList.remove("show");
   document.getElementById("menuStats").onclick=()=>{ov.classList.remove("show");openStats();};
+  document.getElementById("menuRules").onclick=()=>{ov.classList.remove("show");
+    GN.openRules({title:"Sorry!",sections:[
+ {h:"Goal",p:"Race all four pawns from Start, around the board, up your safety zone, and Home."},
+ {h:"Cards",p:"1 or 2 leaves Start (2 also moves 2 and draws again). 4 moves backward. 7 can split between two pawns. 10 moves 10 or back 1. 11 moves 11 or swaps places with an enemy. Sorry! takes a pawn from Start and bumps any enemy back to their Start."},
+ {h:"Slides & bumps",p:"Land on a slide of another color and ride it to the end, bumping every pawn along the way. Landing on an enemy anywhere sends it back to Start."},
+ {h:"Bonus mode",p:"Adds Change All (fresh hand), Wipeout (every leader goes home), Freedom (everyone gets a pawn out), and Sideswipe (race to the next corner, bumping everything in the path)."}]});};
   document.getElementById("menuQuit").onclick=()=>{if(confirm("Quit this game? It won't be recorded.")){GS=null;clearSave();ov.classList.remove("show");newGame();}};})();
 
 /* ===== HOME / SETUP SCREEN ===== */
@@ -820,6 +828,7 @@ function landCoin(finalDeg,heads){const coin=document.getElementById("coin"),sh=
     if(p<1)requestAnimationFrame(frame);
     else{coin.style.transform="translateY(0) rotateX("+finalDeg+"deg)";current=heads?"red":"blue";
       title.textContent=THEME.players[current].player+" goes first!";title.style.color=THEME.players[current].main;
+      try{GN.g.addFlip(current==="red"?"Mot":"Kathy");}catch(e){}
       const btn=document.getElementById("flipBtn");btn.textContent="Begin";btn.disabled=false;btn.style.visibility="visible";btn.onclick=beginPlay;}}
   requestAnimationFrame(frame);}
 function beginPlay(){document.getElementById("coinOv").classList.remove("show");startStats();beginTurnFor(current,false,true);}
@@ -831,7 +840,7 @@ function blankStats(){return{cardsPlayed:0,byType:{},sorry:0,sideswipe:0,bumpsDe
 let GS=null;
 function startStats(){GS={start:Date.now(),firstPlayer:PN(current),mode:CONFIG.mode,theme:(CONFIG.theme==="seasonal"?"seasonal:"+CONFIG.season:CONFIG.theme),singleDraw:CONFIG.singleDraw,handSize:HAND_SIZE(),firstHome:null,Mot:blankStats(),Kathy:blankStats()};}
 function recPlay(v){if(!GS||v==null)return;const k=PN(current),t=(v==="Sorry")?"Sorry":String(v);GS[k].cardsPlayed++;GS[k].byType[t]=(GS[k].byType[t]||0)+1;if(v==="Sorry")GS[k].sorry++;if(v==="Sideswipe")GS[k].sideswipe++;if(v===2)GS[k].extraTurns++;}
-function recBump(dealerColor,takerColor){if(!GS)return;GS[PN(dealerColor)].bumpsDealt++;GS[PN(takerColor)].bumpsTaken++;}
+function recBump(dealerColor,takerColor){if(!GS)return;GS[PN(dealerColor)].bumpsDealt++;GS[PN(takerColor)].bumpsTaken++;try{GN.g.addSentHome(1);}catch(e){}}
 function recSlide(color){if(GS)GS[PN(color)].slides++;}
 function recForced(){if(GS)GS[PN(current)].forcedDiscards++;}
 function recHome(color){if(GS&&!GS.firstHome)GS.firstHome=PN(color);}
@@ -862,6 +871,7 @@ function finalizeGame(winColor){if(!GS)return;clearSave();const loseColor=winCol
   GS.end=Date.now();GS.durationMs=GS.end-GS.start;GS.winner=PN(winColor);GS.loser=PN(loseColor);
   GS.pawnsHome={Mot:homeCount("red"),Kathy:homeCount("blue")};GS.skunk=(GS.pawnsHome[GS.loser]===0);
   const games=GamesStore.load();games.push(GS);GamesStore.save(games);
+  try{GN.g.addResult(GS.winner,GS.loser,GS.durationMs);}catch(e){}
   if(GS.skunk){const sk=SkunkStore.load();sk.push({winner:GS.winner,loser:GS.loser,date:GS.end});SkunkStore.save(sk);}
   GS=null;}
 

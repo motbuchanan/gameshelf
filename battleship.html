@@ -20,15 +20,20 @@
   .gridTitle{font-size:12.5px;color:#9cb8cc;font-weight:700;letter-spacing:.5px;}
   .grid{display:grid;grid-template-columns:repeat(10,1fr);gap:2px;background:#0a1a2a;padding:4px;border-radius:10px;
     box-shadow:0 8px 22px rgba(0,0,0,.5);}
-  .grid button{aspect-ratio:1;border:none;border-radius:3px;background:#15375a;cursor:pointer;position:relative;font-size:11px;color:#fff;padding:0;}
+  .grid button{aspect-ratio:1;border:none;border-radius:3px;cursor:pointer;position:relative;font-size:11px;color:#fff;padding:0;
+    background:linear-gradient(165deg,#1c4470 0%,#15375a 55%,#102b47 100%);
+    box-shadow:inset 0 1px 0 rgba(140,190,235,.18),inset 0 -2px 4px rgba(0,0,0,.35);}
+  .grid button:active{box-shadow:inset 0 2px 6px rgba(0,0,0,.55);}
   .grid.big{width:min(92vw,440px);}
   .grid.small{width:min(58vw,260px);}
-  .grid button.ship{background:#5d7689;}
-  .grid button.miss{background:#0d2740;}
+  .grid button.ship{background:linear-gradient(165deg,#7a93a6 0%,#5d7689 50%,#465b6b 100%);
+    box-shadow:inset 0 1.5px 0 rgba(255,255,255,.35),inset 0 -2px 5px rgba(0,0,0,.4),0 1px 3px rgba(0,0,0,.45);}
+  .grid button.miss{background:radial-gradient(circle at 50% 50%,#143a5e 0%,#0d2740 70%);}
   .grid button.miss::after{content:"\00b7";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#5d87ad;font-size:18px;font-weight:900;}
-  .grid button.hit{background:#7a1f17;}
+  .grid button.hit{background:radial-gradient(circle at 50% 42%,#ff7a45 0%,#c33a1d 35%,#7a1f17 75%);
+    box-shadow:inset 0 0 8px rgba(255,120,60,.6),0 0 10px rgba(255,90,40,.35);}
   .grid button.hit::after{content:"\2715";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#ffb3a8;font-weight:900;}
-  .grid button.sunk{background:#3a0d08;}
+  .grid button.sunk{background:radial-gradient(circle at 50% 50%,#1c0503 0%,#3a0d08 60%);box-shadow:inset 0 0 10px rgba(0,0,0,.8);}
   .grid button.sunk::after{content:"\2715";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#ff6f5e;font-weight:900;}
   #msg{min-height:20px;font-size:14px;color:#cfe2f0;text-align:center;padding:2px 12px;}
   #foot{padding:4px 0 12px;display:flex;gap:12px;align-items:center;justify-content:center;}
@@ -54,9 +59,10 @@
 <div id="foot"><button class="act" id="mainBtn">New game</button><div id="score"></div></div>
 <div class="ov" id="curtain"><h2 id="curTitle"></h2><p id="curText" style="color:#8fb0c8;"></p><button class="act" id="curBtn">I'm ready</button></div>
 <div class="ov" id="overlay"><div id="confetti"></div><div id="ovTrophy">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p><button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #2f4d66;background:#0e2235;color:#cfe2f0;text-decoration:none;">Back to shelf</a></div>
+<script src="gamenight.js"></script>
 <script>
 const N=10,FLEET=[["Carrier",5],["Battleship",4],["Cruiser",3],["Submarine",3],["Destroyer",2]];
-const P={A:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},B:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182"}};
+let P={A:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},B:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182"}};
 let ships={A:[],B:[]},shots={A:new Set(),B:new Set()},turn="A",phase="placeA",GS=null,counts={A:0,B:0};
 const KEY="bs_games";let _mem=[];
 const Store={load(){try{return JSON.parse(localStorage.getItem(KEY))||[];}catch(e){return _mem.slice();}},
@@ -74,17 +80,22 @@ function randomFleet(){for(let tries=0;tries<400;tries++){const taken=new Set(),
   return null;}
 function shipAt(side,key){return ships[side].find(s=>s.cells.includes(key))||null;}
 function fleetSunk(side){return ships[side].every(s=>s.hits.length===s.cells.length);}
+function seatFrom(p){return{name:p.name,main:p.color,light:p.light,dark:p.dark};}
 function newGame(){ships={A:randomFleet(),B:randomFleet()};shots={A:new Set(),B:new Set()};
-  counts={A:0,B:0};turn="A";phase="placeA";GS={start:Date.now(),hits:{Mot:0,Kathy:0}};
+  counts={A:0,B:0};phase="over";
   document.getElementById("overlay").classList.remove("show");document.getElementById("confetti").innerHTML="";
-  renderPlace("A");}
+  GN.matchStart(function(m){P={A:seatFrom(m.a),B:seatFrom(m.b)};
+    turn=(m.first===m.a)?"A":"B";phase="placeA";
+    GS={start:Date.now(),flipWinner:m.first.name,hits:{}};
+    GS.hits[m.a.name]=0;GS.hits[m.b.name]=0;
+    renderPlace("A");});}
 function setMessage(t){document.getElementById("msg").textContent=t;}
 function updateBar(side,label){const pc=P[side];document.getElementById("turnName").textContent=pc.name+(label||"");
   const d=document.getElementById("dot");
   d.style.background="radial-gradient(circle at 35% 30%,"+pc.light+","+pc.main+" 70%,"+pc.dark+")";
   d.style.boxShadow="0 0 0 3px rgba(255,255,255,.15),0 0 14px "+pc.main;
-  const g=Store.load();let m=0,kk=0;for(const r of g){if(r.winner==="Mot")m++;else if(r.winner==="Kathy")kk++;}
-  document.getElementById("score").textContent="Mot "+m+" \u00b7 "+kk+" Kathy";}
+  const g=Store.load();let m=0,kk=0;for(const r of g){if(r.winner===P.A.name)m++;else if(r.winner===P.B.name)kk++;}
+  document.getElementById("score").textContent=P.A.name+" "+m+" \u00b7 "+kk+" "+P.B.name;}
 function gridEl(side,opts){const g=document.createElement("div");g.className="grid "+(opts.big?"big":"small");
   for(let r=0;r<N;r++)for(let c=0;c<N;c++){const b=document.createElement("button");const key=k(r,c);
     if(opts.showShips&&shipAt(side,key))b.classList.add("ship");
@@ -129,6 +140,7 @@ function fire(key){if(phase!=="fire")return;const opp=turn==="A"?"B":"A";
   phase="resolve";shots[turn].add(key);counts[turn]++;
   const s=shipAt(opp,key);let msg;
   if(s){s.hits.push(key);GS.hits[P[turn].name]++;
+    if(s.hits.length===s.cells.length&&!GN.friendly)GN.g.addSentHome(1);
     msg=s.hits.length===s.cells.length?("SUNK! "+P[opp].name+"'s "+s.name+" goes down!"):"HIT!";}
   else msg="Miss. Splash.";
   startFireRefresh();setMessage(msg);
@@ -143,8 +155,8 @@ function startFireRefresh(){const opp=turn==="A"?"B":"A";
 function gameOver(winSide){phase="over";
   const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
     winner:P[winSide].name,loser:P[winSide==="A"?"B":"A"].name,
-    shots:{Mot:counts.A,Kathy:counts.B},hits:GS.hits};
-  const l=Store.load();l.push(rec);Store.save(l);
+    flipWinner:GS.flipWinner,shots:(function(){const s={};s[P.A.name]=counts.A;s[P.B.name]=counts.B;return s;})(),hits:GS.hits};
+  GN.recordGame(KEY,rec);
   document.getElementById("ovTitle").textContent=P[winSide].name+" wins!";
   document.getElementById("ovTitle").style.color=P[winSide].main;
   document.getElementById("ovText").textContent="Fleet destroyed in "+counts[winSide]+" shots ("+GS.hits[P[winSide].name]+" hits)";
@@ -159,6 +171,15 @@ function spawnConfetti(side){const box=document.getElementById("confetti");box.i
     d.style.animationDuration=(2.4+Math.random()*1.8)+"s";d.style.animationDelay=(Math.random()*0.9)+"s";
     d.style.transform="rotate("+Math.floor(Math.random()*360)+"deg)";box.appendChild(d);}}
 document.getElementById("mainBtn").addEventListener("click",newGame);
+GN.rulesButton(document.getElementById("foot"),{title:"Battleship",sections:[
+ {h:"Goal",p:"Sink the enemy fleet \u2014 all five ships \u2014 before yours goes down."},
+ {h:"Setup",p:"Each admiral shuffles a hidden fleet: Carrier 5, Battleship 4, Cruiser 3, Submarine 3, Destroyer 2. Pass the phone between placements \u2014 no peeking."},
+ {h:"Firing",p:"On your turn, tap a square on the targeting grid. Hits glow, misses splash, and sinking a ship announces which one went down."},
+ {h:"The pass",p:"The curtain screen between turns keeps both boards secret. Hand the phone over only when it shows."}]});
+GN.statsButton(document.getElementById("foot"),{title:"Battleship",key:KEY,specials:[
+  {label:"Hits landed",of:(r,n)=>r.reduce((a,x)=>a+((x.hits&&x.hits[n])||0),0)},
+  {label:"Shots fired",of:(r,n)=>r.reduce((a,x)=>a+((x.shots&&x.shots[n])||0),0)},
+  {label:"Coin flips won",of:(r,n)=>r.filter(x=>x.flipWinner===n).length}]});
 document.getElementById("ovBtn").addEventListener("click",newGame);
 newGame();
 </script>
