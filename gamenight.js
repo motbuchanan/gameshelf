@@ -22,8 +22,8 @@ function cubeCSSOnce(){if(_cubeCSS)return;_cubeCSS=true;
   const st=document.createElement("style");
   st.textContent=
    ".gnCubeWrap{position:relative;perspective:520px;will-change:transform;display:inline-block;}"+
-   ".gnCube{position:absolute;inset:0;transform-style:preserve-3d;will-change:transform;transform:rotateX(-26deg) rotateY(33deg);}"+
-   ".gnCf{position:absolute;inset:0;border-radius:16%;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);padding:11%;backface-visibility:hidden;box-shadow:inset 0 0 0 1px rgba(120,100,60,.25);}"+
+   ".gnCube{position:absolute;inset:0;transform-style:preserve-3d;will-change:transform;transform:rotateX(-9deg) rotateY(11deg);}"+
+   ".gnCf{position:absolute;inset:0;border-radius:11%;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);padding:11%;backface-visibility:hidden;box-shadow:inset 0 0 0 1px rgba(120,100,60,.25);}"+
    ".gnCfF{background:linear-gradient(150deg,#fbf8ef 0%,#efe9da 65%,#ded6c2 100%);transform:translateZ(var(--dh));}"+
    ".gnCfT{background:linear-gradient(150deg,#ffffff 0%,#f8f4ea 70%,#ece5d4 100%);transform:rotateX(90deg) translateZ(var(--dh));}"+
    ".gnCfR{background:linear-gradient(150deg,#e2dac6 0%,#d2c8b0 70%,#bfb499 100%);transform:rotateY(90deg) translateZ(var(--dh));}"+
@@ -62,10 +62,10 @@ GN.cubeDie=function(size){cubeCSSOnce();
       {transform:"translate(0,"+(-hop*0.15)+"px) scale(1,1)",offset:0.85},
       {transform:"translate(0,0) scale(1,1)"}],{duration:dur,easing:"linear"});
     if(cube.animate)cube.animate([
-      {transform:"rotateX(-26deg) rotateY(33deg)"},
-      {transform:"rotateX("+(-26+RX*0.55)+"deg) rotateY("+(33+RY*0.55)+"deg)",offset:0.45,easing:"cubic-bezier(.25,.8,.5,1)"},
-      {transform:"rotateX("+(-26+RX)+"deg) rotateY("+(33+RY)+"deg)",offset:0.82},
-      {transform:"rotateX("+(-26+RX)+"deg) rotateY("+(33+RY)+"deg)"}],{duration:dur,easing:"linear"});
+      {transform:"rotateX(-9deg) rotateY(11deg)"},
+      {transform:"rotateX("+(-9+RX*0.55)+"deg) rotateY("+(11+RY*0.55)+"deg)",offset:0.45,easing:"cubic-bezier(.25,.8,.5,1)"},
+      {transform:"rotateX("+(-9+RX)+"deg) rotateY("+(11+RY)+"deg)",offset:0.86,easing:"cubic-bezier(.3,.7,.4,1)"},
+      {transform:"rotateX("+(-9+RX)+"deg) rotateY("+(11+RY)+"deg)"}],{duration:dur,easing:"linear"});
     let n=0;const steps=Math.max(6,Math.floor(dur/64));
     const iv=setInterval(()=>{show(1+Math.floor(Math.random()*6));
       if(++n>=steps){clearInterval(iv);show(finalV);busyT=false;if(done)done();}},Math.floor(dur/(steps+1)));}
