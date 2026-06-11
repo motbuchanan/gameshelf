@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Nine Men's Morris</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  body{font-family:system-ui,sans-serif;color:#efe6d6;min-height:100vh;display:flex;flex-direction:column;align-items:center;
+    background:radial-gradient(125% 85% at 50% 15%,#3a2f1f 0%,#140f08 70%);}
+  #bar{width:100%;max-width:480px;display:flex;align-items:center;gap:10px;padding:11px 14px;}
+  #bar a{color:#e2d4b8;text-decoration:none;font-size:14px;border:1px solid #5a4a30;border-radius:999px;padding:6px 12px;}
+  #title{font-weight:800;font-size:18px;flex:1;}
+  #turnWrap{display:flex;align-items:center;gap:8px;}
+  #dot{width:15px;height:15px;border-radius:50%;}
+  #turnName{font-weight:700;font-size:15px;}
+  #scoreRow{width:min(96vw,480px);display:flex;gap:10px;padding:0 14px 8px;}
+  .scard{flex:1;display:flex;align-items:center;gap:9px;background:#241c0f;border:1px solid #463720;border-radius:12px;padding:7px 12px;}
+  .scard.active{border-color:#e0b84a;box-shadow:0 0 0 1px #e0b84a,0 0 14px rgba(224,184,74,.22);}
+  .scard .chip{width:22px;height:22px;border-radius:50%;flex:0 0 auto;}
+  .scard .nm{font-size:13px;color:#d6c8aa;}
+  .scard .ct{margin-left:auto;font-size:13px;color:#bfae8a;font-variant-numeric:tabular-nums;}
+  #boardWrap{position:relative;width:min(92vw,420px);height:min(92vw,420px);margin:2px 0;
+    background:radial-gradient(120% 120% at 35% 25%,#caa46a,#9c7b46);border-radius:14px;
+    box-shadow:0 10px 26px rgba(0,0,0,.55),inset 0 2px 0 rgba(255,255,255,.25);padding:7%;}
+  #lines{position:absolute;inset:7%;width:86%;height:86%;}
+  .pt{position:absolute;width:11%;height:11%;transform:translate(-50%,-50%);border-radius:50%;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;}
+  .pt .node{width:34%;height:34%;border-radius:50%;background:#5e4a2a;box-shadow:inset 0 1px 2px rgba(0,0,0,.5);}
+  .pt.canPlay .node{background:#e0b84a;box-shadow:0 0 8px rgba(224,184,74,.8);}
+  .disc{width:78%;height:78%;border-radius:50%;position:relative;
+    box-shadow:0 3px 5px rgba(0,0,0,.5),inset 0 2px 3px rgba(255,255,255,.4),inset 0 -4px 6px rgba(0,0,0,.35);}
+  .disc::after{content:"";position:absolute;top:15%;left:22%;width:32%;height:22%;border-radius:50%;background:rgba(255,255,255,.5);filter:blur(1px);}
+  .disc.sel{outline:3px solid #e0b84a;outline-offset:1px;}
+  .disc.killable{outline:3px dashed #ff6a5a;outline-offset:1px;animation:pulse 1s infinite;}
+  @keyframes pulse{50%{opacity:.6;}}
+  #msg{min-height:24px;text-align:center;font-size:15px;color:#e6d8bc;padding:6px 16px 0;font-weight:600;}
+  #foot{display:flex;gap:9px;align-items:center;justify-content:center;flex-wrap:wrap;padding:8px 12px 16px;}
+  .act{font-family:inherit;font-size:15px;font-weight:bold;padding:10px 16px;border-radius:10px;border:none;
+    color:#241c0f;background:#e0b84a;cursor:pointer;box-shadow:0 4px 0 #9a7414,0 5px 10px rgba(0,0,0,.4);}
+  .act.ghost{background:#241c0f;color:#e2d4b8;box-shadow:0 4px 0 #120d06;border:1px solid #5a4a30;font-size:14px;}
+  .ov{position:fixed;inset:0;background:rgba(12,9,4,.95);display:none;flex-direction:column;align-items:center;justify-content:center;gap:15px;z-index:50;text-align:center;padding:24px;}
+  .ov.show{display:flex;} .ov h1{font-size:30px;} .ov p{color:#e2d4b8;}
+  #confetti{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
+  .cf{position:absolute;width:10px;height:14px;top:-20px;animation:fall linear forwards;}
+  @keyframes fall{to{transform:translateY(110vh) rotate(720deg);}}
+</style></head><body>
+<div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">Nine Men's Morris</div><div id="turnWrap"><div id="dot"></div><div id="turnName"></div></div></div>
+<div id="scoreRow">
+  <div class="scard" id="cardA"><div class="chip" id="chipA"></div><div class="nm" id="nmA"></div><div class="ct" id="ctA"></div></div>
+  <div class="scard" id="cardB"><div class="chip" id="chipB"></div><div class="nm" id="nmB"></div><div class="ct" id="ctB"></div></div>
+</div>
+<div id="boardWrap"><svg id="lines" viewBox="0 0 6 6" preserveAspectRatio="none"></svg></div>
+<div id="msg"></div>
+<div id="foot"><button class="act ghost" id="newBtn">New game</button></div>
+<div class="ov" id="overlay"><div id="confetti"></div><div style="font-size:54px;">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p>
+  <button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #5a4a30;background:#241c0f;color:#e2d4b8;text-decoration:none;">Back to shelf</a></div>
+<script src="gamenight.js?v=8"></script>
+<script>
+const KEY="morris_games";
+let P={A:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},B:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182"}};
+// ---- board topology (generated) ----
+const OFF=[[-1,-1],[0,-1],[1,-1],[1,0],[1,1],[0,1],[-1,1],[-1,0]],RAD=[3,2,1];
+function coord(ring,pos){const r=RAD[ring],o=OFF[pos];return[3+o[0]*r,3+o[1]*r];}
+const XY=[];for(let r=0;r<3;r++)for(let p=0;p<8;p++)XY.push(coord(r,p));
+const ADJ=(function(){const a=Array.from({length:24},()=>[]);
+  for(let r=0;r<3;r++)for(let p=0;p<8;p++){const i=r*8+p;
+    a[i].push(r*8+(p+1)%8,r*8+(p+7)%8);
+    if(p%2===1){if(r===0)a[i].push(8+p);else if(r===1){a[i].push(p,16+p);}else a[i].push(8+p);}}
+  return a;})();
+const MILLS=(function(){const m=[];for(let r=0;r<3;r++){const b=r*8;
+  m.push([b+0,b+1,b+2],[b+2,b+3,b+4],[b+4,b+5,b+6],[b+6,b+7,b+0]);}
+  for(const p of[1,3,5,7])m.push([p,8+p,16+p]);return m;})();
+
+let pts=[],turn="A",placed={A:0,B:0},sel=-1,mode="place",phase="over",GS=null;
+function seatFrom(p){return{name:p.name,main:p.color,light:p.light,dark:p.dark};}
+function other(s){return s==="A"?"B":"A";}
+
+// ---- pure rules (bot-ready) ----
+function countSide(b,s){return b.reduce((a,v)=>a+(v===s?1:0),0);}
+function millAt(b,idx,s){return MILLS.some(m=>m.includes(idx)&&m.every(i=>b[i]===s));}
+function inAnyMill(b,idx,s){return MILLS.some(m=>m.includes(idx)&&m.every(i=>b[i]===s));}
+function removable(b,opp){const all=[];for(let i=0;i<24;i++)if(b[i]===opp)all.push(i);
+  const open=all.filter(i=>!inAnyMill(b,i,opp));return open.length?open:all;}
+function flying(b,s){return countSide(b,s)===3;}
+function destsFor(b,idx,s){if(flying(b,s))return b.map((v,i)=>v?-1:i).filter(i=>i>=0);
+  return ADJ[idx].filter(i=>!b[i]);}
+function canMove(b,s){for(let i=0;i<24;i++)if(b[i]===s&&destsFor(b,i,s).length)return true;return false;}
+
+// ---- UI ----
+const wrap=document.getElementById("boardWrap"),lines=document.getElementById("lines");
+function drawLines(){let s="";
+  const rect=(x,y,w,h)=>'<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" fill="none" stroke="#4a3a20" stroke-width="0.07"/>';
+  s+=rect(0,0,6,6)+rect(1,1,4,4)+rect(2,2,2,2);
+  const ln=(x1,y1,x2,y2)=>'<line x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'" stroke="#4a3a20" stroke-width="0.07"/>';
+  s+=ln(3,0,3,2)+ln(3,4,3,6)+ln(0,3,2,3)+ln(4,3,6,3);
+  lines.innerHTML=s;}
+function buildPoints(){[...wrap.querySelectorAll(".pt")].forEach(e=>e.remove());
+  for(let i=0;i<24;i++){const[x,y]=XY[i];const d=document.createElement("div");d.className="pt";d.id="p"+i;
+    d.style.left=(7+ x/6*86)+"%";d.style.top=(7+ y/6*86)+"%";
+    const n=document.createElement("div");n.className="node";d.appendChild(n);
+    d.addEventListener("click",()=>tap(i));wrap.appendChild(d);}}
+function discStyle(side){const p=P[side];return"background:radial-gradient(circle at 36% 30%,"+p.light+","+p.main+" 62%,"+p.dark+");";}
+function render(){
+  for(let i=0;i<24;i++){const pt=document.getElementById("p"+i);const old=pt.querySelector(".disc");if(old)old.remove();
+    pt.classList.remove("canPlay");
+    if(pts[i]){const d=document.createElement("div");d.className="disc";d.setAttribute("style",discStyle(pts[i]));
+      if(i===sel)d.classList.add("sel");
+      if(mode==="remove"&&pts[i]===other(turn)&&removable(pts,other(turn)).includes(i))d.classList.add("killable");
+      pt.appendChild(d);}
+  }
+  // placement / move hints
+  if(phase==="play"){
+    if(mode==="place"){for(let i=0;i<24;i++)if(!pts[i])document.getElementById("p"+i).classList.add("canPlay");}
+    else if(mode==="move"&&sel>=0){for(const i of destsFor(pts,sel,turn))document.getElementById("p"+i).classList.add("canPlay");}
+  }
+  const remA=9-placed.A+0,remB=9-placed.B;
+  for(const s of["A","B"]){document.getElementById("nm"+s).textContent=P[s].name;
+    document.getElementById("chip"+s).setAttribute("style",discStyle(s));
+    const onBoard=countSide(pts,s),toPlace=9-placed[s];
+    document.getElementById("ct"+s).textContent=(mode==="place"||toPlace>0)?("to place: "+toPlace):("pieces: "+onBoard)+(flying(pts,s)?" \u2708":"");
+    document.getElementById("card"+s).classList.toggle("active",s===turn&&phase==="play");}
+  const pc=P[turn],dot=document.getElementById("dot");document.getElementById("turnName").textContent=pc.name;
+  dot.style.background="radial-gradient(circle at 35% 30%,"+pc.light+","+pc.main+" 70%,"+pc.dark+")";dot.style.boxShadow="0 0 10px "+pc.main;
+}
+function setMsg(t){document.getElementById("msg").textContent=t;}
+
+function newGame(){phase="over";document.getElementById("overlay").classList.remove("show");document.getElementById("confetti").innerHTML="";
+  GN.matchStart(function(m){P={A:seatFrom(m.a),B:seatFrom(m.b)};
+    pts=Array(24).fill(null);placed={A:0,B:0};sel=-1;mode="place";
+    turn=(m.first===m.a)?"A":"B";phase="play";
+    GS={start:Date.now(),flipWinner:m.first.name,friendly:m.friendly,mills:{}};GS.mills[m.a.name]=0;GS.mills[m.b.name]=0;
+    setMsg(P[turn].name+" \u2014 place a piece. Make a row of three to capture!");render();});}
+
+function afterAction(formedMill){
+  if(formedMill){mode="remove";GS.mills[P[turn].name]++;
+    setMsg(P[turn].name+" made a mill! Tap an opponent piece to remove.");render();return;}
+  endTurn();
+}
+function endTurn(){
+  const opp=other(turn);turn=opp;sel=-1;
+  // placing done?
+  if(placed.A>=9&&placed.B>=9)mode="move";else mode="place";
+  // loss checks (only once moving)
+  if(mode==="move"){
+    if(countSide(pts,turn)<3){finish(other(turn),"reduced "+P[turn].name+" to two pieces");return;}
+    if(!canMove(pts,turn)){finish(other(turn),P[turn].name+" can't move");return;}
+  }
+  setMsg(P[turn].name+(mode==="place"?" \u2014 place a piece.":" \u2014 move a piece."));render();
+}
+
+function tap(i){if(phase!=="play")return;
+  if(mode==="remove"){const opp=other(turn);
+    if(pts[i]!==opp)return;if(!removable(pts,opp).includes(i)){setMsg("That piece is in a mill \u2014 pick another.");return;}
+    pts[i]=null;setMsg(P[turn].name+" removes a piece.");endTurn();return;}
+  if(mode==="place"){if(pts[i]){return;}pts[i]=turn;placed[turn]++;
+    afterAction(millAt(pts,i,turn));return;}
+  if(mode==="move"){
+    if(pts[i]===turn){sel=(sel===i?-1:i);render();return;}
+    if(sel>=0&&!pts[i]&&destsFor(pts,sel,turn).includes(i)){
+      pts[i]=turn;pts[sel]=null;const from=sel;sel=-1;
+      afterAction(millAt(pts,i,turn));return;}
+  }
+}
+document.getElementById("newBtn").addEventListener("click",newGame);
+document.getElementById("ovBtn").addEventListener("click",newGame);
+
+function finish(w,why){phase="over";
+  const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,winner:P[w].name,loser:P[other(w)].name,
+    flipWinner:GS.flipWinner,mills:GS.mills,reason:why};
+  if(!GS.friendly)GN.recordGame(KEY,rec);
+  document.getElementById("ovTitle").textContent=P[w].name+" wins!";
+  document.getElementById("ovText").textContent=why?(why.charAt(0).toUpperCase()+why.slice(1))+".":"";
+  confettiBurst();document.getElementById("overlay").classList.add("show");}
+function confettiBurst(){const box=document.getElementById("confetti");box.innerHTML="";
+  const cols=[P.A.main,P.B.main,"#e0b84a","#f4c542","#e8e4da"];
+  for(let i=0;i<60;i++){const d=document.createElement("div");d.className="cf";d.style.left=(Math.random()*100)+"%";
+    d.style.background=cols[i%cols.length];d.style.animationDuration=(2.2+Math.random()*1.8)+"s";
+    d.style.transform="rotate("+Math.floor(Math.random()*360)+"deg)";box.appendChild(d);}}
+
+GN.rulesButton(document.getElementById("foot"),{title:"Nine Men's Morris",sections:[
+  {h:"Goal",t:"Reduce your opponent to two pieces, or leave them with no legal move."},
+  {h:"Placing",t:"Take turns placing your nine pieces on any empty points where the lines meet."},
+  {h:"Moving",t:"Once all are placed, slide a piece along a line to a neighbouring empty point."},
+  {h:"Mills",t:"Line up three of your pieces along a marked line to form a mill \u2014 then remove one of the opponent's pieces (not one that's already in a mill, unless that's all they have)."},
+  {h:"Flying",t:"When you're down to your last three pieces, you may jump a piece to any empty point on the board."}]});
+GN.statsButton(document.getElementById("foot"),{title:"Nine Men's Morris",key:KEY,specials:[
+  {label:"Mills formed",of:(recs,name)=>recs.reduce((a,r)=>a+((r.mills&&r.mills[name])||0),0)}]});
+drawLines();buildPoints();newGame();
+window.GN&&GN.sync&&GN.sync();
+</script></body></html>

@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Farkle</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  body{font-family:system-ui,sans-serif;color:#e8f0e4;min-height:100vh;display:flex;flex-direction:column;
+    background:radial-gradient(120% 80% at 50% 18%,#1f3327 0%,#0c1410 70%);overflow:hidden;}
+  #bar{display:flex;align-items:center;gap:10px;padding:11px 14px;}
+  #bar a{color:#cfe6d8;text-decoration:none;font-size:14px;border:1px solid #3a5a47;border-radius:999px;padding:6px 12px;}
+  #title{font-weight:800;font-size:20px;}
+  #turnWrap{margin-left:auto;display:flex;align-items:center;gap:8px;}
+  #dot{width:15px;height:15px;border-radius:50%;}
+  #turnName{font-weight:700;font-size:15px;}
+  #scores{display:flex;gap:10px;padding:4px 16px 0;}
+  .pcard{flex:1;background:#13241b;border:1px solid #2c4636;border-radius:12px;padding:8px 12px;text-align:center;}
+  .pcard.active{border-color:#b0d235;box-shadow:0 0 0 1px #b0d235,0 0 16px rgba(176,210,53,.25);}
+  .pcard .nm{font-size:13px;color:#bcd6c7;}
+  .pcard .sc{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;}
+  .pcard .gp{font-size:10px;color:#88a896;text-transform:uppercase;letter-spacing:.5px;min-height:13px;}
+  #tray{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:8px;}
+  #dice{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;width:min(94vw,330px);}
+  .die{aspect-ratio:1;border-radius:18%;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);padding:11%;
+    background:linear-gradient(160deg,#fafafa,#d8d8d8);position:relative;cursor:pointer;transition:transform .1s,box-shadow .1s;
+    box-shadow:inset 0 2px 3px rgba(255,255,255,.85),inset 0 -3px 5px rgba(0,0,0,.22),0 4px 8px rgba(0,0,0,.5);}
+  .die i{align-self:center;justify-self:center;width:58%;height:58%;border-radius:50%;visibility:hidden;
+    background:radial-gradient(circle at 38% 32%,#454545,#111 70%);}
+  .die.sel{transform:translateY(-6px) scale(1.04);box-shadow:0 0 0 3px #b0d235,0 8px 14px rgba(0,0,0,.5);}
+  .die.set{background:linear-gradient(160deg,#e7efbf,#bcd06a);cursor:default;opacity:.92;}
+  .die.set i{background:radial-gradient(circle at 38% 32%,#3a4a14,#1c2408 70%);}
+  .die.dead{opacity:.32;cursor:default;}
+  .die.rolling{animation:shake .5s ease;}
+  @keyframes shake{0%,100%{transform:translate(0,0) rotate(0);}25%{transform:translate(-2px,-3px) rotate(-7deg);}
+    50%{transform:translate(2px,2px) rotate(6deg);}75%{transform:translate(-1px,2px) rotate(-4deg);}}
+  #selInfo{min-height:26px;font-size:16px;font-weight:700;text-align:center;}
+  #selInfo .good{color:#b0d235;} #selInfo .bad{color:#e89a8a;}
+  #msg{min-height:22px;text-align:center;font-size:15px;color:#d8e8dd;padding:0 16px;}
+  #foot{display:flex;gap:9px;align-items:center;justify-content:center;flex-wrap:wrap;padding:8px 12px 16px;}
+  .act{font-family:inherit;font-size:16px;font-weight:bold;padding:11px 20px;border-radius:10px;border:none;
+    color:#1c2b16;background:#b0d235;cursor:pointer;box-shadow:0 4px 0 #7e9a1f,0 5px 10px rgba(0,0,0,.4);}
+  .act:disabled{opacity:.4;box-shadow:0 4px 0 #5a5a5a;}
+  .act.bank{background:#f4c542;box-shadow:0 4px 0 #9a7414,0 5px 10px rgba(0,0,0,.4);}
+  .act.ghost{background:#15241b;color:#cfe6d8;box-shadow:0 4px 0 #0b160f;border:1px solid #3a5a47;font-size:14px;}
+  .ov{position:fixed;inset:0;background:rgba(7,12,9,.94);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:50;text-align:center;padding:24px;}
+  .ov.show{display:flex;} .ov h1{font-size:30px;}
+  #confetti{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
+  .cf{position:absolute;width:10px;height:14px;top:-20px;animation:fall linear forwards;}
+  @keyframes fall{to{transform:translateY(110vh) rotate(720deg);}}
+</style></head><body>
+<div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">Farkle</div><div id="turnWrap"><div id="dot"></div><div id="turnName"></div></div></div>
+<div id="scores">
+  <div class="pcard" id="cardA"><div class="nm" id="nmA"></div><div class="sc" id="scA">0</div><div class="gp" id="gpA"></div></div>
+  <div class="pcard" id="cardB"><div class="nm" id="nmB"></div><div class="sc" id="scB">0</div><div class="gp" id="gpB"></div></div>
+</div>
+<div id="tray">
+  <div id="dice"></div>
+  <div id="selInfo"></div>
+</div>
+<div id="msg"></div>
+<div id="foot">
+  <button class="act" id="rollBtn">Roll</button>
+  <button class="act" id="keepBtn">Keep &amp; roll</button>
+  <button class="act bank" id="bankBtn">Bank</button>
+  <button class="act ghost" id="ruleBtn"></button>
+  <button class="act ghost" id="newBtn">New game</button>
+</div>
+<div class="ov" id="overlay"><div id="confetti"></div><div style="font-size:54px;">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText" style="color:#cfe6d8;"></p>
+  <button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
+<script src="gamenight.js?v=8"></script>
+<script>
+const KEY="farkle_games",GOAL=5000,PIP={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
+let P={A:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},B:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182"}};
+let dice=[],turn="A",total={A:0,B:0},onBoard={A:false,B:false},turnPts=0,phase="over",rolling=false,GS=null,openMin=500;
+function seatFrom(p){return{name:p.name,main:p.color,light:p.light,dark:p.dark};}
+
+// ---------- scoring engine (pure) ----------
+function scoreSel(faces){
+  const n=faces.length; if(n===0)return{pts:0,valid:false,tag:""};
+  const c=[0,0,0,0,0,0,0]; faces.forEach(v=>c[v]++);
+  if(n===6){
+    if([1,2,3,4,5,6].every(f=>c[f]===1))return{pts:1500,valid:true,tag:"Straight!"};
+    if([1,2,3,4,5,6].filter(f=>c[f]===2).length===3)return{pts:1500,valid:true,tag:"Three pairs!"};
+    if([1,2,3,4,5,6].filter(f=>c[f]===3).length===2)return{pts:2500,valid:true,tag:"Two triplets!"};
+  }
+  let pts=0,used=0;
+  for(let f=1;f<=6;f++){const k=c[f];if(!k)continue;
+    if(k>=3){pts+=(k===6?3000:k===5?2000:k===4?1000:(f===1?1000:f*100));used+=k;}
+    else if(f===1){pts+=k*100;used+=k;}
+    else if(f===5){pts+=k*50;used+=k;}}
+  return{pts,valid:used===n,tag:""};
+}
+function anyScore(faces){
+  const c=[0,0,0,0,0,0,0]; faces.forEach(v=>c[v]++);
+  if(c[1]||c[5])return true;
+  for(let f=1;f<=6;f++)if(c[f]>=3)return true;
+  if(faces.length===6&&[1,2,3,4,5,6].filter(f=>c[f]===2).length===3)return true; // three pairs of 2-4-6 etc
+  return false;
+}
+
+// ---------- UI ----------
+const diceEl=document.getElementById("dice");
+function buildDice(){diceEl.innerHTML="";dice=[];
+  for(let i=0;i<6;i++){const d=document.createElement("div");d.className="die dead";
+    for(let p=0;p<9;p++){const pip=document.createElement("i");d.appendChild(pip);}
+    d.addEventListener("click",()=>toggle(i));diceEl.appendChild(d);
+    dice.push({el:d,face:1,set:false,sel:false,active:false});}}
+function paintDie(i){const d=dice[i],el=d.el,pips=el.querySelectorAll("i");
+  pips.forEach(p=>p.style.visibility="hidden");(PIP[d.face]||[]).forEach(x=>pips[x].style.visibility="visible");
+  el.className="die"+(d.set?" set":d.active?(d.sel?" sel":""):" dead");}
+function paintAll(){dice.forEach((d,i)=>paintDie(i));}
+function selFaces(){return dice.filter(d=>d.active&&d.sel).map(d=>d.face);}
+function activeFaces(){return dice.filter(d=>d.active).map(d=>d.face);}
+function refresh(){
+  for(const s of["A","B"]){document.getElementById("nm"+s).textContent=P[s].name;
+    document.getElementById("sc"+s).textContent=total[s];
+    document.getElementById("gp"+s).textContent=(s===turn&&phase==="play"&&turnPts?("turn +"+turnPts):(!onBoard[s]&&openMin?"needs "+openMin:""));
+    document.getElementById("card"+s).classList.toggle("active",s===turn&&phase!=="over");}
+  const pc=P[turn],d=document.getElementById("dot");document.getElementById("turnName").textContent=pc.name;
+  d.style.background="radial-gradient(circle at 35% 30%,"+pc.light+","+pc.main+" 70%,"+pc.dark+")";d.style.boxShadow="0 0 10px "+pc.main;
+  document.getElementById("ruleBtn").textContent="Open: "+(openMin?openMin:"any");
+  const sel=selFaces(),sc=scoreSel(sel),anyActive=dice.some(d=>d.active);
+  const si=document.getElementById("selInfo");
+  if(sel.length===0)si.textContent="";
+  else if(!sc.valid)si.innerHTML='<span class="bad">that set doesn\u2019t all score</span>';
+  else si.innerHTML='<span class="good">+'+sc.pts+(sc.tag?" "+sc.tag:"")+'</span>';
+  const validSel=sel.length>0&&sc.valid;
+  document.getElementById("rollBtn").disabled=anyActive||phase!=="play"||rolling;
+  document.getElementById("keepBtn").disabled=!validSel||rolling||phase!=="play";
+  // bank allowed if you've banked points this turn OR a valid selection now; and meets opening min
+  const wouldBank=turnPts+(validSel?sc.pts:0);
+  const canOpen=onBoard[turn]||wouldBank>=openMin;
+  document.getElementById("bankBtn").disabled=phase!=="play"||rolling||wouldBank<=0||!canOpen||(dice.some(d=>d.active)&&!validSel);
+}
+function setMsg(t){document.getElementById("msg").textContent=t;}
+function toggle(i){const d=dice[i];if(!d.active||rolling||phase!=="play")return;d.sel=!d.sel;paintDie(i);refresh();}
+
+function newGame(){phase="over";document.getElementById("overlay").classList.remove("show");document.getElementById("confetti").innerHTML="";
+  GN.matchStart(function(m){P={A:seatFrom(m.a),B:seatFrom(m.b)};
+    total={A:0,B:0};onBoard={A:false,B:false};turnPts=0;turn=(m.first===m.a)?"A":"B";phase="play";rolling=false;
+    GS={start:Date.now(),flipWinner:m.first.name,friendly:m.friendly,farkles:{},hot:{},best:{pts:0,by:""}};
+    GS.farkles[m.a.name]=0;GS.farkles[m.b.name]=0;GS.hot[m.a.name]=0;GS.hot[m.b.name]=0;
+    dice.forEach(d=>{d.set=false;d.sel=false;d.active=false;d.face=1;});paintAll();
+    setMsg(P[turn].name+" rolls first. Score to 5000 wins!");refresh();});}
+
+function rollActive(fresh){rolling=true;
+  const pool=fresh?dice:dice.filter(d=>!d.set);
+  pool.forEach(d=>{d.active=true;d.set=false;d.sel=false;d.el.classList.add("rolling");});
+  refresh();
+  let ticks=0;const iv=setInterval(()=>{
+    pool.forEach(d=>{d.face=1+Math.floor(Math.random()*6);});paintAll();
+    if(++ticks>=7){clearInterval(iv);
+      pool.forEach(d=>d.el.classList.remove("rolling"));
+      paintAll();rolling=false;afterRoll();}
+  },55);
+}
+function afterRoll(){
+  const faces=activeFaces();
+  if(!anyScore(faces)){ // FARKLE
+    GS.farkles[P[turn].name]++;turnPts=0;
+    setMsg("\uD83D\uDCA5 Farkle! "+P[turn].name+" scores nothing this turn.");
+    document.querySelectorAll(".die").forEach(e=>e.style.filter="saturate(.4)");
+    setTimeout(()=>{document.querySelectorAll(".die").forEach(e=>e.style.filter="");passTurn();},1100);return;}
+  setMsg(P[turn].name+" \u2014 tap the dice you want to keep.");refresh();
+}
+function passTurn(){turnPts=0;turn=turn==="A"?"B":"A";
+  dice.forEach(d=>{d.set=false;d.sel=false;d.active=false;});paintAll();
+  setMsg(P[turn].name+"'s turn \u2014 roll!");refresh();}
+
+document.getElementById("rollBtn").addEventListener("click",()=>{if(phase!=="play"||rolling)return;
+  if(dice.some(d=>d.active))return;
+  dice.forEach(d=>{d.set=false;});
+  rollActive(true);});
+document.getElementById("keepBtn").addEventListener("click",()=>{
+  const sel=dice.filter(d=>d.active&&d.sel),sc=scoreSel(sel.map(d=>d.face));
+  if(!sc.valid||rolling)return;
+  turnPts+=sc.pts;sel.forEach(d=>{d.set=true;d.sel=false;d.active=false;});
+  dice.filter(d=>d.active).forEach(d=>{d.active=false;});
+  const remaining=dice.filter(d=>!d.set).length;
+  paintAll();
+  if(remaining===0){ // HOT DICE
+    GS.hot[P[turn].name]++;dice.forEach(d=>{d.set=false;});paintAll();
+    setMsg("\uD83D\uDD25 Hot dice! All six scored \u2014 roll again. (turn: "+turnPts+")");
+    rollActive(true);return;}
+  setMsg(P[turn].name+" \u2014 keep going or bank "+turnPts+".");
+  rollActive(false);
+});
+document.getElementById("bankBtn").addEventListener("click",()=>{if(phase!=="play"||rolling)return;
+  const sel=dice.filter(d=>d.active&&d.sel),sc=scoreSel(sel.map(d=>d.face));
+  if(dice.some(d=>d.active)){if(!sc.valid)return;turnPts+=sc.pts;sel.forEach(d=>{d.set=true;});}
+  const gain=turnPts;if(!onBoard[turn]&&gain<openMin){setMsg("Need "+openMin+" to get on the board.");return;}
+  onBoard[turn]=true;total[turn]+=gain;
+  if(gain>GS.best.pts)GS.best={pts:gain,by:P[turn].name};
+  setMsg(P[turn].name+" banks "+gain+"!");
+  if(total[turn]>=GOAL){finish(turn);return;}
+  setTimeout(passTurn,650);refresh();});
+document.getElementById("ruleBtn").addEventListener("click",()=>{if(phase==="play"&&(turnPts>0||dice.some(d=>d.set))){setMsg("Finish this turn before changing the rule.");return;}
+  openMin=openMin?0:500;refresh();setMsg(openMin?"Now you need 500 to get on the board.":"Now you can bank any amount.");});
+document.getElementById("newBtn").addEventListener("click",newGame);
+document.getElementById("ovBtn").addEventListener("click",newGame);
+
+function finish(w){phase="over";
+  const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,winner:P[w].name,loser:P[w==="A"?"B":"A"].name,
+    flipWinner:GS.flipWinner,score:(function(){const s={};s[P.A.name]=total.A;s[P.B.name]=total.B;return s;})(),
+    farkles:GS.farkles,hotDice:GS.hot,bestTurn:GS.best,goal:GOAL,openMin};
+  if(!GS.friendly)GN.recordGame(KEY,rec);
+  document.getElementById("ovTitle").textContent=P[w].name+" wins!";
+  document.getElementById("ovText").textContent="Final: "+P.A.name+" "+total.A+" \u00b7 "+total.B+" "+P.B.name+
+    (GS.best.pts?(" \u2014 biggest turn: "+GS.best.pts+" by "+GS.best.by):"");
+  confettiBurst();document.getElementById("overlay").classList.add("show");}
+function confettiBurst(){const box=document.getElementById("confetti");box.innerHTML="";
+  const cols=["#b0d235","#f4c542","#d8312b","#2f6fd0","#e8e4da"];
+  for(let i=0;i<60;i++){const d=document.createElement("div");d.className="cf";d.style.left=(Math.random()*100)+"%";
+    d.style.background=cols[i%cols.length];d.style.animationDuration=(2.2+Math.random()*1.8)+"s";
+    d.style.transform="rotate("+Math.floor(Math.random()*360)+"deg)";box.appendChild(d);}}
+
+GN.rulesButton(document.getElementById("foot"),{title:"Farkle",sections:[
+  {h:"Goal",t:"First to "+GOAL+" points wins. Each turn, roll six dice and press your luck."},
+  {h:"Each roll",t:"Set aside at least one scoring die, then either roll the rest for more or bank your turn total. Roll no scoring dice at all and you Farkle \u2014 the whole turn's points are lost."},
+  {h:"Scores",t:"Single 1 = 100, single 5 = 50. Three of a kind: three 1s = 1000, otherwise face\u00d7100 (three 4s = 400). Four of a kind = 1000, five = 2000, six = 3000. Straight 1-6 = 1500. Three pairs = 1500. Two triplets = 2500."},
+  {h:"Hot dice",t:"If all six dice score in one turn, you get all six back and keep rolling \u2014 stacking even more, but a Farkle still wipes it all."},
+  {h:"On the board",t:"With the 500 rule on, your first bank of the game must be 500 or more. Toggle it off to bank any amount."}]});
+GN.statsButton(document.getElementById("foot"),{title:"Farkle",key:KEY,specials:[
+  {label:"Farkles",of:(recs,name)=>recs.reduce((a,r)=>a+((r.farkles&&r.farkles[name])||0),0)},
+  {label:"Hot dice",of:(recs,name)=>recs.reduce((a,r)=>a+((r.hotDice&&r.hotDice[name])||0),0)}]});
+buildDice();newGame();
+window.GN&&GN.sync&&GN.sync();
+</script></body></html>

@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Go Fish</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  body{font-family:system-ui,sans-serif;color:#eaf2f8;min-height:100vh;display:flex;flex-direction:column;
+    background:radial-gradient(130% 90% at 50% 12%,#16384e 0%,#08151f 70%);}
+  #bar{display:flex;align-items:center;gap:10px;padding:11px 14px;}
+  #bar a{color:#bfe0f0;text-decoration:none;font-size:14px;border:1px solid #2e5168;border-radius:999px;padding:6px 12px;}
+  #title{font-weight:800;font-size:20px;}
+  #turnWrap{margin-left:auto;display:flex;align-items:center;gap:8px;}
+  #dot{width:15px;height:15px;border-radius:50%;}
+  #turnName{font-weight:700;font-size:15px;}
+  #opp{padding:6px 16px 0;text-align:center;}
+  #oppName{font-size:14px;color:#bcd6e6;}
+  #oppFan{display:flex;justify-content:center;gap:-8px;min-height:46px;margin-top:4px;}
+  .back{width:30px;height:44px;border-radius:5px;margin-left:-10px;
+    background:repeating-linear-gradient(45deg,#1d4a66 0 5px,#15394f 5px 10px);
+    border:1px solid #3a698c;box-shadow:0 2px 4px rgba(0,0,0,.4);}
+  .back:first-child{margin-left:0;}
+  #booksRow{display:flex;justify-content:space-between;padding:8px 16px 0;font-size:13px;color:#9fc0d4;}
+  #pond{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;}
+  #pondPile{position:relative;width:62px;height:88px;}
+  #pondPile .back{position:absolute;width:58px;height:84px;border-radius:7px;margin:0;}
+  #pondCount{font-size:14px;color:#bcd6e6;}
+  #msg{min-height:24px;text-align:center;font-size:16px;padding:0 18px;font-weight:600;}
+  #hand{display:flex;flex-wrap:wrap;justify-content:center;gap:7px;padding:8px 12px;}
+  .card{width:46px;height:64px;border-radius:7px;background:linear-gradient(165deg,#fff,#eef1f4);position:relative;cursor:pointer;
+    box-shadow:0 2px 5px rgba(0,0,0,.45);border:1px solid #cfd6dc;transition:transform .1s;}
+  .card:active{transform:translateY(-4px);}
+  .card .rk{position:absolute;top:3px;left:5px;font-size:16px;font-weight:800;line-height:1;}
+  .card .su{position:absolute;bottom:3px;right:5px;font-size:16px;line-height:1;}
+  .card.red{color:#d8312b;} .card.blk{color:#1c2b33;}
+  .card.ask{transform:translateY(-8px);outline:3px solid #f4c542;}
+  .grp{position:relative;}
+  .grp .cnt{position:absolute;top:-7px;right:-7px;background:#f4c542;color:#3a2c00;font-size:11px;font-weight:800;
+    min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;z-index:2;}
+  #foot{display:flex;gap:9px;align-items:center;justify-content:center;flex-wrap:wrap;padding:6px 12px 14px;}
+  .act{font-family:inherit;font-size:15px;font-weight:bold;padding:10px 16px;border-radius:10px;border:none;
+    color:#08212e;background:#46b0d2;cursor:pointer;box-shadow:0 4px 0 #2c7895,0 5px 10px rgba(0,0,0,.4);}
+  .act.ghost{background:#10293a;color:#bfe0f0;box-shadow:0 4px 0 #081821;border:1px solid #2e5168;}
+  .ov{position:fixed;inset:0;background:rgba(5,14,20,.96);display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:50;text-align:center;padding:26px;}
+  .ov.show{display:flex;} .ov h1{font-size:28px;} .ov p{color:#bfe0f0;max-width:340px;}
+  #confetti{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
+  .cf{position:absolute;width:10px;height:14px;top:-20px;animation:fall linear forwards;}
+  @keyframes fall{to{transform:translateY(110vh) rotate(720deg);}}
+</style></head><body>
+<div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">Go Fish</div><div id="turnWrap"><div id="dot"></div><div id="turnName"></div></div></div>
+<div id="opp"><div id="oppName"></div><div id="oppFan"></div></div>
+<div id="booksRow"><div id="booksA"></div><div id="booksB"></div></div>
+<div id="pond"><div id="pondPile"></div><div id="pondCount"></div></div>
+<div id="msg"></div>
+<div id="hand"></div>
+<div id="foot"><button class="act ghost" id="newBtn">New game</button></div>
+<div class="ov" id="curtain"><h1 id="curTitle"></h1><p id="curText"></p><button class="act" id="curBtn">I'm ready</button></div>
+<div class="ov" id="overlay"><div id="confetti"></div><div style="font-size:54px;">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p>
+  <button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #2e5168;background:#10293a;color:#bfe0f0;text-decoration:none;">Back to shelf</a></div>
+<script src="gamenight.js?v=8"></script>
+<script>
+const KEY="gofish_games",SUIT=["\u2660","\u2665","\u2666","\u2663"],RED=new Set([1,2]);
+const RANKS=[2,3,4,5,6,7,8,9,10,11,12,13,14],RNAME={11:"J",12:"Q",13:"K",14:"A"};
+let P={A:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},B:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182"}};
+let pond=[],hand={A:[],B:[]},books={A:[],B:[]},turn="A",phase="over",GS=null,busy=false;
+function seatFrom(p){return{name:p.name,main:p.color,light:p.light,dark:p.dark};}
+function rname(r){return RNAME[r]||(""+r);}
+function makeDeck(){const d=[];for(let s=0;s<4;s++)for(const r of RANKS)d.push({r,s});
+  for(let i=d.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[d[i],d[j]]=[d[j],d[i]];}return d;}
+
+// ---------- pure logic ----------
+function countRank(cards,r){return cards.filter(c=>c.r===r).length;}
+function pullRank(cards,r){const got=cards.filter(c=>c.r===r);
+  for(let i=cards.length-1;i>=0;i--)if(cards[i].r===r)cards.splice(i,1);return got;}
+function harvestBooks(side){let made=0;
+  for(const r of RANKS){if(countRank(hand[side],r)===4){pullRank(hand[side],r);books[side].push(r);made++;}}
+  return made;}
+function gameOver(){return books.A.length+books.B.length===13;}
+
+// ---------- UI ----------
+function cardEl(c,ask){const d=document.createElement("div");
+  d.className="card "+(c.s<2?"red":"blk")+(ask?" ask":"");
+  d.innerHTML='<span class="rk">'+rname(c.r)+'</span><span class="su">'+SUIT[c.s]+'</span>';return d;}
+function render(){
+  const opp=turn==="A"?"B":"A";
+  document.getElementById("oppName").textContent=P[opp].name+" \u2014 "+hand[opp].length+" cards";
+  const fan=document.getElementById("oppFan");fan.innerHTML="";
+  for(let i=0;i<Math.min(hand[opp].length,13);i++){const b=document.createElement("div");b.className="back";fan.appendChild(b);}
+  document.getElementById("booksA").textContent=P.A.name+" books: "+books.A.length+(books.A.length?" ("+books.A.map(rname).join(",")+")":"");
+  document.getElementById("booksB").textContent=P.B.name+" books: "+books.B.length+(books.B.length?" ("+books.B.map(rname).join(",")+")":"");
+  const pile=document.getElementById("pondPile");pile.innerHTML="";
+  for(let i=0;i<Math.min(pond.length,5);i++){const b=document.createElement("div");b.className="back";
+    b.style.left=(i*2)+"px";b.style.top=(i*2)+"px";pile.appendChild(b);}
+  document.getElementById("pondCount").textContent=pond.length+" in the pond";
+  const pc=P[turn],dot=document.getElementById("dot");document.getElementById("turnName").textContent=pc.name;
+  dot.style.background="radial-gradient(circle at 35% 30%,"+pc.light+","+pc.main+" 70%,"+pc.dark+")";dot.style.boxShadow="0 0 10px "+pc.main;
+  // hand grouped by rank, tap a group to ask
+  const h=document.getElementById("hand");h.innerHTML="";
+  const byRank={};hand[turn].forEach(c=>{(byRank[c.r]=byRank[c.r]||[]).push(c);});
+  RANKS.forEach(r=>{if(!byRank[r])return;const grp=document.createElement("div");grp.className="grp";
+    grp.appendChild(cardEl(byRank[r][0],false));
+    if(byRank[r].length>1){const n=document.createElement("div");n.className="cnt";n.textContent=byRank[r].length;grp.appendChild(n);}
+    grp.addEventListener("click",()=>ask(r));h.appendChild(grp);});
+}
+function setMsg(t){document.getElementById("msg").textContent=t;}
+
+function newGame(){phase="over";document.getElementById("overlay").classList.remove("show");document.getElementById("confetti").innerHTML="";
+  GN.matchStart(function(m){P={A:seatFrom(m.a),B:seatFrom(m.b)};
+    pond=makeDeck();hand={A:[],B:[]};books={A:[],B:[]};
+    for(let i=0;i<7;i++){hand.A.push(pond.pop());hand.B.push(pond.pop());}
+    harvestBooks("A");harvestBooks("B");
+    turn=(m.first===m.a)?"A":"B";phase="play";busy=false;
+    GS={start:Date.now(),flipWinner:m.first.name,friendly:m.friendly,asks:{},catches:{}};
+    GS.asks[m.a.name]=0;GS.asks[m.b.name]=0;GS.catches[m.a.name]=0;GS.catches[m.b.name]=0;
+    curtainTo(()=>{render();setMsg(P[turn].name+" \u2014 tap a card to ask for that rank.");},
+      "Pass to "+P[turn].name,"They go first \u2014 don't peek at their hand!");});}
+
+function ask(r){if(phase!=="play"||busy)return;
+  busy=true;const opp=turn==="A"?"B":"A";
+  GS.asks[P[turn].name]++;
+  const got=pullRank(hand[opp],r);
+  if(got.length){hand[turn].push(...got);
+    const made=harvestBooks(turn);
+    setMsg(P[turn].name+" asked for "+rname(r)+"s \u2014 got "+got.length+"!"+(made?" \uD83D\uDCDA Book!":"")+" Go again.");
+    render();finishOrContinue(true);
+  } else { // GO FISH
+    if(pond.length){const drawn=pond.pop();hand[turn].push(drawn);
+      const made=harvestBooks(turn);
+      if(drawn.r===r){GS.catches[P[turn].name]++;
+        setMsg("Go Fish \u2014 and "+P[turn].name+" fished the "+rname(r)+" they wanted! "+(made?"\uD83D\uDCDA Book! ":"")+"Go again.");
+        render();finishOrContinue(true);
+      } else {
+        setMsg("Go Fish \u2014 "+P[turn].name+" draws a card."+(made?" \uD83D\uDCDA Book!":""));
+        render();finishOrContinue(false);
+      }
+    } else { // empty pond
+      setMsg("The pond is empty \u2014 no card to draw.");render();finishOrContinue(false);
+    }
+  }
+}
+function finishOrContinue(again){
+  // refill empty hand from pond if possible
+  if(hand[turn].length===0&&pond.length){hand[turn].push(pond.pop());harvestBooks(turn);render();}
+  if(gameOver()){setTimeout(finish,700);return;}
+  if(again){busy=false;
+    if(hand[turn].length===0){setMsg(P[turn].name+" is out of cards \u2014 turn passes.");setTimeout(()=>passTurn(),900);}
+    return;}
+  setTimeout(()=>passTurn(),1000);
+}
+function passTurn(){turn=turn==="A"?"B":"A";busy=false;
+  // if this player has no cards but pond has some, draw up to continue
+  if(hand[turn].length===0&&pond.length){hand[turn].push(pond.pop());harvestBooks(turn);}
+  if(hand[turn].length===0&&pond.length===0){ // can't play; other also? then end
+    if(gameOver()||(hand.A.length===0&&hand.B.length===0)){finish();return;}
+    turn=turn==="A"?"B":"A";} // skip back
+  curtainTo(()=>{render();setMsg(P[turn].name+" \u2014 tap a card to ask for that rank.");},
+    "Pass to "+P[turn].name,"Books so far \u2014 "+P.A.name+": "+books.A.length+" \u00b7 "+P.B.name+": "+books.B.length);}
+
+function curtainTo(fn,title,text){const cur=document.getElementById("curtain");
+  document.getElementById("curTitle").textContent=title;document.getElementById("curText").textContent=text||"";
+  cur.classList.add("show");document.getElementById("curBtn").onclick=()=>{cur.classList.remove("show");fn();};}
+
+function finish(){phase="over";
+  const w=books.A.length===books.B.length?null:(books.A.length>books.B.length?"A":"B");
+  const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
+    winner:w?P[w].name:"tie",loser:w?P[w==="A"?"B":"A"].name:"tie",flipWinner:GS.flipWinner,
+    books:(function(){const s={};s[P.A.name]=books.A.length;s[P.B.name]=books.B.length;return s;})(),
+    asks:GS.asks,catches:GS.catches};
+  if(!GS.friendly)GN.recordGame(KEY,rec);
+  document.getElementById("ovTitle").textContent=w?(P[w].name+" wins!"):"It's a tie!";
+  document.getElementById("ovText").textContent="Books \u2014 "+P.A.name+": "+books.A.length+" \u00b7 "+P.B.name+": "+books.B.length;
+  confettiBurst();document.getElementById("overlay").classList.add("show");}
+function confettiBurst(){const box=document.getElementById("confetti");box.innerHTML="";
+  const cols=["#46b0d2","#f4c542","#d8312b","#7ed957","#e8e4da"];
+  for(let i=0;i<60;i++){const d=document.createElement("div");d.className="cf";d.style.left=(Math.random()*100)+"%";
+    d.style.background=cols[i%cols.length];d.style.animationDuration=(2.2+Math.random()*1.8)+"s";
+    d.style.transform="rotate("+Math.floor(Math.random()*360)+"deg)";box.appendChild(d);}}
+document.getElementById("newBtn").addEventListener("click",newGame);
+document.getElementById("ovBtn").addEventListener("click",newGame);
+GN.rulesButton(document.getElementById("foot"),{title:"Go Fish",sections:[
+  {h:"Goal",t:"Collect the most books. A book is all four cards of one rank (four 7s, four Kings, and so on)."},
+  {h:"Your turn",t:"Tap a card in your hand to ask the other player for that rank \u2014 you must already hold at least one. If they have any, they hand over all of them."},
+  {h:"Got it? Go again",t:"Every time you get cards \u2014 from them or by fishing the exact rank you asked for \u2014 you take another turn."},
+  {h:"Go Fish",t:"If they don't have your rank, you draw from the pond. Draw the very rank you asked for and you still go again!"},
+  {h:"Game end",t:"When all 13 books are laid down, whoever made the most wins."}]});
+GN.statsButton(document.getElementById("foot"),{title:"Go Fish",key:KEY,specials:[
+  {label:"Lucky catches",of:(recs,name)=>recs.reduce((a,r)=>a+((r.catches&&r.catches[name])||0),0)}]});
+newGame();
+window.GN&&GN.sync&&GN.sync();
+</script></body></html>
