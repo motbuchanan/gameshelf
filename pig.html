@@ -25,13 +25,7 @@
     box-shadow:inset 0 2px 0 rgba(255,255,255,.3);}
   .ghost{position:absolute;top:0;bottom:0;border-radius:0 9px 9px 0;opacity:.45;transition:left .25s,width .25s;}
   #board{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:8px;}
-  #die{width:110px;height:110px;border-radius:20px;background:linear-gradient(160deg,#fff,#e4e4dc);position:relative;
-    box-shadow:0 10px 22px rgba(0,0,0,.55),inset 0 2px 0 #fff,inset 0 -4px 8px rgba(0,0,0,.15);}
-  #die .p{position:absolute;width:18px;height:18px;border-radius:50%;background:#b3211b;
-    box-shadow:inset 0 -2px 3px rgba(0,0,0,.35);}
-  @keyframes shake{0%,100%{transform:rotate(0)}25%{transform:rotate(-9deg) translateX(-4px)}75%{transform:rotate(9deg) translateX(4px)}}
-  #die.rolling{animation:shake .12s linear infinite;}
-  #die.bust{background:linear-gradient(160deg,#f3b8b2,#dd9088);}
+#dieHost{width:110px;height:110px;display:flex;align-items:center;justify-content:center;}
   #turnTotal{font-size:17px;color:#d8e8dd;min-height:24px;font-variant-numeric:tabular-nums;}
   #msg{min-height:24px;text-align:center;font-size:15px;color:#d8e8dd;padding:0 16px;}
   #foot{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;padding:10px 14px 18px;}
@@ -56,7 +50,7 @@
   <div class="lane"><div class="who"><span id="whoB"></span><b id="bankB">0</b></div><div class="track"><div class="fill" id="fillB"></div><div class="ghost" id="ghostB"></div></div></div>
 </div>
 <div id="board">
-  <div id="die"></div>
+  <div id="dieHost"></div>
   <div id="turnTotal"></div>
 </div>
 <div id="msg"></div>
@@ -68,17 +62,16 @@
 </div>
 <div class="ov" id="overlay"><div id="confetti"></div><div style="font-size:54px;">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p>
   <button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
-<script src="gamenight.js?v=3"></script>
+<script src="gamenight.js?v=5"></script>
 <script>
 const KEY="pig_games",GOAL=100;
 let P={A:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},B:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182"}};
 function seatFrom(p){return{name:p.name,main:p.color,light:p.light,dark:p.dark};}
 let bank={A:0,B:0},turn="A",pot=0,phase="over",GS=null,rolling=false;
-const PIPS={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
-function drawDie(v,bust){const d=document.getElementById("die");d.innerHTML="";d.classList.toggle("bust",!!bust);
-  if(!v)return;const pos=[[22,22],[55,22],[88,22],[22,55],[55,55],[88,55],[22,88],[55,88],[88,88]];
-  for(const i of PIPS[v]){const p=document.createElement("div");p.className="p";
-    p.style.left=pos[i][0]-9+"px";p.style.top=pos[i][1]-9+"px";d.appendChild(p);}}
+let cube=null;
+function ensureCube(){if(cube)return cube;cube=GN.cubeDie(86);
+  document.getElementById("dieHost").appendChild(cube.el);return cube;}
+function drawDie(v,bust){const c=ensureCube();c.setBust(!!bust);if(v)c.show(v);}
 function newGame(){phase="over";pot=0;bank={A:0,B:0};drawDie(0);
   document.getElementById("overlay").classList.remove("show");
   document.getElementById("confetti").innerHTML="";
@@ -110,16 +103,16 @@ function refresh(){const pc=P[turn];
   document.getElementById("rollBtn").disabled=phase!=="play"||rolling;
   document.getElementById("holdBtn").disabled=phase!=="play"||rolling||pot===0;}
 function roll(){if(phase!=="play"||rolling)return;rolling=true;refresh();
-  const die=document.getElementById("die");die.classList.add("rolling");die.classList.remove("bust");
-  let n=0;const iv=setInterval(()=>{drawDie(1+Math.floor(Math.random()*6));
-    if(++n>=7){clearInterval(iv);die.classList.remove("rolling");
-      const v=1+Math.floor(Math.random()*6);drawDie(v,v===1);
-      if(!GN.friendly)GN.g.addDice([v]);
-      rolling=false;
-      if(v===1){GS.busts[P[turn].name]++;pot=0;
-        setMessage("Oink! "+P[turn].name+" busts \u2014 turn points gone.");
-        setTimeout(()=>{swap();},900);}
-      else{pot+=v;setMessage(P[turn].name+" rolls "+v+". Push on, or Hold?");refresh();}}},65);}
+  const c=ensureCube();c.setBust(false);
+  const v=1+Math.floor(Math.random()*6);
+  c.tumble(v,{duration:660,hop:56},()=>{
+    c.setBust(v===1);
+    if(!GN.friendly)GN.g.addDice([v]);
+    rolling=false;
+    if(v===1){GS.busts[P[turn].name]++;pot=0;
+      setMessage("Oink! "+P[turn].name+" busts \u2014 turn points gone.");
+      setTimeout(()=>{swap();},900);}
+    else{pot+=v;setMessage(P[turn].name+" rolls "+v+". Push on, or Hold?");refresh();}});}
 function hold(){if(phase!=="play"||rolling||pot===0)return;
   bank[turn]+=pot;GS.holds[P[turn].name]++;
   if(pot>GS.bestTurn[P[turn].name])GS.bestTurn[P[turn].name]=pot;

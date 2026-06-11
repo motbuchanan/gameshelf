@@ -67,18 +67,19 @@
 </div>
 <div class="ov" id="overlay"><div id="confetti"></div><div style="font-size:54px;">&#128230;</div><h1 id="ovTitle"></h1><p id="ovText"></p>
   <button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
-<script src="gamenight.js?v=3"></script>
+<script src="gamenight.js?v=5"></script>
 <script>
 const KEY="sb_games";
 let P={A:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},B:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182"}};
 function seatFrom(p){return{name:p.name,main:p.color,light:p.light,dark:p.dark};}
 let tiles=[],sel=new Set(),dice=[],need=0,turn="A",roundScore={A:null,B:null},phase="over",GS=null,rolling=false;
 const PIPS={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
-function dieEl(v){const d=document.createElement("div");d.className="die";
-  const pos=[[14,14],[32,14],[50,14],[14,32],[32,32],[50,32],[14,50],[32,50],[50,50]];
-  for(const i of PIPS[v]){const p=document.createElement("div");p.className="p";
-    p.style.left=pos[i][0]-5.5+"px";p.style.top=pos[i][1]-5.5+"px";d.appendChild(p);}
-  return d;}
+let cubes=null;
+function ensureCubes(){if(cubes)return cubes;
+  cubes=[GN.cubeDie(58),GN.cubeDie(58)];
+  const dr=document.getElementById("diceRow");
+  dr.appendChild(cubes[0].el);dr.appendChild(cubes[1].el);
+  return cubes;}
 function anyCombo(open,target){ // can any subset of open tiles sum to target?
   if(target===0)return true;if(target<0)return false;
   for(let i=0;i<open.length;i++){
@@ -110,8 +111,11 @@ function render(){const pc=P[turn];
       b.addEventListener("click",()=>{if(phase!=="pick")return;
         if(sel.has(n))sel.delete(n);else sel.add(n);render();});}
     tl.appendChild(b);}
-  const dr=document.getElementById("diceRow");dr.innerHTML="";
-  for(const v of dice)dr.appendChild(dieEl(v));
+  const cs=ensureCubes();
+  cs[0].el.style.visibility=dice.length>=1?"visible":"hidden";
+  cs[1].el.style.visibility=dice.length>=2?"visible":"hidden";
+  if(dice[0])cs[0].show(dice[0]);
+  if(dice[1])cs[1].show(dice[1]);
   const cur=[...sel].reduce((a,b)=>a+b,0);
   document.getElementById("sums").textContent=phase==="pick"?("Need "+need+" \u00b7 selected "+(cur||0)):"";
   const recs=GN.readGames(KEY);let a=0,b=0;
@@ -121,16 +125,13 @@ function render(){const pc=P[turn];
   document.getElementById("rollBtn").disabled=phase!=="roll"||rolling;
   document.getElementById("shutBtn").disabled=!(phase==="pick"&&cur===need);}
 function roll(){if(phase!=="roll"||rolling)return;rolling=true;render();
-  const high=tiles.reduce((a,b)=>a+b,0),one=tiles.every(t=>t<=6)&&high<=6?false:false;
   const useOne=tiles.length&&Math.max(...tiles)<=6&&[7,8,9].every(t=>!tiles.includes(t));
-  const dr=document.getElementById("diceRow");dr.innerHTML="";
-  const d1=dieEl(1),d2=useOne?null:dieEl(1);
-  d1.classList.add("rolling");dr.appendChild(d1);
-  if(d2){d2.classList.add("rolling");dr.appendChild(d2);}
-  let n=0;const iv=setInterval(()=>{
-    const a=1+Math.floor(Math.random()*6),b=useOne?0:1+Math.floor(Math.random()*6);
-    dr.innerHTML="";const e1=dieEl(a);dr.appendChild(e1);if(!useOne)dr.appendChild(dieEl(b));
-    if(++n>=7){clearInterval(iv);rolling=false;
+  const cs=ensureCubes();
+  cs[0].el.style.visibility="visible";
+  cs[1].el.style.visibility=useOne?"hidden":"visible";
+  const a=1+Math.floor(Math.random()*6),b=useOne?0:1+Math.floor(Math.random()*6);
+  let landed=0;const want=useOne?1:2;
+  const after=()=>{if(++landed<want)return;rolling=false;
       dice=useOne?[a]:[a,b];need=a+b;
       if(!GN.friendly)GN.g.addDice(dice);
       if(!anyCombo(tiles,need)){
@@ -140,7 +141,9 @@ function roll(){if(phase!=="roll"||rolling)return;rolling=true;render();
         setTimeout(()=>endRound(left),1100);return;}
       phase="pick";sel.clear();
       setMessage("Rolled "+need+" \u2014 tap tiles that add up to it.");
-      render();}},65);}
+      render();};
+  cs[0].tumble(a,{duration:620,hop:40},after);
+  if(!useOne)setTimeout(()=>cs[1].tumble(b,{duration:620,hop:40},after),90);}
 function shut(){const cur=[...sel].reduce((a,b)=>a+b,0);
   if(phase!=="pick"||cur!==need)return;
   tiles=tiles.filter(t=>!sel.has(t));

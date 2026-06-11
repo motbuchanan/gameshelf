@@ -57,7 +57,7 @@
 <div id="msg"></div>
 <div id="foot"><button class="act" id="rollBtn">Roll</button></div>
 <div class="ov" id="overlay"><div id="confetti"></div><div id="ovTrophy">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p><button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
-<script src="gamenight.js?v=3"></script>
+<script src="gamenight.js?v=5"></script>
 <script>
 let P={A:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},B:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182"}};
 const CATS=[
@@ -107,38 +107,92 @@ function setMessage(t){document.getElementById("msg").textContent=t;}
 // ---- dice tray: top-down physics ----
 const tray=document.getElementById("tray"),tctx=tray.getContext("2d");
 let TW=380,TH=128,DS=46,bodies=[],tumbling=false;
-function fitTray(){TW=Math.min(window.innerWidth-46,430);TH=Math.max(118,Math.min(140,Math.round(TW*0.33)));
+function fitTray(){TW=Math.min(window.innerWidth-46,430);TH=Math.max(126,Math.min(150,Math.round(TW*0.35)));
   DS=Math.round(Math.min(50,TW/7.6));
   tray.width=TW;tray.height=TH;
   if(bodies.length){for(const b of bodies){b.x=Math.min(Math.max(b.x,DS*0.7),TW-DS*0.7);b.y=Math.min(Math.max(b.y,DS*0.7),TH-DS*0.7);}}
   drawTray();}
 function layoutDice(){bodies=dice.map((v,i)=>({
   x:TW/2+(i-2)*(DS*1.32),y:TH/2,a:(Math.random()*14-7)*Math.PI/180,
-  vx:0,vy:0,va:0,disp:v,settled:true,delay:0}));
+  vx:0,vy:0,va:0,rx:0,ry:0,vrx:0,vry:0,fv:null,val:v,disp:v,settled:true,delay:0}));
   drawTray();}
-function drawDieAt(b,heldRing){tctx.save();
-  tctx.translate(b.x,b.y);
-  // shadow
-  tctx.fillStyle="rgba(0,0,0,.32)";
-  tctx.beginPath();tctx.ellipse(2,DS*0.34,DS*0.48,DS*0.2,0,0,7);tctx.fill();
-  tctx.rotate(b.a);
-  const h=DS/2,r=DS*0.2;
-  const g=tctx.createLinearGradient(-h,-h,h,h);
-  g.addColorStop(0,"#fffdf6");g.addColorStop(0.6,"#f4efe2");g.addColorStop(1,"#ddd6c2");
-  tctx.fillStyle=g;
-  tctx.beginPath();
-  tctx.moveTo(-h+r,-h);tctx.arcTo(h,-h,h,h,r);tctx.arcTo(h,h,-h,h,r);
-  tctx.arcTo(-h,h,-h,-h,r);tctx.arcTo(-h,-h,h,-h,r);tctx.closePath();
-  tctx.fill();
-  tctx.strokeStyle="rgba(0,0,0,.18)";tctx.lineWidth=1;tctx.stroke();
-  if(heldRing){tctx.strokeStyle="#f4c542";tctx.lineWidth=3;
-    tctx.shadowColor="#f4c542";tctx.shadowBlur=8;tctx.stroke();tctx.shadowBlur=0;}
-  // pips
-  const ON={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]}[b.disp]||[];
-  const off=DS*0.26,pr=DS*0.085;
-  const pos=[[-off,-off],[0,-off],[off,-off],[-off,0],[0,0],[off,0],[-off,off],[0,off],[off,off]];
-  tctx.fillStyle="#b3211b";
-  for(const k of ON){tctx.beginPath();tctx.arc(pos[k][0],pos[k][1],pr,0,7);tctx.fill();}
+// ---- 3D die renderer ----
+const TILT=-0.42,LIGHT=(function(){const l=[-0.45,-0.62,0.65],m=Math.hypot(...l);return l.map(v=>v/m);})();
+const RING={1:[2,3,5,4],2:[1,4,6,3],3:[1,2,6,5],4:[1,5,6,2],5:[1,3,6,4],6:[2,4,5,3]};
+function rotXYZ(p,rx,ry,rz){let[x,y,z]=p,c,s;
+  c=Math.cos(rx);s=Math.sin(rx);[y,z]=[y*c-z*s,y*s+z*c];
+  c=Math.cos(ry);s=Math.sin(ry);[x,z]=[x*c+z*s,-x*s+z*c];
+  c=Math.cos(rz);s=Math.sin(rz);[x,y]=[x*c-y*s,x*s+y*c];
+  return[x,y,z];}
+const PIPUV={1:[[0,0]],2:[[-1,-1],[1,1]],3:[[-1,-1],[0,0],[1,1]],4:[[-1,-1],[1,-1],[-1,1],[1,1]],
+  5:[[-1,-1],[1,-1],[0,0],[-1,1],[1,1]],6:[[-1,-1],[1,-1],[-1,0],[1,0],[-1,1],[1,1]]};
+function drawDieAt(b,heldRing){
+  const h=DS*0.46;
+  // cube faces: corners in face-local order; normal outward
+  const F=[
+    {n:[0,0,1], c:[[-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]]},      // top (+z toward viewer)
+    {n:[0,0,-1],c:[[-1,-1,-1],[-1,1,-1],[1,1,-1],[1,-1,-1]]},  // bottom
+    {n:[0,-1,0],c:[[-1,-1,-1],[1,-1,-1],[1,-1,1],[-1,-1,1]]},  // north
+    {n:[0,1,0], c:[[-1,1,1],[1,1,1],[1,1,-1],[-1,1,-1]]},      // south
+    {n:[-1,0,0],c:[[-1,-1,-1],[-1,-1,1],[-1,1,1],[-1,1,-1]]},  // west
+    {n:[1,0,0], c:[[1,-1,1],[1,-1,-1],[1,1,-1],[1,1,1]]}];     // east
+  // face values: index aligned with F. settled: top=val + standard ring
+  let fv=b.fv;
+  if(!fv||b.settled){const v=b.val||b.disp||1,r=RING[v];
+    fv=[v,7-v,r[0],r[2],r[3],r[1]];}
+  const rx=(b.settled?0:b.rx||0)+TILT,ry=b.settled?0:(b.ry||0),rz=b.a;
+  const inAir=!b.settled&&Math.hypot(b.vx||0,b.vy||0)>1.0;
+  // contact shadow: soft, spreads while airborne
+  tctx.save();tctx.translate(b.x,b.y);
+  const sh=inAir?1.35:1.0;
+  const sg=tctx.createRadialGradient(3,DS*0.42,1,3,DS*0.42,DS*0.55*sh);
+  sg.addColorStop(0,"rgba(0,0,0,"+(inAir?0.22:0.38)+")");sg.addColorStop(1,"rgba(0,0,0,0)");
+  tctx.fillStyle=sg;
+  tctx.beginPath();tctx.ellipse(3,DS*0.42,DS*0.55*sh,DS*0.24*sh,0,0,7);tctx.fill();
+  // project: rotate, mild perspective
+  const proj=p=>{const[x,y,z]=rotXYZ([p[0]*h,p[1]*h,p[2]*h],rx,ry,rz);
+    const s=1+z*0.0022;return{x:x*s,y:y*s,z};};
+  const faces=F.map((f,fi)=>{
+    const n=rotXYZ(f.n,rx,ry,rz);
+    if(n[2]<=0.02)return null;
+    const pts=f.c.map(proj);
+    const lum=0.52+0.48*Math.max(0,n[0]*LIGHT[0]+n[1]*LIGHT[1]+n[2]*LIGHT[2]);
+    return{pts,n,lum,z:(pts[0].z+pts[1].z+pts[2].z+pts[3].z)/4,fi};
+  }).filter(Boolean).sort((a,b2)=>a.z-b2.z);
+  for(const f of faces){
+    const ivory=l=>"rgb("+Math.round(252*l)+","+Math.round(249*l)+","+Math.round(238*l)+")";
+    tctx.fillStyle=ivory(f.lum);
+    tctx.beginPath();
+    f.pts.forEach((p,i2)=>i2?tctx.lineTo(p.x,p.y):tctx.moveTo(p.x,p.y));
+    tctx.closePath();tctx.fill();
+    tctx.strokeStyle="rgba(70,55,30,"+(0.25+0.2*(1-f.lum))+")";
+    tctx.lineWidth=1;tctx.stroke();
+    // pips on this face
+    const v=fv[f.fi]||1,uv=PIPUV[v];
+    const C=f.pts;
+    const at=(u,w)=>{ // bilinear in projected quad, u,w in [-1,1]
+      const a2=(u+1)/2,b2=(w+1)/2;
+      const top={x:C[0].x+(C[1].x-C[0].x)*a2,y:C[0].y+(C[1].y-C[0].y)*a2};
+      const bot={x:C[3].x+(C[2].x-C[3].x)*a2,y:C[3].y+(C[2].y-C[3].y)*a2};
+      return{x:top.x+(bot.x-top.x)*b2,y:top.y+(bot.y-top.y)*b2};};
+    const e1=Math.hypot(C[1].x-C[0].x,C[1].y-C[0].y),e2=Math.hypot(C[3].x-C[0].x,C[3].y-C[0].y);
+    const pr=Math.sqrt(e1*e2)*0.085;
+    const pipCol="rgb("+Math.round(179*f.lum*1.05)+","+Math.round(33*f.lum)+","+Math.round(27*f.lum)+")";
+    for(const[u,w]of uv){const p=at(u*0.52,w*0.52);
+      tctx.fillStyle=pipCol;
+      tctx.beginPath();tctx.arc(p.x,p.y,pr,0,7);tctx.fill();
+      tctx.fillStyle="rgba(0,0,0,.25)";
+      tctx.beginPath();tctx.arc(p.x,p.y-pr*0.25,pr,Math.PI*1.15,Math.PI*1.85);tctx.lineWidth=pr*0.3;tctx.stroke();}
+    // top-face sheen
+    if(f.fi===0||f.lum>0.9){const g=tctx.createLinearGradient(C[0].x,C[0].y,C[2].x,C[2].y);
+      g.addColorStop(0,"rgba(255,255,255,.3)");g.addColorStop(0.45,"rgba(255,255,255,0)");
+      tctx.fillStyle=g;
+      tctx.beginPath();f.pts.forEach((p,i2)=>i2?tctx.lineTo(p.x,p.y):tctx.moveTo(p.x,p.y));
+      tctx.closePath();tctx.fill();}}
+  if(heldRing){
+    tctx.strokeStyle="#f4c542";tctx.lineWidth=3;
+    tctx.shadowColor="#f4c542";tctx.shadowBlur=9;
+    tctx.beginPath();tctx.arc(0,0,DS*0.72,0,7);tctx.stroke();tctx.shadowBlur=0;}
   tctx.restore();}
 function drawTray(){tctx.clearRect(0,0,TW,TH);
   const felt=tctx.createRadialGradient(TW/2,TH/2,TH*0.2,TW/2,TH/2,TW*0.62);
@@ -156,7 +210,11 @@ function roll(){if(rolls>=3||phase!=="turn"||tumbling)return;
     b.val=dice[i];b.settled=false;b.delay=thrown*5;thrown++;
     b.x=-DS*0.8;b.y=TH*0.3+Math.random()*TH*0.4;
     b.vx=(9+Math.random()*4.5)*sc;b.vy=(Math.random()*2-1)*3.2;
-    b.va=(Math.random()*2-1)*0.5;b.shuf=0;});
+    b.va=(Math.random()*2-1)*0.5;b.shuf=0;
+    b.rx=Math.random()*6.28;b.ry=Math.random()*6.28;
+    b.vrx=(0.18+Math.random()*0.22)*(Math.random()<0.5?-1:1);
+    b.vry=(0.12+Math.random()*0.2)*(Math.random()<0.5?-1:1);
+    b.fv=null;});
   const t0=performance.now();
   (function step(ts){
     let live=false;
@@ -178,10 +236,15 @@ function roll(){if(rolls>=3||phase!=="turn"||tumbling)return;
             const dot=(b.vx-o.vx)*nx+(b.vy-o.vy)*ny;
             b.vx-=dot*nx*0.9;b.vy-=dot*ny*0.9;o.vx+=dot*nx*0.9;o.vy+=dot*ny*0.9;}}}
       b.vx*=0.964;b.vy*=0.964;b.va*=0.94;
+      b.rx+=b.vrx;b.ry+=b.vry;b.vrx*=0.962;b.vry*=0.962;
       const sp=Math.hypot(b.vx,b.vy);
-      if(sp>1.3){if(++b.shuf%4===0)b.disp=1+Math.floor(Math.random()*6);}
-      else b.disp=b.val;
-      if(sp<0.28&&Math.abs(b.va)<0.015){b.settled=true;b.vx=b.vy=b.va=0;b.disp=b.val;}
+      if(sp>1.3){if(++b.shuf%5===0){const r=()=>1+Math.floor(Math.random()*6);
+        const v=r(),rg=RING[v];b.fv=[v,7-v,rg[0],rg[2],rg[3],rg[1]];}}
+      else{
+        // glide rotation home so the cube lands flat
+        const home=a=>{const m=Math.round(a/(Math.PI/2))*(Math.PI/2);return a+(m-a)*0.28;};
+        b.rx=home(b.rx);b.ry=home(b.ry);b.fv=null;b.disp=b.val;}
+      if(sp<0.28&&Math.abs(b.va)<0.015){b.settled=true;b.vx=b.vy=b.va=0;b.vrx=b.vry=0;b.rx=0;b.ry=0;b.disp=b.val;}
       else live=true;}
     if(ts-t0>2200){for(const b of bodies){if(!b.settled){b.settled=true;b.vx=b.vy=b.va=0;if(b.val)b.disp=b.val;}}live=false;}
     drawTray();

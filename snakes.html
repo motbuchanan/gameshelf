@@ -34,7 +34,7 @@
 </head>
 <body>
 <div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">Snakes &amp; Ladders</div><div id="turnWrap"><div id="dot"></div><div id="turnName"></div></div></div>
-<div id="boardWrap"><canvas id="cv"></canvas></div>
+<div id="boardWrap" style="position:relative;"><canvas id="cv"></canvas><div id="dieHost" style="position:absolute;right:6px;top:6px;"></div></div>
 <div id="msg"></div>
 <div id="foot">
   <button class="act" id="rollBtn">Roll</button>
@@ -43,7 +43,7 @@
 </div>
 <div class="ov" id="overlay"><div id="confetti"></div><div style="font-size:54px;">&#127937;</div><h1 id="ovTitle"></h1><p id="ovText"></p>
   <button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
-<script src="gamenight.js?v=3"></script>
+<script src="gamenight.js?v=5"></script>
 <script>
 const KEY="sl_games";
 const LADDERS={2:38,7:14,8:31,15:26,21:42,28:84,36:44,51:67,71:91,78:98};
@@ -130,10 +130,14 @@ function refresh(){const pc=P[turn];
 function landingOf(from,v){let to=from+v;
   if(to>100)to=100-(to-100); // bounce back
   return to;}
+let cube=null;
+function ensureCube(){if(cube)return cube;cube=GN.cubeDie(46);
+  document.getElementById("dieHost").appendChild(cube.el);return cube;}
 function roll(){if(phase!=="play"||rolling)return;rolling=true;refresh();
   const v=1+Math.floor(Math.random()*6);
   if(!GN.friendly)GN.g.addDice([v]);
   if(v===6)GS.sixes[P[turn].name]++;
+  ensureCube().tumble(v,{duration:560,hop:30},()=>{
   setMessage(P[turn].name+" rolls "+v+(pos[turn]+v>100?" \u2014 too far, bounce back!":""));
   const from=pos[turn],to=landingOf(from,v);
   walk(turn,from,to,()=>{
@@ -144,7 +148,7 @@ function roll(){if(phase!=="play"||rolling)return;rolling=true;refresh();
     if(chute){GS.snakes[P[turn].name]++;setMessage("Sssnake\u2026 down to "+chute+".");
       slide(turn,to,chute,()=>{pos[turn]=chute;after();});return;}
     after();
-    function unused(){}});
+    function unused(){}});});
   function after(){rolling=false;
     if(pos[turn]===100){finish(turn);return;}
     if(v===6){setMessage((document.getElementById("msg").textContent+" ").trim()+" Six rolls again!");refresh();render();return;}
