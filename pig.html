@@ -71,7 +71,17 @@ let P={A:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},B:{name:"Kat
 function seatFrom(p){return{name:p.name,main:p.color,light:p.light,dark:p.dark};}
 let bank={A:0,B:0},turn="A",pot=0,phase="over",GS=null,rolling=false;
 let cube=null;
-function ensureCube(){if(cube)return cube;cube=GN.cubeDie(86);
+function flatDie(size){
+  const el=document.createElement("div");
+  el.style.cssText="width:"+size+"px;height:"+size+"px;border-radius:18%;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);padding:12%;background:linear-gradient(160deg,#fafafa,#d8d8d8);box-shadow:inset 0 2px 3px rgba(255,255,255,.85),inset 0 -3px 5px rgba(0,0,0,.22),0 4px 8px rgba(0,0,0,.5);";
+  const pips=[];for(let i=0;i<9;i++){const p=document.createElement("i");p.style.cssText="align-self:center;justify-self:center;width:58%;height:58%;border-radius:50%;background:radial-gradient(circle at 38% 32%,#454545,#111 70%);visibility:hidden;";el.appendChild(p);pips.push(p);}
+  const MAP={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
+  function show(v){pips.forEach(p=>p.style.visibility="hidden");(MAP[v]||[]).forEach(i=>pips[i].style.visibility="visible");}
+  function setBust(b){el.style.filter=b?"saturate(1.6) hue-rotate(-25deg)":"";}
+  function tumble(v,opts,cb){let n=0;const dur=(opts&&opts.duration)||640;const iv=setInterval(()=>{show(1+Math.floor(Math.random()*6));if(++n>=8){clearInterval(iv);show(v);cb&&cb();}},dur/8);}
+  show(1);return{el,show,setBust,tumble};
+}
+function ensureCube(){if(cube)return cube;cube=flatDie(86);
   document.getElementById("dieHost").appendChild(cube.el);return cube;}
 function drawDie(v,bust){const c=ensureCube();c.setBust(!!bust);if(v)c.show(v);}
 function newGame(){phase="over";pot=0;bank={A:0,B:0};drawDie(0);
