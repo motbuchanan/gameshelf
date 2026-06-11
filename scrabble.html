@@ -34,6 +34,8 @@
   .rtile.sel{transform:translateY(-7px);outline:2px solid #b0d235;}
   .rtile.xmark{opacity:.45;outline:2px dashed #d86a5a;}
   #msg{min-height:22px;margin:8px 6px 2px;font-size:15px;text-align:center;}
+  #msg.good{color:#b0d235;font-weight:700;}
+  #msg.bad{color:#e89a8a;}
   #foot{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;padding:8px;width:100%;max-width:560px;}
   .act{font-family:inherit;font-size:15px;font-weight:bold;padding:10px 16px;border-radius:10px;border:none;
     color:#1c2b16;background:#b0d235;cursor:pointer;box-shadow:0 4px 0 #7e9a1f,0 4px 9px rgba(0,0,0,.4);}
@@ -172,8 +174,16 @@ function render(){
   document.getElementById("score").textContent=
     P.A.name+" "+scores.A+" \u00b7 "+scores.B+" "+P.B.name+" \u00b7 bag "+bag.length;
   document.getElementById("playBtn").disabled=swapMode;
+  preview();
 }
-function setMsg(t){document.getElementById("msg").textContent=t;}
+function setMsg(t){const el=document.getElementById("msg");el.className="";el.dataset.pv="";el.textContent=t;}
+function preview(){const el=document.getElementById("msg");
+  if(phase!=="play"||swapMode)return;
+  if(!fresh.length){if(el.dataset.pv==="1"){el.dataset.pv="";el.className="";el.textContent=P[turn].name+" \u2014 your move.";}return;}
+  const res=validateAndScore(board,placedCells());
+  el.dataset.pv="1";
+  if(res.err){el.className="bad";el.textContent=res.err;}
+  else{el.className="good";el.textContent=res.words.join(" + ")+" \u2014 "+res.pts+" point"+(res.pts===1?"":"s")+"! Tap Play word.";}}
 function tapRack(i){if(phase!=="play")return;
   if(swapMode){if(swapMarks.has(i))swapMarks.delete(i);else swapMarks.add(i);render();return;}
   sel=(sel===i)?-1:i;render();}
