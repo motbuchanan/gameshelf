@@ -1,6 +1,6 @@
 # The Game Shelf — Project Handoff
 
-*Last verified: 2026-06-11 · Build: cache tag `?v=6` · 19 games live*
+*Last verified: 2026-06-11 · Build: cache tag `?v=7` · 19 games live*
 
 ---
 
@@ -35,10 +35,11 @@ Note: Sorry! has its own camera/zoom system (`window.camReset`) that predates
 the planned shared camera layer; it is correctly guarded and works in production
 — a harness-only load-order artifact is the single "failure" seen in testing
 and is not a real bug.
+*2026-06-11 later: Scrabble Classic added (20 games), runtime bumped to v7.*
 
 ---
 
-## Files (21 total)
+## Files (23 total)
 
 ```
 index.html        The shelf — box art, shelves, tally, sync button, reset
@@ -48,6 +49,11 @@ connect4.html     dominoes.html   dots.html      gomoku.html
 hex.html          mancala.html    pig.html       shutbox.html
 snakes.html       sorry.html      trouble.html   uttt.html
 war.html          yahtzee.html    battleship.html
+scrabble.html     Classic mode playable — original board, ENABLE+QI/ZA/OK/EW
+                  dictionary (words.js), live score preview. Bridge Builders
+                  mode still pending Mot's Xbox rule photos.
+words.js          ENABLE dictionary (~168k words) — must upload alongside
+                  scrabble.html.
 ```
 
 Working dir: `/home/claude/shelf/`. Ships to `/mnt/user-data/outputs/shelf/`
@@ -57,14 +63,14 @@ and zipped to `/mnt/user-data/outputs/gameshelf.zip`.
 
 ## The cache tag (`?v=N`) — important operational rule
 
-Every game page loads the runtime as `gamenight.js?v=6`. The number is a
+Every game page loads the runtime as `gamenight.js?v=7`. The number is a
 **cache key, not a version number** — it forces browsers past their cached copy
 of the runtime. It only ever grows; never reset it (reusing a number resurrects
-the stale-cache bug it exists to prevent). Currently at **v6**.
+the stale-cache bug it exists to prevent). Currently at **v7**.
 
 - **Game/index HTML changed only** → no bump. Upload just the changed files.
   (Pages serves HTML with a ~10-min cache — the "it needed a min" delay.)
-- **gamenight.js changed** → bump N in every page → all 21 files upload that commit.
+- **gamenight.js changed** → bump N in every page → all 23 files upload that commit.
   This is the cost of a shared runtime, and the reason most builds are small.
 
 ---
