@@ -79,9 +79,11 @@
 <div id="msg"></div>
 <div id="foot"><button class="act" id="newBtn">New game</button><div id="score"></div></div>
 <div class="ov" id="overlay"><div id="confetti"></div><div id="ovTrophy">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p><button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
-<script src="gamenight.js?v=6"></script>
+<script src="gamenight.js?v=7"></script>
 <script>
 const TRACK=28,FIN=4;
+// Finish-lane radii as fraction of R. Innermost must clear the dome base rim (~0.52R). Tune by screenshot.
+const FIN_OUTER=0.84, FIN_INNER=0.62;
 let P={red:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19",entry:0},
          blue:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182",entry:14}};
 const canvas=document.getElementById("board"),ctx=canvas.getContext("2d");
@@ -102,7 +104,7 @@ function fit(){SZ=Math.floor(Math.min(window.innerWidth-24,window.innerHeight-17
   render();}
 function holeXY(i){const a=-Math.PI/2+i/TRACK*2*Math.PI;return{x:SZ/2+R*Math.cos(a),y:SZ/2+R*Math.sin(a)};}
 function finXY(color,i){const e=P[color].entry,a=-Math.PI/2+e/TRACK*2*Math.PI;
-  const rr=R*(0.84-i*0.115);return{x:SZ/2+rr*Math.cos(a),y:SZ/2+rr*Math.sin(a)};}
+  const rr=R*(FIN_OUTER-(FIN_OUTER-FIN_INNER)*i/(FIN-1));return{x:SZ/2+rr*Math.cos(a),y:SZ/2+rr*Math.sin(a)};}
 function homeXY(color,i){const e=P[color].entry,a=-Math.PI/2+(e-2.6)/TRACK*2*Math.PI;
   const rr=R*1.07;const sp=0.18*(i-1.5);
   return{x:SZ/2+rr*Math.cos(a+sp),y:SZ/2+rr*Math.sin(a+sp)};}
@@ -127,7 +129,7 @@ function updateBar(){const pc=P[turn];document.getElementById("turnName").textCo
 function occTrack(idx){return pegs.find(p=>p.loc.state==="track"&&p.loc.idx===idx)||null;}
 function moveOf(p,n){ // returns {to,bump}|null
   if(p.loc.state==="fin"){const j=p.loc.i+n;if(j>=FIN)return null;
-    for(let i=p.loc.i+1;i<=j;i++)if(pegs.find(q=>q.color===p.color&&q.loc.state==="fin"&&q.loc.i===i))return null;
+    if(pegs.find(q=>q.color===p.color&&q.loc.state==="fin"&&q.loc.i===j))return null;
     return{to:{state:"fin",i:j},bump:null,t:TRACK+j};}
   if(p.loc.state==="home"){if(n!==6)return null;const idx=P[p.color].entry,o=occTrack(idx);
     if(o&&o.color===p.color)return null;return{to:{state:"track",idx},bump:o,t:0};}
@@ -135,7 +137,7 @@ function moveOf(p,n){ // returns {to,bump}|null
   if(t<TRACK){const idx=(P[p.color].entry+t)%TRACK,o=occTrack(idx);
     if(o&&o.color===p.color)return null;return{to:{state:"track",idx},bump:o,t};}
   const f=t-TRACK;if(f>=FIN)return null;
-  for(let i=0;i<=f;i++)if(pegs.find(q=>q.color===p.color&&q.loc.state==="fin"&&q.loc.i===i))return null;
+  if(pegs.find(q=>q.color===p.color&&q.loc.state==="fin"&&q.loc.i===f))return null;
   return{to:{state:"fin",i:f},bump:null,t};}
 function rollDie(){if(phase!=="roll"||animFly)return;
   const dome=document.getElementById("dome"),dieEl=document.getElementById("die");

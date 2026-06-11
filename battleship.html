@@ -26,8 +26,18 @@
   .grid button:active{box-shadow:inset 0 2px 6px rgba(0,0,0,.55);}
   .grid.big{width:min(92vw,440px);}
   .grid.small{width:min(58vw,260px);}
-  .grid button.ship{background:linear-gradient(165deg,#7a93a6 0%,#5d7689 50%,#465b6b 100%);
-    box-shadow:inset 0 1.5px 0 rgba(255,255,255,.35),inset 0 -2px 5px rgba(0,0,0,.4),0 1px 3px rgba(0,0,0,.45);}
+  .grid button.ship{background:linear-gradient(165deg,#8fa9bc 0%,#64808f 48%,#43586a 100%);
+    box-shadow:inset 0 2px 2px rgba(255,255,255,.35),inset 0 -3px 4px rgba(0,0,0,.45),0 2px 4px rgba(0,0,0,.5);}
+  .grid button.ship.bowH{border-radius:4px 50% 50% 4px;}
+  .grid button.ship.sternH{border-radius:50% 4px 4px 50%;}
+  .grid button.ship.bowV{border-radius:4px 4px 50% 50%;}
+  .grid button.ship.sternV{border-radius:50% 50% 4px 4px;}
+  .grid button.ship::before{content:"";position:absolute;background:linear-gradient(180deg,#b9cdd9,#7e98a8);
+    border-radius:99px;box-shadow:0 1px 2px rgba(0,0,0,.4);}
+  .grid button.ship.dH::before{left:8%;right:8%;top:38%;bottom:38%;}
+  .grid button.ship.dV::before{top:8%;bottom:8%;left:38%;right:38%;}
+  .grid button.ship.bowH::before{right:26%;}  .grid button.ship.sternH::before{left:26%;}
+  .grid button.ship.bowV::before{bottom:26%;} .grid button.ship.sternV::before{top:26%;}
   .grid button.miss{background:radial-gradient(circle at 50% 50%,#143a5e 0%,#0d2740 70%);}
   .grid button.miss::after{content:"\00b7";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#5d87ad;font-size:18px;font-weight:900;}
   .grid button.hit{background:radial-gradient(circle at 50% 42%,#ff7a45 0%,#c33a1d 35%,#7a1f17 75%);
@@ -59,7 +69,7 @@
 <div id="foot"><button class="act" id="mainBtn">New game</button><div id="score"></div></div>
 <div class="ov" id="curtain"><h2 id="curTitle"></h2><p id="curText" style="color:#8fb0c8;"></p><button class="act" id="curBtn">I'm ready</button></div>
 <div class="ov" id="overlay"><div id="confetti"></div><div id="ovTrophy">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p><button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #2f4d66;background:#0e2235;color:#cfe2f0;text-decoration:none;">Back to shelf</a></div>
-<script src="gamenight.js?v=6"></script>
+<script src="gamenight.js?v=7"></script>
 <script>
 const N=10,FLEET=[["Carrier",5],["Battleship",4],["Cruiser",3],["Submarine",3],["Destroyer",2]];
 let P={A:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},B:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182"}};
@@ -96,9 +106,16 @@ function updateBar(side,label){const pc=P[side];document.getElementById("turnNam
   d.style.boxShadow="0 0 0 3px rgba(255,255,255,.15),0 0 14px "+pc.main;
   const g=Store.load();let m=0,kk=0;for(const r of g){if(r.winner===P.A.name)m++;else if(r.winner===P.B.name)kk++;}
   document.getElementById("score").textContent=P.A.name+" "+m+" \u00b7 "+kk+" "+P.B.name;}
+function hullClasses(side,key){const s=shipAt(side,key);if(!s)return[];
+  const i=s.cells.indexOf(key),n=s.cells.length;
+  const horiz=n<2||s.cells[0].split(",")[0]===s.cells[1].split(",")[0]; // same row => horizontal
+  const cls=[horiz?"dH":"dV"];
+  if(i===0)cls.push(horiz?"sternH":"sternV");
+  if(i===n-1)cls.push(horiz?"bowH":"bowV");
+  return cls;}
 function gridEl(side,opts){const g=document.createElement("div");g.className="grid "+(opts.big?"big":"small");
   for(let r=0;r<N;r++)for(let c=0;c<N;c++){const b=document.createElement("button");const key=k(r,c);
-    if(opts.showShips&&shipAt(side,key))b.classList.add("ship");
+    if(opts.showShips&&shipAt(side,key)){b.classList.add("ship");for(const cl of hullClasses(side,key))b.classList.add(cl);}
     const firedBy=opts.shotsFrom;
     if(firedBy&&shots[firedBy].has(key)){const s=shipAt(side,key);
       if(s){b.classList.add(s.hits.length===s.cells.length?"sunk":"hit");}else b.classList.add("miss");}

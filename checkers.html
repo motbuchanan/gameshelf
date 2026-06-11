@@ -39,7 +39,7 @@
 <div id="msg"></div>
 <div id="foot"><button class="act" id="newBtn">New game</button><div id="score"></div></div>
 <div class="ov" id="overlay"><div id="confetti"></div><div id="ovTrophy">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p><button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
-<script src="gamenight.js?v=6"></script>
+<script src="gamenight.js?v=7"></script>
 <script>
 const N=8;
 let P={red:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},blue:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182"}};
@@ -53,8 +53,10 @@ const Store={load(){try{return JSON.parse(localStorage.getItem(KEY))||[];}catch(
   save(l){try{localStorage.setItem(KEY,JSON.stringify(l));}catch(e){_mem=l.slice();}}};
 const TVMODE=(function(){try{if(new URLSearchParams(location.search).get("tv")==="1")return true;return localStorage.getItem("shelf_tv")==="1";}catch(e){return false;}})();
 const PULSE=()=>0.5+0.5*Math.sin(performance.now()/280);
+let FR=0; // wood frame width
 function fit(){const w=Math.min(window.innerWidth-20,560),h=window.innerHeight-150;
-  SQ=Math.floor(Math.min(w,h)/N);canvas.width=SQ*N;canvas.height=SQ*N;render();}
+  SQ=Math.floor(Math.min(w,h)/(N+1));FR=Math.floor(SQ*0.5);
+  canvas.width=SQ*N+2*FR;canvas.height=SQ*N+2*FR;render();}
 function newGame(){board=Array.from({length:N},()=>Array(N).fill(null));
   for(let r=0;r<3;r++)for(let c=0;c<N;c++)if((r+c)%2)board[r][c]={color:"red",king:false};
   for(let r=5;r<N;r++)for(let c=0;c<N;c++)if((r+c)%2)board[r][c]={color:"blue",king:false};
@@ -130,6 +132,15 @@ function drawPiece(x,y,p,glowK,ghost){const pc=P[p.color],r=SQ*0.36;
   ctx.restore();}
 function render(){ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,canvas.width,canvas.height);
   const C=canvas.width/2;ctx.translate(C,C);ctx.rotate(boardAngle);ctx.translate(-C,-C);
+  // wood frame around the playing field
+  const wg=ctx.createLinearGradient(0,0,canvas.width,canvas.height);
+  wg.addColorStop(0,"#7a4d24");wg.addColorStop(0.5,"#5e3617");wg.addColorStop(1,"#46260e");
+  ctx.fillStyle=wg;ctx.beginPath();ctx.roundRect(0,0,canvas.width,canvas.height,FR*0.6);ctx.fill();
+  ctx.strokeStyle="rgba(255,220,170,.22)";ctx.lineWidth=2;
+  ctx.beginPath();ctx.roundRect(2,2,canvas.width-4,canvas.height-4,FR*0.55);ctx.stroke();
+  // recess lip: board sits sunken into the frame
+  ctx.fillStyle="rgba(0,0,0,.45)";ctx.fillRect(FR-3,FR-3,SQ*N+6,SQ*N+6);
+  ctx.translate(FR,FR);
   // squares
   for(let r=0;r<N;r++)for(let c=0;c<N;c++){const dark=(r+c)%2;
     const x=c*SQ,y=r*SQ;
@@ -139,12 +150,13 @@ function render(){ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,can
     // square bevel: light top edge, dark bottom edge
     ctx.fillStyle=dark?"rgba(255,235,200,.07)":"rgba(255,255,255,.25)";ctx.fillRect(x,y,SQ,1.5);
     ctx.fillStyle="rgba(0,0,0,"+(dark?".22":".10")+")";ctx.fillRect(x,y+SQ-1.5,SQ,1.5);}
-  // vignette pulls the eye to center like table light
-  const vg=ctx.createRadialGradient(canvas.width/2,canvas.height/2,canvas.width*0.32,canvas.width/2,canvas.height/2,canvas.width*0.75);
+  // vignette pulls the eye to center like table light (frame coords: board origin is FR,FR)
+  const vcx=canvas.width/2-FR,vcy=canvas.height/2-FR;
+  const vg=ctx.createRadialGradient(vcx,vcy,canvas.width*0.32,vcx,vcy,canvas.width*0.75);
   vg.addColorStop(0,"rgba(0,0,0,0)");vg.addColorStop(1,"rgba(0,0,0,.28)");
-  ctx.fillStyle=vg;ctx.fillRect(0,0,canvas.width,canvas.height);
-  // inner frame line + worn edge highlight
-  ctx.strokeStyle="rgba(0,0,0,.5)";ctx.lineWidth=3;ctx.strokeRect(1.5,1.5,canvas.width-3,canvas.height-3);
+  ctx.fillStyle=vg;ctx.fillRect(-FR,-FR,canvas.width,canvas.height);
+  // board recess edge
+  ctx.strokeStyle="rgba(0,0,0,.5)";ctx.lineWidth=3;ctx.strokeRect(1.5,1.5,SQ*N-3,SQ*N-3);
   ctx.strokeStyle="rgba(255,225,170,.18)";ctx.lineWidth=1;ctx.strokeRect(4,4,canvas.width-8,canvas.height-8);
   const pu=PULSE();
   // selectable pieces glow
@@ -178,7 +190,7 @@ function ensurePulse(){if(pulsing)return;pulsing=true;
 function boardPointFromClient(cx,cy){const rect=canvas.getBoundingClientRect(),f=canvas.width/rect.width;
   let px=(cx-rect.left)*f,py=(cy-rect.top)*f;const C=canvas.width/2;
   const a=-boardAngle,dx=px-C,dy=py-C;
-  return{x:C+dx*Math.cos(a)-dy*Math.sin(a),y:C+dx*Math.sin(a)+dy*Math.cos(a)};}
+  return{x:C+dx*Math.cos(a)-dy*Math.sin(a)-FR,y:C+dx*Math.sin(a)+dy*Math.cos(a)-FR};}
 canvas.addEventListener("pointerup",e=>{if(animFly||spinning||phase==="over")return;
   const pt=boardPointFromClient(e.clientX,e.clientY);
   // nearest interactive within generous radius

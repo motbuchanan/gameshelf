@@ -38,7 +38,7 @@
 <div id="wrap"><canvas id="board"></canvas></div>
 <div id="foot"><button class="act" id="newBtn">New game</button><div id="score"></div></div>
 <div class="ov" id="overlay"><div id="confetti"></div><div id="ovTrophy">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p><button class="act" id="ovBtn">Play again</button><a class="ghost" href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
-<script src="gamenight.js?v=6"></script>
+<script src="gamenight.js?v=7"></script>
 <script>
 const COLS=7,ROWS=6;
 let P={red:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},blue:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182"}};
@@ -81,15 +81,24 @@ function drawChip(x,y,color,glow){const pc=P[color],r=CELL*0.40;
   ctx.restore();}
 function render(dropY,dropCol,dropColor){
   ctx.clearRect(0,0,canvas.width,canvas.height);
+  // back wall behind the holes (so empties have depth, not page-void)
+  const bp=ctx.createLinearGradient(0,0,0,canvas.height);
+  bp.addColorStop(0,"#0a1626");bp.addColorStop(1,"#060d18");
+  ctx.fillStyle=bp;ctx.beginPath();ctx.roundRect(0,0,canvas.width,canvas.height,CELL*0.22);ctx.fill();
+  // occlusion: frame thickness shades the top of every hole
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){const p=cellXY(r,c);
+    const og=ctx.createLinearGradient(0,p.y-CELL*0.42,0,p.y+CELL*0.15);
+    og.addColorStop(0,"rgba(0,0,0,.6)");og.addColorStop(1,"rgba(0,0,0,0)");
+    ctx.beginPath();ctx.arc(p.x,p.y,CELL*0.42,0,7);ctx.fillStyle=og;ctx.fill();}
   // falling chip behind the frame
   if(dropY!==undefined)drawChip(dropCol*CELL+CELL/2,dropY,dropColor,false);
   for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){const v=grid[r][c];if(v){const p=cellXY(r,c);
     const hl=winLine&&winLine.some(w=>w[0]===r&&w[1]===c);drawChip(p.x,p.y,v,hl);}}
   // frame with punched holes on top
-  ctx.save();ctx.beginPath();ctx.rect(0,0,canvas.width,canvas.height);
+  ctx.save();ctx.beginPath();ctx.roundRect(0,0,canvas.width,canvas.height,CELL*0.22);
   for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){const p=cellXY(r,c);ctx.moveTo(p.x+CELL*0.42,p.y);ctx.arc(p.x,p.y,CELL*0.42,0,7);}
   ctx.clip("evenodd");
-  const fg=ctx.createLinearGradient(0,0,0,canvas.height);fg.addColorStop(0,"#1d4f86");fg.addColorStop(1,"#11335c");
+  const fg=ctx.createLinearGradient(0,0,0,canvas.height);fg.addColorStop(0,"#2a64a8");fg.addColorStop(0.55,"#1b4a85");fg.addColorStop(1,"#123667");
   ctx.fillStyle=fg;ctx.fillRect(0,0,canvas.width,canvas.height);
   // plastic sheen sweeping the frame
   const sheen=ctx.createLinearGradient(0,0,canvas.width,canvas.height);
