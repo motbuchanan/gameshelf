@@ -61,6 +61,7 @@
   #msg{min-height:20px;font-size:14px;color:#cfe6d8;text-align:center;padding:2px 12px;}
   #foot{padding:0 0 14px;display:flex;gap:12px;align-items:center;}
   button.act{font-family:inherit;font-size:15px;font-weight:bold;padding:9px 16px;border-radius:10px;border:none;color:#1c2b16;background:var(--accent);cursor:pointer;box-shadow:0 4px 0 var(--accentSh),0 5px 10px rgba(0,0,0,.4);}
+  button.act.ghost{background:#15241b;color:#cfe6d8;box-shadow:0 4px 0 #0b160f;border:1px solid #3a5a47;font-size:13px;padding:8px 12px;}
   #score{font-size:13px;color:#9fbdac;}
   .ov{position:fixed;inset:0;z-index:40;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:30px;text-align:center;background:rgba(7,12,9,.88);}
   .ov.show{display:flex;}
@@ -80,6 +81,8 @@
 <div id="foot"><button class="act" id="newBtn">New game</button><div id="score"></div></div>
 <div class="ov" id="overlay"><div id="confetti"></div><div id="ovTrophy">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p><button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
 <script src="gamenight.js?v=8"></script>
+<script src="bot.js?v=1"></script>
+<script src="sfx.js?v=1"></script>
 <script>
 const TRACK=28,FIN=4;
 // Finish-lane radii as fraction of R. Innermost must clear the dome base rim (~0.52R). Tune by screenshot.
@@ -89,6 +92,8 @@ let P={red:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19",entry:0},
 const canvas=document.getElementById("board"),ctx=canvas.getContext("2d");
 let SZ=320,R=130,pegs=[],turn="blue",die=0,phase="roll",movable=[],animFly=null,pulsing=false,GS=null,extra=false;
 const KEY="trouble_games";let _mem=[];
+function S(n){window.GNS&&GNS.play(n);}
+let botLevel=null,botKey="";
 const Store={load(){try{return JSON.parse(localStorage.getItem(KEY))||[];}catch(e){return _mem.slice();}},
   save(l){try{localStorage.setItem(KEY,JSON.stringify(l));}catch(e){_mem=l.slice();}}};
 const PULSE=()=>0.5+0.5*Math.sin(performance.now()/280);
@@ -141,7 +146,7 @@ function moveOf(p,n){ // returns {to,bump}|null
   return{to:{state:"fin",i:f},bump:null,t};}
 function rollDie(){if(phase!=="roll"||animFly)return;
   const dome=document.getElementById("dome"),dieEl=document.getElementById("die");
-  GS.pops[P[turn].name]++;
+  GS.pops[P[turn].name]++;S("pop");
   // dome: press down, spring back with overshoot
   dome.animate([
     {transform:"translate(-50%,-50%) scale(1,1)"},
@@ -182,18 +187,19 @@ function showDie(v){
   faceSet(document.querySelector(".dfR"),DRING[v][1]);}
 function afterRoll(){extra=(die===6);
   movable=pegs.filter(p=>p.color===turn&&moveOf(p,die));
-  if(!movable.length){setMessage(P[turn].name+" rolled "+die+" \u2014 no moves");
+  if(!movable.length){setMessage(P[turn].name+" rolled "+die+" \u2014 no moves");S("womp");
     setTimeout(()=>{if(extra){phase="roll";setMessage(P[turn].name+" rolled 6, pop again!");}else passTurn();},900);
     phase="wait";render();return;}
   phase="move";setMessage(P[turn].name+" rolled "+die+" \u2014 tap a glowing peg");render();ensurePulse();}
 function passTurn(){turn=turn==="red"?"blue":"red";die=0;phase="roll";movable=[];
   updateBar();setMessage(P[turn].name+" \u2014 pop the die");render();}
-function doMove(p){const mv=moveOf(p,die);if(!mv)return;
+function doMove(p){const mv=moveOf(p,die);if(!mv)return;S("move");
   phase="anim";const from=pegXY(p),to=(mv.to.state==="track")?holeXY(mv.to.idx):finXY(p.color,mv.to.i);
   animFly={p,from,to,k:0};const t0=performance.now();
   (function step(ts){animFly.k=Math.min(1,(ts-t0)/300);render();
     if(animFly.k<1){requestAnimationFrame(step);return;}
-    if(mv.bump){mv.bump.loc={state:"home"};mv.bump.t=0;GS.bumps[P[turn].name]++;if(!GN.friendly)GN.g.addSentHome(1);setMessage(P[turn].name+" bumped "+P[mv.bump.color].name+"!");}
+    if(mv.bump){S("bump");mv.bump.loc={state:"home"};mv.bump.t=0;GS.bumps[P[turn].name]++;if(!GN.friendly)GN.g.addSentHome(1);setMessage(P[turn].name+" bumped "+P[mv.bump.color].name+"!");}
+    if(mv.to.state==="fin")S("chime");
     p.loc=mv.to;p.t=mv.t;animFly=null;
     if(pegs.filter(q=>q.color===turn&&q.loc.state==="fin").length===4){gameOver(turn);return;}
     if(extra){phase="roll";setMessage(P[turn].name+" rolled 6 \u2014 pop again!");render();return;}
@@ -307,14 +313,42 @@ function render(){ctx.clearRect(0,0,SZ,SZ);
 function ensurePulse(){if(pulsing)return;pulsing=true;
   (function tick(){if(phase!=="move"){pulsing=false;render();return;}render();requestAnimationFrame(tick);})();}
 canvas.addEventListener("pointerup",e=>{if(phase!=="move")return;
+  if(botLevel&&turn==="blue")return;
   const rect=canvas.getBoundingClientRect(),f=canvas.width/rect.width;
   const x=(e.clientX-rect.left)*f,y=(e.clientY-rect.top)*f;
   let best=null,bd=1e9;
   for(const p of movable){const xy=pegXY(p),d=Math.hypot(x-xy.x,y-xy.y);
     if(d<SZ*0.09&&d<bd){bd=d;best=p;}}
   if(best)doMove(best);});
-document.getElementById("dome").addEventListener("click",rollDie);
-function gameOver(winColor){phase="over";
+document.getElementById("dome").addEventListener("click",()=>{if(botLevel&&turn==="blue")return;rollDie();});
+// ---------- computer opponent (drives the blue seat) ----------
+function botPick(){
+  const opts=movable.map(p=>({p,mv:moveOf(p,die)})).filter(o=>o.mv);
+  if(!opts.length)return null;
+  if(botLevel==="easy")return opts[Math.floor(Math.random()*opts.length)].p;
+  let best=null,bs=-1e9;
+  for(const o of opts){let s=0;
+    if(o.mv.bump)s+=100;
+    if(o.mv.to.state==="fin"&&o.p.loc.state!=="fin")s+=80;
+    if(o.p.loc.state==="home")s+=40;
+    s+=o.p.t;
+    if(o.mv.to.state==="fin")s+=10+o.mv.to.i*2;
+    if(botLevel==="hard"&&o.mv.to.state==="track"){
+      let danger=false;
+      for(const q of pegs)if(q.color==="red"&&q.loc.state==="track"){
+        const d=(o.mv.to.idx-q.loc.idx+TRACK)%TRACK;if(d>=1&&d<=6)danger=true;}
+      if(danger)s-=20;else s+=25;}
+    s+=Math.random()*3;
+    if(s>bs){bs=s;best=o.p;}}
+  return best;}
+setInterval(()=>{
+  if(!botLevel||turn!=="blue"||animFly||phase==="over"||phase==="anim"||phase==="wait")return;
+  const k=phase+":"+die+":"+pegs.map(p=>p.t+p.loc.state+(p.loc.i||0)+(p.loc.idx||0)).join(",");
+  if(k===botKey)return;botKey=k;
+  if(phase==="roll")setTimeout(()=>{if(phase==="roll"&&turn==="blue"&&botLevel)rollDie();},700);
+  else if(phase==="move")setTimeout(()=>{if(phase==="move"&&turn==="blue"&&botLevel){const p=botPick();if(p)doMove(p);}},750);
+},250);
+function gameOver(winColor){phase="over";S("fanfare");
   const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
     winner:P[winColor].name,loser:P[winColor==="red"?"blue":"red"].name,flipWinner:GS.flipWinner,pops:GS.pops,bumps:GS.bumps};
   GN.recordGame(KEY,rec);
@@ -339,6 +373,10 @@ GN.statsButton(document.getElementById("foot"),{title:"Trouble",key:KEY,specials
   {label:"Bumps dealt",of:(r,n)=>r.reduce((a,x)=>a+((x.bumps&&x.bumps[n])||0),0)},
   {label:"Pops taken",of:(r,n)=>r.reduce((a,x)=>a+((x.pops&&x.pops[n])||0),0)},
   {label:"Coin flips won",of:(r,n)=>r.filter(x=>x.flipWinner===n).length}]});
+if(window.GN&&GN.bot)GN.bot.skillButton(document.getElementById("foot"),{onChange:k=>{botLevel=k;botKey="";
+  setMessage(k?("Computer plays "+P.blue.name+"'s seat ("+k+").")
+             :(P.blue.name+"'s seat is human again."));}});
+if(window.GNS)GNS.button(document.getElementById("foot"));
 document.getElementById("ovBtn").addEventListener("click",newGame);
 window.addEventListener("resize",fit);
 fit();newGame();showDie(6);
