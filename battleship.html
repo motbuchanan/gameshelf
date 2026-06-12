@@ -73,11 +73,13 @@
 <div class="ov" id="curtain"><h2 id="curTitle"></h2><p id="curText" style="color:#8fb0c8;"></p><button class="act" id="curBtn">I'm ready</button></div>
 <div class="ov" id="overlay"><div id="confetti"></div><div id="ovTrophy">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p><button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #2f4d66;background:#0e2235;color:#cfe2f0;text-decoration:none;">Back to shelf</a></div>
 <script src="gamenight.js?v=10"></script>
+<script src="sfx.js?v=4"></script>
 <script>
 const N=10,FLEET=[["Carrier",5],["Battleship",4],["Cruiser",3],["Submarine",3],["Destroyer",2]];
 let P={A:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},B:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182"}};
 let ships={A:[],B:[]},shots={A:new Set(),B:new Set()},turn="A",phase="placeA",GS=null,counts={A:0,B:0};
 const KEY="bs_games";let _mem=[];
+function S(n,o){window.GNS&&GNS.play(n,0,o);}
 const Store={load(){try{return JSON.parse(localStorage.getItem(KEY))||[];}catch(e){return _mem.slice();}},
   save(l){try{localStorage.setItem(KEY,JSON.stringify(l));}catch(e){_mem=l.slice();}}};
 const k=(r,c)=>r+","+c;
@@ -228,7 +230,7 @@ function gameOver(winSide){phase="over";
   document.getElementById("ovTitle").style.color=P[winSide].main;
   document.getElementById("ovText").textContent="Fleet destroyed in "+counts[winSide]+" shots ("+GS.hits[P[winSide].name]+" hits)";
   spawnConfetti(winSide);
-  setTimeout(()=>document.getElementById("overlay").classList.add("show"),600);
+  setTimeout(()=>{S("fanfare");document.getElementById("overlay").classList.add("show");},600);
   const f=document.getElementById("foot");f.innerHTML="";
   const nb=document.createElement("button");nb.className="act";nb.textContent="New game";nb.addEventListener("click",newGame);f.appendChild(nb);}
 function spawnConfetti(side){const box=document.getElementById("confetti");box.innerHTML="";const pc=P[side];
@@ -247,6 +249,7 @@ GN.statsButton(document.getElementById("foot"),{title:"Battleship",key:KEY,speci
   {label:"Hits landed",of:(r,n)=>r.reduce((a,x)=>a+((x.hits&&x.hits[n])||0),0)},
   {label:"Shots fired",of:(r,n)=>r.reduce((a,x)=>a+((x.shots&&x.shots[n])||0),0)},
   {label:"Coin flips won",of:(r,n)=>r.filter(x=>x.flipWinner===n).length}]});
+if(window.GNS)GNS.button(document.getElementById("foot"));
 document.getElementById("ovBtn").addEventListener("click",newGame);
 newGame();
 </script>

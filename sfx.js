@@ -21,13 +21,26 @@
     var f=c.createBiquadFilter();f.type=hp?"highpass":"lowpass";f.frequency.value=hp||900;
     var g=c.createGain();env(g,t0,0.003,peak,dur);
     src.connect(f);f.connect(g);g.connect(c.destination);src.start(t0);}
+  function tick(t,f,g,dur){var c=ac();if(!c)return;dur=dur||0.022;
+    var n=Math.floor(c.sampleRate*dur),buf=c.createBuffer(1,n,c.sampleRate),d=buf.getChannelData(0);
+    for(var i=0;i<n;i++)d[i]=Math.random()*2-1;
+    var src=c.createBufferSource();src.buffer=buf;
+    var bp=c.createBiquadFilter();bp.type="bandpass";bp.frequency.value=f;bp.Q.value=11;
+    var gn=c.createGain();gn.gain.setValueAtTime(0,t);gn.gain.linearRampToValueAtTime(g,t+0.002);
+    gn.gain.exponentialRampToValueAtTime(0.0001,t+dur+0.03);
+    src.connect(bp);bp.connect(gn);gn.connect(c.destination);src.start(t);}
   var S={
     tap:   function(t){osc("triangle",660,520,t,0.06,0.12);},
     place: function(t){osc("sine",420,300,t,0.09,0.2);noise(t,0.04,0.08,1800);},
-    pop:   function(t){ // Pop-O-Matic: dome click + low thunk + rattle
-      noise(t,0.03,0.3,2500);
-      osc("sine",170,70,t,0.16,0.5);
-      noise(t+0.05,0.1,0.12,1200);},
+    pop:   function(t){ // Pop-O-Matic: membrane snap, then a die tumbling on plastic
+      noise(t,0.022,0.4,1600);                       // the snap
+      tick(t+0.004,2600,0.3,0.018);                  // dome resonance of the snap
+      var n=5+Math.floor(Math.random()*3),tt=t+0.03; // tumble: 5-7 irregular plastic ticks
+      for(var i=0;i<n;i++){
+        tick(tt,1400+Math.random()*2300,0.26*(1-i/(n+1))*(0.7+Math.random()*0.6));
+        tt+=0.02+Math.random()*0.05;}
+      tick(tt+0.015,850+Math.random()*350,0.16,0.03); // the die settles: lower tock
+    },
     dice:  function(t){for(var i=0;i<4;i++)noise(t+i*0.05,0.03,0.14,1500+Math.random()*1500);},
     move:  function(t){osc("sine",300,360,t,0.08,0.15);},
     bump:  function(t){ // descending womp + thud
@@ -58,4 +71,9 @@
       paint();if(container)container.appendChild(b);return b;}
   };
   window.GNS=GNS;
+  // automatic UI feedback: any .act button click gives a soft tap, shelf-wide.
+  // Mute is respected inside play(); the AudioContext unlocks on this same first tap.
+  try{document.addEventListener("click",function(e){
+    if(e.target&&e.target.closest&&e.target.closest("button.act"))GNS.play("tap");
+  },true);}catch(e){}
 })();

@@ -58,6 +58,7 @@
 <div id="foot"><button class="act" id="rollBtn">Roll</button></div>
 <div class="ov" id="overlay"><div id="confetti"></div><div id="ovTrophy">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p><button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
 <script src="gamenight.js?v=10"></script>
+<script src="sfx.js?v=4"></script>
 <script>
 let P={A:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},B:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182"}};
 const CATS=[
@@ -67,6 +68,7 @@ const CATS=[
  {id:"small",label:"Sm straight"},{id:"large",label:"Lg straight"},{id:"yahtzee",label:"YAHTZEE"},{id:"chance",label:"Chance"}];
 let dice=[1,1,1,1,1],held=[false,false,false,false,false],rolls=0,turn="A",cards={},phase="turn",GS=null;
 const KEY="yahtzee_games";let _mem=[];
+function S(n,o){window.GNS&&GNS.play(n,0,o);}
 const Store={load(){try{return JSON.parse(localStorage.getItem(KEY))||[];}catch(e){return _mem.slice();}},
   save(l){try{localStorage.setItem(KEY,JSON.stringify(l));}catch(e){_mem=l.slice();}}};
 function counts(d){const c=[0,0,0,0,0,0,0];for(const v of d)c[v]++;return c;}
@@ -203,7 +205,7 @@ function drawTray(){tctx.clearRect(0,0,TW,TH);
   tctx.strokeStyle="rgba(255,235,190,.12)";tctx.lineWidth=1;
   tctx.setLineDash([5,4]);tctx.strokeRect(8,8,TW-16,TH-16);tctx.setLineDash([]);
   for(let i=0;i<5;i++)if(bodies[i])drawDieAt(bodies[i],held[i]);}
-function roll(){if(rolls>=3||phase!=="turn"||tumbling)return;
+function roll(){if(rolls>=3||phase!=="turn"||tumbling)return;S("dice");
   rolls++;tumbling=true;document.getElementById("rollBtn").disabled=true;
   for(let i=0;i<5;i++)if(!held[i])dice[i]=1+Math.floor(Math.random()*6); // outcomes decided now
   const sc=TW/430;let thrown=0;
@@ -295,7 +297,7 @@ function finish(){phase="over";
   document.getElementById("ovTrophy").textContent=win?"\uD83C\uDFC6":"\uD83E\uDD1D";
   document.getElementById("ovText").textContent=P.A.name+" "+a+" \u00b7 "+b+" "+P.B.name;
   if(win)spawnConfetti(win);
-  setTimeout(()=>document.getElementById("overlay").classList.add("show"),500);}
+  setTimeout(()=>{S("fanfare");document.getElementById("overlay").classList.add("show");},500);}
 function spawnConfetti(pl){const box=document.getElementById("confetti");box.innerHTML="";const pc=P[pl];
   const cols=[pc.main,pc.light,"#f4c542","#ffffff"];
   for(let i=0;i<90;i++){const d=document.createElement("div");d.className="cfp";
@@ -315,6 +317,7 @@ GN.statsButton(document.getElementById("foot"),{title:"Yahtzee",key:KEY,specials
   {label:"63+ bonuses",of:(r,n)=>r.reduce((a,x)=>a+((x.bonus&&x.bonus[n])||0),0)},
   {label:"Best total",of:(r,n)=>r.reduce((a,x)=>Math.max(a,(x.score&&x.score[n])||0),0)},
   {label:"Coin flips won",of:(r,n)=>r.filter(x=>x.flipWinner===n).length}]});
+if(window.GNS)GNS.button(document.getElementById("foot"));
 newGame();
 </script>
 </body>

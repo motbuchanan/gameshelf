@@ -41,6 +41,7 @@
 <div id="foot"><button class="act" id="rollBtn">Roll</button><button class="act" id="newBtn">New game</button><div id="score"></div></div>
 <div class="ov" id="overlay"><div id="confetti"></div><div id="ovTrophy">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p><button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
 <script src="gamenight.js?v=10"></script>
+<script src="sfx.js?v=4"></script>
 <script>
 let P={red:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19",dir:-1,home:[1,6]},
         blue:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182",dir:1,home:[19,24]}};
@@ -52,6 +53,7 @@ let boardAngle=0,boardTarget=0,spinning=false,pulsing=false,animFly=null;
 const BASE_ROT=Math.PI/2;
 function totRot(){return BASE_ROT+boardAngle;}
 const KEY="bg_games";let _mem=[];
+function S(n,o){window.GNS&&GNS.play(n,0,o);}
 const Store={load(){try{return JSON.parse(localStorage.getItem(KEY))||[];}catch(e){return _mem.slice();}},
   save(l){try{localStorage.setItem(KEY,JSON.stringify(l));}catch(e){_mem=l.slice();}}};
 const TVMODE=(function(){try{if(new URLSearchParams(location.search).get("tv")==="1")return true;return localStorage.getItem("shelf_tv")==="1";}catch(e){return false;}})();
@@ -132,7 +134,7 @@ function allowedMoves(color,diceLeft){const L=bestLen(color,diceLeft);if(!L)retu
   return out;}
 /* ===== turn flow ===== */
 function diceLeft(){const l=dice.slice();for(const u of used){const i=l.indexOf(u);if(i>=0)l.splice(i,1);}return l;}
-function roll(){if(phase!=="roll"||spinning||animFly)return;
+function roll(){if(phase!=="roll"||spinning||animFly)return;S("dice");
   const a=1+Math.floor(Math.random()*6),b=1+Math.floor(Math.random()*6);
   dice=a===b?[a,a,a,a]:[a,b];used=[];GS.stats[P[turn].name].rolls++;if(!GN.friendly)GN.g.addDice([a,b]);
   phase="move";afterRollSetup(P[turn].name+" rolled "+a+"-"+b+(a===b?" \u2014 doubles!":""));}
@@ -174,7 +176,7 @@ function gameOver(winColor){phase="over";
   document.getElementById("ovTitle").style.color=P[winColor].main;
   document.getElementById("ovText").textContent=GS.stats[P[winColor].name].hits+" hits \u00b7 "+GS.stats[P[winColor].name].rolls+" rolls";
   spawnConfetti(winColor);updateBar();
-  setTimeout(()=>document.getElementById("overlay").classList.add("show"),500);}
+  setTimeout(()=>{S("fanfare");document.getElementById("overlay").classList.add("show");},500);}
 /* ===== geometry ===== */
 function geo(){const m=W*0.025,barW=W*0.07,trayW=W*0.06;
   const fieldW=(W-2*m-barW-trayW),half=fieldW/2,pw=half/6;
@@ -354,6 +356,7 @@ GN.statsButton(document.getElementById("foot"),{title:"Backgammon",key:KEY,speci
   {label:"Hits",of:(r,n)=>r.reduce((a,x)=>a+((x.stats&&x.stats[n])?x.stats[n].hits:0),0)},
   {label:"Gammon wins",of:(r,n)=>r.filter(x=>x.winner===n&&x.gammon).length},
   {label:"Coin flips won",of:(r,n)=>r.filter(x=>x.flipWinner===n).length}]});
+if(window.GNS)GNS.button(document.getElementById("foot"));
 document.getElementById("ovBtn").addEventListener("click",newGame);
 window.addEventListener("resize",fit);
 fit();newGame();

@@ -66,8 +66,10 @@
 <div class="ov" id="overlay"><div id="confetti"></div><div style="font-size:54px;">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText" style="color:#cfe6d8;"></p>
   <button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
 <script src="gamenight.js?v=10"></script>
+<script src="sfx.js?v=4"></script>
 <script>
 const KEY="farkle_games",GOAL=5000,PIP={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
+function S(n,o){window.GNS&&GNS.play(n,0,o);}
 let P={A:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},B:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182"}};
 let dice=[],turn="A",total={A:0,B:0},onBoard={A:false,B:false},turnPts=0,phase="over",rolling=false,GS=null,openMin=500;
 function seatFrom(p){return{name:p.name,main:p.color,light:p.light,dark:p.dark};}
@@ -141,7 +143,7 @@ function newGame(){phase="over";document.getElementById("overlay").classList.rem
     dice.forEach(d=>{d.set=false;d.sel=false;d.active=false;d.face=1;});paintAll();
     setMsg(P[turn].name+" rolls first. Score to 5000 wins!");refresh();});}
 
-function rollActive(fresh){rolling=true;
+function rollActive(fresh){rolling=true;S("dice");
   const pool=fresh?dice:dice.filter(d=>!d.set);
   pool.forEach(d=>{d.active=true;d.set=false;d.sel=false;d.el.classList.add("rolling");});
   refresh();
@@ -205,7 +207,7 @@ function finish(w){phase="over";
   document.getElementById("ovTitle").textContent=P[w].name+" wins!";
   document.getElementById("ovText").textContent="Final: "+P.A.name+" "+total.A+" \u00b7 "+total.B+" "+P.B.name+
     (GS.best.pts?(" \u2014 biggest turn: "+GS.best.pts+" by "+GS.best.by):"");
-  confettiBurst();document.getElementById("overlay").classList.add("show");}
+  confettiBurst();S("fanfare");document.getElementById("overlay").classList.add("show");}
 function confettiBurst(){const box=document.getElementById("confetti");box.innerHTML="";
   const cols=["#b0d235","#f4c542","#d8312b","#2f6fd0","#e8e4da"];
   for(let i=0;i<60;i++){const d=document.createElement("div");d.className="cf";d.style.left=(Math.random()*100)+"%";
@@ -221,6 +223,7 @@ GN.rulesButton(document.getElementById("foot"),{title:"Farkle",sections:[
 GN.statsButton(document.getElementById("foot"),{title:"Farkle",key:KEY,specials:[
   {label:"Farkles",of:(recs,name)=>recs.reduce((a,r)=>a+((r.farkles&&r.farkles[name])||0),0)},
   {label:"Hot dice",of:(recs,name)=>recs.reduce((a,r)=>a+((r.hotDice&&r.hotDice[name])||0),0)}]});
+if(window.GNS)GNS.button(document.getElementById("foot"));
 buildDice();newGame();
 window.GN&&GN.sync&&GN.sync();
 </script></body></html>

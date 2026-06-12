@@ -40,6 +40,7 @@
 <div id="foot"><button class="act" id="newBtn">New game</button><div id="score"></div></div>
 <div class="ov" id="overlay"><div id="confetti"></div><div id="ovTrophy">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p><button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
 <script src="gamenight.js?v=10"></script>
+<script src="sfx.js?v=4"></script>
 <script>
 const N=8;
 let P={red:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},blue:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182"}};
@@ -49,6 +50,7 @@ const canvas=document.getElementById("board"),ctx=canvas.getContext("2d");
 let SQ=56,board=Array.from({length:N},()=>Array(N).fill(null)),turn="blue",sel=null,targets=[],phase="pick",chainPiece=null,animFly=null;
 let boardAngle=0,boardTarget=0,spinning=false,pulsing=false,GS=null;
 const KEY="checkers_games";let _mem=[];
+function S(n,o){window.GNS&&GNS.play(n,0,o);}
 const Store={load(){try{return JSON.parse(localStorage.getItem(KEY))||[];}catch(e){return _mem.slice();}},
   save(l){try{localStorage.setItem(KEY,JSON.stringify(l));}catch(e){_mem=l.slice();}}};
 const TVMODE=(function(){try{if(new URLSearchParams(location.search).get("tv")==="1")return true;return localStorage.getItem("shelf_tv")==="1";}catch(e){return false;}})();
@@ -233,7 +235,7 @@ function gameOver(winColor,why){phase="over";
   document.getElementById("ovTitle").style.color=P[winColor].main;
   document.getElementById("ovText").textContent=why+" \u00b7 "+GS.stats[P[winColor].name].captures+" captures";
   spawnConfetti(winColor);updateBar();
-  setTimeout(()=>document.getElementById("overlay").classList.add("show"),500);}
+  setTimeout(()=>{S("fanfare");document.getElementById("overlay").classList.add("show");},500);}
 function spawnConfetti(color){const box=document.getElementById("confetti");box.innerHTML="";const pc=P[color];
   const cols=[pc.main,pc.light,"#f4c542","#ffffff"];
   for(let i=0;i<90;i++){const d=document.createElement("div");d.className="cfp";
@@ -250,6 +252,7 @@ GN.statsButton(document.getElementById("foot"),{title:"Checkers",key:KEY,special
   {label:"Captures",of:(r,n)=>r.reduce((a,x)=>a+((x.stats&&x.stats[n])?x.stats[n].captures:0),0)},
   {label:"Kings crowned",of:(r,n)=>r.reduce((a,x)=>a+((x.stats&&x.stats[n])?x.stats[n].kings:0),0)},
   {label:"Coin flips won",of:(r,n)=>r.filter(x=>x.flipWinner===n).length}]});
+if(window.GNS)GNS.button(document.getElementById("foot"));
 document.getElementById("ovBtn").addEventListener("click",newGame);
 window.addEventListener("resize",fit);
 fit();newGame();
