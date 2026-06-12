@@ -19,7 +19,10 @@
   #stage{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:6px;overflow-y:auto;}
   .gridTitle{font-size:12.5px;color:#9cb8cc;font-weight:700;letter-spacing:.5px;}
   .grid{display:grid;grid-template-columns:repeat(10,1fr);gap:2px;background:#0a1a2a;padding:4px;border-radius:10px;
-    box-shadow:0 8px 22px rgba(0,0,0,.5);}
+    box-shadow:0 8px 22px rgba(0,0,0,.5);position:relative;}
+  .shipOv{position:absolute;pointer-events:none;z-index:1;}
+  .shipOv svg{display:block;width:100%;height:100%;filter:drop-shadow(0 2px 2px rgba(0,0,0,.45));}
+  .grid button.hit,.grid button.miss,.grid button.sunk{z-index:2;}
   .grid button{aspect-ratio:1;border:none;border-radius:3px;cursor:pointer;position:relative;font-size:11px;color:#fff;padding:0;
     background:linear-gradient(165deg,#1c4470 0%,#15375a 55%,#102b47 100%);
     box-shadow:inset 0 1px 0 rgba(140,190,235,.18),inset 0 -2px 4px rgba(0,0,0,.35);}
@@ -113,14 +116,61 @@ function hullClasses(side,key){const s=shipAt(side,key);if(!s)return[];
   if(i===0)cls.push(horiz?"sternH":"sternV");
   if(i===n-1)cls.push(horiz?"bowH":"bowV");
   return cls;}
+// ---- fleet silhouettes (original art): one SVG per ship, correct profile per class ----
+const HULL="#7e98a8",HULL_D="#5b7484",DECK="#bdd1dd",DARK="#3c4f5e",ACC="#2c3b46";
+function shipArt(name,L){const W=L*100;let p="";
+  const hull=(bowX)=>'<path d="M10 50 Q10 26 34 24 L'+(W-bowX)+' 24 Q'+(W-8)+' 26 '+(W-8)+' 50 Q'+(W-8)+' 74 '+(W-bowX)+' 76 L34 76 Q10 74 10 50Z" fill="'+HULL+'" stroke="'+ACC+'" stroke-width="3"/>';
+  if(name==="Carrier"){
+    p+='<path d="M6 50 Q6 30 26 28 L'+(W-30)+' 18 Q'+(W-6)+' 22 '+(W-6)+' 50 Q'+(W-6)+' 78 '+(W-30)+' 82 L26 72 Q6 70 6 50Z" fill="'+HULL+'" stroke="'+ACC+'" stroke-width="3"/>';
+    p+='<path d="M20 50 Q20 38 34 36 L'+(W-34)+' 28 Q'+(W-16)+' 32 '+(W-16)+' 50 Q'+(W-16)+' 68 '+(W-34)+' 72 L34 64 Q20 62 20 50Z" fill="'+DECK+'"/>';
+    for(let x=44;x<W-44;x+=46)p+='<rect x="'+x+'" y="47" width="22" height="6" rx="3" fill="'+HULL_D+'"/>';
+    p+='<rect x="'+(W*0.62)+'" y="20" width="52" height="22" rx="5" fill="'+DARK+'"/><rect x="'+(W*0.62+8)+'" y="26" width="8" height="6" fill="#9fd4ef"/><rect x="'+(W*0.62+22)+'" y="26" width="8" height="6" fill="#9fd4ef"/>';}
+  else if(name==="Battleship"){
+    p+=hull(16);
+    p+='<rect x="'+(W*0.36)+'" y="30" width="'+(W*0.26)+'" height="40" rx="7" fill="'+DARK+'"/>';
+    p+='<rect x="'+(W*0.44)+'" y="16" width="14" height="18" rx="4" fill="'+ACC+'"/>';
+    const tur=(cx)=>'<circle cx="'+cx+'" cy="50" r="15" fill="'+HULL_D+'" stroke="'+ACC+'" stroke-width="3"/><rect x="'+(cx+10)+'" y="43" width="26" height="5" rx="2.5" fill="'+ACC+'"/><rect x="'+(cx+10)+'" y="53" width="26" height="5" rx="2.5" fill="'+ACC+'"/>';
+    p+=tur(W*0.18)+tur(W*0.74);}
+  else if(name==="Cruiser"){
+    p+=hull(14);
+    p+='<rect x="'+(W*0.40)+'" y="32" width="'+(W*0.24)+'" height="36" rx="6" fill="'+DARK+'"/>';
+    p+='<rect x="'+(W*0.50)+'" y="14" width="6" height="22" fill="'+ACC+'"/>';
+    p+='<circle cx="'+(W*0.22)+'" cy="50" r="12" fill="'+HULL_D+'" stroke="'+ACC+'" stroke-width="3"/><rect x="'+(W*0.22+8)+'" y="46.5" width="24" height="6" rx="3" fill="'+ACC+'"/>';}
+  else if(name==="Submarine"){
+    p+='<path d="M8 50 Q8 28 40 26 L'+(W-46)+' 26 Q'+(W-6)+' 32 '+(W-6)+' 50 Q'+(W-6)+' 68 '+(W-46)+' 74 L40 74 Q8 72 8 50Z" fill="'+HULL_D+'" stroke="'+ACC+'" stroke-width="3"/>';
+    p+='<rect x="'+(W*0.40)+'" y="18" width="'+(W*0.20)+'" height="26" rx="9" fill="'+DARK+'"/>';
+    p+='<rect x="'+(W*0.47)+'" y="6" width="5" height="16" fill="'+ACC+'"/><rect x="'+(W*0.47)+'" y="6" width="14" height="4" rx="2" fill="'+ACC+'"/>';
+    p+='<ellipse cx="'+(W*0.78)+'" cy="50" rx="9" ry="6" fill="'+ACC+'" opacity=".55"/>';}
+  else{ // Destroyer (2)
+    p+=hull(12);
+    p+='<rect x="'+(W*0.34)+'" y="30" width="'+(W*0.26)+'" height="34" rx="6" fill="'+DARK+'"/>';
+    p+='<rect x="'+(W*0.44)+'" y="18" width="11" height="16" rx="3" fill="'+HULL_D+'"/><rect x="'+(W*0.44)+'" y="18" width="11" height="5" fill="#c8553a"/>';}
+  return '<svg viewBox="0 0 '+W+' 100" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">'+p+'</svg>';}
+function addShipOverlays(g,side){
+  g.querySelectorAll(".shipOv").forEach(o=>o.remove());
+  for(const sh of ships[side]){
+    const[r0,c0]=sh.cells[0].split(",").map(Number);
+    const L=sh.cells.length;
+    const horiz=L<2||sh.cells[0].split(",")[0]===sh.cells[1].split(",")[0];
+    const first=g.children[r0*N+c0];if(!first)continue;
+    const cw=first.offsetWidth,ch=first.offsetHeight,x=first.offsetLeft,y=first.offsetTop,gap=2;
+    const wH=L*cw+(L-1)*gap,hH=ch;
+    const d=document.createElement("div");d.className="shipOv";d.innerHTML=shipArt(sh.name,L);
+    if(horiz){d.style.left=x+"px";d.style.top=y+"px";d.style.width=wH+"px";d.style.height=hH+"px";}
+    else{const wV=cw,hV=wH;
+      d.style.width=wH+"px";d.style.height=hH+"px";
+      d.style.left=(x+(wV-wH)/2)+"px";d.style.top=(y+(hV-hH)/2)+"px";
+      d.style.transform="rotate(90deg)";}
+    g.appendChild(d);}}
 function gridEl(side,opts){const g=document.createElement("div");g.className="grid "+(opts.big?"big":"small");
   for(let r=0;r<N;r++)for(let c=0;c<N;c++){const b=document.createElement("button");const key=k(r,c);
-    if(opts.showShips&&shipAt(side,key)){b.classList.add("ship");for(const cl of hullClasses(side,key))b.classList.add(cl);}
+    if(opts.showShips&&shipAt(side,key))b.classList.add("ship");
     const firedBy=opts.shotsFrom;
     if(firedBy&&shots[firedBy].has(key)){const s=shipAt(side,key);
       if(s){b.classList.add(s.hits.length===s.cells.length?"sunk":"hit");}else b.classList.add("miss");}
     if(opts.onFire)b.addEventListener("click",()=>opts.onFire(key,b));
     g.appendChild(b);}
+  if(opts.showShips)requestAnimationFrame(()=>addShipOverlays(g,side));
   return g;}
 function renderPlace(side){phase="place"+side;updateBar(side," places ships");
   const st=document.getElementById("stage");st.innerHTML="";
