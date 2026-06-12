@@ -324,7 +324,8 @@ const GAME_KEYS=["sorry_games","checkers_games","c4_games","trouble_games","manc
   "dom_games","yahtzee_games","bs_games","cc_games","bg_games",
   "war_games","sb_games","sl_games","uttt_games",
   "gomoku_games","dots_games","hex_games","cb_games","scrabble_games",
-  "farkle_games","gofish_games","reversi_games","morris_games"];
+  "farkle_games","gofish_games","reversi_games","morris_games",
+  "bridge_games","guesswho_games"];
 GN.sync={
   status(){try{return localStorage.getItem("gn_sync_hh")?"on":"off";}catch(e){return"off";}},
   enable(code){if(!code||!code.trim())return false;

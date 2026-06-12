@@ -165,7 +165,7 @@
   <div class="statsfoot"><button class="act" id="statsClose">Close</button><button class="clearbtn" id="statsClear">Clear records</button></div>
 </div>
 
-<script src="gamenight.js?v=9"></script>
+<script src="gamenight.js?v=10"></script>
 <script>
 /* ===== THEME REGISTRY ===== */
 function basePlayers(){return{
@@ -353,7 +353,7 @@ function animateSorry(done){const my=pending.my,opp=pending.opp,target=pending.t
 function refill(player){const max=HAND_SIZE();while(hands[player].length<max){if(deck.length===0){deck=shuffle(discard);discard=[];}if(deck.length===0)break;hands[player].push(deck.pop());}}
 function beginTurnFor(player,bonus,snap){current=player;if(GS)saveGameState();selCard=null;card=null;selCardIdx=-1;selPawn=null;pawnOpts=[];pending=null;splitFirst=null;
   if(CONFIG.singleDraw){if(deck.length===0){deck=shuffle(discard);discard=[];}hands[player]=deck.length?[deck.pop()]:[];enterForcedCard(bonus);}
-  else if(anyPlayable()){phase="play";setMessage(bonus?THEME.players[player].player+" plays again (the 2).":"Pick a card to play.");}
+  else if(anyPlayable()){phase="play";setMessage(bonus?PN(player)+" plays again (the 2).":"Pick a card to play.");}
   else{phase="discard";setMessage("No playable card. Tap a card to discard, then your turn ends.");}
   applyOrientation(player,!!snap);}
 function labelOf(v){return v==="Sorry"?"Sorry!":("a "+v);}
@@ -440,7 +440,7 @@ function spawnConfetti(color){const box=document.getElementById("confetti");box.
     d.style.animationDuration=(2.4+Math.random()*1.8)+"s";d.style.animationDelay=(Math.random()*0.9)+"s";
     d.style.transform="rotate("+Math.floor(Math.random()*360)+"deg)";box.appendChild(d);}}
 function gameOver(color){phase="over";finalizeGame(color);spawnConfetti(color);const ov=document.getElementById("overlay");
-  document.getElementById("ovTitle").textContent=THEME.players[color].player+" wins!";
+  document.getElementById("ovTitle").textContent=PN(color)+" wins!";
   document.getElementById("ovTitle").style.color=THEME.players[color].main;
   document.getElementById("ovText").textContent="All four pawns are Home.";ov.classList.add("show");render();}
 
@@ -514,7 +514,7 @@ function trackCellRender(i){const c=trackCell(i),sh=THEME.cell.shape;
   if(sh==="divot")drawDivotCell(c.x,c.y,null);else if(sh==="tile")drawTileCell(c.x,c.y,regionColor(i));else drawSquareCell(c.x,c.y,THEME.cell.topFill,THEME.cell.fill,THEME.cell.stroke);}
 function safetyCellRender(s,pc){const sh=THEME.cell.shape;
   if(sh==="divot")drawDivotCell(s.x,s.y,pc.light);else if(sh==="tile")drawTileCell(s.x,s.y,pc.main);else drawSquareCell(s.x,s.y,pc.light,shade(pc.main,-8),pc.dark);}
-function drawSafetyName(color){const name=(THEME.players[color].player||"").toUpperCase().slice(0,5);if(!name)return;
+function drawSafetyName(color){const name=(PN(color)||"").toUpperCase().slice(0,5);if(!name)return;
   const cells=COLOR_DATA[color].safety,start=Math.floor((5-name.length)/2);
   const col=THEME.cell.shape==="divot"?"#fff3d8":THEME.players[color].dark;
   const face=color==="red"?Math.PI:color==="blue"?0:color==="yellow"?-Math.PI/2:Math.PI/2;
@@ -711,11 +711,11 @@ function updateHand(){const h=document.getElementById("hand");h.innerHTML="";con
   cards.forEach((v,idx)=>{const el=document.createElement("div");el.className="hcard";el.dataset.idx=idx;
     if(selCardIdx===idx&&phase!=="play")el.classList.add("sel");if(phase==="play"&&!playableValue(v))el.classList.add("dim");if(phase==="discard")el.classList.add("disc");
     el.innerHTML=cardInner(v);h.appendChild(el);});
-  const opp=current==="red"?"blue":"red";document.getElementById("oppHand").textContent=CONFIG.singleDraw?"":(THEME.players[opp].player+" holds "+hands[opp].length+" cards");}
+  const opp=current==="red"?"blue":"red";document.getElementById("oppHand").textContent=CONFIG.singleDraw?"":(PN(opp)+" holds "+hands[opp].length+" cards");}
 function updatePanel(){const pc=THEME.players[current];
   const td=document.getElementById("turnDot");td.style.background="radial-gradient(circle at 35% 30%,"+shade(pc.main,40)+","+pc.main+" 70%,"+pc.dark+")";
   td.style.boxShadow="0 0 0 3px rgba(255,255,255,.18),0 0 16px "+pc.main;
-  const tt=document.getElementById("turnText");tt.textContent=pc.player+"'s turn";tt.style.color=pc.main;
+  const tt=document.getElementById("turnText");tt.textContent=PN(current)+"'s turn";tt.style.color=pc.main;
   const cn=document.getElementById("cardName"),cr=document.getElementById("cardRule");
   if(selCard!==null){cn.textContent=(selCard==="Sorry"?"Sorry!":(isBonus(selCard)?BONUS_LABEL[selCard]:"Card "+selCard));cr.textContent=CARD_RULES[selCard];}
   else if(phase==="discard"){cn.textContent="Stuck.";cr.textContent="Tap a card to discard it.";}else{cn.textContent="";cr.textContent="";}
@@ -790,8 +790,10 @@ function addBtn(parent,label,cls,fn){const b=document.createElement("button");b.
 let wakeLock=null;
 async function keepAwake(){try{if("wakeLock"in navigator)wakeLock=await navigator.wakeLock.request("screen");}catch(e){}}
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&wakeLock)keepAwake();});
-function startGame(){clearSave();document.getElementById("homeOv").classList.remove("show");keepAwake();
-  hands={red:[],blue:[]};if(!CONFIG.singleDraw){refill("red");refill("blue");}showCoin();}
+function startGame(){
+  GN.matchStart(function(m){SEAT={red:m.a.name,blue:m.b.name};FRIENDLY=!!m.friendly;
+    clearSave();document.getElementById("homeOv").classList.remove("show");keepAwake();
+    hands={red:[],blue:[]};if(!CONFIG.singleDraw){refill("red");refill("blue");}showCoin();});}
 
 /* ===== COIN ===== */
 function positionCoinScene(){const r=canvas.getBoundingClientRect();const s=document.getElementById("coinScene");
@@ -827,18 +829,20 @@ function landCoin(finalDeg,heads){const coin=document.getElementById("coin"),sh=
     sh.style.opacity=(0.4+0.12*decay);sh.style.transform="translate(-50%,-50%) scale("+(1+0.06*decay)+")";
     if(p<1)requestAnimationFrame(frame);
     else{coin.style.transform="translateY(0) rotateX("+finalDeg+"deg)";current=heads?"red":"blue";
-      title.textContent=THEME.players[current].player+" goes first!";title.style.color=THEME.players[current].main;
-      try{GN.g.addFlip(current==="red"?"Mot":"Kathy");}catch(e){}
+      title.textContent=PN(current)+" goes first!";title.style.color=THEME.players[current].main;
+      try{GN.g.addFlip(PN(current));}catch(e){}
       const btn=document.getElementById("flipBtn");btn.textContent="Begin";btn.disabled=false;btn.style.visibility="visible";btn.onclick=beginPlay;}}
   requestAnimationFrame(frame);}
 function beginPlay(){document.getElementById("coinOv").classList.remove("show");startStats();beginTurnFor(current,false,true);}
 
 /* ===== STATS / RECORDS ===== */
-function PN(color){return THEME.players[color].player;}
+let SEAT={red:"Mot",blue:"Kathy"},FRIENDLY=false;
+function PN(color){return SEAT[color];}
 const RED_C="#d8312b",BLUE_C="#2f6fd0";
 function blankStats(){return{cardsPlayed:0,byType:{},sorry:0,sideswipe:0,bumpsDealt:0,bumpsTaken:0,slides:0,forcedDiscards:0,extraTurns:0};}
 let GS=null;
-function startStats(){GS={start:Date.now(),firstPlayer:PN(current),mode:CONFIG.mode,theme:(CONFIG.theme==="seasonal"?"seasonal:"+CONFIG.season:CONFIG.theme),singleDraw:CONFIG.singleDraw,handSize:HAND_SIZE(),firstHome:null,Mot:blankStats(),Kathy:blankStats()};}
+function startStats(){GS={start:Date.now(),firstPlayer:PN(current),mode:CONFIG.mode,theme:(CONFIG.theme==="seasonal"?"seasonal:"+CONFIG.season:CONFIG.theme),singleDraw:CONFIG.singleDraw,handSize:HAND_SIZE(),firstHome:null,friendly:FRIENDLY};
+  GS[PN("red")]=blankStats();GS[PN("blue")]=blankStats();}
 function recPlay(v){if(!GS||v==null)return;const k=PN(current),t=(v==="Sorry")?"Sorry":String(v);GS[k].cardsPlayed++;GS[k].byType[t]=(GS[k].byType[t]||0)+1;if(v==="Sorry")GS[k].sorry++;if(v==="Sideswipe")GS[k].sideswipe++;if(v===2)GS[k].extraTurns++;}
 function recBump(dealerColor,takerColor){if(!GS)return;GS[PN(dealerColor)].bumpsDealt++;GS[PN(takerColor)].bumpsTaken++;try{GN.g.addSentHome(1);}catch(e){}}
 function recSlide(color){if(GS)GS[PN(color)].slides++;}
@@ -854,7 +858,7 @@ const SkunkStore={load(){try{return JSON.parse(localStorage.getItem(SK_KEY))||[]
 function saveTheme(){try{localStorage.setItem(TH_KEY,JSON.stringify({theme:CONFIG.theme,season:CONFIG.season}));}catch(e){}}
 function loadTheme(){try{const t=JSON.parse(localStorage.getItem(TH_KEY));if(t){if(t.theme)CONFIG.theme=t.theme;if(t.season)CONFIG.season=t.season;}}catch(e){}}
 const SV_KEY="sorry_save";let _svmem=null;
-function saveGameState(){const snap={ts:Date.now(),current,CONFIG:JSON.parse(JSON.stringify(CONFIG)),GS:GS?JSON.parse(JSON.stringify(GS)):null,
+function saveGameState(){const snap={ts:Date.now(),current,SEAT:{red:SEAT.red,blue:SEAT.blue},FRIENDLY,CONFIG:JSON.parse(JSON.stringify(CONFIG)),GS:GS?JSON.parse(JSON.stringify(GS)):null,
   pawns:pawns.map(p=>({id:p.id,color:p.color,loc:p.loc})),deck:deck.slice(),discard:discard.slice(),
   hands:{red:hands.red.slice(),blue:hands.blue.slice()}};
   try{localStorage.setItem(SV_KEY,JSON.stringify(snap));}catch(e){_svmem=snap;}}
@@ -866,13 +870,16 @@ function resumeGame(){const s=loadSave();if(!s)return;
   card=null;selCard=null;selCardIdx=-1;selPawn=null;pawnOpts=[];pending=null;splitFirst=null;flyers=[];animating=false;
   boardAngle=0;boardTarget=0;spinning=false;if(window.camReset)camReset(false);else{userScale=1;panX=0;panY=0;}
   document.getElementById("homeOv").classList.remove("show");keepAwake();
+  if(s.SEAT)SEAT={red:s.SEAT.red,blue:s.SEAT.blue};if(typeof s.FRIENDLY==="boolean")FRIENDLY=s.FRIENDLY;
   beginTurnFor(s.current,false,true);}
 function finalizeGame(winColor){if(!GS)return;clearSave();const loseColor=winColor==="red"?"blue":"red";
   GS.end=Date.now();GS.durationMs=GS.end-GS.start;GS.winner=PN(winColor);GS.loser=PN(loseColor);
-  GS.pawnsHome={Mot:homeCount("red"),Kathy:homeCount("blue")};GS.skunk=(GS.pawnsHome[GS.loser]===0);
-  const games=GamesStore.load();games.push(GS);GamesStore.save(games);
-  try{GN.g.addResult(GS.winner,GS.loser,GS.durationMs);}catch(e){}
-  if(GS.skunk){const sk=SkunkStore.load();sk.push({winner:GS.winner,loser:GS.loser,date:GS.end});SkunkStore.save(sk);}
+  GS.pawnsHome={};GS.pawnsHome[PN("red")]=homeCount("red");GS.pawnsHome[PN("blue")]=homeCount("blue");GS.skunk=(GS.pawnsHome[GS.loser]===0);
+  if(!GS.friendly){
+    let ok=false;try{GN.recordGame(SG_KEY,GS);ok=true;}catch(e){}
+    if(!ok){const games=GamesStore.load();games.push(GS);GamesStore.save(games);}
+    try{GN.g.addResult(GS.winner,GS.loser,GS.durationMs);}catch(e){}
+    if(GS.skunk){const sk=SkunkStore.load();sk.push({winner:GS.winner,loser:GS.loser,date:GS.end});SkunkStore.save(sk);}}
   GS=null;}
 
 function sameDay(a,b){return a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate();}
@@ -880,35 +887,41 @@ function filterGames(games,period){const now=Date.now();return games.filter(g=>{
   if(period==="today")return sameDay(d,n);if(period==="week")return e>=now-7*864e5;
   if(period==="month")return d.getMonth()===n.getMonth()&&d.getFullYear()===n.getFullYear();return true;});}
 function fmtDur(ms){if(!ms)return"\u2014";const s=Math.round(ms/1000),m=Math.floor(s/60);return m?(m+"m "+(s%60)+"s"):(s+"s");}
-function aggregate(games){const z=()=>({Mot:0,Kathy:0});
-  const A={n:games.length,wins:z(),wentFirst:z(),firstHome:z(),skunks:z(),cardsPlayed:z(),sorry:z(),bumpsDealt:z(),slides:z(),forced:z(),extra:z(),durSum:0};
-  for(const g of games){if(g.winner)A.wins[g.winner]++;if(g.firstPlayer)A.wentFirst[g.firstPlayer]++;if(g.firstHome)A.firstHome[g.firstHome]++;if(g.skunk&&g.winner)A.skunks[g.winner]++;A.durSum+=g.durationMs||0;
-    for(const k of["Mot","Kathy"]){const s=g[k]||{};A.cardsPlayed[k]+=s.cardsPlayed||0;A.sorry[k]+=s.sorry||0;A.bumpsDealt[k]+=s.bumpsDealt||0;A.slides[k]+=s.slides||0;A.forced[k]+=s.forcedDiscards||0;A.extra[k]+=s.extraTurns||0;}}
+function statNames(games){const f={};games.forEach(g=>{[g.winner,g.loser].forEach(n=>{if(n)f[n]=(f[n]||0)+1;});});
+  const ns=Object.keys(f).sort((a,b)=>f[b]-f[a]);
+  const n1=ns[0]||SEAT.red,n2=ns[1]||(SEAT.blue!==n1?SEAT.blue:SEAT.red+" II");
+  return[n1,n2];}
+function aggregate(games){const NM=statNames(games),z=()=>{const o={};o[NM[0]]=0;o[NM[1]]=0;return o;};
+  const A={n:games.length,names:NM,wins:z(),wentFirst:z(),firstHome:z(),skunks:z(),cardsPlayed:z(),sorry:z(),bumpsDealt:z(),slides:z(),forced:z(),extra:z(),durSum:0};
+  const bump=(o,n)=>{if(n in o)o[n]++;};
+  for(const g of games){bump(A.wins,g.winner);bump(A.wentFirst,g.firstPlayer);bump(A.firstHome,g.firstHome);if(g.skunk)bump(A.skunks,g.winner);A.durSum+=g.durationMs||0;
+    for(const k of NM){const s=g[k]||{};A.cardsPlayed[k]+=s.cardsPlayed||0;A.sorry[k]+=s.sorry||0;A.bumpsDealt[k]+=s.bumpsDealt||0;A.slides[k]+=s.slides||0;A.forced[k]+=s.forcedDiscards||0;A.extra[k]+=s.extraTurns||0;}}
   A.avgDur=A.n?A.durSum/A.n:0;let st=0,who=null;
   for(let i=games.length-1;i>=0;i--){const w=games[i].winner;if(!w)break;if(who===null){who=w;st=1;}else if(w===who)st++;else break;}
   A.streak=who?{who,len:st}:null;return A;}
 function splitRow(label,mot,kathy){const tot=(mot+kathy)||1,mp=Math.round(mot/tot*100);
   return '<div class="srow"><div class="sl">'+label+'</div><div class="sbar"><span style="width:'+mp+'%;background:'+RED_C+'"></span><span style="width:'+(100-mp)+'%;background:'+BLUE_C+'"></span></div><div class="sv">'+mot+" / "+kathy+'</div></div>';}
-function winChart(games){const w=300,h=84,pad=8;if(!games.length)return"";let tm=0,tk=0;games.forEach(g=>{if(g.winner==="Mot")tm++;else if(g.winner==="Kathy")tk++;});const mx=Math.max(tm,tk,1);
-  let cm=0,ck=0;const pm=[],pk=[];games.forEach((g,i)=>{if(g.winner==="Mot")cm++;else if(g.winner==="Kathy")ck++;const x=pad+(games.length<=1?0:i/(games.length-1))*(w-2*pad);
+function winChart(games){const w=300,h=84,pad=8;if(!games.length)return"";const NM=statNames(games);let tm=0,tk=0;games.forEach(g=>{if(g.winner===NM[0])tm++;else if(g.winner===NM[1])tk++;});const mx=Math.max(tm,tk,1);
+  let cm=0,ck=0;const pm=[],pk=[];games.forEach((g,i)=>{if(g.winner===NM[0])cm++;else if(g.winner===NM[1])ck++;const x=pad+(games.length<=1?0:i/(games.length-1))*(w-2*pad);
     pm.push(x.toFixed(1)+","+(h-pad-(cm/mx)*(h-2*pad)).toFixed(1));pk.push(x.toFixed(1)+","+(h-pad-(ck/mx)*(h-2*pad)).toFixed(1));});
   return '<svg viewBox="0 0 '+w+' '+h+'" class="wchart" preserveAspectRatio="none"><polyline points="'+pm.join(" ")+'" fill="none" stroke="'+RED_C+'" stroke-width="2.5"/><polyline points="'+pk.join(" ")+'" fill="none" stroke="'+BLUE_C+'" stroke-width="2.5"/></svg>';}
 let statsPeriod="all";
 function renderStats(){const games=filterGames(GamesStore.load(),statsPeriod),A=aggregate(games),body=document.getElementById("statsBody");
   if(!A.n){body.innerHTML='<div class="empty">No games recorded for this range yet.<br>Finish a game and it lands here.</div>';return;}
   const streak=A.streak?A.streak.who+" on a "+A.streak.len+"-game streak":"\u2014";let h="";
-  h+='<div class="h2h"><div class="h2hcol" style="color:'+RED_C+'"><div class="big">'+A.wins.Mot+'</div><div>Mot</div></div><div class="vs">vs</div><div class="h2hcol" style="color:'+BLUE_C+'"><div class="big">'+A.wins.Kathy+'</div><div>Kathy</div></div></div>';
+  const[n1,n2]=A.names;
+  h+='<div class="h2h"><div class="h2hcol" style="color:'+RED_C+'"><div class="big">'+A.wins[n1]+'</div><div>'+n1+'</div></div><div class="vs">vs</div><div class="h2hcol" style="color:'+BLUE_C+'"><div class="big">'+A.wins[n2]+'</div><div>'+n2+'</div></div></div>';
   h+='<div class="meta">'+A.n+" game"+(A.n>1?"s":"")+" \u00b7 avg "+fmtDur(A.avgDur)+" \u00b7 "+streak+'</div>';
   h+=winChart(games);
-  h+=splitRow("Skunks",A.skunks.Mot,A.skunks.Kathy);
-  h+=splitRow("Went first",A.wentFirst.Mot,A.wentFirst.Kathy);
-  h+=splitRow("First pawn home",A.firstHome.Mot,A.firstHome.Kathy);
-  h+=splitRow("Bumps dealt",A.bumpsDealt.Mot,A.bumpsDealt.Kathy);
-  h+=splitRow("Slides ridden",A.slides.Mot,A.slides.Kathy);
-  h+=splitRow("Sorry! cards",A.sorry.Mot,A.sorry.Kathy);
-  h+=splitRow("Extra turns (2s)",A.extra.Mot,A.extra.Kathy);
-  h+=splitRow("Forced discards",A.forced.Mot,A.forced.Kathy);
-  h+=splitRow("Cards played",A.cardsPlayed.Mot,A.cardsPlayed.Kathy);
+  h+=splitRow("Skunks",A.skunks[n1],A.skunks[n2]);
+  h+=splitRow("Went first",A.wentFirst[n1],A.wentFirst[n2]);
+  h+=splitRow("First pawn home",A.firstHome[n1],A.firstHome[n2]);
+  h+=splitRow("Bumps dealt",A.bumpsDealt[n1],A.bumpsDealt[n2]);
+  h+=splitRow("Slides ridden",A.slides[n1],A.slides[n2]);
+  h+=splitRow("Sorry! cards",A.sorry[n1],A.sorry[n2]);
+  h+=splitRow("Extra turns (2s)",A.extra[n1],A.extra[n2]);
+  h+=splitRow("Forced discards",A.forced[n1],A.forced[n2]);
+  h+=splitRow("Cards played",A.cardsPlayed[n1],A.cardsPlayed[n2]);
   const sk=filterGames(SkunkStore.load(),statsPeriod);
   h+='<div class="skledger">Skunk ledger: '+sk.length+" total"+(sk.length?" \u2014 "+sk.slice(-3).map(s=>s.winner+" skunked "+s.loser).join("; "):"")+'</div>';
   body.innerHTML=h;}
