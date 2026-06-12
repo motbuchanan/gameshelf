@@ -126,6 +126,7 @@ GN.g={
 
 GN.friendly=false;
 GN.recordGame=function(key,rec){
+  GN._inPlay=false;
   if(GN.friendly)return; // friendly games leave no trace
 
   let l=[];try{l=JSON.parse(localStorage.getItem(key))||[];}catch(e){}
@@ -176,7 +177,7 @@ function injectCSS(){if(document.getElementById("gnCSS"))return;
 
 /* ---------- match start: who's playing? + coin flip ---------- */
 /* GN.matchStart(done) -> done({a,b,first}) where a,b,first are player objects */
-GN.matchStart=function(done){injectCSS();
+GN.matchStart=function(done){injectCSS();GN._inPlay=false;
   let[a,b]=GN.lastPair();
   const ov=document.createElement("div");ov.className="gnOv";
   const back=document.createElement("a");back.href="index.html";back.textContent="\u2329 Shelf";
@@ -271,7 +272,7 @@ GN.matchStart=function(done){injectCSS();
       if(!friendly)GN.g.addFlip(first.name);
       title.textContent=first.name+" goes first!";title.style.color=first.color;
       go.textContent="Begin";go.style.visibility="visible";
-      go.onclick=function(){ov.remove();done({a,b,first,friendly});};}
+      go.onclick=function(){ov.remove();GN._inPlay=true;done({a,b,first,friendly});};}
     requestAnimationFrame(toss);};};
 
 /* ---------- stats overlay ---------- */
@@ -329,6 +330,85 @@ const GAME_KEYS=["sorry_games","checkers_games","c4_games","trouble_games","manc
   "farkle_games","gofish_games","reversi_games","morris_games",
   "bridge_games","guesswho_games"];
 GN.GAME_KEYS=GAME_KEYS;
+/* ---- pinch zoom + pan for dense boards ----
+   GN.pinchZoom(boardEl): wraps the board; pinch to zoom (1x-3x), drag to pan when
+   zoomed, double-tap toggles 1x <-> 2.2x at the tap point. CSS transforms keep the
+   browser hit-testing cells, so taps land exactly where they look like they land.
+   Pure math on GN._pz for harnesses. */
+GN._pz={
+  clamp:function(sc,tx,ty,w,h){sc=Math.min(3,Math.max(1,sc));
+    const minX=w-w*sc,minY=h-h*sc; // content scaled from origin 0,0
+    tx=Math.min(0,Math.max(minX,tx));ty=Math.min(0,Math.max(minY,ty));
+    if(sc===1){tx=0;ty=0;}
+    return{sc,tx,ty};},
+  pinch:function(st,m0,d0,m1,d1,w,h){const r=d1/Math.max(1,d0);
+    let sc=st.sc*r;
+    // keep the pinch midpoint anchored: content point under m0 stays under m1
+    let tx=m1.x-((m0.x-st.tx)/st.sc)*sc;
+    let ty=m1.y-((m0.y-st.ty)/st.sc)*sc;
+    return this.clamp(sc,tx,ty,w,h);},
+  pan:function(st,dx,dy,w,h){return this.clamp(st.sc,st.tx+dx,st.ty+dy,w,h);},
+  dblTarget:function(st,p,w,h){if(st.sc>1.05)return{sc:1,tx:0,ty:0};
+    const sc=2.2;
+    return this.clamp(sc,p.x-((p.x-st.tx)/st.sc)*sc,p.y-((p.y-st.ty)/st.sc)*sc,w,h);}};
+GN.pinchZoom=function(board){
+  if(!board||board._gnZoomed)return;board._gnZoomed=true;
+  const vp=document.createElement("div");
+  vp.style.cssText="overflow:hidden;touch-action:none;border-radius:10px;width:100%;position:relative;";
+  board.parentNode.insertBefore(vp,board);vp.appendChild(board);
+  board.style.transformOrigin="0 0";board.style.willChange="transform";
+  let st={sc:1,tx:0,ty:0};
+  const apply=()=>{board.style.transform="translate("+st.tx+"px,"+st.ty+"px) scale("+st.sc+")";};
+  const dims=()=>({w:vp.clientWidth,h:vp.clientHeight});
+  const pts=new Map();let moved=false,start=null,lastMid=null,lastDist=0,lastTap=0,downAt=0;
+  const mid=()=>{const a=[...pts.values()];return{x:(a[0].x+a[1].x)/2,y:(a[0].y+a[1].y)/2};};
+  const dist=()=>{const a=[...pts.values()];return Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);};
+  const loc=e=>{const r=vp.getBoundingClientRect();return{x:e.clientX-r.left,y:e.clientY-r.top};};
+  vp.addEventListener("pointerdown",e=>{pts.set(e.pointerId,loc(e));
+    if(pts.size===1){moved=false;start=loc(e);downAt=Date.now();}
+    if(pts.size===2){lastMid=mid();lastDist=dist();moved=true;}});
+  vp.addEventListener("pointermove",e=>{if(!pts.has(e.pointerId))return;
+    pts.set(e.pointerId,loc(e));
+    const{w,h}=dims();
+    if(pts.size===2){const m=mid(),d=dist();
+      st=GN._pz.pinch(st,lastMid,lastDist,m,d,w,h);lastMid=m;lastDist=d;apply();}
+    else if(pts.size===1&&st.sc>1){const p=loc(e);
+      if(!moved&&Math.hypot(p.x-start.x,p.y-start.y)<8)return;
+      moved=true;st=GN._pz.pan(st,p.x-start.x,p.y-start.y,w,h);start=p;apply();}});
+  const up=e=>{const was=pts.size;pts.delete(e.pointerId);
+    if(was===1&&!moved&&Date.now()-downAt<400){
+      const now=Date.now();
+      if(now-lastTap<320){const{w,h}=dims();st=GN._pz.dblTarget(st,loc(e),w,h);apply();lastTap=0;}
+      else lastTap=now;}};
+  vp.addEventListener("pointerup",up);vp.addEventListener("pointercancel",up);
+  // a pan/pinch must not fall through as a cell tap
+  vp.addEventListener("click",e=>{if(moved){e.stopPropagation();e.preventDefault();moved=false;}},true);
+};
+/* ---- fat-finger guard ----
+   While a game is in progress, tapping New game or the shelf link asks first.
+   In play: matchStart completes -> true. Over: recordGame fires (or a new picker opens) -> false. */
+GN._inPlay=false;GN._bypass=false;
+GN.confirmEnd=function(msg,onEnd){injectCSS();
+  const old=document.getElementById("gnConf");if(old)old.remove();
+  const w=document.createElement("div");w.className="gnOv";w.id="gnConf";
+  w.innerHTML='<div class="gnTitle">Hold on \u270B</div>'+
+    '<div class="gnMeta" style="font-size:15px;max-width:300px;">'+msg+'</div>'+
+    '<button class="gnBtn" id="gnKeep">Keep playing</button>'+
+    '<button class="gnBtn ghost" id="gnEnd" style="font-size:14px;">Yes, end this game</button>';
+  document.body.appendChild(w);
+  w.querySelector("#gnKeep").onclick=()=>w.remove();
+  w.querySelector("#gnEnd").onclick=()=>{w.remove();onEnd();};};
+document.addEventListener("click",function(e){
+  if(!GN._inPlay||GN._bypass)return;
+  const t=e.target&&e.target.closest&&(e.target.closest("#newBtn,#mainBtn")||e.target.closest('a[href="index.html"]'));
+  if(!t)return;
+  if(t.closest&&(t.closest(".gnOv")||t.closest("#overlay")))return; // picker back-out + play-again are safe contexts
+  e.preventDefault();e.stopPropagation();
+  const isLink=t.tagName==="A";
+  GN.confirmEnd(isLink?"Leave for the shelf? The game in progress won't be saved.":"Start over? The game in progress will be lost.",
+    function(){if(isLink)location.href=t.getAttribute("href");
+      else{GN._bypass=true;try{t.click();}finally{GN._bypass=false;}}});
+},true);
 GN.sync={
   status(){try{return localStorage.getItem("gn_sync_hh")?"on":"off";}catch(e){return"off";}},
   enable(code){if(!code||!code.trim())return false;
