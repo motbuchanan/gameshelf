@@ -320,6 +320,8 @@ let _db=null,_hh=null,_fbReady=false;
 function hhId(code){let h=5381;for(let i=0;i<code.length;i++)h=((h<<5)+h+code.charCodeAt(i))>>>0;return"hh_"+h.toString(36);}
 function loadScript(u){return new Promise((res,rej)=>{const s=document.createElement("script");
   s.src=u;s.onload=res;s.onerror=rej;document.head.appendChild(s);});}
+// PWA: register the service worker (network-first; see sw.js).
+if("serviceWorker" in navigator){try{navigator.serviceWorker.register("sw.js");}catch(e){}}
 const GAME_KEYS=["sorry_games","checkers_games","c4_games","trouble_games","mancala_games",
   "dom_games","yahtzee_games","bs_games","cc_games","bg_games",
   "war_games","sb_games","sl_games","uttt_games",

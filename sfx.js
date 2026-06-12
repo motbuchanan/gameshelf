@@ -25,21 +25,22 @@
     var n=Math.floor(c.sampleRate*dur),buf=c.createBuffer(1,n,c.sampleRate),d=buf.getChannelData(0);
     for(var i=0;i<n;i++)d[i]=Math.random()*2-1;
     var src=c.createBufferSource();src.buffer=buf;
-    var bp=c.createBiquadFilter();bp.type="bandpass";bp.frequency.value=f;bp.Q.value=11;
+    var bp=c.createBiquadFilter();bp.type="bandpass";bp.frequency.value=f;bp.Q.value=(arguments.length>4?arguments[4]:11);
     var gn=c.createGain();gn.gain.setValueAtTime(0,t);gn.gain.linearRampToValueAtTime(g,t+0.002);
     gn.gain.exponentialRampToValueAtTime(0.0001,t+dur+0.03);
     src.connect(bp);bp.connect(gn);gn.connect(c.destination);src.start(t);}
   var S={
     tap:   function(t){osc("triangle",660,520,t,0.06,0.12);},
     place: function(t){osc("sine",420,300,t,0.09,0.2);noise(t,0.04,0.08,1800);},
-    pop:   function(t){ // Pop-O-Matic: membrane snap, then a die tumbling on plastic
-      noise(t,0.022,0.4,1600);                       // the snap
-      tick(t+0.004,2600,0.3,0.018);                  // dome resonance of the snap
-      var n=5+Math.floor(Math.random()*3),tt=t+0.03; // tumble: 5-7 irregular plastic ticks
+    pop:   function(t){ // Pop-O-Matic v3: snap with hollow body, warm loud tumble
+      noise(t,0.022,0.45,1600);                       // snap crack
+      tick(t+0.002,420,0.55,0.05,6);                  // hollow dome THUMP (the kick-up)
+      tick(t+0.006,2300,0.22,0.016);                  // bright snap edge
+      var n=5+Math.floor(Math.random()*3),tt=t+0.035; // tumble: louder, warmer, softer Q
       for(var i=0;i<n;i++){
-        tick(tt,1400+Math.random()*2300,0.26*(1-i/(n+1))*(0.7+Math.random()*0.6));
+        tick(tt,900+Math.random()*1500,0.42*(1-i/(n+1))*(0.7+Math.random()*0.6),0.024,8);
         tt+=0.02+Math.random()*0.05;}
-      tick(tt+0.015,850+Math.random()*350,0.16,0.03); // the die settles: lower tock
+      tick(tt+0.015,600+Math.random()*250,0.22,0.035,7); // settle tock
     },
     dice:  function(t){for(var i=0;i<4;i++)noise(t+i*0.05,0.03,0.14,1500+Math.random()*1500);},
     move:  function(t){osc("sine",300,360,t,0.08,0.15);},
@@ -50,7 +51,7 @@
     fanfare:function(t){var ns=[523,659,784,1047];for(var i=0;i<ns.length;i++){
       osc("triangle",ns[i],ns[i],t+i*0.13,0.32,0.22);}
       osc("sine",262,262,t,0.7,0.12);},
-    womp:  function(t){osc("sawtooth",220,80,t,0.5,0.2);},
+    womp:  function(t){osc("triangle",200,110,t,0.26,0.09);},
     six:   function(t,lvl){ // lvl 0,1,2... consecutive sixes build the celebration
       lvl=Math.min(lvl||0,4);
       var notes=[523,659,784,988,1175,1319,1568],n=3+lvl;
