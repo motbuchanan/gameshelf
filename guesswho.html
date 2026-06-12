@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Guess Who</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  body{font-family:system-ui,sans-serif;color:#f3eee4;min-height:100vh;display:flex;flex-direction:column;align-items:center;
+    background:radial-gradient(120% 80% at 50% 15%,#46333a 0%,#16090e 70%);}
+  #bar{width:100%;max-width:560px;display:flex;align-items:center;gap:10px;padding:11px 14px;}
+  #bar a{color:#f0dfe6;text-decoration:none;font-size:14px;border:1px solid #6a4a55;border-radius:999px;padding:6px 12px;}
+  #title{font-weight:800;font-size:20px;flex:1;}
+  #turnWrap{display:flex;align-items:center;gap:8px;}
+  #dot{width:15px;height:15px;border-radius:50%;}
+  #turnName{font-weight:700;font-size:15px;}
+  #mode{font-size:13px;color:#e2ccd5;text-align:center;min-height:18px;padding:0 14px;}
+  #grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;width:min(96vw,560px);padding:8px 10px;}
+  .card{position:relative;border:none;border-radius:10px;padding:4px 2px 3px;cursor:pointer;font-family:inherit;
+    background:linear-gradient(170deg,#fdf6e9,#ecdfc8);box-shadow:0 3px 5px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.8);
+    display:flex;flex-direction:column;align-items:center;gap:1px;transition:transform .12s;}
+  .card svg{width:100%;height:auto;display:block;}
+  .card .nm{font-size:10.5px;font-weight:800;color:#4a3340;letter-spacing:.2px;}
+  .card.down{background:linear-gradient(170deg,#7c2f43,#561e2f);box-shadow:inset 0 2px 5px rgba(0,0,0,.5);}
+  .card.down svg,.card.down .nm{visibility:hidden;}
+  .card.down::after{content:"?";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-size:34px;font-weight:900;color:rgba(255,255,255,.35);}
+  .card.pickme{outline:3px solid #f4c542;transform:translateY(-3px);}
+  #msg{min-height:22px;text-align:center;font-size:15px;padding:2px 16px;font-weight:600;}
+  #foot{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;padding:8px 12px 16px;width:100%;max-width:560px;}
+  .act{font-family:inherit;font-size:15px;font-weight:bold;padding:10px 16px;border-radius:10px;border:none;
+    color:#2b1620;background:#f4c542;cursor:pointer;box-shadow:0 4px 0 #9a7414,0 5px 10px rgba(0,0,0,.4);white-space:nowrap;}
+  .act.ghost{background:#2b1a22;color:#f0dfe6;box-shadow:0 4px 0 #150a0f;border:1px solid #6a4a55;font-size:13px;padding:8px 12px;}
+  .ov{position:fixed;inset:0;background:rgba(14,6,10,.96);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:50;text-align:center;padding:24px;}
+  .ov.show{display:flex;} .ov h1{font-size:27px;} .ov p{color:#e2ccd5;max-width:340px;}
+  #peek{width:110px;border-radius:12px;background:linear-gradient(170deg,#fdf6e9,#ecdfc8);padding:6px;}
+  #peek .nm{color:#4a3340;font-weight:800;font-size:13px;text-align:center;}
+  #confetti{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
+  .cf{position:absolute;width:10px;height:14px;top:-20px;animation:fall linear forwards;}
+  @keyframes fall{to{transform:translateY(110vh) rotate(720deg);}}
+</style></head><body>
+<div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">Guess Who</div><div id="turnWrap"><div id="dot"></div><div id="turnName"></div></div></div>
+<div id="mode"></div>
+<div id="grid"></div>
+<div id="msg"></div>
+<div id="foot">
+  <button class="act" id="passBtn">Done &mdash; pass</button>
+  <button class="act ghost" id="guessBtn">Make a guess</button>
+  <button class="act ghost" id="newBtn">New game</button>
+</div>
+<div class="ov" id="curtain"><h1 id="curTitle"></h1><div id="peek"></div><p id="curText"></p><button class="act" id="curBtn">I'm ready</button></div>
+<div class="ov" id="overlay"><div id="confetti"></div><div style="font-size:54px;">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p>
+  <button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #6a4a55;background:#2b1a22;color:#f0dfe6;text-decoration:none;">Back to shelf</a></div>
+<script src="gamenight.js?v=9"></script>
+<script src="sfx.js?v=2"></script>
+<script>
+const KEY="guesswho_games";
+function S(n,o){window.GNS&&GNS.play(n,0,o);}
+// ============ CHARACTERS AS DATA ============
+// Boards are arrays of attribute vectors; faces render procedurally from them.
+// This is the CLASSIC board: 24 characters, traits balanced for fair questions.
+// skin:0/1/2  hair:black|blonde|brown|red|white|none(bald)  style:short|long
+// eyes:brown|blue|green  flags: hat glasses beard earrings smile bignose  sex:m|f
+const CHARS=[
+ {n:"Maya", sex:"f",skin:2,hair:"black", style:"long", eyes:"brown",hat:0,glasses:0,beard:0,earrings:1,smile:1,bignose:0},
+ {n:"Otto", sex:"m",skin:0,hair:"white", style:"short",eyes:"blue", hat:0,glasses:1,beard:1,earrings:0,smile:0,bignose:1},
+ {n:"Pearl",sex:"f",skin:1,hair:"white", style:"long", eyes:"brown",hat:0,glasses:1,beard:0,earrings:1,smile:1,bignose:0},
+ {n:"Hugo", sex:"m",skin:1,hair:"black", style:"short",eyes:"brown",hat:1,glasses:0,beard:1,earrings:0,smile:0,bignose:1},
+ {n:"Rosa", sex:"f",skin:2,hair:"red",   style:"long", eyes:"green",hat:0,glasses:0,beard:0,earrings:0,smile:1,bignose:0},
+ {n:"Felix",sex:"m",skin:0,hair:"blonde",style:"short",eyes:"blue", hat:0,glasses:0,beard:0,earrings:0,smile:1,bignose:0},
+ {n:"June", sex:"f",skin:0,hair:"brown", style:"short",eyes:"brown",hat:1,glasses:0,beard:0,earrings:0,smile:0,bignose:0},
+ {n:"Omar", sex:"m",skin:2,hair:"black", style:"short",eyes:"brown",hat:0,glasses:1,beard:0,earrings:0,smile:1,bignose:0},
+ {n:"Lila", sex:"f",skin:1,hair:"blonde",style:"long", eyes:"blue", hat:0,glasses:1,beard:0,earrings:0,smile:0,bignose:1},
+ {n:"Gus",  sex:"m",skin:1,hair:"none",  style:"short",eyes:"brown",hat:0,glasses:0,beard:1,earrings:0,smile:0,bignose:1},
+ {n:"Nina", sex:"f",skin:0,hair:"red",   style:"short",eyes:"blue", hat:0,glasses:0,beard:0,earrings:1,smile:0,bignose:0},
+ {n:"Theo", sex:"m",skin:0,hair:"none",  style:"short",eyes:"green",hat:0,glasses:0,beard:0,earrings:0,smile:0,bignose:1},
+ {n:"Wren", sex:"f",skin:2,hair:"brown", style:"long", eyes:"brown",hat:1,glasses:0,beard:0,earrings:0,smile:1,bignose:0},
+ {n:"Boris",sex:"m",skin:1,hair:"white", style:"short",eyes:"brown",hat:0,glasses:0,beard:1,earrings:0,smile:0,bignose:0},
+ {n:"Cleo", sex:"f",skin:2,hair:"blonde",style:"short",eyes:"blue", hat:0,glasses:1,beard:0,earrings:1,smile:0,bignose:0},
+ {n:"Ezra", sex:"m",skin:2,hair:"brown", style:"short",eyes:"brown",hat:1,glasses:1,beard:0,earrings:0,smile:1,bignose:0},
+ {n:"Dot",  sex:"f",skin:0,hair:"white", style:"short",eyes:"green",hat:0,glasses:1,beard:0,earrings:0,smile:1,bignose:1},
+ {n:"Hank", sex:"m",skin:0,hair:"red",   style:"short",eyes:"brown",hat:1,glasses:0,beard:1,earrings:0,smile:0,bignose:0},
+ {n:"Ivy",  sex:"f",skin:1,hair:"black", style:"long", eyes:"green",hat:0,glasses:0,beard:0,earrings:0,smile:0,bignose:1},
+ {n:"Jasper",sex:"m",skin:2,hair:"none", style:"short",eyes:"brown",hat:0,glasses:0,beard:0,earrings:1,smile:1,bignose:0},
+ {n:"Suki", sex:"f",skin:1,hair:"red",   style:"short",eyes:"brown",hat:0,glasses:0,beard:0,earrings:0,smile:1,bignose:1},
+ {n:"Ray",  sex:"m",skin:1,hair:"blonde",style:"short",eyes:"blue", hat:1,glasses:0,beard:0,earrings:0,smile:1,bignose:0},
+ {n:"Tess", sex:"f",skin:0,hair:"brown", style:"long", eyes:"blue", hat:0,glasses:0,beard:0,earrings:1,smile:0,bignose:0},
+ {n:"Vik",  sex:"m",skin:0,hair:"none",  style:"short",eyes:"brown",hat:0,glasses:1,beard:1,earrings:0,smile:1,bignose:0}
+];
+// ============ PROCEDURAL FACES ============
+const SKIN=["#f6cfae","#d9a06b","#8d5a3a"];
+const HAIRC={black:"#23201f",blonde:"#e8c25a",brown:"#7a4a26",red:"#c4502a",white:"#e8e4dd"};
+function face(ch){
+  const sk=SKIN[ch.skin],hc=HAIRC[ch.hair]||null;
+  let s='<svg viewBox="0 0 70 78" xmlns="http://www.w3.org/2000/svg">';
+  // ears + head
+  s+='<circle cx="14" cy="42" r="5" fill="'+sk+'"/><circle cx="56" cy="42" r="5" fill="'+sk+'"/>';
+  if(ch.earrings)s+='<circle cx="14" cy="48" r="2.2" fill="#f4c542"/><circle cx="56" cy="48" r="2.2" fill="#f4c542"/>';
+  s+='<ellipse cx="35" cy="42" rx="22" ry="25" fill="'+sk+'"/>';
+  // hair
+  if(hc){
+    if(ch.style==="long")s+='<path d="M13 40 Q10 76 20 74 L20 46 Q20 22 35 22 Q50 22 50 46 L50 74 Q60 76 57 40 Q57 14 35 13 Q13 14 13 40Z" fill="'+hc+'"/>';
+    else s+='<path d="M13 38 Q13 14 35 13 Q57 14 57 38 Q57 27 48 25 Q38 22 26 26 Q15 29 13 38Z" fill="'+hc+'"/>';
+  }
+  // hat (drawn over hair)
+  if(ch.hat)s+='<path d="M12 28 Q12 12 35 11 Q58 12 58 28 L58 31 L12 31 Z" fill="#3f6f4f"/><rect x="8" y="29" width="54" height="5" rx="2.5" fill="#2c5039"/>';
+  // eyes
+  const ey={brown:"#5a3a1e",blue:"#3a6fc4",green:"#3f8a4f"}[ch.eyes];
+  s+='<circle cx="27" cy="40" r="3.4" fill="#fff"/><circle cx="43" cy="40" r="3.4" fill="#fff"/>';
+  s+='<circle cx="27" cy="40.5" r="1.9" fill="'+ey+'"/><circle cx="43" cy="40.5" r="1.9" fill="'+ey+'"/>';
+  s+='<circle cx="27.6" cy="39.8" r="0.6" fill="#fff"/><circle cx="43.6" cy="39.8" r="0.6" fill="#fff"/>';
+  // brows
+  s+='<rect x="23" y="33.5" width="8" height="1.8" rx="0.9" fill="'+(hc||"#6a5a4a")+'"/><rect x="39" y="33.5" width="8" height="1.8" rx="0.9" fill="'+(hc||"#6a5a4a")+'"/>';
+  // glasses
+  if(ch.glasses)s+='<g stroke="#2b2b33" stroke-width="1.8" fill="none"><circle cx="27" cy="40" r="6"/><circle cx="43" cy="40" r="6"/><line x1="33" y1="40" x2="37" y2="40"/><line x1="21" y1="40" x2="15" y2="38"/><line x1="49" y1="40" x2="55" y2="38"/></g>';
+  // nose
+  s+=ch.bignose?'<ellipse cx="35" cy="48" rx="4.4" ry="3.4" fill="rgba(0,0,0,.16)"/>':'<ellipse cx="35" cy="48" rx="2.4" ry="1.9" fill="rgba(0,0,0,.14)"/>';
+  // mouth
+  s+=ch.smile?'<path d="M28 55 Q35 61 42 55" stroke="#8d3a3a" stroke-width="2.2" fill="none" stroke-linecap="round"/>'
+            :'<line x1="29.5" y1="56.5" x2="40.5" y2="56.5" stroke="#8d3a3a" stroke-width="2.2" stroke-linecap="round"/>';
+  // beard
+  if(ch.beard)s+='<path d="M19 49 Q22 66 35 66 Q48 66 51 49 Q48 60 35 60 Q22 60 19 49Z" fill="'+(hc||"#56463a")+'"/>';
+  s+='</svg>';return s;}
+// ============ GAME ============
+let P={A:{name:"Mot"},B:{name:"Kathy"}};
+let secrets={A:-1,B:-1},flips={A:new Set(),B:new Set()},turn="A",phase="over",sub="",GS=null,pickGuess=-1;
+function seatFrom(p){return{name:p.name,main:p.color,light:p.light,dark:p.dark};}
+function other(s){return s==="A"?"B":"A";}
+const gridEl=document.getElementById("grid");
+function buildGrid(){gridEl.innerHTML="";
+  CHARS.forEach((ch,i)=>{const b=document.createElement("button");b.className="card";b.id="ch"+i;
+    b.innerHTML=face(ch)+'<span class="nm">'+ch.n+"</span>";
+    b.addEventListener("click",()=>tapCard(i));gridEl.appendChild(b);});}
+function render(){
+  CHARS.forEach((ch,i)=>{const el=document.getElementById("ch"+i);
+    el.classList.toggle("down",sub!=="pick"&&flips[turn].has(i));
+    el.classList.toggle("pickme",pickGuess===i);});
+  const pc=P[turn],dot=document.getElementById("dot");
+  document.getElementById("turnName").textContent=pc.name;
+  if(pc.main){dot.style.background="radial-gradient(circle at 35% 30%,"+pc.light+","+pc.main+" 70%,"+pc.dark+")";dot.style.boxShadow="0 0 10px "+pc.main;}
+  document.getElementById("mode").textContent=
+    sub==="pick"?(pc.name+" \u2014 secretly tap the character YOU are."):
+    sub==="guess"?("Tap who you think "+P[other(turn)].name+" is \u2014 then confirm. Wrong = you lose!"):
+    ("Ask "+P[other(turn)].name+" a yes/no question out loud, then flip people down.");
+  document.getElementById("passBtn").style.display=sub==="ask"?"":"none";
+  document.getElementById("guessBtn").style.display=sub==="ask"?"":"none";
+  document.getElementById("guessBtn").textContent=sub==="guess"?"Cancel guess":"Make a guess";
+}
+function setMsg(t){document.getElementById("msg").textContent=t;}
+function tapCard(i){if(phase!=="play")return;
+  if(sub==="pick"){secrets[turn]=i;S("place");
+    const who=CHARS[i].n;
+    if(turn==="A"){turn="B";
+      curtainTo(()=>{sub="pick";render();setMsg("");},"Pass to "+P.B.name,"Your turn to secretly pick who you are.",null);}
+    else{turn=GS.first;sub="ask";
+      curtainTo(()=>{render();setMsg("Ask a question out loud, then flip down anyone ruled out.");},
+        "Pass to "+P[GS.first].name,"You ask first!",GS.first);}
+    return;}
+  if(sub==="ask"){if(flips[turn].has(i))flips[turn].delete(i);else flips[turn].add(i);S("tap");render();return;}
+  if(sub==="guess"){pickGuess=i;render();
+    setMsg("Final answer: "+CHARS[i].n+"? Tap them again to lock it in.");
+    document.getElementById("ch"+i).onclick=null;
+    // second tap confirms:
+    sub="confirm";return;}
+  if(sub==="confirm"){
+    if(i!==pickGuess){pickGuess=i;setMsg("Final answer: "+CHARS[i].n+"? Tap them again to lock it in.");render();return;}
+    resolveGuess(i);return;}
+}
+function resolveGuess(i){const target=secrets[other(turn)];
+  GS.guesses++;
+  if(i===target){S("fanfare");finish(turn,CHARS[i].n,true);}
+  else{S("womp");finish(other(turn),CHARS[target].n,false);}}
+document.getElementById("passBtn").addEventListener("click",()=>{if(phase!=="play"||sub!=="ask")return;
+  GS.qs[P[turn].name]++;
+  const nxt=other(turn);turn=nxt;sub="ask";pickGuess=-1;
+  curtainTo(()=>{render();setMsg("Ask a question out loud, then flip down anyone ruled out.");},
+    "Pass to "+P[nxt].name,"",nxt);});
+document.getElementById("guessBtn").addEventListener("click",()=>{if(phase!=="play")return;
+  if(sub==="guess"||sub==="confirm"){sub="ask";pickGuess=-1;render();setMsg("");return;}
+  sub="guess";pickGuess=-1;render();});
+function curtainTo(fn,title,text,peekSide){const cur=document.getElementById("curtain");
+  document.getElementById("curTitle").textContent=title;
+  document.getElementById("curText").textContent=text||"";
+  const pk=document.getElementById("peek");
+  if(peekSide!=null&&secrets[peekSide]>=0){const ch=CHARS[secrets[peekSide]];
+    pk.style.display="";pk.innerHTML=face(ch)+'<div class="nm">You are '+ch.n+"</div>";}
+  else pk.style.display="none";
+  cur.classList.add("show");
+  document.getElementById("curBtn").onclick=()=>{cur.classList.remove("show");fn();};}
+function newGame(){phase="over";document.getElementById("overlay").classList.remove("show");document.getElementById("confetti").innerHTML="";
+  GN.matchStart(function(m){P={A:seatFrom(m.a),B:seatFrom(m.b)};
+    secrets={A:-1,B:-1};flips={A:new Set(),B:new Set()};pickGuess=-1;
+    phase="play";sub="pick";turn="A";
+    GS={start:Date.now(),flipWinner:m.first.name,friendly:m.friendly,first:(m.first===m.a)?"A":"B",qs:{},guesses:0};
+    GS.qs[m.a.name]=0;GS.qs[m.b.name]=0;
+    curtainTo(()=>{render();setMsg("");},"Pass to "+P.A.name,"Secretly pick who you are \u2014 don't let them see!",null);});}
+function finish(w,revealName,won){phase="over";
+  const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
+    winner:P[w].name,loser:P[other(w)].name,flipWinner:GS.flipWinner,
+    questions:GS.qs,rightGuess:won};
+  if(!GS.friendly)GN.recordGame(KEY,rec);
+  document.getElementById("ovTitle").textContent=P[w].name+" wins!";
+  document.getElementById("ovText").textContent=won?
+    ("Nailed it \u2014 it was "+revealName+"!"):
+    (P[other(w)].name+" guessed wrong. It was "+revealName+" all along.");
+  confettiBurst();document.getElementById("overlay").classList.add("show");}
+function confettiBurst(){const box=document.getElementById("confetti");box.innerHTML="";
+  const cols=["#f4c542","#d8312b","#2f6fd0","#3f8a4f","#e8e4da"];
+  for(let i=0;i<60;i++){const d=document.createElement("div");d.className="cf";d.style.left=(Math.random()*100)+"%";
+    d.style.background=cols[i%cols.length];d.style.animationDuration=(2.2+Math.random()*1.8)+"s";
+    d.style.transform="rotate("+Math.floor(Math.random()*360)+"deg)";box.appendChild(d);}}
+document.getElementById("newBtn").addEventListener("click",newGame);
+document.getElementById("ovBtn").addEventListener("click",newGame);
+GN.rulesButton(document.getElementById("foot"),{title:"Guess Who",sections:[
+  {h:"Setup",t:"Each player secretly picks the character they ARE. Your job: figure out who the other player is before they figure out you."},
+  {h:"Your turn",t:"Ask one yes/no question out loud \u2014 \u201cDo you wear glasses?\u201d \u2014 they answer honestly. Tap to flip down everyone you've ruled out, then pass."},
+  {h:"Flips are yours",t:"Each player has their own board of flips \u2014 yours come back every time it's your turn."},
+  {h:"Guessing",t:"Think you know? Make a guess instead of a question. Right = you win. Wrong = you lose on the spot, so be sure!"},
+  {h:"Remember who you are",t:"Your own character shows on the pass screen each turn \u2014 answer their questions truthfully!"}]});
+GN.statsButton(document.getElementById("foot"),{title:"Guess Who",key:KEY,specials:[
+  {label:"Questions asked",of:(recs,name)=>recs.reduce((a,r)=>a+((r.questions&&r.questions[name])||0),0)}]});
+if(window.GNS)GNS.button(document.getElementById("foot"));
+buildGrid();newGame();
+window.GN&&GN.sync&&GN.sync();
+</script></body></html>

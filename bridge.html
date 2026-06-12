@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Bridge Builders</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  body{font-family:system-ui,sans-serif;color:#f3e9d2;min-height:100vh;display:flex;flex-direction:column;align-items:center;
+    background:radial-gradient(120% 80% at 50% 20%,#1d3038 0%,#0a1216 70%);}
+  #bar{width:100%;max-width:560px;display:flex;align-items:center;gap:10px;padding:10px 12px;}
+  #bar a{color:#cfe6d8;text-decoration:none;font-size:14px;border:1px solid #3a5a47;border-radius:999px;padding:6px 12px;}
+  #bar h1{font-size:20px;flex:1;}
+  #turnTag{display:flex;align-items:center;gap:7px;font-weight:bold;font-size:15px;}
+  #dot{width:14px;height:14px;border-radius:50%;}
+  #board{display:grid;grid-template-columns:repeat(15,1fr);gap:1px;background:#0a1a12;padding:3px;border-radius:8px;
+    width:min(100vw - 8px,560px);border:3px solid #5e3617;}
+  .sq{aspect-ratio:1;position:relative;display:flex;align-items:center;justify-content:center;
+    font-size:7px;font-weight:bold;color:rgba(255,255,255,.65);background:#19402c;border-radius:2px;user-select:none;}
+  .sq.dl{background:#2e6da4;} .sq.tl{background:#1c4f8a;}
+  .sq.dw{background:#a4543a;} .sq.tw{background:#8a2f25;}
+  .sq.arrow{font-size:13px;font-weight:900;}
+  .tile{position:absolute;inset:4%;border-radius:14%;display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(160deg,#f7ecd0 0%,#ecdcb4 60%,#d9c594 100%);color:#3a2c12;
+    font-weight:800;font-size:clamp(10px,3.4vw,17px);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.7),inset 0 -2px 2px rgba(0,0,0,.18),0 2px 3px rgba(0,0,0,.5);}
+  .tile .pv{position:absolute;bottom:2%;right:8%;font-size:0.45em;font-weight:700;}
+  .tile.fresh{outline:2px solid #b0d235;outline-offset:-1px;}
+  .tile.blank{color:#7a5b9e;}
+  #rackWrap{width:min(100vw - 8px,560px);margin-top:10px;padding:8px;border-radius:12px;
+    background:linear-gradient(180deg,#7a4d24,#5e3617);box-shadow:inset 0 2px 3px rgba(255,255,255,.18),inset 0 -3px 5px rgba(0,0,0,.4),0 4px 8px rgba(0,0,0,.4);}
+  #rack{display:flex;gap:6px;justify-content:center;min-height:48px;}
+  .rtile{width:44px;height:48px;border:none;border-radius:7px;position:relative;cursor:pointer;
+    background:linear-gradient(160deg,#f7ecd0 0%,#ecdcb4 60%,#d9c594 100%);color:#3a2c12;font-weight:800;font-size:20px;font-family:inherit;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.7),inset 0 -2px 2px rgba(0,0,0,.18),0 3px 4px rgba(0,0,0,.5);}
+  .rtile .pv{position:absolute;bottom:2px;right:5px;font-size:10px;}
+  .rtile.sel{transform:translateY(-7px);outline:2px solid #b0d235;}
+  .rtile.xmark{opacity:.45;outline:2px dashed #d86a5a;}
+  #msg{min-height:22px;margin:8px 6px 2px;font-size:15px;text-align:center;}
+  #msg.good{color:#b0d235;font-weight:700;}
+  #msg.bad{color:#e89a8a;}
+  #foot{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;padding:8px;width:100%;max-width:560px;}
+  .act{font-family:inherit;font-size:15px;font-weight:bold;padding:10px 16px;border-radius:10px;border:none;
+    color:#1c2b16;background:#b0d235;cursor:pointer;box-shadow:0 4px 0 #7e9a1f,0 4px 9px rgba(0,0,0,.4);}
+  .act:disabled{opacity:.45;}
+  .act.ghost{background:#15241b;color:#cfe6d8;box-shadow:0 4px 0 #0b160f;border:1px solid #3a5a47;}
+  #score{font-size:14px;color:#cfe6d8;width:100%;text-align:center;margin-top:2px;}
+  .ov{position:fixed;inset:0;background:rgba(7,12,9,.97);display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:50;text-align:center;padding:24px;}
+  .ov.show{display:flex;}
+  .ov h1{font-size:30px;} .ov p{color:#cfe6d8;max-width:340px;}
+  #letterGrid{display:grid;grid-template-columns:repeat(6,1fr);gap:7px;max-width:330px;}
+  #letterGrid button{font-family:inherit;font-size:17px;font-weight:800;padding:9px 0;border-radius:8px;border:none;cursor:pointer;
+    background:linear-gradient(160deg,#f7ecd0,#d9c594);color:#3a2c12;}
+  #confetti{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
+  .cf{position:absolute;top:-20px;width:9px;height:14px;border-radius:2px;animation:cfall linear forwards;}
+  @keyframes cfall{0%{transform:translateY(-20px) rotate(0deg);}100%{transform:translateY(108vh) rotate(680deg);}}
+</style></head><body>
+<div id="bar"><a href="index.html">&#8962; Shelf</a><h1>Bridge Builders</h1><div id="turnTag"><div id="dot"></div><span id="turnName"></span></div></div>
+<div id="board"></div>
+<div id="rackWrap"><div id="rack"></div></div>
+<div id="msg"></div>
+<div id="foot">
+  <button class="act" id="playBtn">Play word</button>
+  <button class="act ghost" id="recallBtn">Recall</button>
+  <button class="act ghost" id="shufBtn">Shuffle</button>
+  <button class="act ghost" id="swapBtn">Swap</button>
+  <button class="act ghost" id="passBtn">Pass</button>
+  <div id="score"></div>
+</div>
+<div class="ov" id="curtain"><h1 id="curTitle"></h1><p id="curText"></p><button class="act" id="curBtn">I'm ready</button></div>
+<div class="ov" id="blankOv"><h1>Blank tile</h1><p>Pick the letter it becomes</p><div id="letterGrid"></div></div>
+<div class="ov" id="overlay"><div id="confetti"></div><div id="ovTrophy">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p>
+  <button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
+<script src="words.js?v=2"></script>
+<script src="gamenight.js?v=9"></script>
+<script src="sfx.js?v=2"></script>
+<script>
+const KEY="bridge_games",N=15,RACK=7,GOAL_COL=14,CROSS_BONUS=10;
+const ARROWS={A:4,B:10};
+const VAL={A:1,B:3,C:3,D:2,E:1,F:4,G:2,H:4,I:1,J:8,K:5,L:1,M:3,N:1,O:1,P:3,Q:10,R:1,S:1,T:1,U:1,V:4,W:4,X:8,Y:4,Z:10,"?":0};
+const DIST={A:9,B:2,C:2,D:4,E:12,F:2,G:3,H:2,I:9,J:1,K:1,L:4,M:2,N:6,O:8,P:2,Q:1,R:6,S:4,T:6,U:4,V:2,W:2,X:1,Y:2,Z:1,"?":2};
+// Bridge Builders: premium POSITIONS are fixed; the TYPE at each spot reshuffles per game.
+// Positions mirror across the horizontal axis (r <-> 14-r) so neither arrow row is favored.
+const PREM_POS=(function(){const top=[[0,3],[0,8],[0,12],[1,1],[1,6],[1,10],[2,4],[2,13],
+  [3,2],[3,7],[3,11],[4,5],[4,9],[4,14],[5,1],[5,12],[6,3],[6,7],[6,10],[6,14],
+  [7,2],[7,5],[7,9],[7,13]];
+  const all=[];const seen=new Set();
+  for(const[r,c]of top)for(const rr of(r===7?[7]:[r,14-r])){const k=rr+","+c;
+    if(!seen.has(k)){seen.add(k);all.push([rr,c]);}}
+  return all.filter(([r,c])=>!((c===0)&&(r===ARROWS.A||r===ARROWS.B)));})();
+const TYPE_BAG=(function(){const n=PREM_POS.length;
+  const tw=Math.round(n*0.13),dw=Math.round(n*0.22),tl=Math.round(n*0.26);
+  const bag=[];for(let i=0;i<tw;i++)bag.push(5);for(let i=0;i<dw;i++)bag.push(4);
+  for(let i=0;i<tl;i++)bag.push(3);while(bag.length<n)bag.push(2);return bag;})();
+let PREM=buildPrem();
+function buildPrem(){const P=Array.from({length:N},()=>Array(N).fill(0));
+  const bag=TYPE_BAG.slice();
+  for(let i=bag.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[bag[i],bag[j]]=[bag[j],bag[i]];}
+  PREM_POS.forEach(([r,c],i)=>{P[r][c]=bag[i];});
+  return P;}
+function makeBag(){const b=[];for(const L in DIST)for(let i=0;i<DIST[L];i++)b.push(L);
+  for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];}return b;}
+// ---- state ----
+let P={A:{name:"Mot"},B:{name:"Kathy"}},turn="A",bag=[],racks={A:[],B:[]},scores={A:0,B:0};
+let board=[],fresh=[],sel=-1,swapMode=false,swapMarks=new Set(),zeroRuns=0,phase="play",GS=null,blankCb=null;
+// board cell: null or {L:"A", pv:1, blank:false}
+function seatFrom(s,old){return{name:s.name,main:s.color,light:s.light,dark:s.dark};}
+function newGame(){phase="over";
+  document.getElementById("overlay").classList.remove("show");
+  document.getElementById("confetti").innerHTML="";
+  GN.matchStart(function(m){P={A:seatFrom(m.a),B:seatFrom(m.b)};
+    PREM=buildPrem();buildBoard();
+    board=Array.from({length:N},()=>Array(N).fill(null));
+    bag=makeBag();racks={A:[],B:[]};draw("A");draw("B");scores={A:0,B:0};
+    fresh=[];sel=-1;swapMode=false;swapMarks.clear();zeroRuns=0;
+    turn=(m.first===m.a)?"A":"B";phase="play";
+    GS={start:Date.now(),flipWinner:m.first.name,friendly:m.friendly,words:{},best:{w:"",pts:0,by:""}};
+    GS.words[m.a.name]=0;GS.words[m.b.name]=0;
+    curtainTo(()=>{render();setMsg(P[turn].name+" goes first \u2014 start on your \u25B6 and build to the far side!");},
+      "Pass to "+P[turn].name,"Race across the board. No peeking!");});}
+function draw(side){while(racks[side].length<RACK&&bag.length)racks[side].push(bag.pop());}
+// ---- bridge path scoring (proven core) ----
+function hRunOf(b,me,r,c){let c0=c;while(c0-1>=0&&b[r][c0-1]&&b[r][c0-1].owner===me)c0--;
+  const cells=[];let cc=c0;
+  while(cc<N&&b[r][cc]&&b[r][cc].owner===me){cells.push([r,cc]);cc++;}return cells;}
+function ownCellsOf(b,me){const out=[];for(let r=0;r<N;r++)for(let c=0;c<N;c++)if(b[r][c]&&b[r][c].owner===me)out.push([r,c]);return out;}
+function maxReach(b,me){let m=-1;for(const[,c]of ownCellsOf(b,me))if(c>m)m=c;return m;}
+function pathScore(b,me){const wordOf={},wordVal={},id=(r,c)=>r*N+c;
+  for(const[r,c]of ownCellsOf(b,me)){if(wordOf[id(r,c)]!==undefined)continue;
+    const run=hRunOf(b,me,r,c);
+    if(run.length>=2){const wid="w"+id(run[0][0],run[0][1]);let v=0;
+      for(const[rr,cc]of run){wordOf[id(rr,cc)]=wid;v+=b[rr][cc].pv;}wordVal[wid]=v;}
+    else wordOf[id(r,c)]=null;}
+  const mine=new Set(ownCellsOf(b,me).map(([r,c])=>id(r,c)));
+  if(!mine.size)return 0;
+  const starts=[];for(const k of mine)if(k%N===0)starts.push(k);
+  if(!starts.length)return 0;
+  let best=0;const cap={n:0,max:200000};const DIRS=[1,-1,N,-N];
+  const pvAt=k=>b[Math.floor(k/N)][k%N].pv;
+  const inb=(k,d)=>{const c=k%N;if(d===1&&c===N-1)return false;if(d===-1&&c===0)return false;
+    const k2=k+d;return k2>=0&&k2<N*N;};
+  function dfs(k,visited,claimed,score){if(cap.n++>cap.max)return;
+    let sc=score;const w=wordOf[k];
+    if(w&&!claimed.has(w)){claimed=new Set(claimed);claimed.add(w);sc+=wordVal[w];}
+    if(sc>best)best=sc;
+    for(const d of DIRS){if(!inb(k,d))continue;const k2=k+d;
+      if(!mine.has(k2)||visited.has(k2))continue;
+      const v2=new Set(visited);v2.add(k2);
+      dfs(k2,v2,claimed,sc+(wordOf[k2]===null?pvAt(k2):0));}}
+  for(const k0 of starts)dfs(k0,new Set([k0]),new Set(),wordOf[k0]===null?pvAt(k0):0);
+  return best;}
+// ---- pure logic ----
+function placedCells(){return fresh.map(f=>({r:f.r,c:f.c}));}
+function lineOf(cells){if(!cells.length)return null;
+  const rs=new Set(cells.map(p=>p.r)),cs=new Set(cells.map(p=>p.c));
+  if(rs.size===1)return{dir:"H",fix:cells[0].r};
+  if(cs.size===1)return{dir:"V",fix:cells[0].c};
+  return null;}
+function wordAt(b,r,c,dir){ // expand through filled cells
+  let r0=r,c0=c;
+  while(true){const rr=dir==="H"?r0:r0-1,cc=dir==="H"?c0-1:c0;
+    if(rr<0||cc<0||!b[rr][cc])break;r0=rr;c0=cc;}
+  const cells=[];let rr=r0,cc=c0;
+  while(rr<N&&cc<N&&b[rr][cc]){cells.push({r:rr,c:cc,t:b[rr][cc]});
+    if(dir==="H")cc++;else rr++;}
+  return cells;}
+function scoreWord(cells,freshSet){let pts=0,mult=1;
+  for(const x of cells){let lp=x.t.pv;
+    if(freshSet.has(x.r+","+x.c)){const p=PREM[x.r][x.c];
+      if(p===2)lp*=2;if(p===3)lp*=3;if(p===4)mult*=2;if(p===5)mult*=3;}
+    pts+=lp;}
+  return pts*mult;}
+function validateAndScore(b,frs){ // b already has fresh tiles ON it; frs=[{r,c}]
+  if(!frs.length)return{err:"Place some tiles first."};
+  const line=lineOf(frs);if(!line)return{err:"Tiles must be in one row or column."};
+  const fs=new Set(frs.map(p=>p.r+","+p.c));
+  const me=b[frs[0].r][frs[0].c].owner;
+  const haveNet=b.some((row,r)=>row.some((t,c)=>t&&t.owner===me&&!fs.has(r+","+c)));
+  if(!haveNet&&!fs.has(ARROWS[me]+",0"))return{err:"Your first word must cover your \u25B6 arrow."};
+  if(!haveNet&&frs.length<2)return{err:"First word needs at least 2 letters."};
+  const main=wordAt(b,frs[0].r,frs[0].c,line.dir);
+  for(const p of frs)if(!main.some(x=>x.r===p.r&&x.c===p.c))return{err:"Tiles must form one connected word \u2014 no gaps."};
+  if(haveNet){ // must build off YOUR OWN tiles: some formed word contains a pre-existing tile you own
+    const wordsAll=[main];for(const p of frs){const cr=wordAt(b,p.r,p.c,line.dir==="H"?"V":"H");if(cr.length>1)wordsAll.push(cr);}
+    const linked=wordsAll.some(w=>w.some(x=>x.t.owner===me&&!fs.has(x.r+","+x.c)));
+    if(!linked)return{err:"Must build off your own tiles."};}
+  const words=[];if(main.length>1)words.push(main);
+  for(const p of frs){const cross=wordAt(b,p.r,p.c,line.dir==="H"?"V":"H");
+    if(cross.length>1)words.push(cross);}
+  if(!words.length)return{err:"Word needs at least 2 letters."};
+  for(const w of words){const s=w.map(x=>x.t.L).join("");
+    if(!WORDS.has(s))return{err:'"'+s+'" isn\u2019t in the dictionary.'};}
+  let pts=0;for(const w of words)pts+=scoreWord(w,fs);
+  if(frs.length===7)pts+=50;
+  return{pts,words:words.map(w=>w.map(x=>x.t.L).join(""))};}
+// ---- UI ----
+const boardEl=document.getElementById("board");
+function buildBoard(){boardEl.innerHTML="";
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){const d=document.createElement("div");
+    const p=PREM[r][c];d.className="sq"+(p===2?" dl":p===3?" tl":p===4?" dw":p===5?" tw":"");
+    if(p)d.textContent=p===2?"DL":p===3?"TL":p===4?"DW":"TW";
+    if(c===0&&(r===ARROWS.A||r===ARROWS.B)){d.classList.add("arrow");
+      d.dataset.side=(r===ARROWS.A)?"A":"B";d.textContent="\u25B6";}
+    d.id="sq"+r+"_"+c;
+    d.addEventListener("click",()=>tapSquare(r,c));
+    boardEl.appendChild(d);}}
+function render(){
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){const d=document.getElementById("sq"+r+"_"+c);
+    const old=d.querySelector(".tile");if(old)old.remove();
+    const t=board[r][c];if(t){const tl=document.createElement("div");
+      tl.className="tile"+(fresh.some(f=>f.r===r&&f.c===c)?" fresh":"")+(t.blank?" blank":"");
+      tl.innerHTML=t.L+'<span class="pv">'+t.pv+"</span>";
+      if(t.owner)tl.style.boxShadow="inset 0 0 0 2.5px "+P[t.owner].main+"cc,inset 0 1px 0 rgba(255,255,255,.7),inset 0 -2px 2px rgba(0,0,0,.18),0 2px 3px rgba(0,0,0,.5)";
+      d.appendChild(tl);}
+    if(!t&&d.classList.contains("arrow"))d.style.color=P[d.dataset.side].main;}
+  const rk=document.getElementById("rack");rk.innerHTML="";
+  racks[turn].forEach((L,i)=>{const b=document.createElement("button");
+    b.className="rtile"+(i===sel?" sel":"")+(swapMarks.has(i)?" xmark":"");
+    b.innerHTML=(L==="?"?"&nbsp;":L)+'<span class="pv">'+VAL[L]+"</span>";
+    b.addEventListener("click",()=>tapRack(i));rk.appendChild(b);});
+  const pc=P[turn];document.getElementById("turnName").textContent=pc.name;
+  const d=document.getElementById("dot");
+  if(pc.main){d.style.background="radial-gradient(circle at 35% 30%,"+pc.light+","+pc.main+" 70%,"+pc.dark+")";
+    d.style.boxShadow="0 0 10px "+pc.main;}
+  const rA=maxReach(board,"A"),rB=maxReach(board,"B");
+  document.getElementById("score").textContent=
+    P.A.name+" "+scores.A+" (col "+(rA<0?"-":rA+1)+") \u00b7 ("+(rB<0?"-":rB+1)+" col) "+scores.B+" "+P.B.name+" \u00b7 bag "+bag.length;
+  document.getElementById("playBtn").disabled=swapMode;
+  preview();
+}
+function setMsg(t){const el=document.getElementById("msg");el.className="";el.dataset.pv="";el.textContent=t;}
+function S(n,o){window.GNS&&GNS.play(n,0,o);}
+function preview(){const el=document.getElementById("msg");
+  if(phase!=="play"||swapMode)return;
+  if(!fresh.length){if(el.dataset.pv==="1"){el.dataset.pv="";el.className="";el.textContent=P[turn].name+" \u2014 your move.";}return;}
+  const res=validateAndScore(board,placedCells());
+  el.dataset.pv="1";
+  if(res.err){el.className="bad";el.textContent=res.err;}
+  else{el.className="good";el.textContent=res.words.join(" + ")+" \u2014 "+res.pts+" point"+(res.pts===1?"":"s")+"! Tap Play word.";}}
+function tapRack(i){if(phase!=="play")return;
+  if(swapMode){if(swapMarks.has(i))swapMarks.delete(i);else swapMarks.add(i);render();return;}
+  sel=(sel===i)?-1:i;render();}
+function tapSquare(r,c){if(phase!=="play"||swapMode)return;
+  const t=board[r][c];
+  const fi=fresh.findIndex(f=>f.r===r&&f.c===c);
+  if(fi>=0){ // take fresh tile back
+    const f=fresh.splice(fi,1)[0];racks[turn].push(f.tile);board[r][c]=null;render();return;}
+  if(t||sel<0)return;
+  const L=racks[turn][sel];
+  const place=(letter,isBlank)=>{
+    board[r][c]={L:letter,pv:isBlank?0:VAL[letter],blank:isBlank,owner:turn};
+    fresh.push({r,c,tile:L});racks[turn].splice(sel,1);sel=-1;S("place");render();};
+  if(L==="?")pickBlank(letter=>place(letter,true));
+  else place(L,false);}
+function pickBlank(cb){blankCb=cb;
+  const g=document.getElementById("letterGrid");g.innerHTML="";
+  for(let i=0;i<26;i++){const ch=String.fromCharCode(65+i);
+    const b=document.createElement("button");b.textContent=ch;
+    b.addEventListener("click",()=>{document.getElementById("blankOv").classList.remove("show");blankCb(ch);});
+    g.appendChild(b);}
+  document.getElementById("blankOv").classList.add("show");}
+function recall(){for(const f of fresh){board[f.r][f.c]=null;racks[turn].push(f.tile);}
+  fresh=[];sel=-1;render();}
+function endTurn(scored){
+  if(scored>0)zeroRuns=0;else zeroRuns++;
+  // end conditions
+  const out=racks[turn].length===0&&bag.length===0;
+  if(out||zeroRuns>=6){finish(out?turn:null);return;}
+  turn=turn==="A"?"B":"A";sel=-1;swapMode=false;swapMarks.clear();
+  curtainTo(()=>{render();setMsg(P[turn].name+" \u2014 your move.");},
+    "Pass to "+P[turn].name,"Scores: "+P.A.name+" "+scores.A+" \u00b7 "+scores.B+" "+P.B.name);}
+document.getElementById("playBtn").addEventListener("click",()=>{if(phase!=="play")return;
+  const res=validateAndScore(board,placedCells());
+  if(res.err){setMsg(res.err);return;}
+  scores[turn]+=res.pts;GS.words[P[turn].name]+=res.words.length;
+  const top=res.words[0]||"";
+  if(res.pts>GS.best.pts)GS.best={w:top,pts:res.pts,by:P[turn].name};
+  setMsg(P[turn].name+" plays "+res.words.join(", ")+" for "+res.pts+"!");
+  const crossed=maxReach(board,turn)>=GOAL_COL;
+  fresh=[];draw(turn);render();
+  if(crossed){finishRace(turn);return;}
+  endTurn(res.pts);});
+document.getElementById("recallBtn").addEventListener("click",recall);
+document.getElementById("shufBtn").addEventListener("click",()=>{const r=racks[turn];
+  for(let i=r.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[r[i],r[j]]=[r[j],r[i]];}sel=-1;render();});
+document.getElementById("swapBtn").addEventListener("click",()=>{if(phase!=="play")return;
+  if(!swapMode){if(fresh.length){setMsg("Recall your tiles first.");return;}
+    if(bag.length<RACK){setMsg("Bag too low to swap.");return;}
+    swapMode=true;swapMarks.clear();setMsg("Tap tiles to swap, then Swap again.");render();return;}
+  if(!swapMarks.size){swapMode=false;setMsg("Swap cancelled.");render();return;}
+  const give=[...swapMarks].sort((a,b)=>b-a).map(i=>racks[turn].splice(i,1)[0]);
+  draw(turn);bag.push(...give);
+  for(let i=bag.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[bag[i],bag[j]]=[bag[j],bag[i]];}
+  swapMode=false;swapMarks.clear();setMsg(P[turn].name+" swaps "+give.length+".");render();endTurn(0);});
+document.getElementById("passBtn").addEventListener("click",()=>{if(phase!=="play")return;
+  if(fresh.length){setMsg("Recall your tiles first.");return;}
+  setMsg(P[turn].name+" passes.");endTurn(0);});
+function curtainTo(fn,title,text){const cur=document.getElementById("curtain");
+  document.getElementById("curTitle").textContent=title;
+  document.getElementById("curText").textContent=text||"";
+  cur.classList.add("show");
+  document.getElementById("curBtn").onclick=()=>{cur.classList.remove("show");fn();};}
+function finishRace(crosser){S("fanfare");finish(crosser);}
+function finish(crosser){phase="over";
+  const pA=pathScore(board,"A"),pB=pathScore(board,"B");
+  const tot={A:scores.A+pA+(crosser==="A"?CROSS_BONUS:0),
+             B:scores.B+pB+(crosser==="B"?CROSS_BONUS:0)};
+  GS.path={A:pA,B:pB};GS.crosser=crosser||null;GS.totals=tot;
+  scores.A=tot.A;scores.B=tot.B;
+  const w=tot.A===tot.B?null:(tot.A>tot.B?"A":"B");
+  const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
+    winner:w?P[w].name:"tie",loser:w?P[w==="A"?"B":"A"].name:"tie",
+    flipWinner:GS.flipWinner,
+    score:(function(){const s={};s[P.A.name]=scores.A;s[P.B.name]=scores.B;return s;})(),
+    path:(function(){const s={};s[P.A.name]=GS.path.A;s[P.B.name]=GS.path.B;return s;})(),
+    crosser:GS.crosser?P[GS.crosser].name:null,
+    words:GS.words,bestWord:GS.best};
+  if(!GS.friendly)GN.recordGame(KEY,rec);
+  document.getElementById("ovTitle").textContent=w?(P[w].name+" wins!"):"It's a tie!";
+  document.getElementById("ovText").textContent=
+    (GS.crosser?(P[GS.crosser].name+" bridged first (+"+CROSS_BONUS+")! "):"")+
+    "Bridges: "+P.A.name+" +"+GS.path.A+" \u00b7 +"+GS.path.B+" "+P.B.name+
+    " \u2014 Final: "+P.A.name+" "+scores.A+" \u00b7 "+scores.B+" "+P.B.name;
+  confettiBurst();document.getElementById("overlay").classList.add("show");}
+function confettiBurst(){const box=document.getElementById("confetti");box.innerHTML="";
+  const cols=["#b0d235","#f4c542","#d8312b","#2f6fd0","#e8e4da"];
+  for(let i=0;i<60;i++){const d=document.createElement("div");d.className="cf";
+    d.style.left=(Math.random()*100)+"%";d.style.background=cols[i%cols.length];
+    d.style.animationDuration=(2.2+Math.random()*1.8)+"s";
+    d.style.transform="rotate("+Math.floor(Math.random()*360)+"deg)";box.appendChild(d);}}
+document.getElementById("ovBtn").addEventListener("click",newGame);
+GN.rulesButton(document.getElementById("foot"),{title:"Bridge Builders",sections:[
+  {h:"Goal",t:"Race to build a bridge of words from your \u25B6 arrow on the left edge all the way to the right edge."},
+  {h:"Your bridge",t:"Your tiles are ringed in your color. Every play must build off YOUR OWN tiles \u2014 you may spell through the other player's letters, but they never count as part of your bridge."},
+  {h:"Turn scoring",t:"Normal word scoring: letter values plus premiums (DL/TL boost a letter, DW/TW the whole word, when first covered). All 7 tiles = +50. The bonus squares shuffle every game!"},
+  {h:"Crossing",t:"Reach the right edge and the game ends at the end of your turn \u2014 you bank a +"+CROSS_BONUS+" crossing bonus."},
+  {h:"Bridge bonus",t:"Then each bridge is traced for its best path: words along the way score in full, vertical connector letters count where the path travels. Highest grand total wins!"}]});
+GN.statsButton(document.getElementById("foot"),{title:"Bridge Builders",key:KEY,specials:[]});
+buildBoard();newGame();
+window.GN&&GN.sync&&GN.sync();
+</script></body></html>
