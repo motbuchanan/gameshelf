@@ -40,6 +40,7 @@
 <div id="foot"><button class="act" id="newBtn">New game</button><div id="score"></div></div>
 <div class="ov" id="overlay"><div id="confetti"></div><div id="ovTrophy">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p><button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
 <script src="gamenight.js?v=11"></script>
+<script src="bot.js?v=1"></script>
 <script src="sfx.js?v=5"></script>
 <script>
 const N=8;
@@ -49,6 +50,7 @@ function seatFrom(p){return{name:p.name,main:p.color,light:p.light,dark:p.dark};
 const canvas=document.getElementById("board"),ctx=canvas.getContext("2d");
 let SQ=56,board=Array.from({length:N},()=>Array(N).fill(null)),turn="blue",sel=null,targets=[],phase="pick",chainPiece=null,animFly=null;
 let boardAngle=0,boardTarget=0,spinning=false,pulsing=false,GS=null;
+let botLevel=null,botKey="";
 const KEY="checkers_games";let _mem=[];
 function S(n,o){window.GNS&&GNS.play(n,0,o);}
 const Store={load(){try{return JSON.parse(localStorage.getItem(KEY))||[];}catch(e){return _mem.slice();}},
@@ -72,21 +74,59 @@ function newGame(){board=Array.from({length:N},()=>Array(N).fill(null));
     beginTurn(true);});}
 function fwdDir(color){return color==="red"?1:-1;}
 function inB(r,c){return r>=0&&r<N&&c>=0&&c<N;}
-function capsFor(r,c){const p=board[r][c],out=[];if(!p)return out;
+function capsFor(r,c,b){b=b||board;const p=b[r][c],out=[];if(!p)return out;
   const dirs=p.king?[[1,1],[1,-1],[-1,1],[-1,-1]]:[[fwdDir(p.color),1],[fwdDir(p.color),-1]];
   for(const[dr,dc]of dirs){const mr=r+dr,mc=c+dc,lr=r+2*dr,lc=c+2*dc;
-    if(inB(lr,lc)&&board[mr][mc]&&board[mr][mc].color!==p.color&&!board[lr][lc])out.push({r:lr,c:lc,cap:{r:mr,c:mc}});}
+    if(inB(lr,lc)&&b[mr][mc]&&b[mr][mc].color!==p.color&&!b[lr][lc])out.push({r:lr,c:lc,cap:{r:mr,c:mc}});}
   return out;}
-function stepsFor(r,c){const p=board[r][c],out=[];if(!p)return out;
+function stepsFor(r,c,b){b=b||board;const p=b[r][c],out=[];if(!p)return out;
   const dirs=p.king?[[1,1],[1,-1],[-1,1],[-1,-1]]:[[fwdDir(p.color),1],[fwdDir(p.color),-1]];
-  for(const[dr,dc]of dirs){const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&!board[nr][nc])out.push({r:nr,c:nc,cap:null});}
+  for(const[dr,dc]of dirs){const nr=r+dr,nc=c+dc;if(inB(nr,nc)&&!b[nr][nc])out.push({r:nr,c:nc,cap:null});}
   return out;}
-function sideHasCapture(color){for(let r=0;r<N;r++)for(let c=0;c<N;c++)
-  if(board[r][c]&&board[r][c].color===color&&capsFor(r,c).length)return true;return false;}
-function movablePieces(color){const must=sideHasCapture(color),out=[];
-  for(let r=0;r<N;r++)for(let c=0;c<N;c++){const p=board[r][c];if(!p||p.color!==color)continue;
-    const mv=must?capsFor(r,c):stepsFor(r,c);if(mv.length)out.push({r,c});}
+function sideHasCapture(color,b){b=b||board;for(let r=0;r<N;r++)for(let c=0;c<N;c++)
+  if(b[r][c]&&b[r][c].color===color&&capsFor(r,c,b).length)return true;return false;}
+function movablePieces(color,b){b=b||board;const must=sideHasCapture(color,b),out=[];
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){const p=b[r][c];if(!p||p.color!==color)continue;
+    const mv=must?capsFor(r,c,b):stepsFor(r,c,b);if(mv.length)out.push({r,c});}
   return out;}
+// ---------- computer opponent (drives the blue / player-2 seat) ----------
+function cloneB(b){return b.map(row=>row.map(p=>p?{color:p.color,king:p.king}:null));}
+const BOT_SPEC={
+  current:st=>st.turn,
+  moves:st=>{const out=[],b=st.b;
+    if(st.chain){for(const t of capsFor(st.chain.r,st.chain.c,b))out.push({fr:st.chain.r,fc:st.chain.c,t});return out;}
+    for(const{r,c}of movablePieces(st.turn,b)){
+      const must=sideHasCapture(st.turn,b);
+      for(const t of(must?capsFor(r,c,b):stepsFor(r,c,b)))out.push({fr:r,fc:c,t});}
+    return out;},
+  apply:(st,m)=>{const b=cloneB(st.b),p=b[m.fr][m.fc];
+    b[m.t.r][m.t.c]=p;b[m.fr][m.fc]=null;
+    if(m.t.cap)b[m.t.cap.r][m.t.cap.c]=null;
+    let kinged=false;
+    if(!p.king&&((p.color==="red"&&m.t.r===N-1)||(p.color==="blue"&&m.t.r===0))){p.king=true;kinged=true;}
+    if(m.t.cap&&!kinged&&capsFor(m.t.r,m.t.c,b).length)
+      return{b,turn:st.turn,chain:{r:m.t.r,c:m.t.c}};
+    return{b,turn:st.turn==="red"?"blue":"red",chain:null};},
+  terminal:st=>!movablePieces(st.turn,st.b).length,
+  evaluate:(st,me)=>{const opp=me==="red"?"blue":"red";
+    if(BOT_SPEC.terminal(st))return st.turn===me?-9999:9999;
+    let sc=0;
+    for(let r=0;r<N;r++)for(let c=0;c<N;c++){const p=st.b[r][c];if(!p)continue;
+      let v=p.king?5:3;
+      if(!p.king)v+=0.08*(p.color==="red"?r:(N-1-r)); // advancement
+      sc+=(p.color===me?v:-v);}
+    return sc;}};
+setInterval(()=>{
+  if(!botLevel||turn!=="blue"||animFly||spinning||phase==="over")return;
+  if(phase!=="pick"&&phase!=="chain")return;
+  const k=phase+":"+board.map(r=>r.map(p=>p?(p.color[0]+(p.king?"K":"")):".").join("")).join("");
+  if(k===botKey)return;botKey=k;
+  setTimeout(()=>{if(!botLevel||turn!=="blue"||animFly||(phase!=="pick"&&phase!=="chain"))return;
+    const st={b:cloneB(board),turn:"blue",chain:(phase==="chain"&&sel)?{r:sel.r,c:sel.c}:null};
+    const m=GN.bot.chooseMove(st,BOT_SPEC,botLevel);
+    if(!m)return;
+    sel={r:m.fr,c:m.fc};doMove(m.t);},700);
+},250);
 function beginTurn(first){sel=null;targets=[];phase="pick";chainPiece=null;
   const movable=movablePieces(turn);
   if(!movable.length){gameOver(turn==="red"?"blue":"red","No moves left");return;}
@@ -194,6 +234,7 @@ function boardPointFromClient(cx,cy){const rect=canvas.getBoundingClientRect(),f
   const a=-boardAngle,dx=px-C,dy=py-C;
   return{x:C+dx*Math.cos(a)-dy*Math.sin(a)-FR,y:C+dx*Math.sin(a)+dy*Math.cos(a)-FR};}
 canvas.addEventListener("pointerup",e=>{if(animFly||spinning||phase==="over")return;
+  if(botLevel&&turn==="blue")return;
   const pt=boardPointFromClient(e.clientX,e.clientY);
   // nearest interactive within generous radius
   let best=null,bd=1e9;
@@ -252,6 +293,9 @@ GN.statsButton(document.getElementById("foot"),{title:"Checkers",key:KEY,special
   {label:"Captures",of:(r,n)=>r.reduce((a,x)=>a+((x.stats&&x.stats[n])?x.stats[n].captures:0),0)},
   {label:"Kings crowned",of:(r,n)=>r.reduce((a,x)=>a+((x.stats&&x.stats[n])?x.stats[n].kings:0),0)},
   {label:"Coin flips won",of:(r,n)=>r.filter(x=>x.flipWinner===n).length}]});
+if(window.GN&&GN.bot)GN.bot.skillButton(document.getElementById("foot"),{onChange:k=>{botLevel=k;botKey="";
+  setMessage(k?("Computer plays "+P.blue.name+"'s seat ("+k+").")
+            :(P.blue.name+"'s seat is human again."));}});
 if(window.GNS)GNS.button(document.getElementById("foot"));
 document.getElementById("ovBtn").addEventListener("click",newGame);
 window.addEventListener("resize",fit);

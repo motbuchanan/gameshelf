@@ -54,12 +54,14 @@
 <div class="ov" id="overlay"><div id="confetti"></div><div style="font-size:54px;">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p>
   <button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
 <script src="gamenight.js?v=11"></script>
+<script src="bot.js?v=1"></script>
 <script src="sfx.js?v=5"></script>
 <script>
 const KEY="reversi_games",N=8,DIRS=[[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
 function S(n,o){window.GNS&&GNS.play(n,0,o);}
 let P={A:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},B:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182"}};
 let board=[],turn="A",phase="over",GS=null,showHints=true,busy=false;
+let botLevel=null,botKey="";
 function seatFrom(p){return{name:p.name,main:p.color,light:p.light,dark:p.dark};}
 function other(s){return s==="A"?"B":"A";}
 function inb(r,c){return r>=0&&r<N&&c>=0&&c<N;}
@@ -73,6 +75,32 @@ function flipsFor(b,side,r,c){ // cells that would flip if `side` plays (r,c); [
   return out;}
 function legalMoves(b,side){const m=[];for(let r=0;r<N;r++)for(let c=0;c<N;c++)if(flipsFor(b,side,r,c).length)m.push([r,c]);return m;}
 function counts(b){let a=0,x=0;for(let r=0;r<N;r++)for(let c=0;c<N;c++){if(b[r][c]==="A")a++;else if(b[r][c]==="B")x++;}return{A:a,B:x};}
+// ---------- computer opponent (drives seat B) ----------
+const BOT_SPEC={
+  current:st=>st.turn,
+  moves:st=>{const m=legalMoves(st.b,st.turn);return m.length?m:[["pass"]];},
+  apply:(st,mv)=>{const b=st.b.map(r=>r.slice()),other=st.turn==="A"?"B":"A";
+    if(mv[0]==="pass")return{b,turn:other};
+    const[r,c]=mv;b[r][c]=st.turn;for(const[fr,fc]of flipsFor(st.b,st.turn,r,c))b[fr][fc]=st.turn;
+    return{b,turn:other};},
+  terminal:st=>!legalMoves(st.b,"A").length&&!legalMoves(st.b,"B").length,
+  evaluate:(st,me)=>{const opp=me==="A"?"B":"A",ct=counts(st.b);
+    const empt=64-ct.A-ct.B;
+    if(BOT_SPEC.terminal(st)){const d=ct[me]-ct[opp];return d>0?9999+d:d<0?-9999+d:0;}
+    let sc=0;
+    const CORN=[[0,0],[0,7],[7,0],[7,7]];
+    for(const[r,c]of CORN){if(st.b[r][c]===me)sc+=25;else if(st.b[r][c]===opp)sc-=25;}
+    sc+=2*(legalMoves(st.b,me).length-legalMoves(st.b,opp).length);
+    sc+=(empt<16?3:0.5)*(ct[me]-ct[opp]);
+    return sc;}};
+setInterval(()=>{
+  if(!botLevel||phase!=="play"||busy||turn!=="B")return;
+  const k=board.map(r=>r.map(x=>x||".").join("")).join("");
+  if(k===botKey)return;botKey=k;
+  setTimeout(()=>{if(!botLevel||phase!=="play"||busy||turn!=="B")return;
+    const mv=GN.bot.chooseMove({b:board.map(r=>r.slice()),turn:"B"},BOT_SPEC,botLevel);
+    if(mv&&mv[0]!=="pass")tap2(mv[0],mv[1]);},650);
+},250);
 
 // ---------- UI ----------
 const boardEl=document.getElementById("board");
@@ -110,6 +138,9 @@ function newGame(){phase="over";document.getElementById("overlay").classList.rem
     setMsg(P[turn].name+" to move \u2014 place a disc to flip a row.");render();});}
 
 function tap(r,c){if(phase!=="play"||busy)return;
+  if(botLevel&&turn==="B")return;
+  tap2(r,c);}
+function tap2(r,c){if(phase!=="play"||busy)return;
   const flips=flipsFor(board,turn,r,c);
   if(!flips.length){setMsg("That square doesn't flip anything \u2014 try a highlighted spot.");return;}
   board[r][c]=turn;flips.forEach(([fr,fc])=>{board[fr][fc]=turn;});
@@ -149,6 +180,9 @@ GN.rulesButton(document.getElementById("foot"),{title:"Reversi",sections:[
   {h:"Corners",t:"Corners can never be flipped back \u2014 grabbing them is the heart of Reversi strategy."},
   {h:"Game end",t:"When neither player can move, the most discs wins."}]});
 GN.statsButton(document.getElementById("foot"),{title:"Reversi",key:KEY,specials:[]});
+if(window.GN&&GN.bot)GN.bot.skillButton(document.getElementById("foot"),{onChange:k=>{botLevel=k;botKey="";
+  setMsg(k?("Computer plays "+P.B.name+"'s seat ("+k+").")
+         :(P.B.name+"'s seat is human again."));}});
 if(window.GNS)GNS.button(document.getElementById("foot"));
 buildBoard();newGame();
 window.GN&&GN.sync&&GN.sync();

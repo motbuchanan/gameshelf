@@ -4,13 +4,13 @@
    Offline: requests fall back to the cache, so the whole shelf plays with no signal.
    CACHE name only needs bumping when the precache LIST changes (e.g. a new game),
    to seed offline copies; day-to-day edits need nothing. */
-const CACHE="gameshelf-v1";
+const CACHE="gameshelf-v2";
 const CORE=["index.html","gamenight.js","sfx.js","bot.js","words.js","manifest.webmanifest",
   "icon-192.png","icon-512.png",
   "backgammon.html","battleship.html","bridge.html","checkers.html","chinese.html",
   "codebreaker.html","connect4.html","dominoes.html","dots.html","farkle.html",
   "gofish.html","gomoku.html","guesswho.html","hex.html","mancala.html","morris.html",
-  "reversi.html","scrabble.html","shutbox.html","snakes.html","sorry.html","trouble.html",
+  "reversi.html","scrabble.html","shutbox.html","snakes.html","sorry.html","trouble.html","urgame.html",
   "uttt.html","war.html","yahtzee.html"];
 self.addEventListener("install",e=>{
   e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting()));

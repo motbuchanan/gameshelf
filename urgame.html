@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Royal Game of Ur</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  body{font-family:system-ui,sans-serif;color:#f3ead8;min-height:100vh;display:flex;flex-direction:column;align-items:center;
+    background:radial-gradient(120% 80% at 50% 15%,#3a3046 0%,#13101c 70%);}
+  #bar{width:100%;max-width:560px;display:flex;align-items:center;gap:10px;padding:11px 14px;}
+  #bar a{color:#e8dff0;text-decoration:none;font-size:14px;border:1px solid #5a4a6e;border-radius:999px;padding:6px 12px;}
+  #title{font-weight:800;font-size:19px;flex:1;}
+  #turnWrap{display:flex;align-items:center;gap:8px;}
+  #dot{width:15px;height:15px;border-radius:50%;}
+  #turnName{font-weight:700;font-size:15px;}
+  .pool{display:flex;align-items:center;gap:10px;width:min(94vw,460px);padding:4px 8px;font-size:14px;font-weight:700;}
+  .pool .chips{display:flex;gap:4px;flex-wrap:wrap;}
+  .chip{width:16px;height:16px;border-radius:50%;box-shadow:inset 0 2px 2px rgba(255,255,255,.5),inset 0 -2px 3px rgba(0,0,0,.35),0 2px 3px rgba(0,0,0,.5);}
+  .homeCt{margin-left:auto;font-size:13px;color:#cfc2e0;}
+  #board{display:grid;grid-template-columns:repeat(8,1fr);gap:5px;width:min(94vw,460px);padding:8px;
+    background:linear-gradient(170deg,#7a5c38,#5a3f24);border-radius:14px;box-shadow:0 10px 26px rgba(0,0,0,.55),inset 0 2px 0 rgba(255,255,255,.18);}
+  .sq{aspect-ratio:1;border:none;border-radius:8px;position:relative;cursor:pointer;padding:0;
+    background:linear-gradient(165deg,#e9d9b8,#cdb789);box-shadow:inset 0 1px 0 rgba(255,255,255,.6),inset 0 -3px 4px rgba(0,0,0,.22);}
+  .sq.gap{visibility:hidden;pointer-events:none;}
+  .sq.rosette{background:linear-gradient(165deg,#d8e6ef,#9fb8cb);}
+  .sq.rosette::before{content:"\2738";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-size:24px;color:rgba(60,60,110,.55);}
+  .sq .pc{position:absolute;inset:16%;border-radius:50%;
+    box-shadow:inset 0 3px 3px rgba(255,255,255,.5),inset 0 -3px 4px rgba(0,0,0,.4),0 3px 5px rgba(0,0,0,.5);}
+  .sq.canMove{outline:3px solid #f4c542;z-index:1;}
+  .sq.canMove.pulse{animation:pul 1s infinite;}
+  @keyframes pul{50%{outline-color:rgba(244,197,66,.35);}}
+  #diceRow{display:flex;align-items:center;gap:14px;padding:10px 8px 2px;min-height:64px;}
+  #dice{display:flex;gap:8px;}
+  .die{width:38px;height:38px;position:relative;}
+  .die svg{width:100%;height:100%;filter:drop-shadow(0 3px 3px rgba(0,0,0,.5));}
+  #rollBtn{font-family:inherit;font-size:16px;font-weight:bold;padding:11px 22px;border-radius:12px;border:none;
+    color:#241a30;background:#f4c542;cursor:pointer;box-shadow:0 4px 0 #9a7414,0 5px 10px rgba(0,0,0,.4);}
+  #rollBtn:disabled{opacity:.45;}
+  #enterBtn{font-family:inherit;font-size:13px;font-weight:bold;padding:9px 14px;border-radius:10px;border:1px solid #5a4a6e;
+    color:#e8dff0;background:#241c30;cursor:pointer;white-space:nowrap;box-shadow:0 3px 0 #120c1c;}
+  #enterBtn.canMove{outline:3px solid #f4c542;animation:pul 1s infinite;}
+  #msg{min-height:22px;text-align:center;font-size:15px;padding:3px 16px;font-weight:600;}
+  #foot{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;padding:8px 12px 16px;width:100%;max-width:560px;}
+  .act{font-family:inherit;font-size:15px;font-weight:bold;padding:10px 16px;border-radius:10px;border:none;
+    color:#241a30;background:#f4c542;cursor:pointer;box-shadow:0 4px 0 #9a7414,0 5px 10px rgba(0,0,0,.4);white-space:nowrap;}
+  .act.ghost{background:#241c30;color:#e8dff0;box-shadow:0 4px 0 #120c1c;border:1px solid #5a4a6e;font-size:13px;padding:8px 12px;}
+  .ov{position:fixed;inset:0;background:rgba(13,9,20,.96);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:50;text-align:center;padding:24px;}
+  .ov.show{display:flex;} .ov h1{font-size:27px;} .ov p{color:#cfc2e0;max-width:340px;}
+</style></head><body>
+<div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">Royal Game of Ur</div><div id="turnWrap"><div id="dot"></div><div id="turnName"></div></div></div>
+<div class="pool" id="poolA"><span class="pnm"></span><span class="chips"></span><span class="homeCt"></span></div>
+<div id="board"></div>
+<div class="pool" id="poolB"><span class="pnm"></span><span class="chips"></span><span class="homeCt"></span></div>
+<div id="diceRow"><button id="rollBtn">Roll</button><div id="dice"></div><button id="enterBtn">Enter a piece</button></div>
+<div id="msg"></div>
+<div id="foot"><button class="act" id="newBtn">New game</button><div id="score" style="font-size:13px;color:#cfc2e0;"></div></div>
+<div class="ov" id="overlay"><div style="font-size:54px;">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p>
+  <button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #5a4a6e;background:#241c30;color:#e8dff0;text-decoration:none;">Back to shelf</a></div>
+<script src="gamenight.js?v=11"></script>
+<script src="bot.js?v=1"></script>
+<script src="sfx.js?v=5"></script>
+<script>
+const KEY="ur_games";
+function S(n,o){window.GNS&&GNS.play(n,0,o);}
+/* ---- the 4,500-year-old board ----
+   Rows: 0 = player A's private lane, 1 = shared battle lane, 2 = player B's.
+   Cols 4-5 of rows 0 and 2 are the historical gaps.
+   Each player races 7 pieces along a 14-square path; rosettes grant another roll
+   and the shared rosette is a safe haven. Exact roll to bear off. */
+const N=8,GAPS=new Set(["0,4","0,5","2,4","2,5"]);
+const ROSETTES=new Set(["0,0","2,0","1,3","0,6","2,6"]);
+function pathFor(side){const row=side==="A"?0:2,p=[];
+  for(let c=3;c>=0;c--)p.push(row+","+c);
+  for(let c=0;c<8;c++)p.push("1,"+c);
+  p.push(row+",7");p.push(row+",6");
+  return p;} // length 14; index 14 = borne off
+const PATH={A:pathFor("A"),B:pathFor("B")};
+/* ---- pure engine (harness-friendly) ---- */
+function freshState(){return{cells:{},start:{A:7,B:7},home:{A:0,B:0},turn:"A"};}
+function pieceIdx(st,side){ // path indices of side's on-board pieces
+  const out=[];PATH[side].forEach((cell,i)=>{if(st.cells[cell]===side)out.push(i);});return out;}
+function movesFor(st,side,roll){ // -> [{from:-1|idx, to:idx(14=off), cell?, capture?}]
+  if(!roll)return[];
+  const out=[];
+  const tryMove=(from)=>{const to=from+roll;
+    if(to>14)return;
+    if(to===14){out.push({from,to});return;}
+    const cell=PATH[side][to];
+    const occ=st.cells[cell];
+    if(occ===side)return;
+    if(occ&&ROSETTES.has(cell))return; // safe haven: can't capture there
+    out.push({from,to,cell,capture:!!occ});};
+  if(st.start[side]>0)tryMove(-1);
+  for(const i of pieceIdx(st,side))tryMove(i);
+  return out;}
+function applyMove(st,side,mv){ // returns {state, extra:boolean, captured:boolean, off:boolean}
+  const s={cells:Object.assign({},st.cells),start:Object.assign({},st.start),home:Object.assign({},st.home),turn:st.turn};
+  if(mv.from===-1)s.start[side]--;else delete s.cells[PATH[side][mv.from]];
+  let captured=false,off=false,extra=false;
+  if(mv.to===14){s.home[side]++;off=true;}
+  else{const cell=PATH[side][mv.to];
+    if(s.cells[cell]&&s.cells[cell]!==side){const opp=s.cells[cell];s.start[opp]++;captured=true;}
+    s.cells[cell]=side;
+    if(ROSETTES.has(cell))extra=true;}
+  if(!extra)s.turn=side==="A"?"B":"A";
+  return{state:s,extra,captured,off};}
+function rollDice(){let t=0;const faces=[];for(let i=0;i<4;i++){const v=Math.random()<0.5?1:0;faces.push(v);t+=v;}return{total:t,faces};}
+/* ---- game state ---- */
+let P={A:{name:"Mot"},B:{name:"Kathy"}};
+let st=null,roll=null,phase="over",moves=[],GS=null,botLevel=null,botKey="";
+function seatFrom(p){return{name:p.name,main:p.color,light:p.light,dark:p.dark};}
+const boardEl=document.getElementById("board");
+function buildBoard(){boardEl.innerHTML="";
+  for(let r=0;r<3;r++)for(let c=0;c<N;c++){const d=document.createElement("button");
+    const k=r+","+c;d.className="sq"+(GAPS.has(k)?" gap":"")+(ROSETTES.has(k)?" rosette":"");
+    d.id="sq"+k;d.addEventListener("click",()=>tapCell(k));boardEl.appendChild(d);}}
+function dieSVG(up){return '<svg viewBox="0 0 40 40"><polygon points="20,3 37,34 3,34" fill="#e9d9b8" stroke="#5a3f24" stroke-width="2"/>'+
+  (up?'<circle cx="20" cy="24" r="4.5" fill="#241a30"/>':'')+'</svg>';}
+function render(){
+  for(let r=0;r<3;r++)for(let c=0;c<N;c++){const k=r+","+c,el=document.getElementById("sq"+k);
+    const old=el.querySelector(".pc");if(old)old.remove();
+    el.classList.remove("canMove","pulse");
+    const side=st&&st.cells[k];
+    if(side){const pc=document.createElement("div");pc.className="pc";
+      pc.style.background="radial-gradient(circle at 35% 30%,"+P[side].light+","+P[side].main+" 70%,"+P[side].dark+")";
+      el.appendChild(pc);}}
+  const eb=document.getElementById("enterBtn");eb.classList.remove("canMove");
+  if(phase==="move"){for(const m of moves){
+    if(m.from===-1)eb.classList.add("canMove");
+    else{const el=document.getElementById("sq"+PATH[st.turn][m.from]);el.classList.add("canMove","pulse");}}}
+  for(const side of["A","B"]){const pool=document.getElementById("pool"+side);
+    pool.querySelector(".pnm").textContent=P[side].name;
+    pool.querySelector(".pnm").style.color=P[side].main||"#fff";
+    const ch=pool.querySelector(".chips");ch.innerHTML="";
+    for(let i=0;i<(st?st.start[side]:7);i++){const c=document.createElement("span");c.className="chip";
+      c.style.background="radial-gradient(circle at 35% 30%,"+(P[side].light||"#ccc")+","+(P[side].main||"#888")+" 70%,"+(P[side].dark||"#444")+")";ch.appendChild(c);}
+    pool.querySelector(".homeCt").textContent="home: "+(st?st.home[side]:0)+"/7";}
+  const pc=P[st?st.turn:"A"],dot=document.getElementById("dot");
+  document.getElementById("turnName").textContent=pc.name;
+  if(pc.main){dot.style.background="radial-gradient(circle at 35% 30%,"+pc.light+","+pc.main+" 70%,"+pc.dark+")";dot.style.boxShadow="0 0 10px "+pc.main;}
+  document.getElementById("rollBtn").disabled=phase!=="roll";
+  document.getElementById("score").textContent=st?(P.A.name+" "+st.home.A+" \u00b7 "+st.home.B+" "+P.B.name):"";
+}
+function setMsg(t){document.getElementById("msg").textContent=t;}
+function showDice(faces){const d=document.getElementById("dice");d.innerHTML="";
+  for(const f of faces){const el=document.createElement("div");el.className="die";el.innerHTML=dieSVG(f);d.appendChild(el);}}
+function doRoll(){if(phase!=="roll")return;S("dice");
+  const r=rollDice();roll=r.total;showDice(r.faces);
+  GS.rolls[P[st.turn].name]++;
+  moves=movesFor(st,st.turn,roll);
+  if(roll===0){setMsg(P[st.turn].name+" rolled 0 \u2014 turn lost!");S("womp");passTurn();return;}
+  if(!moves.length){setMsg(P[st.turn].name+" rolled "+roll+" \u2014 no moves.");S("womp");passTurn();return;}
+  phase="move";setMsg(P[st.turn].name+" rolled "+roll+" \u2014 pick a piece.");render();}
+function passTurn(){phase="wait";render();
+  setTimeout(()=>{st.turn=st.turn==="A"?"B":"A";roll=null;moves=[];phase="roll";render();
+    setMsg(P[st.turn].name+"'s roll.");},900);}
+function tapCell(k){if(phase!=="move")return;
+  if(botLevel&&st.turn==="B")return;
+  const side=st.turn;
+  const idx=PATH[side].indexOf(k);
+  const mv=moves.find(m=>m.from===idx);
+  if(mv)playMove(mv);}
+document.getElementById("enterBtn").addEventListener("click",()=>{if(phase!=="move")return;
+  if(botLevel&&st.turn==="B")return;
+  const mv=moves.find(m=>m.from===-1);if(mv)playMove(mv);});
+function playMove(mv){const side=st.turn;
+  const res=applyMove(st,side,mv);st=res.state;
+  S("move");
+  if(res.captured){S("bump",80);GS.captures[P[side].name]++;if(!GS.friendly){try{GN.g.addSentHome(1);}catch(e){}}}
+  if(res.off)S("chime",60);
+  if(res.extra){S("chime",120);GS.rosettes[P[side].name]++;}
+  phase="roll";moves=[];roll=null;render();
+  if(st.home[side]>=7){gameOver(side);return;}
+  if(res.extra)setMsg(P[side].name+" landed a rosette \u2014 roll again!");
+  else setMsg(P[st.turn].name+"'s roll.");}
+function gameOver(w){phase="over";S("fanfare");
+  const l=w==="A"?"B":"A";
+  const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
+    winner:P[w].name,loser:P[l].name,flipWinner:GS.flipWinner,
+    homePieces:(function(){const o={};o[P.A.name]=st.home.A;o[P.B.name]=st.home.B;return o;})(),
+    captures:GS.captures,rosettes:GS.rosettes,rolls:GS.rolls};
+  if(!GS.friendly)GN.recordGame(KEY,rec);
+  document.getElementById("ovTitle").textContent=P[w].name+" wins!";
+  document.getElementById("ovText").textContent="All seven pieces home \u2014 "+st.home[l]+" for "+P[l].name+".";
+  document.getElementById("overlay").classList.add("show");}
+function newGame(){phase="over";document.getElementById("overlay").classList.remove("show");
+  GN.matchStart(function(m){P={A:seatFrom(m.a),B:seatFrom(m.b)};
+    st=freshState();st.turn=(m.first===m.a)?"A":"B";
+    GS={start:Date.now(),flipWinner:m.first.name,friendly:m.friendly,captures:{},rosettes:{},rolls:{}};
+    for(const nm of[m.a.name,m.b.name]){GS.captures[nm]=0;GS.rosettes[nm]=0;GS.rolls[nm]=0;}
+    roll=null;moves=[];phase="roll";showDice([]);
+    render();setMsg(P[st.turn].name+" rolls first.");});}
+/* ---- bot (policy: capture > rosette > bear off > enter > advance leader) ---- */
+const BOT_SPEC={policy:function(state,level){
+  const side="B",opts=moves.slice();
+  if(!opts.length)return null;
+  if(level.key==="easy")return opts[Math.floor(Math.random()*opts.length)];
+  let best=null,bs=-1e9;
+  for(const o of opts){let s=0;
+    if(o.capture)s+=100;
+    if(o.to<14&&ROSETTES.has(PATH[side][o.to]))s+=70;
+    if(o.to===14)s+=60;
+    if(o.from===-1)s+=20;
+    s+=o.to;
+    if(level.key==="hard"&&o.to<14){const cell=PATH[side][o.to];
+      if(cell[0]==="1"&&!ROSETTES.has(cell)){ // shared lane danger: opponent within 1-4 behind
+        const myIdx=o.to;let danger=false;
+        for(const i of pieceIdx(st,"A")){const cellA=PATH.A[i];
+          if(cellA[0]==="1"){const sharedPos=parseInt(cell.slice(2)),posA=parseInt(cellA.slice(2));
+            const d=sharedPos-posA;if(d>=1&&d<=4)danger=true;}}
+        if(danger)s-=18;else s+=8;}}
+    s+=Math.random()*3;
+    if(s>bs){bs=s;best=o;}}
+  return best;}};
+setInterval(()=>{
+  if(!botLevel||st===null||st.turn!=="B"||phase==="over"||phase==="wait")return;
+  const k=phase+":"+(roll||0)+":"+JSON.stringify(st.cells)+st.start.A+st.start.B+st.home.A+st.home.B;
+  if(k===botKey)return;botKey=k;
+  if(phase==="roll")setTimeout(()=>{if(phase==="roll"&&st.turn==="B"&&botLevel)doRoll();},800);
+  else if(phase==="move")setTimeout(()=>{if(phase==="move"&&st.turn==="B"&&botLevel){
+    const mv=GN.bot.chooseMove(st,BOT_SPEC,botLevel);if(mv)playMove(mv);}},800);
+},250);
+document.getElementById("rollBtn").addEventListener("click",()=>{if(botLevel&&st&&st.turn==="B")return;doRoll();});
+document.getElementById("newBtn").addEventListener("click",newGame);
+document.getElementById("ovBtn").addEventListener("click",newGame);
+GN.rulesButton(document.getElementById("foot"),{title:"Royal Game of Ur",sections:[
+  {h:"The oldest game on the shelf",t:"Played in Mesopotamia 4,500 years ago. Race all 7 of your pieces along your path and off the far end before your opponent."},
+  {h:"The dice",t:"Four pyramid dice, each worth 0 or 1 \u2014 roll the total (0\u20134). Roll 0 and your turn is lost."},
+  {h:"Moving",t:"Move one piece exactly the roll: bring a new piece on, advance one on the board, or bear one off (exact count needed). You can't land on your own piece."},
+  {h:"The battle lane",t:"The middle row is shared. Land on an enemy piece there and it goes back to the start \u2014 except on the center rosette, which is a safe haven."},
+  {h:"Rosettes \u2738",t:"Land on any rosette and roll again immediately."}]});
+GN.statsButton(document.getElementById("foot"),{title:"Royal Game of Ur",key:KEY,specials:[
+  {label:"Captures",of:(r,n)=>r.reduce((a,x)=>a+((x.captures&&x.captures[n])||0),0)},
+  {label:"Rosettes hit",of:(r,n)=>r.reduce((a,x)=>a+((x.rosettes&&x.rosettes[n])||0),0)},
+  {label:"Coin flips won",of:(r,n)=>r.filter(x=>x.flipWinner===n).length}]});
+if(window.GN&&GN.bot)GN.bot.skillButton(document.getElementById("foot"),{onChange:k=>{botLevel=k;botKey="";
+  setMsg(k?("Computer plays "+P.B.name+"'s seat ("+k+").")
+         :(P.B.name+"'s seat is human again."));}});
+if(window.GNS)GNS.button(document.getElementById("foot"));
+buildBoard();newGame();
+window.GN&&GN.sync&&GN.sync();
+</script></body></html>
