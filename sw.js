@@ -4,9 +4,10 @@
    Offline: requests fall back to the cache, so the whole shelf plays with no signal.
    CACHE name only needs bumping when the precache LIST changes (e.g. a new game),
    to seed offline copies; day-to-day edits need nothing. */
-const CACHE="gameshelf-v2";
+const CACHE="gameshelf-v3";
 const CORE=["index.html","gamenight.js","sfx.js","bot.js","words.js","manifest.webmanifest",
   "icon-192.png","icon-512.png",
+  "rules.html","records.html","howto.html","rulesdata.js",
   "backgammon.html","battleship.html","bridge.html","checkers.html","chinese.html",
   "codebreaker.html","connect4.html","dominoes.html","dots.html","farkle.html",
   "gofish.html","gomoku.html","guesswho.html","hex.html","mancala.html","morris.html",

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>The Rulebook</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  body{font-family:Georgia,'Times New Roman',serif;color:#2e2418;min-height:100vh;
+    background:linear-gradient(170deg,#f4ecd8 0%,#e8dcc0 100%);display:flex;flex-direction:column;align-items:center;}
+  #bar{width:100%;max-width:620px;display:flex;align-items:center;gap:10px;padding:12px 14px;font-family:system-ui,sans-serif;}
+  #bar a{color:#5a4630;text-decoration:none;font-size:14px;border:1.5px solid #b8a380;border-radius:999px;padding:6px 12px;background:rgba(255,255,255,.4);}
+  #title{font-weight:700;font-size:21px;flex:1;font-family:Georgia,serif;}
+  #toc{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;width:min(96vw,620px);padding:8px 12px 24px;}
+  .tocItem{border:none;border-radius:8px;padding:12px 12px 10px;cursor:pointer;text-align:left;font-family:Georgia,serif;
+    background:linear-gradient(170deg,#fffdf6,#f0e6cd);box-shadow:0 2px 5px rgba(80,60,30,.25),inset 0 1px 0 #fff;
+    border-left:5px solid #8c6a3f;}
+  .tocItem .t{font-weight:700;font-size:15.5px;color:#3a2c1a;}
+  .tocItem .n{font-size:12px;color:#8a7355;margin-top:3px;font-style:italic;}
+  #reader{display:none;width:min(96vw,620px);padding:4px 16px 40px;}
+  #reader.show{display:block;}
+  #toc.hide{display:none;}
+  #gTitle{font-size:26px;padding:8px 0 2px;border-bottom:2px solid #c9b285;margin-bottom:6px;}
+  .sec{font-family:system-ui,sans-serif;font-size:12.5px;letter-spacing:1.5px;text-transform:uppercase;color:#8c6a3f;
+    font-weight:700;margin:18px 0 6px;}
+  .bod{font-size:15.5px;line-height:1.65;color:#33281a;}
+  .ill{margin:10px auto 4px;max-width:300px;}
+  .ill svg{width:100%;height:auto;display:block;}
+  .exb{margin:10px 0 4px;padding:9px 14px;border-left:4px solid #c9941e;background:rgba(201,148,30,.09);
+    border-radius:0 8px 8px 0;font-size:14px;line-height:1.55;color:#5a4426;}
+  .exb b{font-family:system-ui,sans-serif;font-size:12px;letter-spacing:1px;text-transform:uppercase;}
+  .navRow{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;padding:22px 0 6px;font-family:system-ui,sans-serif;}
+  .navRow button{font-family:inherit;font-size:14px;font-weight:600;padding:9px 16px;border-radius:10px;cursor:pointer;
+    border:1.5px solid #b8a380;background:rgba(255,255,255,.55);color:#5a4630;}
+</style></head><body>
+<div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">&#128214; The Rulebook</div></div>
+<div id="toc"></div>
+<div id="reader">
+  <div id="gTitle"></div>
+  <div id="gBody"></div>
+  <div class="navRow"><button id="backToc">&#8617; Contents</button><button id="playBtn">Play this game &#9654;</button></div>
+</div>
+<script src="rulesdata.js?v=1"></script>
+<script>
+const D=window.RULES_DATA||{};
+const ids=Object.keys(D);
+// curated-ish order: front row first, then alphabetical by title
+const front=["scrabble","bridge","sorry","trouble","guesswho","checkers","urgame"].filter(i=>D[i]);
+const rest=ids.filter(i=>!front.includes(i)).sort((a,b)=>D[a].title.localeCompare(D[b].title));
+const list=front.concat(rest);
+const toc=document.getElementById("toc"),reader=document.getElementById("reader");
+function buildToc(){toc.innerHTML="";
+  for(const id of list){const b=document.createElement("button");b.className="tocItem";
+    b.innerHTML='<div class="t">'+D[id].title+'</div><div class="n">'+D[id].sections.length+' sections</div>';
+    b.addEventListener("click",()=>openGame(id));toc.appendChild(b);}}
+function openGame(id){const g=D[id];
+  document.getElementById("gTitle").textContent=g.title;
+  let h="";
+  for(const s of g.sections){
+    h+='<div class="sec">'+s.h+'</div>';
+    if(s.svg)h+='<div class="ill">'+s.svg+'</div>';
+    h+='<div class="bod">'+(s.t||s.p||"")+'</div>';
+    if(s.ex)h+='<div class="exb"><b>Example:</b> '+s.ex+'</div>';}
+  document.getElementById("gBody").innerHTML=h;
+  document.getElementById("playBtn").onclick=()=>{location.href=id+".html";};
+  toc.classList.add("hide");reader.classList.add("show");window.scrollTo(0,0);}
+document.getElementById("backToc").addEventListener("click",()=>{reader.classList.remove("show");toc.classList.remove("hide");window.scrollTo(0,0);});
+buildToc();
+if("serviceWorker" in navigator){try{navigator.serviceWorker.register("sw.js");}catch(e){}}
+</script></body></html>

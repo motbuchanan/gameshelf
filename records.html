@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>The Record Book</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  body{font-family:system-ui,sans-serif;color:#22303a;min-height:100vh;display:flex;flex-direction:column;align-items:center;
+    background:repeating-linear-gradient(#f2f6f8 0 27px,#d8e4ec 27px 28px);}
+  #bar{width:100%;max-width:620px;display:flex;align-items:center;gap:10px;padding:12px 14px;background:#f2f6f8;border-bottom:2px solid #c44;}
+  #bar a{color:#3a566e;text-decoration:none;font-size:14px;border:1.5px solid #9ab4c8;border-radius:999px;padding:6px 12px;background:#fff;}
+  #title{font-weight:800;font-size:20px;flex:1;}
+  #wrap{width:min(96vw,620px);padding:10px 16px 40px;}
+  h2{font-size:14px;letter-spacing:1.5px;text-transform:uppercase;color:#7a5a2e;margin:20px 0 8px;
+    border-bottom:2px solid #c9941e;display:inline-block;padding-bottom:2px;}
+  .lb{display:flex;flex-direction:column;gap:6px;}
+  .lbRow{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.75);border-radius:10px;padding:8px 12px;
+    box-shadow:0 1px 3px rgba(40,60,80,.15);}
+  .lbRow .rank{font-weight:900;font-size:17px;width:26px;color:#c9941e;}
+  .lbRow .nm{font-weight:700;flex:1;}
+  .lbRow .bar{height:10px;border-radius:5px;background:linear-gradient(90deg,#4f9b6e,#7dc89a);min-width:4px;}
+  .lbRow .w{font-size:13px;color:#5a6e7e;width:64px;text-align:right;}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;background:rgba(255,255,255,.75);border-radius:10px;overflow:hidden;}
+  th,td{padding:7px 9px;text-align:left;border-bottom:1px solid #e0e8ee;}
+  th{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#7a8a98;}
+  td.num{text-align:right;font-variant-numeric:tabular-nums;}
+  .empty{padding:24px;text-align:center;color:#7a8a98;font-style:italic;background:rgba(255,255,255,.6);border-radius:12px;margin-top:10px;}
+  .note{font-size:12px;color:#7a8a98;font-style:italic;margin-top:18px;line-height:1.5;}
+</style></head><body>
+<div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">&#128211; The Record Book</div></div>
+<div id="wrap">
+  <h2>Leaderboard &mdash; all games</h2>
+  <div class="lb" id="lb"></div>
+  <h2>Game by game</h2>
+  <div id="byGame"></div>
+  <div class="note">Counts come from games finished on this device (friendly games don't count, just like the stats screens).
+    Charts, win-streak graphs, and head-to-head diagrams are planned for a future edition of this book. &#128200;</div>
+</div>
+<script src="gamenight.js?v=12"></script>
+<script>
+const TITLES={scrabble_games:"Scrabble",bridge_games:"Bridge Builders",sorry_games:"Sorry!",trouble_games:"Trouble",
+ guesswho_games:"Guess Who",checkers_games:"Checkers",ur_games:"Royal Game of Ur",c4_games:"Connect 4",
+ bs_games:"Battleship",yahtzee_games:"Yahtzee",bg_games:"Backgammon",mancala_games:"Mancala",dom_games:"Dominoes",
+ gofish_games:"Go Fish",war_games:"War",farkle_games:"Farkle",reversi_games:"Reversi",morris_games:"Nine Men's Morris",
+ gomoku_games:"Gomoku",uttt_games:"Ultimate TTT",hex_games:"Hex",dots_games:"Dots & Boxes",sl_games:"Snakes & Ladders",
+ sb_games:"Shut the Box",cc_games:"Chinese Checkers",cb_games:"Codebreaker"};
+function loadAll(){const per={},wins={},games=0;
+  let total=0;
+  const keys=(window.GN&&Array.isArray(GN.GAME_KEYS)?GN.GAME_KEYS:Object.keys(TITLES));
+  const seen=new Set([...keys,...Object.keys(TITLES)]);
+  for(const k of seen){let list=[];try{list=JSON.parse(localStorage.getItem(k))||[];}catch(e){}
+    if(!Array.isArray(list)||!list.length)continue;
+    per[k]={n:list.length,wins:{}};total+=list.length;
+    for(const r of list){if(r&&r.winner){wins[r.winner]=(wins[r.winner]||0)+1;
+      per[k].wins[r.winner]=(per[k].wins[r.winner]||0)+1;}}}
+  return{per,wins,total};}
+const{per,wins,total}=loadAll();
+const lb=document.getElementById("lb");
+const names=Object.entries(wins).sort((a,b)=>b[1]-a[1]);
+if(!names.length)lb.innerHTML='<div class="empty">No finished games on this device yet &mdash; the book is waiting for its first entry. Go make history.</div>';
+else{const max=names[0][1];
+  names.forEach(([n,w],i)=>{const row=document.createElement("div");row.className="lbRow";
+    row.innerHTML='<span class="rank">'+(i+1)+'</span><span class="nm">'+n+'</span>'+
+      '<span class="bar" style="width:'+Math.max(4,Math.round(140*w/max))+'px"></span>'+
+      '<span class="w">'+w+' win'+(w===1?'':'s')+'</span>';
+    lb.appendChild(row);});}
+const bg=document.getElementById("byGame");
+const rows=Object.entries(per).sort((a,b)=>b[1].n-a[1].n);
+if(!rows.length)bg.innerHTML='<div class="empty">Play anything and it shows up here.</div>';
+else{let h='<table><tr><th>Game</th><th class="num">Played</th><th>Top winner</th></tr>';
+  for(const[k,v]of rows){const top=Object.entries(v.wins).sort((a,b)=>b[1]-a[1])[0];
+    h+='<tr><td>'+(TITLES[k]||k)+'</td><td class="num">'+v.n+'</td><td>'+(top?(top[0]+' ('+top[1]+')'):'&mdash;')+'</td></tr>';}
+  h+='</table>';bg.innerHTML=h;}
+</script></body></html>
