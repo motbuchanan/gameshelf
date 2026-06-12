@@ -168,7 +168,7 @@ const css=`
 .gnRow .bar{height:13px;border-radius:7px;overflow:hidden;display:flex;background:#0e1813;}
 .gnRow .bar span{display:block;height:100%;}
 .gnRow .v{font-size:12px;color:#bcd6c7;font-variant-numeric:tabular-nums;}
-.gnSec{margin-top:8px;color:#9fbdac;font-size:12px;letter-spacing:.6px;text-transform:uppercase;}
+.gnIll{margin:8px auto 4px;max-width:280px;}.gnIll svg{width:100%;height:auto;display:block;}.gnEx{margin:8px 0 2px;padding:8px 12px;border-left:3px solid #f4c542;background:rgba(244,197,66,.08);border-radius:0 8px 8px 0;font-size:13.5px;line-height:1.5;color:#e8e0c8;text-align:left;}.gnSec{margin-top:8px;color:#9fbdac;font-size:12px;letter-spacing:.6px;text-transform:uppercase;}
 .gnMeta{color:#9fbdac;font-size:13px;text-align:center;max-width:440px;}
 `;
 function injectCSS(){if(document.getElementById("gnCSS"))return;
@@ -377,7 +377,9 @@ GN.openRules=function(cfg){injectCSS();
   let h='<h1>'+cfg.title+' \u2014 How to play</h1>';
   for(const s of cfg.sections){
     h+='<div class="gnSec">'+s.h+'</div>';
-    h+='<div class="gnMeta" style="text-align:left;line-height:1.55;font-size:14px;color:#d8e8dd;">'+s.p+'</div>';}
+    if(s.svg)h+='<div class="gnIll">'+s.svg+'</div>';
+    h+='<div class="gnMeta" style="text-align:left;line-height:1.55;font-size:14px;color:#d8e8dd;">'+(s.t||s.p||"")+'</div>';
+    if(s.ex)h+='<div class="gnEx"><b>Example:</b> '+s.ex+'</div>';}
   h+='<button class="gnBtn" id="gnRX" style="margin-top:12px;">Close</button>';
   wrap.innerHTML=h;document.body.appendChild(wrap);
   wrap.querySelector("#gnRX").onclick=()=>wrap.remove();};
