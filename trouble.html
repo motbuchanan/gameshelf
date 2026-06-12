@@ -22,10 +22,10 @@
   @keyframes dp{0%,100%{transform:scale(1);}50%{transform:scale(1.2);}}
   #wrap{flex:1;display:flex;align-items:center;justify-content:center;width:100%;padding:6px 10px;position:relative;}
   canvas{display:block;border-radius:50%;touch-action:none;}
-  #domeBase{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:50%;pointer-events:none;
+  #domeBase{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:20%;pointer-events:none;
     background:radial-gradient(circle at 50% 38%,#cfd6de 0%,#9aa4b0 42%,#5d6873 70%,#39424c 100%);
     box-shadow:0 6px 14px rgba(0,0,0,.55),inset 0 2px 2px rgba(255,255,255,.65),inset 0 -3px 6px rgba(0,0,0,.45);}
-  #domeBase::after{content:"";position:absolute;inset:7%;border-radius:50%;
+  #domeBase::after{content:"";position:absolute;inset:7%;border-radius:16%;
     background:radial-gradient(circle at 50% 60%,#39434e 0%,#46525e 55%,#222b33 100%);
     box-shadow:inset 0 4px 10px rgba(0,0,0,.8),inset 0 -1px 2px rgba(255,255,255,.12);}
   #dome{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border:none;cursor:pointer;border-radius:50%;
@@ -82,7 +82,7 @@
 <div class="ov" id="overlay"><div id="confetti"></div><div id="ovTrophy">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p><button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
 <script src="gamenight.js?v=9"></script>
 <script src="bot.js?v=1"></script>
-<script src="sfx.js?v=1"></script>
+<script src="sfx.js?v=2"></script>
 <script>
 const TRACK=28,FIN=4;
 // Finish-lane radii as fraction of R. Innermost must clear the dome base rim (~0.52R). Tune by screenshot.
@@ -92,14 +92,14 @@ let P={red:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19",entry:0},
 const canvas=document.getElementById("board"),ctx=canvas.getContext("2d");
 let SZ=320,R=130,pegs=[],turn="blue",die=0,phase="roll",movable=[],animFly=null,pulsing=false,GS=null,extra=false;
 const KEY="trouble_games";let _mem=[];
-function S(n){window.GNS&&GNS.play(n);}
-let botLevel=null,botKey="";
+function S(n,o){window.GNS&&GNS.play(n,0,o);}
+let botLevel=null,botKey="",sixStreak=0;
 const Store={load(){try{return JSON.parse(localStorage.getItem(KEY))||[];}catch(e){return _mem.slice();}},
   save(l){try{localStorage.setItem(KEY,JSON.stringify(l));}catch(e){_mem=l.slice();}}};
 const PULSE=()=>0.5+0.5*Math.sin(performance.now()/280);
 function fit(){SZ=Math.floor(Math.min(window.innerWidth-24,window.innerHeight-170,520));
-  canvas.width=SZ;canvas.height=SZ;R=SZ*0.37; // track radius; smaller = more rim room for home pockets
-  const dome=document.getElementById("dome"),d=SZ*0.34;
+  canvas.width=SZ;canvas.height=SZ;R=SZ*0.33; // track radius (board scaled to free corners for home trays)
+  const dome=document.getElementById("dome"),d=SZ*0.30;
   dome.style.width=d+"px";dome.style.height=d+"px";
   const base=document.getElementById("domeBase");
   base.style.width=(d*1.22)+"px";base.style.height=(d*1.22)+"px";
@@ -112,11 +112,28 @@ function finXY(color,i){const e=P[color].entry,a=-Math.PI/2+e/TRACK*2*Math.PI;
   const rr=R*(FIN_OUTER-(FIN_OUTER-FIN_INNER)*i/(FIN-1));return{x:SZ/2+rr*Math.cos(a),y:SZ/2+rr*Math.sin(a)};}
 // Home pocket: 2x2 cluster beside each player's entry. Tune HOME_ANG (how far around
 // from the entry), HOME_R (cluster center radius), HOME_GAP (peg spacing) by screenshot.
-const HOME_ANG=3.1, HOME_R=1.0, HOME_GAP=0.085;
-function homeXY(color,i){const e=P[color].entry,a=-Math.PI/2+(e-HOME_ANG)/TRACK*2*Math.PI;
-  const cx=SZ/2+R*HOME_R*Math.cos(a),cy=SZ/2+R*HOME_R*Math.sin(a);
+// Off-board home trays in the canvas corners. Tunables:
+const HOME_POS={red:[0.115,0.115],blue:[0.885,0.885]}; // tray centers (fraction of SZ)
+const HOME_GAP=0.075, TRAY_S=0.175;                    // peg spacing, tray size
+function homeXY(color,i){const hp=HOME_POS[color],cx=SZ*hp[0],cy=SZ*hp[1];
   const col=i%2,row=(i/2)|0,g=SZ*HOME_GAP;
   return{x:cx+(col-0.5)*g,y:cy+(row-0.5)*g};}
+function drawHomeTray(color){const hp=HOME_POS[color],cx=SZ*hp[0],cy=SZ*hp[1],ts=SZ*TRAY_S;
+  ctx.save();
+  // tray shadow + molded slate pad
+  ctx.fillStyle="rgba(0,0,0,.38)";rr(cx-ts/2+SZ*0.008,cy-ts/2+SZ*0.012,ts,ts,ts*0.22);ctx.fill();
+  const g=ctx.createLinearGradient(cx,cy-ts/2,cx,cy+ts/2);
+  g.addColorStop(0,"#39434d");g.addColorStop(0.5,"#2b343d");g.addColorStop(1,"#1c2329");
+  ctx.fillStyle=g;rr(cx-ts/2,cy-ts/2,ts,ts,ts*0.22);ctx.fill();
+  ctx.lineWidth=1.4;ctx.strokeStyle="rgba(255,255,255,.18)";rr(cx-ts/2,cy-ts/2,ts,ts,ts*0.22);ctx.stroke();
+  // player-color inner accent
+  ctx.lineWidth=2;ctx.strokeStyle=P[color].main;ctx.globalAlpha=0.55;
+  rr(cx-ts/2+3,cy-ts/2+3,ts-6,ts-6,ts*0.18);ctx.stroke();ctx.globalAlpha=1;
+  // four dimple wells
+  for(let i=0;i<4;i++){const w=homeXY(color,i);drawHole(w.x,w.y,SZ*0.026,null);}
+  ctx.restore();}
+function rr(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
 function pegXY(p){if(p.loc.state==="home")return homeXY(p.color,p.hi);
   if(p.loc.state==="track")return holeXY(p.loc.idx);return finXY(p.color,p.loc.i);}
 function seatFrom(p,seat){return Object.assign({},seat,{name:p.name,main:p.color,light:p.light,dark:p.dark});}
@@ -190,12 +207,13 @@ function showDie(v){
   faceSet(document.querySelector(".dfT"),DRING[v][0]);
   faceSet(document.querySelector(".dfR"),DRING[v][1]);}
 function afterRoll(){extra=(die===6);
+  if(die===6){sixStreak++;S("six",sixStreak-1);}
   movable=pegs.filter(p=>p.color===turn&&moveOf(p,die));
   if(!movable.length){setMessage(P[turn].name+" rolled "+die+" \u2014 no moves");S("womp");
     setTimeout(()=>{if(extra){phase="roll";setMessage(P[turn].name+" rolled 6, pop again!");}else passTurn();},900);
     phase="wait";render();return;}
   phase="move";setMessage(P[turn].name+" rolled "+die+" \u2014 tap a glowing peg");render();ensurePulse();}
-function passTurn(){turn=turn==="red"?"blue":"red";die=0;phase="roll";movable=[];
+function passTurn(){turn=turn==="red"?"blue":"red";die=0;phase="roll";movable=[];sixStreak=0;
   updateBar();setMessage(P[turn].name+" \u2014 pop the die");render();}
 function doMove(p){const mv=moveOf(p,die);if(!mv)return;S("move");
   phase="anim";const from=pegXY(p),to=(mv.to.state==="track")?holeXY(mv.to.idx):finXY(p.color,mv.to.i);
@@ -211,8 +229,8 @@ function doMove(p){const mv=moveOf(p,die);if(!mv)return;S("move");
 function drawHole(x,y,r,fill){
   // surface AO halo
   const halo=ctx.createRadialGradient(x,y,r*0.7,x,y,r*1.45);
-  halo.addColorStop(0,"rgba(50,45,35,.22)");halo.addColorStop(1,"rgba(0,0,0,0)");
-  ctx.beginPath();ctx.arc(x,y,r*1.45,0,7);ctx.fillStyle=halo;ctx.fill();
+  halo.addColorStop(0,"rgba(50,45,35,.34)");halo.addColorStop(1,"rgba(0,0,0,0)");
+  ctx.beginPath();ctx.arc(x,y,r*1.6,0,7);ctx.fillStyle=halo;ctx.fill();
   // bore: deep at top-left wall (light from top-left), wall catches light at bottom-right
   const g=ctx.createRadialGradient(x-r*0.28,y-r*0.32,r*0.1,x,y,r);
   g.addColorStop(0,"rgba(4,5,7,.94)");g.addColorStop(0.6,fill?fill:"rgba(16,18,22,.78)");g.addColorStop(1,"rgba(34,36,40,.55)");
@@ -256,9 +274,10 @@ function render(){ctx.clearRect(0,0,SZ,SZ);
   const CX=SZ/2,CY=SZ/2;
   // cast shadow on the table
   ctx.fillStyle="rgba(0,0,0,.42)";
-  ctx.beginPath();ctx.ellipse(CX+SZ*0.012,CY+SZ*0.022,SZ/2-2,SZ/2-6,0,0,7);ctx.fill();
+  ctx.beginPath();ctx.ellipse(CX+SZ*0.012,CY+SZ*0.022,SZ*0.43,SZ*0.425,0,0,7);ctx.fill();
+  drawHomeTray("red");drawHomeTray("blue");
   // outer rim: molded slate plastic
-  const rimO=SZ/2-2,rimI=SZ*0.452;
+  const rimO=SZ*0.43,rimI=SZ*0.389;
   const rg=ctx.createRadialGradient(CX,CY,rimI,CX,CY,rimO);
   rg.addColorStop(0,"#262e36");rg.addColorStop(0.45,"#3e4a55");rg.addColorStop(0.8,"#2c353e");rg.addColorStop(1,"#171d23");
   ctx.beginPath();ctx.arc(CX,CY,rimO,0,7);ctx.arc(CX,CY,rimI,0,7,true);
@@ -280,6 +299,13 @@ function render(){ctx.clearRect(0,0,SZ,SZ);
   ctx.beginPath();ctx.arc(CX,CY,rimI,0,7);ctx.fillStyle=g;ctx.fill();
   ctx.strokeStyle="rgba(120,100,70,.10)";ctx.lineWidth=1;
   for(let q=1;q<=4;q++){ctx.beginPath();ctx.arc(CX,CY,rimI*q/4.6,0,7);ctx.stroke();}
+  // texture: fine concentric lathe grain + faint radial brush strokes
+  ctx.strokeStyle="rgba(110,92,64,.05)";
+  for(let q=0;q<14;q++){ctx.beginPath();ctx.arc(CX,CY,rimI*(0.18+0.058*q),0,7);ctx.stroke();}
+  ctx.strokeStyle="rgba(90,75,50,.045)";
+  for(let q=0;q<36;q++){const a=q/36*Math.PI*2+0.07;
+    ctx.beginPath();ctx.moveTo(CX+rimI*0.24*Math.cos(a),CY+rimI*0.24*Math.sin(a));
+    ctx.lineTo(CX+rimI*0.97*Math.cos(a),CY+rimI*0.97*Math.sin(a));ctx.stroke();}
   // AO where deck meets rim
   const ao=ctx.createRadialGradient(CX,CY,rimI*0.86,CX,CY,rimI);
   ao.addColorStop(0,"rgba(0,0,0,0)");ao.addColorStop(1,"rgba(60,40,15,.30)");
