@@ -297,3 +297,5 @@ Scrabble builds an original engine + free dictionary, not copied board art.
 - File count: 28 (24 game/index html + gamenight.js + words.js + bot.js + CLAUDE.md).
 - Bridge Builders: spec locked in BRIDGE_SPEC.md; path-scoring engine proven in bridge_core.js (8/8 tests). Game assembly pending — read BRIDGE_SPEC.md first.
 - v9 (zip): Trouble sings — bot opponent (easy/med/hard via bot.js policy, drives blue/player-2 seat, "vs Computer" button), new shared sfx.js (Web Audio synth: pop/bump/chime/fanfare/move/womp + persistent mute button). Trouble promoted to shelf slot 3. Runtime still gamenight.js?v=8 (unchanged). sfx.js?v=1, bot.js?v=1 referenced by trouble.html only so far.
+- CONVENTION: footers/button rows must be phone-first — flex-wrap:wrap, justify-content:center, side padding, nowrap labels. Audit any game when adding buttons.
+- v10 (zip): runtime bumped to gamenight.js?v=9 — global "⟨ Shelf" back-out on the matchStart picker/flip overlay (exits without recording; records only happen at game end). Trouble: home pegs now a 2x2 pocket cluster (tunables HOME_ANG/HOME_R/HOME_GAP).

@@ -179,7 +179,11 @@ function injectCSS(){if(document.getElementById("gnCSS"))return;
 GN.matchStart=function(done){injectCSS();
   let[a,b]=GN.lastPair();
   const ov=document.createElement("div");ov.className="gnOv";
-  ov.innerHTML='<div class="gnTitle" id="gnT">Who\u2019s playing?</div>'+
+  const back=document.createElement("a");back.href="index.html";back.textContent="\u2329 Shelf";
+  back.style.cssText="position:absolute;top:14px;left:14px;color:#cfe6d8;border:1px solid #3a5a47;"+
+    "border-radius:999px;padding:7px 14px;text-decoration:none;font-size:14px;z-index:2;";
+  ov.appendChild(back);
+  ov.innerHTML+='<div class="gnTitle" id="gnT">Who\u2019s playing?</div>'+
     '<div class="gnSeats"><button class="gnSeat" id="gnA"></button><span class="gnVs">vs</span><button class="gnSeat" id="gnB"></button></div>'+
     '<button class="gnAdd" id="gnNew">+ add a player</button>'+
     '<button class="gnAdd" id="gnFr" style="color:#cfe6d8;">\u2713 Counts for the record</button>'+
