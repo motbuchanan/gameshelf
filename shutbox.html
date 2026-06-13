@@ -74,7 +74,7 @@ const KEY="sb_games";
 function S(n,o){window.GNS&&GNS.play(n,0,o);}
 let P={A:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},B:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182"}};
 function seatFrom(p){return{name:p.name,main:p.color,light:p.light,dark:p.dark};}
-let tiles=[],sel=new Set(),dice=[],need=0,turn="A",roundScore={A:null,B:null},phase="over",GS=null,rolling=false;
+let tiles=[],sel=new Set(),dice=[],need=0,turn="A",roundScore={A:null,B:null},phase="over",GS=null,rolling=false,solo=false;
 const PIPS={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 let cubes=null;
 function ensureCubes(){if(cubes)return cubes;
@@ -90,11 +90,12 @@ function anyCombo(open,target){ // can any subset of open tiles sum to target?
 function newGame(){phase="over";
   document.getElementById("overlay").classList.remove("show");
   document.getElementById("confetti").innerHTML="";
-  GN.matchStart(function(m){P={A:seatFrom(m.a),B:seatFrom(m.b)};
-    turn=(m.first===m.a)?"A":"B";roundScore={A:null,B:null};
-    GS={start:Date.now(),flipWinner:m.first.name,friendly:m.friendly,shut:{},left:{}};
-    for(const n of[m.a.name,m.b.name]){GS.shut[n]=0;GS.left[n]=0;}
-    startRound();});}
+  GN.matchStart(function(m){solo=!!m.solo;
+    P=solo?{A:seatFrom(m.a)}:{A:seatFrom(m.a),B:seatFrom(m.b)};
+    turn="A";roundScore={A:null,B:null};
+    GS={start:Date.now(),flipWinner:(m.first||m.a).name,friendly:m.friendly,shut:{},left:{}};
+    const names=solo?[m.a.name]:[m.a.name,m.b.name];for(const n of names){GS.shut[n]=0;GS.left[n]=0;}
+    startRound();},{solo:true});}
 function startRound(){tiles=[1,2,3,4,5,6,7,8,9];sel.clear();dice=[];need=0;phase="roll";
   setMessage(P[turn].name+" \u2014 roll to open your round.");
   render();}
@@ -120,10 +121,14 @@ function render(){const pc=P[turn];
   if(dice[1])cs[1].show(dice[1]);
   const cur=[...sel].reduce((a,b)=>a+b,0);
   document.getElementById("sums").textContent=phase==="pick"?("Need "+need+" \u00b7 selected "+(cur||0)):"";
-  const recs=GN.readGames(KEY);let a=0,b=0;
-  for(const r of recs){if(r.winner===P.A.name)a++;else if(r.winner===P.B.name)b++;}
-  document.getElementById("score").textContent=P.A.name+" "+a+" \u00b7 "+b+" "+P.B.name+((GS&&GS.friendly)?" \u00b7 friendly":"")+
-    (roundScore.A!==null?(" \u00b7 "+P.A.name+" left "+roundScore.A):"");
+  if(solo){
+    document.getElementById("score").textContent="Lowest leftover wins \u2014 go for zero."+(roundScore.A!==null?(" \u00b7 left "+roundScore.A):"");
+  }else{
+    const recs=GN.readGames(KEY);let a=0,b=0;
+    for(const r of recs){if(r.winner===P.A.name)a++;else if(r.winner===P.B.name)b++;}
+    document.getElementById("score").textContent=P.A.name+" "+a+" \u00b7 "+b+" "+P.B.name+((GS&&GS.friendly)?" \u00b7 friendly":"")+
+      (roundScore.A!==null?(" \u00b7 "+P.A.name+" left "+roundScore.A):"");
+  }
   document.getElementById("rollBtn").disabled=phase!=="roll"||rolling;
   document.getElementById("shutBtn").disabled=!(phase==="pick"&&cur===need);}
 function roll(){S("dice");if(phase!=="roll"||rolling)return;rolling=true;render();
@@ -156,11 +161,20 @@ function shut(){const cur=[...sel].reduce((a,b)=>a+b,0);
   render();}
 function endRound(left){roundScore[turn]=left;GS.left[P[turn].name]+=left;
   if(left===0){finish(turn,true);return;}
+  if(solo){finish(turn,false);return;}
   if(turn==="A"){turn="B";startRound();return;}
   // both rounds done: lower remainder wins
   const w=roundScore.A===roundScore.B?null:(roundScore.A<roundScore.B?"A":"B");
   finish(w,false);}
 function finish(w,shutout){phase="over";
+  if(solo){const left=roundScore.A;
+    document.getElementById("ovTitle").textContent=shutout?(P.A.name+" shut the box!"):"Round over";
+    document.getElementById("ovText").textContent=shutout?"Every tile down \u2014 the perfect round.":(P.A.name+" left "+left+" on the lid. Lower is better \u2014 go for zero!");
+    if(shutout){const box=document.getElementById("confetti"),cols=[P.A.main,P.A.light,"#f4c542","#fff"];
+      for(let i=0;i<60;i++){const d=document.createElement("div");d.className="cf";d.style.left=Math.random()*100+"%";
+        d.style.background=cols[i%cols.length];d.style.animationDuration=(2.2+Math.random()*1.8)+"s";
+        d.style.animationDelay=(Math.random()*0.8)+"s";box.appendChild(d);}}
+    S("fanfare");document.getElementById("overlay").classList.add("show");render();return;}
   const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
     winner:w?P[w].name:null,loser:w?P[w==="A"?"B":"A"].name:null,draw:!w,
     flipWinner:GS.flipWinner,shutBox:!!shutout&&!!w?P[w].name:null,

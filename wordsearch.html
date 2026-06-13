@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Word Search</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:#1b120b;color:#e6ddd0;
+    background-image:radial-gradient(ellipse at 50% -10%,#2a1c10,#1b120b 70%);min-height:100vh;}
+  #bar{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#15100c;border-bottom:1px solid #3a2a1a;}
+  #bar a{color:#e6ddd0;text-decoration:none;font-size:13px;border:1px solid #6e5f50;background:#2a241e;border-radius:999px;padding:6px 12px;}
+  #title{font-weight:800;font-size:17px;}
+  #prog{margin-left:auto;font-size:13px;color:#c9ab85;font-weight:700;}
+  #wrap{max-width:560px;margin:0 auto;padding:12px;}
+  #pager{display:flex;align-items:center;justify-content:center;gap:10px;margin:6px 0 10px;}
+  #pager button{font-family:inherit;cursor:pointer;border:1px solid #6e5f50;background:#2a241e;color:#e6ddd0;border-radius:10px;padding:8px 14px;font-size:15px;font-weight:700;}
+  #theme{font-weight:800;font-size:18px;color:#f4c542;text-align:center;min-width:150px;}
+  #board{display:grid;gap:2px;background:#2a1f15;padding:8px;border-radius:12px;
+    border:1px solid #4a371f;box-shadow:inset 0 2px 10px rgba(0,0,0,.4);touch-action:none;user-select:none;margin:0 auto;}
+  .cell{aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:#f2e4c4;color:#2a1c0c;
+    font-weight:800;border-radius:4px;cursor:pointer;font-size:clamp(11px,3.4vw,20px);}
+  .cell.sel{background:#f4c542;}
+  .cell.found{background:#7bbf6a;color:#15300c;}
+  .cell.found.sel{background:#f4c542;}
+  #words{display:flex;flex-wrap:wrap;gap:7px 12px;justify-content:center;margin:14px 4px 4px;}
+  .wd{font-size:15px;font-weight:700;color:#e6ddd0;padding:3px 4px;}
+  .wd.done{color:#7b6a55;text-decoration:line-through;}
+  #msg{text-align:center;color:#cfc4b4;font-size:14px;min-height:20px;margin-top:8px;}
+  .ov{position:fixed;inset:0;background:rgba(16,12,8,.95);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:60;text-align:center;padding:22px;}
+  .ov.show{display:flex;}
+  .ov h1{font-size:26px;margin:0;}
+  .ov p{color:#cfc4b4;max-width:330px;font-size:15px;}
+  .act{font-family:inherit;font-size:15px;font-weight:bold;padding:11px 20px;border-radius:10px;border:none;
+    background:#46b06a;color:#0c2014;box-shadow:0 4px 0 #1e6038;cursor:pointer;}
+  html.gn-easy .cell{font-size:clamp(15px,4.6vw,26px);}
+  html.gn-easy .wd{font-size:18px;}
+  html.gn-easy #title{font-size:21px;}
+  html.gn-easy #theme{font-size:22px;}
+</style>
+</head>
+<body>
+<div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">Word Search</div><div id="prog"></div></div>
+<div id="wrap">
+  <div id="pager"><button id="prev">&#8249; Prev</button><div id="theme"></div><button id="next">Next &#8250;</button></div>
+  <div id="board"></div>
+  <div id="words"></div>
+  <div id="msg">Tap the first letter, then the last letter of a word.</div>
+</div>
+<div class="ov" id="overlay"><div style="font-size:48px;">&#128081;</div><h1 id="ovTitle"></h1><p id="ovText"></p>
+  <button class="act" id="ovBtn">Next puzzle</button>
+  <a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #6e5f50;background:#2a241e;color:#e6ddd0;text-decoration:none;">Back to shelf</a></div>
+<script src="gamenight.js?v=12"></script>
+<script src="sfx.js?v=5"></script>
+<script src="wordsearch.js"></script>
+<script>
+const PUZZLES=window.WORDSEARCHES||[];
+let pi=0, found=new Set(), startCell=null;
+function S(n){window.GNS&&GNS.play(n);}
+const boardEl=document.getElementById("board"),wordsEl=document.getElementById("words"),
+      themeEl=document.getElementById("theme"),progEl=document.getElementById("prog"),msgEl=document.getElementById("msg");
+
+function cur(){return PUZZLES[pi];}
+function key(r,c){return r+","+c;}
+
+function render(){
+  const p=cur(),n=p.size;
+  themeEl.textContent=p.theme;
+  boardEl.style.gridTemplateColumns="repeat("+n+",1fr)";
+  boardEl.innerHTML="";
+  const rows=p.grid;
+  for(let r=0;r<n;r++)for(let c=0;c<n;c++){
+    const d=document.createElement("div");d.className="cell";d.dataset.r=r;d.dataset.c=c;
+    d.textContent=rows[r][c];
+    boardEl.appendChild(d);
+  }
+  // word list
+  wordsEl.innerHTML="";
+  p.list.forEach(w=>{const s=document.createElement("span");s.className="wd"+(found.has(w)?" done":"");s.id="wd_"+w;s.textContent=w;wordsEl.appendChild(s);});
+  paintFound();
+  progEl.textContent=found.size+" / "+p.list.length;
+}
+
+function paintFound(){
+  // clear sel/found classes then repaint found words' cells
+  boardEl.querySelectorAll(".cell").forEach(c=>c.classList.remove("found","sel"));
+  const p=cur();
+  for(const w of p.words){
+    if(!found.has(w.word))continue;
+    for(let i=0;i<w.word.length;i++){
+      const r=w.row+w.dr*i,c=w.col+w.dc*i;
+      cellAt(r,c).classList.add("found");
+    }
+  }
+}
+function cellAt(r,c){return boardEl.querySelector('.cell[data-r="'+r+'"][data-c="'+c+'"]');}
+
+function lineBetween(a,b){
+  // returns array of [r,c] if a->b is a straight 8-dir line, else null
+  const dr=Math.sign(b.r-a.r),dc=Math.sign(b.c-a.c);
+  const rr=Math.abs(b.r-a.r),cc=Math.abs(b.c-a.c);
+  if(!((rr===0&&cc>0)||(cc===0&&rr>0)||(rr===cc&&rr>0)))return null;
+  const len=Math.max(rr,cc)+1,out=[];
+  for(let i=0;i<len;i++)out.push([a.r+dr*i,a.c+dc*i]);
+  return out;
+}
+
+function tryWord(a,b){
+  const line=lineBetween(a,b);
+  if(!line)return false;
+  const p=cur();
+  let str=line.map(([r,c])=>p.grid[r][c]).join("");
+  const rev=str.split("").reverse().join("");
+  const hit=p.list.find(w=>(w===str||w===rev)&&!found.has(w));
+  if(hit){found.add(hit);S("chime");document.getElementById("wd_"+hit).classList.add("done");
+    paintFound();progEl.textContent=found.size+" / "+p.list.length;
+    if(found.size===p.list.length)win();else msgEl.textContent="Found "+hit+"!";
+    return true;}
+  return false;
+}
+
+function clearSel(){startCell=null;boardEl.querySelectorAll(".cell.sel").forEach(c=>c.classList.remove("sel"));paintFound();}
+
+boardEl.addEventListener("click",e=>{
+  const cell=e.target.closest(".cell");if(!cell)return;
+  const r=+cell.dataset.r,c=+cell.dataset.c;
+  if(!startCell){startCell={r,c};cell.classList.add("sel");msgEl.textContent="Now tap the last letter.";return;}
+  if(startCell.r===r&&startCell.c===c){clearSel();msgEl.textContent="Tap the first letter, then the last letter of a word.";return;}
+  const ok=tryWord(startCell,{r,c});
+  if(!ok)msgEl.textContent="Not a word on the list \u2014 try again.";
+  clearSelOnly();
+});
+function clearSelOnly(){startCell=null;boardEl.querySelectorAll(".cell.sel").forEach(c=>c.classList.remove("sel"));}
+
+function win(){
+  S("fanfare");
+  document.getElementById("ovTitle").textContent=cur().theme+" \u2014 solved!";
+  document.getElementById("ovText").textContent="All "+cur().list.length+" words found. Nice work!";
+  document.getElementById("ovBtn").textContent=(pi<PUZZLES.length-1)?"Next puzzle":"Back to first";
+  document.getElementById("overlay").classList.add("show");
+}
+function go(i){pi=(i+PUZZLES.length)%PUZZLES.length;found=new Set();startCell=null;
+  document.getElementById("overlay").classList.remove("show");
+  msgEl.textContent="Tap the first letter, then the last letter of a word.";render();}
+
+document.getElementById("prev").addEventListener("click",()=>go(pi-1));
+document.getElementById("next").addEventListener("click",()=>go(pi+1));
+document.getElementById("ovBtn").addEventListener("click",()=>go(pi+1));
+
+if(!PUZZLES.length){msgEl.textContent="No puzzles loaded.";}
+else go(0);
+</script>
+</body>
+</html>

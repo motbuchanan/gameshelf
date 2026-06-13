@@ -71,7 +71,7 @@
 const KEY="farkle_games",GOAL=5000,PIP={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 function S(n,o){window.GNS&&GNS.play(n,0,o);}
 let P={A:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},B:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182"}};
-let dice=[],turn="A",total={A:0,B:0},onBoard={A:false,B:false},turnPts=0,phase="over",rolling=false,GS=null,openMin=500;
+let dice=[],turn="A",total={A:0,B:0},onBoard={A:false,B:false},turnPts=0,phase="over",rolling=false,GS=null,openMin=500,solo=false;
 function seatFrom(p){return{name:p.name,main:p.color,light:p.light,dark:p.dark};}
 
 // ---------- scoring engine (pure) ----------
@@ -112,7 +112,7 @@ function paintAll(){dice.forEach((d,i)=>paintDie(i));}
 function selFaces(){return dice.filter(d=>d.active&&d.sel).map(d=>d.face);}
 function activeFaces(){return dice.filter(d=>d.active).map(d=>d.face);}
 function refresh(){
-  for(const s of["A","B"]){document.getElementById("nm"+s).textContent=P[s].name;
+  for(const s of(solo?["A"]:["A","B"])){document.getElementById("nm"+s).textContent=P[s].name;
     document.getElementById("sc"+s).textContent=total[s];
     document.getElementById("gp"+s).textContent=(s===turn&&phase==="play"&&turnPts?("turn +"+turnPts):(!onBoard[s]&&openMin?"needs "+openMin:""));
     document.getElementById("card"+s).classList.toggle("active",s===turn&&phase!=="over");}
@@ -136,12 +136,13 @@ function setMsg(t){document.getElementById("msg").textContent=t;}
 function toggle(i){const d=dice[i];if(!d.active||rolling||phase!=="play")return;d.sel=!d.sel;paintDie(i);refresh();}
 
 function newGame(){phase="over";document.getElementById("overlay").classList.remove("show");document.getElementById("confetti").innerHTML="";
-  GN.matchStart(function(m){P={A:seatFrom(m.a),B:seatFrom(m.b)};
-    total={A:0,B:0};onBoard={A:false,B:false};turnPts=0;turn=(m.first===m.a)?"A":"B";phase="play";rolling=false;
-    GS={start:Date.now(),flipWinner:m.first.name,friendly:m.friendly,farkles:{},hot:{},best:{pts:0,by:""}};
-    GS.farkles[m.a.name]=0;GS.farkles[m.b.name]=0;GS.hot[m.a.name]=0;GS.hot[m.b.name]=0;
+  GN.matchStart(function(m){solo=!!m.solo;P=solo?{A:seatFrom(m.a)}:{A:seatFrom(m.a),B:seatFrom(m.b)};
+    total={A:0,B:0};onBoard={A:false,B:false};turnPts=0;turn="A";phase="play";rolling=false;
+    GS={start:Date.now(),flipWinner:(m.first||m.a).name,friendly:m.friendly,farkles:{},hot:{},best:{pts:0,by:""}};
+    GS.farkles[m.a.name]=0;GS.hot[m.a.name]=0;if(!solo){GS.farkles[m.b.name]=0;GS.hot[m.b.name]=0;}
+    document.getElementById("cardB").style.display=solo?"none":"";
     dice.forEach(d=>{d.set=false;d.sel=false;d.active=false;d.face=1;});paintAll();
-    setMsg(P[turn].name+" rolls first. Score to 5000 wins!");refresh();});}
+    setMsg(solo?(P.A.name+" \u2014 roll! Score to 5000."):(P[turn].name+" rolls first. Score to 5000 wins!"));refresh();},{solo:true});}
 
 function rollActive(fresh){rolling=true;S("dice");
   const pool=fresh?dice:dice.filter(d=>!d.set);
@@ -163,7 +164,7 @@ function afterRoll(){
     setTimeout(()=>{document.querySelectorAll(".die").forEach(e=>e.style.filter="");passTurn();},1100);return;}
   setMsg(P[turn].name+" \u2014 tap the dice you want to keep.");refresh();
 }
-function passTurn(){turnPts=0;turn=turn==="A"?"B":"A";
+function passTurn(){turnPts=0;if(!solo)turn=turn==="A"?"B":"A";
   dice.forEach(d=>{d.set=false;d.sel=false;d.active=false;});paintAll();
   setMsg(P[turn].name+"'s turn \u2014 roll!");refresh();}
 
@@ -200,6 +201,10 @@ document.getElementById("newBtn").addEventListener("click",newGame);
 document.getElementById("ovBtn").addEventListener("click",newGame);
 
 function finish(w){phase="over";
+  if(solo){
+    document.getElementById("ovTitle").textContent=P.A.name+" hit "+GOAL+"!";
+    document.getElementById("ovText").textContent="Final score "+total.A+(GS.best.pts?(" \u2014 biggest turn: "+GS.best.pts):"");
+    confettiBurst();S("fanfare");document.getElementById("overlay").classList.add("show");return;}
   const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,winner:P[w].name,loser:P[w==="A"?"B":"A"].name,
     flipWinner:GS.flipWinner,score:(function(){const s={};s[P.A.name]=total.A;s[P.B.name]=total.B;return s;})(),
     farkles:GS.farkles,hotDice:GS.hot,bestTurn:GS.best,goal:GOAL,openMin};

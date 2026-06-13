@@ -76,7 +76,7 @@ function gloss(col){return "radial-gradient(circle at 32% 26%,rgba(255,255,255,.
 let P={A:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},B:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182"}};
 function seatFrom(p){return{name:p.name,main:p.color,light:p.light,dark:p.dark};}
 // round 1: A sets, B guesses. round 2: swap. lower total guesses wins (fail = MAXG+1)
-let phase="over",round=1,setter="A",code=null,cur=[],cursor=0,guesses=[],used={A:null,B:null},GS=null,mode="set";
+let phase="over",round=1,setter="A",code=null,cur=[],cursor=0,guesses=[],used={A:null,B:null},GS=null,mode="set",solo=false;
 function feedback(code,guess){let black=0;
   const cc={},gc={};
   for(let i=0;i<SLOTS;i++){
@@ -89,13 +89,20 @@ function guesserOf(){return setter==="A"?"B":"A";}
 function newGame(){phase="over";
   document.getElementById("overlay").classList.remove("show");
   document.getElementById("confetti").innerHTML="";
-  GN.matchStart(function(m){P={A:seatFrom(m.a),B:seatFrom(m.b)};
+  GN.matchStart(function(m){solo=!!m.solo;P=solo?{A:seatFrom(m.a)}:{A:seatFrom(m.a),B:seatFrom(m.b)};
     round=1;used={A:null,B:null};
-    setter=(m.first===m.a)?"A":"B"; // flip winner SETS first (guessing second = knowing the target)
-    GS={start:Date.now(),flipWinner:m.first.name,friendly:m.friendly};
-    startRound();});}
+    setter=solo?"B":((m.first===m.a)?"A":"B"); // solo: guesserOf()->A; else flip winner SETS first (guessing second = knowing the target)
+    GS={start:Date.now(),flipWinner:(m.first||m.a).name,friendly:m.friendly};
+    startRound();},{solo:true});}
 function startRound(){code=null;cur=[];cursor=0;guesses=[];mode="set";phase="play";
   document.getElementById("history").innerHTML="";
+  if(solo){
+    code=Array.from({length:SLOTS},()=>Math.floor(Math.random()*COLORS.length));
+    cur=[];cursor=0;mode="guess";
+    curtain("Crack the code",
+      "The computer picked a secret "+SLOTS+"-peg code \u2014 colors may repeat. You have "+MAXG+" guesses. Black peg = right color & spot, white = right color, wrong spot.",
+      ()=>{buildEntry();setMessage(P.A.name+": build a guess and fire.");render();});
+    return;}
   curtain(P[setter].name+" sets the code",
     "Pass the phone to "+P[setter].name+". Pick a secret 4-peg code \u2014 colors may repeat. "+P[guesserOf()].name+", look away!",
     ()=>{buildEntry();setMessage(P[setter].name+": tap colors to build your secret code.");render();});}
@@ -118,7 +125,7 @@ function render(){for(let i=0;i<SLOTS;i++){const d=document.getElementById("slot
     d.classList.toggle("cursor",i===cursor&&phase==="play");
     if(cur[i]!==undefined){d.classList.add("filled");d.style.background=gloss(COLORS[cur[i]]);}
     else{d.classList.remove("filled");d.style.background="#0e1813";}}
-  document.getElementById("roundTag").textContent="Round "+round+" of 2 \u00b7 "+(mode==="set"?P[setter].name+" sets":P[guesserOf()].name+" cracks");
+  document.getElementById("roundTag").textContent=solo?"Crack the code":("Round "+round+" of 2 \u00b7 "+(mode==="set"?P[setter].name+" sets":P[guesserOf()].name+" cracks"));
   document.getElementById("goBtn").textContent=mode==="set"?"Lock it in":"Guess";
   document.getElementById("goBtn").disabled=phase!=="play"||cur.filter(x=>x!==undefined).length<SLOTS;
   const recs=GN.readGames(KEY);let a=0,b=0;
@@ -157,9 +164,18 @@ function go(){if(phase!=="play"||cur.filter(x=>x!==undefined).length<SLOTS)retur
   setMessage((MAXG-guesses.length)+" guesses left.");render();}
 function endRound(cracked){phase="over";render();
   setTimeout(()=>{
+    if(solo){finishGame();return;}
     if(round===1){round=2;setter=guesserOf();startRound();}
     else finishGame();},1400);}
 function finishGame(){
+  if(solo){const u=used.A,cracked=u<=MAXG;
+    document.getElementById("ovTitle").textContent=cracked?("Cracked in "+u+"!"):"The code held!";
+    document.getElementById("ovText").textContent=cracked?(P.A.name+" broke it in "+u+" guess"+(u>1?"es":"")+"."):("Out of guesses \u2014 the secret code wins this time.");
+    if(cracked){const box=document.getElementById("confetti"),cols=[P.A.main,P.A.light,"#f4c542","#fff"];
+      for(let i=0;i<60;i++){const d=document.createElement("div");d.className="cf";d.style.left=Math.random()*100+"%";
+        d.style.background=cols[i%cols.length];d.style.animationDuration=(2.2+Math.random()*1.8)+"s";
+        d.style.animationDelay=(Math.random()*0.8)+"s";box.appendChild(d);}}
+    S("fanfare");document.getElementById("overlay").classList.add("show");phase="over";render();return;}
   const w=used.A===used.B?null:(used.A<used.B?"A":"B");
   const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
     winner:w?P[w].name:null,loser:w?P[w==="A"?"B":"A"].name:null,draw:!w,
