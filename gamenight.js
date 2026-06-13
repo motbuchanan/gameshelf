@@ -171,13 +171,23 @@ const css=`
 .gnRow .v{font-size:12px;color:#bcd6c7;font-variant-numeric:tabular-nums;}
 .gnIll{margin:8px auto 4px;max-width:280px;}.gnIll svg{width:100%;height:auto;display:block;}.gnEx{margin:8px 0 2px;padding:8px 12px;border-left:3px solid #f4c542;background:rgba(244,197,66,.08);border-radius:0 8px 8px 0;font-size:13.5px;line-height:1.5;color:#e8e0c8;text-align:left;}.gnSec{margin-top:8px;color:#9fbdac;font-size:12px;letter-spacing:.6px;text-transform:uppercase;}
 .gnMeta{color:#9fbdac;font-size:13px;text-align:center;max-width:440px;}
+/* Easy View: per-device large text & tap targets (toggled on the shelf). Shared chrome only. */
+html.gn-easy .gnTitle{font-size:30px;}
+html.gn-easy .gnBtn{font-size:21px !important;padding:15px 28px !important;}
+html.gn-easy .gnSeat{min-width:150px;padding:17px 18px;font-size:22px;}
+html.gn-easy .gnSeat small{font-size:14px;}
+html.gn-easy .gnAdd{font-size:17px;}
+html.gn-easy .gnStats h1{font-size:31px;}
+html.gn-easy .gnMeta{font-size:17px !important;}
+html.gn-easy .gnEx{font-size:17px;}
+html.gn-easy .gnSec{font-size:15px;}
 `;
 function injectCSS(){if(document.getElementById("gnCSS"))return;
   const s=document.createElement("style");s.id="gnCSS";s.textContent=css;document.head.appendChild(s);}
 
 /* ---------- match start: who's playing? + coin flip ---------- */
 /* GN.matchStart(done) -> done({a,b,first}) where a,b,first are player objects */
-GN.matchStart=function(done){injectCSS();GN._inPlay=false;
+GN.matchStart=function(done,opts){injectCSS();GN._inPlay=false;opts=opts||{};
   let[a,b]=GN.lastPair();
   const ov=document.createElement("div");ov.className="gnOv";
   const back=document.createElement("a");back.href="index.html";back.textContent="\u2329 Shelf";
@@ -196,6 +206,24 @@ GN.matchStart=function(done){injectCSS();GN._inPlay=false;
   function seat(el,p){el.textContent=p.name;el.style.background="linear-gradient(160deg,"+p.light+","+p.color+" 60%,"+p.dark+")";
     const s=document.createElement("small");s.textContent="tap to change";el.appendChild(s);}
   function refresh(){seat(eA,a);seat(eB,b);}
+  let solo=false;
+  if(opts.solo){
+    const modeRow=document.createElement("div");
+    modeRow.style.cssText="display:flex;gap:8px;justify-content:center;margin:2px 0 4px;";
+    const b1=document.createElement("button"),b2=document.createElement("button");
+    b1.textContent="1 player";b2.textContent="2 players";
+    [b1,b2].forEach(btn=>btn.style.cssText="font-family:inherit;cursor:pointer;border-radius:999px;padding:9px 18px;font-size:15px;font-weight:700;border:1px solid #3a5a47;color:#cfe6d8;");
+    function applyMode(){
+      b1.style.background=solo?"#2f7d4f":"#15241b";b2.style.background=solo?"#15241b":"#2f7d4f";
+      eB.style.display=solo?"none":"";const vs=ov.querySelector(".gnVs");if(vs)vs.style.display=solo?"none":"";
+      title.textContent=solo?"Playing solo":"Who\u2019s playing?";
+      go.textContent=solo?"Start":"Flip for first";}
+    b1.onclick=()=>{solo=true;applyMode();};
+    b2.onclick=()=>{solo=false;applyMode();};
+    modeRow.appendChild(b1);modeRow.appendChild(b2);
+    const seatsEl=ov.querySelector(".gnSeats");seatsEl.parentNode.insertBefore(modeRow,seatsEl);
+    applyMode();
+  }
   function cycle(cur,other){const l=GN.players();let i=l.findIndex(p=>p.name===cur.name);
     for(let k=1;k<=l.length;k++){const c=l[(i+k)%l.length];if(c.name!==other.name)return c;}return cur;}
   eA.onclick=()=>{a=cycle(a,b);refresh();};
@@ -239,7 +267,9 @@ GN.matchStart=function(done){injectCSS();GN._inPlay=false;
     fr.textContent=friendly?"\u26a0 Friendly game \u2014 not recorded":"\u2713 Counts for the record";
     fr.style.color=friendly?"#f4c542":"#cfe6d8";};
   refresh();
-  go.onclick=function(){savePair(a,b);
+  go.onclick=function(){
+    if(solo){GN.friendly=friendly;ov.remove();GN._inPlay=true;done({a,b:null,first:a,solo:true,friendly});return;}
+    savePair(a,b);
     eA.disabled=true;eB.disabled=true;ov.querySelector("#gnNew").style.display="none";
     ov.querySelector(".gnSeats").style.display="none";scene.style.display="";
     title.textContent="Who goes first?";go.style.visibility="hidden";
@@ -468,4 +498,13 @@ GN.rulesButton=function(container,cfg){injectCSS();
   const b=document.createElement("button");b.className="gnBtn ghost";b.textContent="Rules";
   b.style.fontSize="15px";b.style.padding="9px 16px";
   b.onclick=()=>GN.openRules(cfg);container.appendChild(b);return b;};
+/* ---------- Easy View: large text & tap targets, per device ---------- */
+GN.easyView={
+  on:function(){try{return localStorage.getItem("gn_easy")==="on";}catch(e){return false;}},
+  apply:function(){try{document.documentElement.classList.toggle("gn-easy",this.on());}catch(e){}},
+  set:function(v){try{localStorage.setItem("gn_easy",v?"on":"off");}catch(e){}this.apply();},
+  toggle:function(){this.set(!this.on());return this.on();}
+};
+GN.easyView.apply();
+try{injectCSS();}catch(e){}
 })();

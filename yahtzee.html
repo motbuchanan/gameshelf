@@ -66,7 +66,7 @@ const CATS=[
  {id:"fours",label:"Fours",upper:4},{id:"fives",label:"Fives",upper:5},{id:"sixes",label:"Sixes",upper:6},
  {id:"three",label:"3 of a kind"},{id:"four",label:"4 of a kind"},{id:"full",label:"Full house"},
  {id:"small",label:"Sm straight"},{id:"large",label:"Lg straight"},{id:"yahtzee",label:"YAHTZEE"},{id:"chance",label:"Chance"}];
-let dice=[1,1,1,1,1],held=[false,false,false,false,false],rolls=0,turn="A",cards={},phase="turn",GS=null;
+let dice=[1,1,1,1,1],held=[false,false,false,false,false],rolls=0,turn="A",cards={},phase="turn",GS=null,solo=false;
 const KEY="yahtzee_games";let _mem=[];
 function S(n,o){window.GNS&&GNS.play(n,0,o);}
 const Store={load(){try{return JSON.parse(localStorage.getItem(KEY))||[];}catch(e){return _mem.slice();}},
@@ -94,10 +94,11 @@ function seatFrom(p){return{name:p.name,main:p.color,light:p.light,dark:p.dark};
 function newGame(){cards={A:{},B:{}};
   dice=[1,2,3,4,5];held=[false,false,false,false,false];rolls=0;phase="over";
   document.getElementById("overlay").classList.remove("show");document.getElementById("confetti").innerHTML="";
-  GN.matchStart(function(m){P={A:seatFrom(m.a),B:seatFrom(m.b)};
-    turn=(m.first===m.a)?"A":"B";phase="turn";
-    GS={start:Date.now(),flipWinner:m.first.name};
-    startTurn();});}
+  GN.matchStart(function(m){solo=!!m.solo;
+    P=solo?{A:seatFrom(m.a)}:{A:seatFrom(m.a),B:seatFrom(m.b)};
+    turn="A";phase="turn";
+    GS={start:Date.now(),flipWinner:(m.first||m.a).name};
+    startTurn();},{solo:true});}
 function startTurn(){held=[false,false,false,false,false];rolls=0;phase="turn";
   updateBar();setMessage(P[turn].name+" \u2014 roll the dice");layoutDice();drawTray();renderCard();
   document.getElementById("rollBtn").disabled=false;document.getElementById("rollBtn").textContent="Roll";}
@@ -268,25 +269,35 @@ tray.addEventListener("click",e=>{if(rolls===0||phase!=="turn"||tumbling)return;
   if(best<0||bd>DS*0.78)return;
   held[best]=!held[best];drawTray();});
 function renderCard(){const host=document.getElementById("card");
-  let h='<table><tr><th>Category</th><th style="color:'+P.A.light+'">Mot</th><th style="color:'+P.B.light+'">Kathy</th></tr>';
+  const seats=solo?["A"]:["A","B"];
+  let h='<table><tr><th>Category</th>'+seats.map(pl=>'<th style="color:'+P[pl].light+'">'+P[pl].name+'</th>').join("")+'</tr>';
   const row=(cat)=>{let cells="";
-    for(const pl of["A","B"]){const v=cards[pl][cat.id];
+    for(const pl of seats){const v=cards[pl][cat.id];
       if(v!==undefined)cells+='<td class="cell done">'+v+'</td>';
       else if(pl===turn&&rolls>0&&phase==="turn"){const pot=scoreFor(cat.id,dice);
         cells+='<td class="cell mine" data-cat="'+cat.id+'">'+pot+'</td>';}
       else cells+='<td class="cell open">\u2013</td>';}
     return '<tr><td class="cat">'+cat.label+'</td>'+cells+'</tr>';};
   CATS.filter(c=>c.upper).forEach(c=>h+=row(c));
-  h+='<tr class="section"><td>Upper bonus (63+ \u2192 35)</td><td>'+(upperSum(cards.A)>=63?35:upperSum(cards.A)+"/63")+'</td><td>'+(upperSum(cards.B)>=63?35:upperSum(cards.B)+"/63")+'</td></tr>';
+  h+='<tr class="section"><td>Upper bonus (63+ \u2192 35)</td>'+seats.map(pl=>'<td>'+(upperSum(cards[pl])>=63?35:upperSum(cards[pl])+"/63")+'</td>').join("")+'</tr>';
   CATS.filter(c=>!c.upper).forEach(c=>h+=row(c));
-  h+='<tr class="total"><td>TOTAL</td><td style="color:'+P.A.light+'">'+totalOf(cards.A)+'</td><td style="color:'+P.B.light+'">'+totalOf(cards.B)+'</td></tr></table>';
+  h+='<tr class="total"><td>TOTAL</td>'+seats.map(pl=>'<td style="color:'+P[pl].light+'">'+totalOf(cards[pl])+'</td>').join("")+'</tr></table>';
   host.innerHTML=h;
   host.querySelectorAll("td.mine").forEach(td=>td.addEventListener("click",()=>scoreCat(td.dataset.cat)));}
 function scoreCat(cat){if(rolls===0||phase!=="turn")return;
   cards[turn][cat]=scoreFor(cat,dice);
-  if(roundsDone(cards.A)===13&&roundsDone(cards.B)===13){renderCard();finish();return;}
-  turn=turn==="A"?"B":"A";startTurn();}
+  const allDone=roundsDone(cards.A)===13&&(solo||roundsDone(cards.B)===13);
+  if(allDone){renderCard();finish();return;}
+  if(!solo)turn=turn==="A"?"B":"A";startTurn();}
 function finish(){phase="over";
+  if(solo){const sc=totalOf(cards.A);
+    document.getElementById("ovTitle").textContent="Final score";
+    document.getElementById("ovTitle").style.color=P.A.light;
+    document.getElementById("ovTrophy").textContent="\uD83C\uDFB2";
+    document.getElementById("ovText").textContent=P.A.name+" \u2014 "+sc+" points";
+    spawnConfetti("A");
+    setTimeout(()=>{S("fanfare");document.getElementById("overlay").classList.add("show");},500);
+    return;}
   const a=totalOf(cards.A),b=totalOf(cards.B);
   const win=a>b?"A":b>a?"B":null;
   const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
