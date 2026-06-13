@@ -39,6 +39,8 @@
   .act.on{background:#46b06a;color:#0c2014;box-shadow:0 3px 0 #1e6038;}
   .ov{position:fixed;inset:0;background:rgba(16,12,8,.95);display:none;flex-direction:column;align-items:center;justify-content:center;gap:13px;z-index:60;text-align:center;padding:22px;}
   .ov.show{display:flex;} .ov h1{font-size:25px;} .ov p{color:#cfc4b4;max-width:330px;font-size:14.5px;line-height:1.5;}
+  #ovRecap{max-width:344px;font-size:13px;line-height:1.5;color:#cfc4b4;background:#241e18;border:1px solid #4a3f33;border-radius:10px;padding:11px 13px;text-align:left;display:none;}
+  #ovRecap.show{display:block;}
   .pickRow{display:flex;gap:10px;}
   .pickRow button{width:62px;height:62px;border-radius:12px;border:1.5px solid #6e5f50;background:#2a241e;cursor:pointer;padding:6px;}
   .pickRow button svg{width:100%;height:100%;}
@@ -72,7 +74,7 @@
   <div class="thLabel">Board material</div><div class="swRow" id="swB"></div>
   <div class="thLabel">Piece material</div><div class="swRow" id="swP"></div></div>
   <button class="act" id="thDone">Done</button></div>
-<div class="ov" id="overlay"><div style="font-size:50px;">&#9812;</div><h1 id="ovTitle"></h1><p id="ovText"></p>
+<div class="ov" id="overlay"><div style="font-size:50px;">&#9812;</div><h1 id="ovTitle"></h1><p id="ovText"></p><div id="ovRecap"></div>
   <button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #6e5f50;background:#2a241e;color:#e6ddd0;text-decoration:none;">Back to shelf</a></div>
 <script src="gamenight.js?v=12"></script>
 <script src="sfx.js?v=5"></script>
@@ -325,6 +327,10 @@ const LEVELS={
  8:{depth:4,q:true,ms:2600,noise:5,blunder:0},
  9:{depth:5,q:true,ms:3600,noise:0,blunder:0},
  10:{depth:5,q:true,ms:5000,noise:0,blunder:0}};
+/* opening variety: for the first OPENING_MOVES full moves, the computer picks at
+   random among moves within OPENING_SPREAD centipawns of the best, so it varies
+   its openings without ever choosing a weak move. Tune these two by feel. */
+const OPENING_MOVES=5, OPENING_SPREAD=35;
 function analyze(st,lvl){ // iterative deepening at root; only completed iterations count
   const L=LEVELS[lvl]||LEVELS[10];
   const budget={n:0,deadline:Date.now()+L.ms,up:false};
@@ -353,6 +359,11 @@ function pick(st,lvl){
     // a deliberately mediocre choice: random from the bottom-ish half
     const i=Math.min(a.length-1,1+Math.floor(Math.random()*Math.max(1,a.length-1)));
     return a[i].m;}
+  // opening variety: early on, choose at random among near-best moves
+  if(st.full<=OPENING_MOVES&&a.length>1){
+    const top=a[0].score;
+    const pool=a.filter(e=>top-e.score<=OPENING_SPREAD);
+    if(pool.length>1)return pool[Math.floor(Math.random()*pool.length)].m;}
   return a[0].m;}
 return{evaluate,analyze,pick,LEVELS};
 })(CH);
@@ -485,8 +496,10 @@ function commit(m,silentCoach){
       return;}}
   doCommit(m);}
 function doCommit(m){
+  const mover=st.turn, moveNo=st.full, desc=describe(m,st);
   const before=st.b[m.to]||m.ep;
   CH.make(st,m);
+  GS.trace.push({n:moveNo,mover,name:P[mover].name,from:m.from,to:m.to,desc,evalW:CAI.evaluate(st)});
   lastMv=m;sel=-1;legalNow=[];hintShown=null;
   GS.moves++;
   S(m.castle?"chime":before?"bump":"move");
@@ -496,6 +509,20 @@ function doCommit(m){
   render();
   if(stat!=="play"){finish(stat);return;}
   if(!botLevel)setMsg((CH.inCheck(st,st.turn)?"Check! ":"")+P[st.turn].name+" to move.");}
+function escH(s){return String(s).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];});}
+function recapHTML(){
+  const t=GS.trace; if(!t||t.length<6)return "";
+  let prev=0; const sw=[];
+  for(let i=0;i<t.length;i++){const d=t[i].evalW-prev;prev=t[i].evalW;sw.push({i,e:t[i],delta:d,mag:Math.abs(d)});}
+  const RECAP_MIN=60; // centipawns; ignore swings smaller than this
+  const top=sw.filter(x=>x.mag>=RECAP_MIN).sort((a,b)=>b.mag-a.mag).slice(0,3).sort((a,b)=>a.i-b.i);
+  if(!top.length)return '<div style="font-weight:700;margin-bottom:4px;">A close one</div>An even game \u2014 no single move ran away with it.';
+  const rows=top.map(function(x){
+    const e=x.e,toward=x.delta>0?"White":"Black",pawns=(x.mag/100).toFixed(1);
+    return '<div style="margin:4px 0;"><b>Move '+e.n+' \u00b7 '+escH(e.name)+':</b> '+CH.alg(e.from)+'\u2192'+CH.alg(e.to)+' \u2014 '+escH(e.desc)+'. Swung ~'+pawns+' toward '+toward+'.</div>';
+  }).join("");
+  return '<div style="font-weight:700;margin-bottom:6px;">3 moves that decided it</div>'+rows;
+}
 function finish(stat){phase="over";
   let title,text,winner=null;
   if(stat==="mate"){winner=st.turn==="w"?"b":"w";
@@ -510,6 +537,8 @@ function finish(stat){phase="over";
   if(!GS.friendly&&winner)GN.recordGame(KEY,rec);
   document.getElementById("ovTitle").textContent=title;
   document.getElementById("ovText").textContent=text;
+  const rh=recapHTML(),rEl=document.getElementById("ovRecap");
+  rEl.innerHTML=rh;rEl.classList.toggle("show",!!rh);
   document.getElementById("overlay").classList.add("show");}
 /* ---------- bot ---------- */
 setInterval(()=>{
@@ -538,7 +567,8 @@ document.getElementById("hintBtn").addEventListener("click",()=>{
 document.getElementById("backBtn").addEventListener("click",()=>{
   if(!st||!st.hist.length||phase!=="play")return;
   CH.unmake(st);
-  if(botLevel&&st.turn==="b"&&st.hist.length)CH.unmake(st); // undo the bot reply too
+  if(GS.trace.length)GS.trace.pop();
+  if(botLevel&&st.turn==="b"&&st.hist.length){CH.unmake(st);if(GS.trace.length)GS.trace.pop();} // undo the bot reply too
   lastMv=st.hist.length?st.hist[st.hist.length-1].m:null;
   sel=-1;legalNow=[];hintShown=null;botKey="";
   S("move");setMsg("Take it back \u2014 try again.");render();});
@@ -578,7 +608,7 @@ function newGame(){phase="over";document.getElementById("overlay").classList.rem
     const a=m.first,b=(m.first===m.a)?m.b:m.a;
     P={w:seatFrom(a),b:seatFrom(b)};
     st=CH.fresh();sel=-1;legalNow=[];lastMv=null;hintShown=null;botKey="";
-    GS={start:Date.now(),flipWinner:m.first.name,friendly:m.friendly,moves:0};
+    GS={start:Date.now(),flipWinner:m.first.name,friendly:m.friendly,moves:0,trace:[]};
     phase="play";render();
     setMsg(P.w.name+" has White \u2014 your move."+(botLevel?" Computer holds Black (L"+botLevel+").":""));});}
 document.getElementById("newBtn").addEventListener("click",newGame);
