@@ -154,8 +154,17 @@ GN.profiles.recordResult(gameKey, [{id|name, win, score, place}])  (N-player fin
    into `owner.prefs` (incidentally fixes the tv key-mismatch).
 4. **Stats wiring:** games write per-player stats on finish via `recordResult` — Batch-1 score
    games first, then the rest. Retire pairwise `recordGame` as each game moves over.
-   - **4b. Avatar-as-token:** `GN.avatarSVG(profile,size)` helper; render each player's avatar as
-     their token in games that draw tokens (where clean). Per-game, incremental.
+   - **4b. Avatar-as-token — SCOPE LOCKED (Mot, 2026-06-14): setup/flip screens ONLY.**
+     The avatar token appears on the "who's playing / flip for first" pickers (matchStart) and the
+     One Card Left! seat-selection picker (partyStart). It must NOT appear on the board or in active
+     gameplay — the classic, readable game pieces stay exactly as designed.
+     - ✅ DONE: `GN.tokenHTML`/`GN.avatarInner` shared; seat payloads carry `avatar`; tokens render in
+       both setup pickers. Validated: matchStart + 5-game regression, partyStart, + revert check.
+     - ↩︎ REVERTED: the in-play OCL opponent-panel token (was added then pulled back per Mot) — panel
+       restored to name + mini-cards + count.
+     - ❌ CANCELLED: canvas board-pieces (Snakes/Sorry!/Trouble/Chinese Checkers). Do NOT replace
+       board art with avatars. Classic look is the requirement.
+     - Bonus fix retained: `GN.sync()` made a callable no-op in gamenight.js (was throwing on 9 pages).
 5. **Sync:** add `state/profiles` to `bootSync` seed + `onSnapshot` adoption + `mirror` on writes.
    Owner id stays device-local. Note last-write-wins on the whole list.
 6. **Records book + reset:** repoint `records.html` / `GN.openStats` at profile stats (per-player

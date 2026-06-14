@@ -120,7 +120,7 @@ GN.profiles={
   recordResult:function(gameKey,results){(results||[]).forEach(r=>this.bump(r.id||r.name,gameKey,r));}
 };
 /* roster now sourced from profiles; shape preserved so all games keep working */
-GN.players=function(){return profLoad().map(p=>({name:p.name,color:p.color,light:p.light,dark:p.dark}));};
+GN.players=function(){return profLoad().map(p=>({name:p.name,color:p.color,light:p.light,dark:p.dark,avatar:p.avatar||{kind:"color"}}));};
 GN.addPlayer=function(name,chosenPal){return GN.profiles.add(name,chosenPal);};
 GN.recolorPlayer=function(name,pal){const p=GN.profiles.byName(name);if(!p)return null;return GN.profiles.recolor(p.id,pal);};
 /* ---------- avatars: game-themed icon catalog + shared token renderer ---------- */
@@ -271,7 +271,12 @@ GN.matchStart=function(done,opts){injectCSS();GN._inPlay=false;opts=opts||{};
   document.body.appendChild(ov);
   const eA=ov.querySelector("#gnA"),eB=ov.querySelector("#gnB"),go=ov.querySelector("#gnGo"),
         title=ov.querySelector("#gnT"),scene=ov.querySelector("#gnSc"),coin=ov.querySelector("#gnC");
-  function seat(el,p){el.textContent=p.name;el.style.background="linear-gradient(160deg,"+p.light+","+p.color+" 60%,"+p.dark+")";
+  function seat(el,p){el.innerHTML="";
+    el.style.background="linear-gradient(160deg,"+p.light+","+p.color+" 60%,"+p.dark+")";
+    let av=p.avatar||{kind:"color"};if(!p.avatar&&GN.profiles){const pr=GN.profiles.byName(p.name);if(pr&&pr.avatar)av=pr.avatar;}
+    const row=document.createElement("span");row.style.cssText="display:inline-flex;align-items:center;gap:7px;justify-content:center;";
+    row.innerHTML=GN.tokenHTML({name:p.name,color:p.color,light:p.light,dark:p.dark,avatar:av},28);
+    const nm=document.createElement("span");nm.textContent=p.name;row.appendChild(nm);el.appendChild(row);
     const s=document.createElement("small");s.textContent="tap to change";el.appendChild(s);}
   function refresh(){seat(eA,a);seat(eB,b);}
   let mode="2p",botLevel=null;              // "1p" | "2p" | "cpu"; botLevel null until chosen
@@ -428,7 +433,7 @@ GN.partyStart=function(done,opts){injectCSS();GN._inPlay=false;opts=opts||{};
   let seats=[];
   function freshSeats(n){const r=GN.players(),s=[];
     for(let i=0;i<n;i++){
-      if(i<r.length){const h=r[i];s.push({kind:"human",name:h.name,color:h.color,light:h.light,dark:h.dark,bot:null});}
+      if(i<r.length){const h=r[i];s.push({kind:"human",name:h.name,color:h.color,light:h.light,dark:h.dark,avatar:h.avatar||{kind:"color"},bot:null});}
       else s.push({kind:"cpu",bot:"medium"});}
     return s;}
   function normalize(){ // distinct colors for computers + numbering
@@ -520,7 +525,9 @@ GN.partyStart=function(done,opts){injectCSS();GN._inPlay=false;opts=opts||{};
     seats.forEach((s,i)=>{const btn=document.createElement("button");btn.className="gnSeat";
       btn.style.width="100%";btn.style.minWidth="0";
       btn.style.background="linear-gradient(160deg,"+s.light+","+s.color+" 60%,"+s.dark+")";
-      btn.appendChild(document.createTextNode(seatLabel(s)));
+      const row=document.createElement("span");row.style.cssText="display:inline-flex;align-items:center;gap:8px;justify-content:center;";
+      row.innerHTML=GN.tokenHTML({name:s.name||"?",color:s.color,light:s.light,dark:s.dark,avatar:s.kind==="cpu"?{kind:"color"}:(s.avatar||{kind:"color"})},28);
+      const lab=document.createElement("span");lab.textContent=seatLabel(s);row.appendChild(lab);btn.appendChild(row);
       const sm=document.createElement("small");sm.textContent=s.kind==="cpu"?"computer \u2014 tap to change":"tap to change";btn.appendChild(sm);
       btn.onclick=()=>openChooser(i);slist.appendChild(btn);});
     const humans=seats.filter(s=>s.kind==="human").length;
@@ -529,7 +536,7 @@ GN.partyStart=function(done,opts){injectCSS();GN._inPlay=false;opts=opts||{};
   go.onclick=function(){
     if(go.disabled)return;
     pcSave(count);
-    const out=seats.map(s=>({name:s.name,color:s.color,light:s.light,dark:s.dark,bot:s.kind==="cpu"?s.bot:null}));
+    const out=seats.map(s=>({name:s.name,color:s.color,light:s.light,dark:s.dark,avatar:s.kind==="cpu"?{kind:"color"}:(s.avatar||{kind:"color"}),bot:s.kind==="cpu"?s.bot:null}));
     const items=[...slist.children];
     const first=Math.floor(Math.random()*count);
     go.disabled=true;go.textContent="Choosing\u2026";cRow.style.pointerEvents="none";slist.style.pointerEvents="none";
@@ -683,16 +690,17 @@ document.addEventListener("click",function(e){
     function(){if(isLink)location.href=t.getAttribute("href");
       else{GN._bypass=true;try{t.click();}finally{GN._bypass=false;}}});
 },true);
-GN.sync={
-  status(){try{return localStorage.getItem("gn_sync_hh")?"on":"off";}catch(e){return"off";}},
-  enable(code){if(!code||!code.trim())return false;
-    try{localStorage.setItem("gn_sync_hh",hhId(code.trim()));}catch(e){return false;}
-    bootSync();return true;},
-  disable(){try{localStorage.removeItem("gn_sync_hh");}catch(e){}_db=null;_hh=null;_fbReady=false;},
-  resetCloud(){if(!_fbReady)return;
-    _db.doc("households/"+_hh+"/state/global").set(blank());
-    for(const k of GAME_KEYS)_db.doc("households/"+_hh+"/records/"+k).set({list:[]});}
-};
+/* GN.sync is callable (so the vestigial per-page `GN.sync()` calls never throw) AND carries methods. Sync itself auto-boots below. */
+function gnSync(){return gnSync.status();}
+gnSync.status=function(){try{return localStorage.getItem("gn_sync_hh")?"on":"off";}catch(e){return"off";}};
+gnSync.enable=function(code){if(!code||!code.trim())return false;
+  try{localStorage.setItem("gn_sync_hh",hhId(code.trim()));}catch(e){return false;}
+  bootSync();return true;};
+gnSync.disable=function(){try{localStorage.removeItem("gn_sync_hh");}catch(e){}_db=null;_hh=null;_fbReady=false;};
+gnSync.resetCloud=function(){if(!_fbReady)return;
+  _db.doc("households/"+_hh+"/state/global").set(blank());
+  for(const k of GAME_KEYS)_db.doc("households/"+_hh+"/records/"+k).set({list:[]});};
+GN.sync=gnSync;
 async function bootSync(){
   let hh=null;try{hh=localStorage.getItem("gn_sync_hh");}catch(e){}
   if(!hh||typeof window==="undefined")return;
