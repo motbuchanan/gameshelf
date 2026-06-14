@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>One Card Left!</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{margin:0;font-family:system-ui,-apple-system,sans-serif;color:#eaf1e8;overflow:hidden;
+    background:radial-gradient(ellipse at 50% 18%,#1f5236 0%,#123021 60%,#0a1d15 100%);height:100vh;}
+  #bar{display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(0,0,0,.28);flex-wrap:wrap;}
+  #bar a{color:#eaf1e8;text-decoration:none;font-size:13px;border:1px solid rgba(255,255,255,.3);background:rgba(0,0,0,.2);border-radius:999px;padding:5px 12px;}
+  #bar #ttl{font-weight:800;font-size:16px;letter-spacing:.3px;}
+  #bar #dir{margin-left:auto;font-size:13px;color:#cfe6d8;opacity:.85;}
+  #table{position:relative;height:calc(100vh - 44px);display:flex;flex-direction:column;}
+  #opps{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;padding:12px 8px 4px;}
+  .opp{min-width:74px;padding:7px 9px;border-radius:12px;background:rgba(0,0,0,.26);
+    border:2px solid transparent;text-align:center;transition:border-color .2s,transform .2s;}
+  .opp.turn{border-color:#f4c542;transform:translateY(2px);box-shadow:0 0 16px rgba(244,197,66,.4);}
+  .opp .nm{font-weight:800;font-size:13px;white-space:nowrap;}
+  .opp .ct{font-size:11px;color:#cfe6d8;margin-top:1px;}
+  .opp .mini{display:flex;justify-content:center;margin-top:4px;height:18px;}
+  .opp .mini i{display:block;width:11px;height:16px;border-radius:2px;margin-left:-5px;
+    background:linear-gradient(150deg,#37506b,#1c2c3e);box-shadow:0 0 0 1px rgba(0,0,0,.4);}
+  .opp .mini i:first-child{margin-left:0;}
+  #center{flex:1;display:flex;align-items:center;justify-content:center;gap:22px;}
+  #discWrap{border-radius:16px;padding:6px;transition:box-shadow .2s;}
+  #drawPile{cursor:pointer;}
+  .card{width:74px;height:104px;border-radius:11px;position:relative;overflow:hidden;
+    box-shadow:0 4px 10px rgba(0,0,0,.45);user-select:none;background:#1c2535;}
+  .card svg{position:absolute;inset:0;width:100%;height:100%;display:block;}
+  #colorRing{width:18px;height:18px;border-radius:50%;border:2px solid rgba(255,255,255,.7);}
+  #handWrap{padding:6px 6px 12px;}
+  #status{text-align:center;font-size:13.5px;color:#dbeede;min-height:20px;margin-bottom:4px;padding:0 10px;}
+  #hand{display:flex;justify-content:safe center;overflow-x:auto;padding:14px 12px 6px;gap:0;scrollbar-width:none;}
+  #hand::-webkit-scrollbar{display:none;}
+  #hand .card{flex:0 0 auto;margin-left:-22px;transition:transform .12s;cursor:pointer;}
+  #hand .card:first-child{margin-left:0;}
+  #hand .card.play{margin-top:0;}
+  #hand .card.dim{opacity:.45;filter:saturate(.6);}
+  #hand .card.sel{transform:translateY(-16px);box-shadow:0 12px 18px rgba(0,0,0,.5),0 0 0 3px #f4c542;}
+  #actions{display:flex;gap:10px;justify-content:center;margin-top:2px;min-height:20px;}
+  .btn{font-family:inherit;font-weight:800;font-size:15px;cursor:pointer;border:none;border-radius:11px;padding:10px 18px;
+    background:linear-gradient(180deg,#f3e6c4,#e7d3a6);color:#22160a;box-shadow:0 4px 0 #9c7d49;}
+  .btn:active{transform:translateY(2px);box-shadow:0 2px 0 #9c7d49;}
+  .ov{position:fixed;inset:0;z-index:50;display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;
+    background:rgba(8,18,12,.93);text-align:center;padding:24px;}
+  .ov.show{display:flex;}
+  .ov h1{font-size:26px;margin:0;}
+  .ov p{color:#cfe6d8;max-width:320px;font-size:15px;margin:0;}
+  #pickRow{display:flex;gap:14px;}
+  #pickRow div{width:58px;height:58px;border-radius:50%;cursor:pointer;box-shadow:0 4px 10px rgba(0,0,0,.4);border:3px solid rgba(255,255,255,.6);}
+  #toast{position:fixed;left:50%;top:64px;transform:translateX(-50%) translateY(-12px);z-index:40;opacity:0;
+    background:#f4c542;color:#3a2a05;font-weight:800;font-size:15px;padding:9px 18px;border-radius:999px;
+    box-shadow:0 6px 16px rgba(0,0,0,.4);transition:opacity .25s,transform .25s;pointer-events:none;}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  html.gn-easy .card{width:88px;height:124px;} html.gn-easy #hand .card{margin-left:-26px;} html.gn-easy #status{font-size:16px;}
+  html.gn-easy .opp .nm{font-size:15px;} html.gn-easy .btn{font-size:18px;padding:13px 22px;}
+</style>
+</head>
+<body>
+<div id="bar"><a href="index.html">&#8962; Shelf</a><div id="ttl">One Card Left!</div><div id="dir"></div></div>
+<div id="table">
+  <div id="opps"></div>
+  <div id="center">
+    <div id="drawPile"><div class="card back"><div class="oval"></div><div class="glyph">OCL</div></div></div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+      <div id="discWrap"></div><div id="colorRing"></div>
+    </div>
+  </div>
+  <div id="handWrap">
+    <div id="status"></div>
+    <div id="hand"></div>
+    <div id="actions"></div>
+  </div>
+</div>
+<div class="ov" id="passOv"><div style="font-size:40px;">&#129534;</div><h1 id="passName"></h1><p>Pass the device. Tap when you're ready &mdash; no peeking!</p><button class="btn" id="passBtn">I'm ready</button></div>
+<div class="ov" id="pickOv"><h1>Choose a color</h1><div id="pickRow"></div></div>
+<div class="ov" id="winOv"><div style="font-size:48px;">&#127881;</div><h1 id="winName"></h1><p id="winSub"></p>
+  <button class="btn" id="againBtn">Play again</button>
+  <a href="index.html" style="font-size:14px;color:#cfe6d8;text-decoration:underline;">Back to the shelf</a></div>
+<div id="toast"></div>
+<script src="gamenight.js?v=12"></script>
+<script src="sfx.js?v=5"></script>
+<script>
+/* One Card Left! — pure game engine (no DOM). House version of a colored shedding game.
+   Deck (108): per colour 0 x1, 1-9 x2, Skip/Reverse/Draw Two x2; plus Wild x4, Wild Draw Four x4.
+   Embedded verbatim into onecardleft.html; also requireable in node for the harness. */
+var OCL=(function(){
+  const COLORS=["r","y","g","b"];
+  function buildDeck(){
+    const d=[];
+    for(const c of COLORS){
+      d.push({color:c,kind:"0"});
+      for(let n=1;n<=9;n++){d.push({color:c,kind:""+n});d.push({color:c,kind:""+n});}
+      for(const k of ["skip","rev","d2"]){d.push({color:c,kind:k});d.push({color:c,kind:k});}
+    }
+    for(let i=0;i<4;i++){d.push({color:"w",kind:"wild"});d.push({color:"w",kind:"wild4"});}
+    return d;
+  }
+  function shuffle(a,rng){for(let i=a.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));const t=a[i];a[i]=a[j];a[j]=t;}return a;}
+  const isNum=k=>/^[0-9]$/.test(k);
+  const mod=(x,n)=>((x%n)+n)%n;
+
+  function newGame(nplayers,startTurn,rng,rules){
+    rng=rng||Math.random;
+    const deck=shuffle(buildDeck(),rng);
+    const hands=[];
+    for(let p=0;p<nplayers;p++){const h=[];for(let i=0;i<7;i++)h.push(deck.pop());hands.push(h);}
+    // first discard must be a plain number card (set aside actions/wilds, reshuffle them back)
+    const aside=[];let start=null;
+    while(deck.length){const c=deck.pop();if(isNum(c.kind)){start=c;break;}aside.push(c);}
+    for(const c of aside)deck.push(c);shuffle(deck,rng);
+    const st={n:nplayers,deck,discard:[start],hands,turn:mod(startTurn||0,nplayers),
+              dir:1,color:start.color,awaitDrawn:null,winner:null,drawnCount:0,
+              pending:0,rules:rules||{stack:false,jumpin:false}};
+    return st;
+  }
+  function top(st){return st.discard[st.discard.length-1];}
+  function matches(card,st){
+    if(card.color==="w")return true;
+    if(card.color===st.color)return true;
+    if(card.kind===top(st).kind)return true;
+    return false;
+  }
+  function playable(card,st){
+    if(st.pending>0)return card.kind==="d2"||card.kind==="wild4"; // only Draw cards may stack
+    return matches(card,st);
+  }
+  function legalMoves(st){
+    if(st.winner!==null)return [];
+    if(st.pending>0){ // under a draw stack: stack another Draw card, or take the pile
+      const hand=st.hands[st.turn],mv=[];
+      for(let i=0;i<hand.length;i++)if(hand[i].kind==="d2"||hand[i].kind==="wild4")mv.push({type:"play",i});
+      mv.push({type:"takeStack"});
+      return mv;
+    }
+    if(st.awaitDrawn!==null)return [{type:"playDrawn"},{type:"pass"}];
+    const hand=st.hands[st.turn],mv=[];
+    for(let i=0;i<hand.length;i++)if(matches(hand[i],st))mv.push({type:"play",i});
+    mv.push({type:"draw"});
+    return mv;
+  }
+  function reshuffleIfNeeded(st,rng){
+    if(st.deck.length)return;
+    const keep=st.discard.pop();
+    while(st.discard.length){const c=st.discard.pop();st.deck.push(c);}
+    shuffle(st.deck,rng);st.discard.push(keep);
+  }
+  function drawTo(st,seat,count,rng){
+    for(let k=0;k<count;k++){reshuffleIfNeeded(st,rng);if(!st.deck.length)break;st.hands[seat].push(st.deck.pop());}
+  }
+  function advance(st,steps){st.turn=mod(st.turn+st.dir*steps,st.n);st.awaitDrawn=null;}
+  function playCard(st,i,chosenColor,rng){
+    const card=st.hands[st.turn].splice(i,1)[0];
+    st.discard.push(card);
+    st.color=(card.color==="w")?(COLORS.indexOf(chosenColor)>=0?chosenColor:COLORS[0]):card.color;
+    if(st.hands[st.turn].length===0){st.winner=st.turn;st.awaitDrawn=null;return;}
+    switch(card.kind){
+      case "skip": advance(st,2); break;
+      case "rev":  if(st.n===2){advance(st,2);} else {st.dir*=-1;advance(st,1);} break;
+      case "d2":   if(st.rules&&st.rules.stack){st.pending+=2;advance(st,1);} else {drawTo(st,mod(st.turn+st.dir,st.n),2,rng);advance(st,2);} break;
+      case "wild4":if(st.rules&&st.rules.stack){st.pending+=4;advance(st,1);} else {drawTo(st,mod(st.turn+st.dir,st.n),4,rng);advance(st,2);} break;
+      default:     advance(st,1);
+    }
+  }
+  function apply(st,move,rng){
+    rng=rng||Math.random;
+    if(st.winner!==null)return st;
+    if(st.pending>0&&(move.type==="takeStack"||move.type==="draw")){
+      drawTo(st,st.turn,st.pending,rng);st.pending=0;advance(st,1); // taker draws the pile and is skipped
+      return st;
+    }
+    if(move.type==="draw"){
+      let drewPlayable=false;
+      while(true){
+        reshuffleIfNeeded(st,rng);
+        if(!st.deck.length)break;               // deck truly exhausted
+        const card=st.deck.pop();st.hands[st.turn].push(card);st.drawnCount++;
+        if(matches(card,st)){st.awaitDrawn=st.hands[st.turn].length-1;drewPlayable=true;break;}
+      }
+      if(!drewPlayable)advance(st,1);            // nothing playable anywhere -> pass
+      return st;
+    }
+    if(move.type==="pass"){advance(st,1);return st;}
+    if(move.type==="playDrawn"){playCard(st,st.awaitDrawn,move.color,rng);return st;}
+    if(move.type==="play"){playCard(st,move.i,move.color,rng);return st;}
+    return st;
+  }
+  function bestColor(hand,rng){
+    const cnt={r:0,y:0,g:0,b:0};for(const c of hand)if(c.color!=="w")cnt[c.color]++;
+    let best=null,bv=-1;for(const c of COLORS)if(cnt[c]>bv){bv=cnt[c];best=c;}
+    if(bv<=0)return COLORS[Math.floor((rng||Math.random)()*4)];
+    return best;
+  }
+  function withColor(st,move,rng){
+    if(move.type==="play"||move.type==="playDrawn"){
+      const idx=move.type==="playDrawn"?st.awaitDrawn:move.i;
+      const card=st.hands[st.turn][idx];
+      if(card&&card.color==="w")move.color=bestColor(st.hands[st.turn],rng);
+    }
+    return move;
+  }
+  function botMove(st,level,rng){
+    rng=rng||Math.random;
+    const moves=legalMoves(st);
+    if(!moves.length)return null;
+    if(st.pending>0){ // under a draw stack
+      const draws=moves.filter(m=>m.type==="play");
+      if(draws.length&&!(level==="easy"&&rng()<0.5))return withColor(st,draws[Math.floor(rng()*draws.length)],rng);
+      return {type:"takeStack"};
+    }
+    if(st.awaitDrawn!==null){ // play the drawn card (shed) on med/hard; easy 50/50
+      if(level==="easy"&&rng()<0.5)return {type:"pass"};
+      return withColor(st,{type:"playDrawn"},rng);
+    }
+    const plays=moves.filter(m=>m.type==="play");
+    if(!plays.length)return {type:"draw"};
+    if(level==="easy")return withColor(st,plays[Math.floor(rng()*plays.length)],rng);
+    // med / hard: score the candidate cards
+    const hand=st.hands[st.turn];
+    const nextSeat=mod(st.turn+st.dir,st.n);
+    const nextLow=st.hands[nextSeat].length<=2;
+    function score(m){const c=hand[m.i];let s;
+      switch(c.kind){case "d2":s=6;break;case "skip":s=5;break;case "rev":s=(st.n===2?5:3);break;
+        case "wild4":s=1;break;case "wild":s=2;break;default:s=4;}
+      if(level==="hard"&&nextLow&&(c.kind==="d2"||c.kind==="skip"||c.kind==="wild4"||c.kind==="rev"))s+=10;
+      if(level==="hard"&&c.kind==="wild4"&&!nextLow)s-=3; // save the nuke
+      // prefer shedding the colour we hold most of (keeps flexibility otherwise)
+      return s;
+    }
+    let best=plays[0],bv=-1e9;
+    for(const m of plays){const v=score(m)+rng()*0.5;if(v>bv){bv=v;best=m;}}
+    return withColor(st,best,rng);
+  }
+
+  const api={COLORS,buildDeck,newGame,legalMoves,apply,botMove,matches,playable,top,isNum};
+  return api;
+})();
+</script>
+<script>
+const CMAP={r:"#e5413a",y:"#e3a81f",g:"#3f9a5a",b:"#3f86e0",w:"#777"};
+var OCL_RULES={"title":"One Card Left!","sections":[{"h":"Goal","t":"Be the first to empty your hand. Play your very last card and you win the round. Two to four can play, and any empty seat can be taken by the computer."},{"h":"Your turn","svg":"<svg viewBox=\"0 0 280 100\"><g font-family=\"system-ui\"><rect x=\"12\" y=\"14\" width=\"44\" height=\"62\" rx=\"7\" fill=\"#fff\"/><rect x=\"17\" y=\"19\" width=\"34\" height=\"52\" rx=\"5\" fill=\"#3f86e0\"/><text x=\"34\" y=\"53\" font-size=\"26\" font-weight=\"800\" fill=\"#fff\" text-anchor=\"middle\">6</text><text x=\"34\" y=\"92\" font-size=\"9.5\" fill=\"#cfe6d8\" text-anchor=\"middle\">on the pile</text><path d=\"M62 45 H78\" stroke=\"#f4c542\" stroke-width=\"2.5\"/><polygon points=\"76,40 86,45 76,50\" fill=\"#f4c542\"/><rect x=\"92\" y=\"14\" width=\"44\" height=\"62\" rx=\"7\" fill=\"#fff\"/><rect x=\"97\" y=\"19\" width=\"34\" height=\"52\" rx=\"5\" fill=\"#3f86e0\"/><text x=\"114\" y=\"53\" font-size=\"26\" font-weight=\"800\" fill=\"#fff\" text-anchor=\"middle\">9</text><rect x=\"144\" y=\"14\" width=\"44\" height=\"62\" rx=\"7\" fill=\"#fff\"/><rect x=\"149\" y=\"19\" width=\"34\" height=\"52\" rx=\"5\" fill=\"#e5413a\"/><text x=\"166\" y=\"53\" font-size=\"26\" font-weight=\"800\" fill=\"#fff\" text-anchor=\"middle\">6</text><rect x=\"196\" y=\"14\" width=\"44\" height=\"62\" rx=\"7\" fill=\"#fff\"/><rect x=\"201\" y=\"19\" width=\"34\" height=\"52\" rx=\"5\" fill=\"#2b2b2b\"/><circle cx=\"210\" cy=\"33\" r=\"5\" fill=\"#e5413a\"/><circle cx=\"231\" cy=\"33\" r=\"5\" fill=\"#e3a81f\"/><circle cx=\"210\" cy=\"57\" r=\"5\" fill=\"#3f9a5a\"/><circle cx=\"231\" cy=\"57\" r=\"5\" fill=\"#3f86e0\"/><text x=\"166\" y=\"92\" font-size=\"9.5\" fill=\"#cfe6d8\" text-anchor=\"middle\">any blue · any 6 · or a wild</text></g></svg>","t":"Look at the card on top of the pile, then lay down one card that matches it by COLOR or by NUMBER — the symbol cards match the same way. A wild can be played on anything.","ex":"The pile shows a blue 6. You may play any other blue card, any 6 of any color, or a wild — your choice."},{"h":"Draw if you're stuck","t":"No playable card? Draw from the pile — and keep drawing until you turn one up. You can play that fresh card right away, or tap Keep it to hold it and end your turn."},{"h":"Action cards","svg":"<svg viewBox=\"0 0 280 96\"><g font-family=\"system-ui\"><rect x=\"24\" y=\"8\" width=\"56\" height=\"64\" rx=\"8\" fill=\"#fff\"/><rect x=\"29\" y=\"13\" width=\"46\" height=\"54\" rx=\"6\" fill=\"#e5413a\"/><circle cx=\"52\" cy=\"40\" r=\"14\" fill=\"none\" stroke=\"#fff\" stroke-width=\"4\"/><line x1=\"42\" y1=\"30\" x2=\"62\" y2=\"50\" stroke=\"#fff\" stroke-width=\"4\"/><text x=\"52\" y=\"90\" font-size=\"11\" fill=\"#cfe6d8\" text-anchor=\"middle\">Skip</text><rect x=\"112\" y=\"8\" width=\"56\" height=\"64\" rx=\"8\" fill=\"#fff\"/><rect x=\"117\" y=\"13\" width=\"46\" height=\"54\" rx=\"6\" fill=\"#3f9a5a\"/><path d=\"M128 34 H150\" stroke=\"#fff\" stroke-width=\"3.4\"/><polygon points=\"150,29 159,34 150,39\" fill=\"#fff\"/><path d=\"M152 46 H130\" stroke=\"#fff\" stroke-width=\"3.4\"/><polygon points=\"130,41 121,46 130,51\" fill=\"#fff\"/><text x=\"140\" y=\"90\" font-size=\"11\" fill=\"#cfe6d8\" text-anchor=\"middle\">Reverse</text><rect x=\"200\" y=\"8\" width=\"56\" height=\"64\" rx=\"8\" fill=\"#fff\"/><rect x=\"205\" y=\"13\" width=\"46\" height=\"54\" rx=\"6\" fill=\"#3f86e0\"/><text x=\"228\" y=\"49\" font-size=\"25\" font-weight=\"800\" fill=\"#fff\" text-anchor=\"middle\">+2</text><text x=\"228\" y=\"90\" font-size=\"11\" fill=\"#cfe6d8\" text-anchor=\"middle\">Draw Two</text></g></svg>","t":"Skip jumps the next player's turn entirely. Reverse flips the direction of play around the table — and with just two players it bounces straight back, so you go again. Draw Two makes the next player take two cards AND miss their turn."},{"h":"Wild cards","t":"A Wild lets you name the color that play must follow — drop it whenever you like. A Wild Draw Four does the same and makes the next player draw four and lose their turn. By default a Draw card can't be passed along: when one lands on you, you take the cards. Switch on Stacking before the game and you can answer any Draw card with another Draw card — a +2 or +4 — piling the whole total onto the next player instead.","ex":"Stuck with nothing the pile will take? A Wild switches the whole table over to your strongest color."},{"h":"“One Card Left!”","t":"The instant a player is down to a single card, the table calls it out for them — automatically, with a little chime. No need to remember to announce it, and no penalty if you would have forgotten; it's just the warning bell that someone's about to go out."},{"h":"Passing the device","t":"With more than one person, the screen hides each hand between turns — pass the phone and tap when you're ready, no peeking. Playing solo against the computers? Your hand stays up the whole time and they take their turns on their own."}]};
+const CNAME={r:"Red",y:"Yellow",g:"Green",b:"Blue"};
+function S(n){try{window.GNS&&GNS.play(n);}catch(e){}}
+const $=id=>document.getElementById(id);
+let st=null,seats=[],theHuman=-1,view=-1,live=false,busy=false;
+
+const BODY={r:["#e5413a","#bd2620"],y:["#f4c84a","#d99e1a"],g:["#52bd76","#2f8b4e"],b:["#3f86e0","#2056a8"],w:["#2c3a54","#161f30"]};
+const INK={r:"#bd2620",y:"#9a6a10",g:"#2f8b4e",b:"#2056a8"};
+function centerArt(card,ink){
+  const k=card.kind;
+  if(/^[0-9]$/.test(k))
+    return '<text x="50" y="74" font-family="Arial,Helvetica,sans-serif" font-size="64" font-weight="900" text-anchor="middle" dominant-baseline="central" fill="'+ink+'">'+k+'</text>';
+  if(k==="skip")
+    return '<g fill="none" stroke="'+ink+'" stroke-width="9" stroke-linecap="round"><circle cx="50" cy="72" r="22"/><line x1="35" y1="57" x2="65" y2="87"/></g>';
+  if(k==="rev")
+    return '<g fill="'+ink+'"><path d="M36 60 h16 v-7 l16 14 -16 14 v-7 h-16 z"/><path d="M64 84 h-16 v7 l-16 -14 16 -14 v7 h16 z"/></g>';
+  if(k==="d2")
+    return '<g transform="rotate(-16 50 72)"><rect x="33" y="50" width="22" height="36" rx="3" fill="#fff" stroke="'+ink+'" stroke-width="3"/><rect x="46" y="60" width="22" height="36" rx="3" fill="'+ink+'"/></g>';
+  return '';
+}
+function corner(card){
+  const k=card.kind;let t;
+  if(/^[0-9]$/.test(k))t=k; else if(k==="d2")t="+2"; else if(k==="wild4")t="+4";
+  else if(k==="skip")t="\u2298"; else if(k==="rev")t="\u21ba"; else t="\u2605";
+  return '<text x="17" y="30" font-family="Arial,Helvetica,sans-serif" font-size="17" font-weight="900" fill="#fff" stroke="rgba(0,0,0,.25)" stroke-width="0.8">'+t+'</text>';
+}
+function faceSVG(card){
+  const wild=card.color==="w",bd=BODY[card.color]||BODY.w,ink=INK[card.color]||"#fff";
+  let s='<svg viewBox="0 0 100 150" preserveAspectRatio="none">';
+  s+='<rect x="0" y="0" width="100" height="150" rx="12" fill="'+bd[0]+'"/>';
+  s+='<rect x="0" y="74" width="100" height="76" fill="'+bd[1]+'" opacity=".55"/>';
+  s+='<rect x="5.5" y="5.5" width="89" height="139" rx="9" fill="none" stroke="#fff" stroke-width="4" opacity=".92"/>';
+  if(wild){
+    s+='<g transform="rotate(45 50 72)"><rect x="33" y="55" width="17" height="17" fill="#e5413a"/><rect x="50" y="55" width="17" height="17" fill="#52bd76"/><rect x="33" y="72" width="17" height="17" fill="#3f86e0"/><rect x="50" y="72" width="17" height="17" fill="#f4c84a"/><rect x="33" y="55" width="34" height="34" fill="none" stroke="#fff" stroke-width="2.5"/></g>';
+    if(card.kind==="wild4")s+='<text x="50" y="126" font-family="Arial,Helvetica,sans-serif" font-size="24" font-weight="900" text-anchor="middle" fill="#fff" stroke="rgba(0,0,0,.3)" stroke-width="1">+4</text>';
+  }else{
+    s+='<ellipse cx="50" cy="72" rx="33" ry="48" fill="#fff" transform="rotate(-22 50 72)"/>';
+    s+=centerArt(card,ink);
+  }
+  s+=corner(card)+'<g transform="rotate(180 50 75)">'+corner(card)+'</g>';
+  s+='<path d="M6 6 H94 V40 Q50 56 6 40 Z" fill="rgba(255,255,255,.14)"/>';
+  return s+'</svg>';
+}
+function backSVG(){
+  return '<svg viewBox="0 0 100 150" preserveAspectRatio="none">'
+    +'<rect x="0" y="0" width="100" height="150" rx="12" fill="#22304a"/>'
+    +'<rect x="0" y="74" width="100" height="76" fill="#141d2e" opacity=".5"/>'
+    +'<rect x="5.5" y="5.5" width="89" height="139" rx="9" fill="none" stroke="#fff" stroke-width="4" opacity=".85"/>'
+    +'<ellipse cx="50" cy="72" rx="34" ry="46" fill="#caa83e" transform="rotate(-22 50 72)"/>'
+    +'<text x="50" y="80" font-family="Georgia,serif" font-size="21" font-weight="900" text-anchor="middle" fill="#1a2233">OCL</text></svg>';
+}
+function cardEl(card,faceUp){
+  const d=document.createElement("div");d.className="card";
+  d.innerHTML=faceUp?faceSVG(card):backSVG();
+  return d;
+}
+
+function curIsBot(){return !!seats[st.turn].bot;}
+function humanCount(){return seats.filter(s=>!s.bot).length;}
+
+GN.partyStart(function(m){
+  seats=m.seats;
+  theHuman=(humanCount()===1)?seats.findIndex(s=>!s.bot):-1;
+  st=OCL.newGame(seats.length,m.first,Math.random,m.rules);
+  view=theHuman>=0?theHuman:-1;
+  go(true);S("dice");
+},{min:2,max:4,toggles:[{key:"stack",label:"Stacking",sub:"Answer a Draw card with another Draw card",default:false}]});
+
+function dirText(){return (st.dir>0?"\u21bb":"\u21ba")+" "+(st.dir>0?"clockwise":"reverse");}
+function rectOf(el){return el?el.getBoundingClientRect():null;}
+function panelRect(seat){return rectOf(document.querySelector('.opp[data-seat="'+seat+'"]'));}
+function sfxForCard(card){const k=card.kind;
+  if(k==="d2")return "womp";if(k==="wild4"||k==="skip")return "bump";
+  if(k==="rev"||k==="wild")return "chime";return "place";}
+function flyCard(from,to,html,ms,cb){
+  if(!from||!to){if(cb)cb();return;}
+  const w=from.width||74,h=from.height||104;
+  const c=document.createElement("div");c.className="card";
+  c.style.cssText="position:fixed;left:0;top:0;width:"+w+"px;height:"+h+"px;z-index:45;pointer-events:none;box-shadow:0 8px 18px rgba(0,0,0,.5);";
+  c.innerHTML=html;document.body.appendChild(c);
+  const dx=to.left+(to.width-w)/2,dy=to.top+(to.height-h)/2;
+  c.style.transform="translate("+from.left+"px,"+from.top+"px)";
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    c.style.transition="transform "+ms+"ms cubic-bezier(.3,.7,.3,1)";
+    c.style.transform="translate("+dx+"px,"+dy+"px) scale(1.05)";}));
+  setTimeout(()=>{c.remove();if(cb)cb();},ms+40);
+}
+
+function render(){
+  $("dir").textContent=dirText();
+  // opponents = every seat except the one whose hand we show (view); if view<0 show all
+  const opps=$("opps");opps.innerHTML="";
+  seats.forEach((s,i)=>{
+    if(i===view)return;
+    const o=document.createElement("div");o.className="opp"+(i===st.turn?" turn":"");o.dataset.seat=i;
+    const n=st.hands[i].length;
+    let mini="";for(let k=0;k<Math.min(n,7);k++)mini+="<i></i>";
+    o.innerHTML='<div class="nm" style="color:'+s.light+'">'+s.name+'</div>'+
+      '<div class="mini">'+mini+'</div><div class="ct">'+n+" card"+(n===1?"":"s")+'</div>';
+    opps.appendChild(o);
+  });
+  // discard + colour ring
+  const dw=$("discWrap");dw.innerHTML="";dw.appendChild(cardEl(OCL.top(st),true));
+  dw.style.boxShadow="0 0 0 4px "+CMAP[st.color]+", 0 0 22px "+CMAP[st.color];
+  dw.style.position="relative";
+  if(st.pending>0){const pb=document.createElement("div");pb.id="pendBadge";pb.textContent="+"+st.pending;
+    pb.style.cssText="position:absolute;top:-12px;right:-12px;background:#e5413a;color:#fff;font-weight:800;border-radius:999px;padding:3px 10px;font-size:15px;box-shadow:0 2px 7px #0008;";
+    dw.appendChild(pb);}
+  $("colorRing").style.background=CMAP[st.color];
+  const dp=$("drawPile");dp.innerHTML="";dp.appendChild(cardEl(null,false));
+  // hand
+  const hand=$("hand"),acts=$("actions");hand.innerHTML="";acts.innerHTML="";
+  if(view>=0){
+    const h=st.hands[view],awaiting=(st.awaitDrawn!==null&&st.turn===view);
+    h.forEach((card,i)=>{
+      const el=cardEl(card,true);
+      const playable=live&&st.turn===view&&(awaiting?(i===st.awaitDrawn):OCL.playable(card,st));
+      if(playable)el.classList.add("sel");else if(live&&st.turn===view)el.classList.add("dim");
+      el.onclick=()=>tapCard(i,el);
+      hand.appendChild(el);
+    });
+    if(live&&st.turn===view){
+      if(awaiting){const k=document.createElement("button");k.className="btn";k.textContent="Keep it";
+        k.onclick=()=>{OCL.apply(st,{type:"pass"},Math.random);go();};acts.appendChild(k);}
+      else if(st.pending>0){const tk=document.createElement("button");tk.className="btn";tk.textContent="Take "+st.pending;
+        tk.onclick=takeHuman;acts.appendChild(tk);}
+      else{const dr=document.createElement("button");dr.className="btn";dr.textContent="Draw";
+        dr.onclick=drawHuman;acts.appendChild(dr);}
+    }
+    if(live&&st.turn===view&&st.pending>0)setStatus("A Draw +"+st.pending+" is on you \u2014 stack a Draw card or take them.");
+  }
+}
+
+function setStatus(t){$("status").textContent=t;}
+function go(first){
+  render();
+  if(st.winner!==null)return win();
+  if(curIsBot()){setStatus(seats[st.turn].name+" is thinking\u2026");botTurn();return;}
+  // human turn
+  if(theHuman>=0){view=theHuman;live=true;setStatus("Your turn, "+seats[st.turn].name+".");render();return;}
+  if(view!==st.turn){ // different human -> pass screen
+    live=false;view=-1;render();
+    $("passName").textContent=seats[st.turn].name+", you're up";
+    $("passOv").classList.add("show");
+  }else{live=true;setStatus("Your turn.");render();}
+}
+$("passBtn").onclick=function(){$("passOv").classList.remove("show");view=st.turn;live=true;setStatus("Your turn, "+seats[st.turn].name+".");render();};
+
+function tapCard(i,el){
+  if(!live||busy||st.turn!==view)return;
+  const awaiting=(st.awaitDrawn!==null);
+  if(awaiting){if(i!==st.awaitDrawn)return;return doPlay({type:"playDrawn"},st.hands[st.turn][i],el);}
+  const card=st.hands[st.turn][i];
+  if(!OCL.playable(card,st))return;
+  doPlay({type:"play",i},card,el);
+}
+function doPlay(move,card,el){
+  if(card.color==="w"){pickColor(c=>{move.color=c;commit(move,card,el);});}
+  else commit(move,card,el);
+}
+function commit(move,card,el){
+  const mover=st.turn,src=rectOf(el);
+  OCL.apply(st,move,Math.random);S(sfxForCard(card));
+  oneLeft(mover);render();
+  flyCard(src,rectOf($("discWrap")),faceSVG(card),260);
+  go();
+}
+function drawHuman(){
+  if(!live||busy||st.awaitDrawn!==null)return;
+  const mover=st.turn,src=rectOf($("drawPile"));
+  OCL.apply(st,{type:"draw"},Math.random);S("tap");
+  if(st.awaitDrawn!==null&&st.turn===mover){live=true;setStatus("You drew a card you can play \u2014 play it or keep it.");render();}
+  else go();
+  flyCard(src,rectOf($("hand")),backSVG(),240);
+}
+function takeHuman(){
+  if(!live||busy||st.pending<=0)return;
+  const src=rectOf($("drawPile")),n=st.pending;
+  OCL.apply(st,{type:"takeStack"},Math.random);S("bump");
+  setStatus("You drew "+n+" cards.");
+  go();
+  flyCard(src,rectOf($("hand")),backSVG(),240);
+}
+function botTurn(){
+  busy=true;live=false;render();
+  setTimeout(()=>{
+    const mover=st.turn,srcPanel=panelRect(mover);
+    const mv=OCL.botMove(st,seats[mover].bot,Math.random);
+    const isPlay=mv&&(mv.type==="play"||mv.type==="playDrawn");
+    const isTake=mv&&mv.type==="takeStack";
+    const takeN=isTake?st.pending:0;
+    OCL.apply(st,mv||{type:"draw"},Math.random);
+    const played=isPlay?OCL.top(st):null;
+    setStatus(seats[mover].name+" "+(isPlay?("played "+cardName(played,st.color)):isTake?("drew "+takeN+" cards"):"drew a card")+".");
+    S(isPlay?sfxForCard(played):isTake?"bump":"tap");
+    oneLeft(mover);render();
+    if(isPlay)flyCard(srcPanel,rectOf($("discWrap")),faceSVG(played),260);
+    else flyCard(rectOf($("drawPile")),srcPanel,backSVG(),240);
+    if(st.winner!==null){busy=false;return win();}
+    if(curIsBot()){botTurn();}else{busy=false;go();}
+  },850);
+}
+function cardName(card,activeColor){
+  const col=card.color==="w"?(CNAME[activeColor]||""):CNAME[card.color];
+  const k=card.kind==="d2"?"Draw Two":card.kind==="skip"?"Skip":card.kind==="rev"?"Reverse":
+          card.kind==="wild"?"Wild":card.kind==="wild4"?"Wild Draw Four":card.kind;
+  return (col?col+" ":"")+k;
+}
+function oneLeft(seat){
+  if(st.winner===null&&st.hands[seat].length===1)toast(seats[seat].name+" \u2014 One Card Left!");
+}
+function toast(t){const e=$("toast");e.textContent=t;e.classList.add("show");
+  clearTimeout(toast._t);toast._t=setTimeout(()=>e.classList.remove("show"),1700);}
+function pickColor(cb){
+  const row=$("pickRow");row.innerHTML="";
+  ["r","y","g","b"].forEach(c=>{const d=document.createElement("div");d.style.background=CMAP[c];
+    d.onclick=()=>{$("pickOv").classList.remove("show");cb(c);};row.appendChild(d);});
+  $("pickOv").classList.add("show");
+}
+function win(){
+  S("fanfare");
+  $("winName").textContent=seats[st.winner].name+" wins!";
+  $("winName").style.color=seats[st.winner].light;
+  $("winSub").textContent="One Card Left! \u2014 down to none.";
+  $("winOv").classList.add("show");
+}
+$("againBtn").onclick=()=>location.reload();
+$("drawPile").onclick=()=>{if(live&&!busy&&st&&st.turn===view&&st.awaitDrawn===null)drawHuman();};
+try{window.GNS&&GNS.button&&GNS.button($("bar"));}catch(e){}
+try{var _rb=GN.rulesButton($("bar"),OCL_RULES);_rb.textContent="?";_rb.style.padding="5px 11px";_rb.title="How to play";}catch(e){}
+</script>
+</body>
+</html>

@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Players</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  body{font-family:system-ui,sans-serif;color:#22303a;min-height:100vh;display:flex;flex-direction:column;align-items:center;
+    background:repeating-linear-gradient(#f2f6f8 0 27px,#d8e4ec 27px 28px);}
+  #bar{width:100%;max-width:620px;display:flex;align-items:center;gap:10px;padding:12px 14px;background:#f2f6f8;border-bottom:2px solid #4f9b6e;}
+  #bar a{color:#3a566e;text-decoration:none;font-size:14px;border:1.5px solid #9ab4c8;border-radius:999px;padding:6px 12px;background:#fff;}
+  #title{font-weight:800;font-size:20px;flex:1;}
+  #wrap{width:min(96vw,620px);padding:12px 16px 48px;}
+  .owner{background:rgba(255,255,255,.8);border-radius:12px;padding:10px 14px;margin:6px 0 16px;
+    box-shadow:0 1px 3px rgba(40,60,80,.15);display:flex;align-items:center;gap:10px;font-size:14px;}
+  .owner b{color:#2f7d4f;}
+  h2{font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:#5a7a5e;margin:14px 0 8px;}
+  .tok{flex:none;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;
+    box-shadow:0 1px 3px rgba(0,0,0,.25) inset,0 1px 2px rgba(0,0,0,.2);overflow:hidden;}
+  .tok img{width:100%;height:100%;object-fit:cover;}
+  .row{display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.85);border-radius:12px;padding:10px 14px;margin-bottom:8px;
+    box-shadow:0 1px 3px rgba(40,60,80,.15);cursor:pointer;border:2px solid transparent;}
+  .row.isowner{border-color:#4f9b6e;}
+  .row .nm{font-weight:700;font-size:16px;flex:1;}
+  .row .sub{font-size:12px;color:#7a8a98;}
+  .row .crown{font-size:14px;color:#2f7d4f;}
+  .add{display:block;width:100%;margin-top:6px;padding:12px;border:2px dashed #9ab4c8;border-radius:12px;background:rgba(255,255,255,.55);
+    color:#3a566e;font-weight:700;font-size:15px;font-family:inherit;cursor:pointer;}
+  /* editor overlay */
+  #ov{position:fixed;inset:0;background:rgba(20,32,28,.55);display:none;align-items:center;justify-content:center;padding:18px;z-index:10;}
+  #ov.show{display:flex;}
+  .card{background:#fbfdfb;border-radius:16px;width:min(440px,94vw);max-height:92vh;overflow:auto;padding:18px;box-shadow:0 12px 40px rgba(0,0,0,.4);}
+  .card h3{font-size:18px;margin-bottom:12px;display:flex;align-items:center;gap:10px;}
+  .fld{margin-bottom:14px;}
+  .fld label{display:block;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:#7a8a98;margin-bottom:5px;}
+  .fld input{width:100%;font-size:17px;font-family:inherit;padding:10px 12px;border:1.5px solid #c0d0da;border-radius:10px;}
+  .grid{display:flex;flex-wrap:wrap;gap:8px;}
+  .sw{width:38px;height:38px;border-radius:50%;cursor:pointer;border:3px solid transparent;}
+  .sw.sel{border-color:#22303a;transform:scale(1.08);}
+  .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;}
+  .btn{flex:1;min-width:120px;font-family:inherit;font-weight:800;font-size:15px;padding:11px;border-radius:10px;border:none;cursor:pointer;}
+  .btn.primary{background:#2f7d4f;color:#fff;}
+  .btn.ghost{background:#eef3f1;color:#2a3a30;}
+  .btn.owner{background:#dff0e6;color:#2f7d4f;border:1.5px solid #2f7d4f;}
+  .btn.danger{background:#fbe7e4;color:#b23a2e;}
+  .statbox{background:#eef3f1;border-radius:10px;padding:10px 12px;margin:10px 0 4px;font-size:13.5px;}
+  .statbox table{width:100%;border-collapse:collapse;}
+  .statbox td{padding:3px 0;}
+  .statbox td.r{text-align:right;font-variant-numeric:tabular-nums;color:#3a566e;font-weight:700;}
+  .statempty{color:#7a8a98;font-style:italic;}
+  .note{font-size:12px;color:#7a8a98;font-style:italic;margin-top:18px;line-height:1.5;}
+</style></head><body>
+<div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">&#128101; Players</div></div>
+<div id="wrap">
+  <div class="owner" id="ownerBox"></div>
+  <h2>Everyone on this shelf</h2>
+  <div id="list"></div>
+  <button class="add" id="addBtn">&#43; Add a player</button>
+  <div class="note">A profile keeps that player's stats and (for whoever owns this device) their preferences.
+    Picking <b>Make this device's owner</b> sets whose preferences this phone uses &mdash; everyone's stats are still tracked.
+    Custom icons and photos are coming next.</div>
+</div>
+
+<div id="ov"><div class="card" id="card"></div></div>
+
+<script src="gamenight.js?v=12"></script>
+<script>
+const $=id=>document.getElementById(id);
+let editId=null, pickColor=null; // editor state
+
+function tokenHTML(p,size){
+  const s=size||40, av=p.avatar||{kind:"color"};
+  let inner='';
+  if(av.kind==="photo"&&av.photo)inner='<img src="'+av.photo+'" alt="">';
+  else if(av.kind==="icon"&&av.icon)inner='<span style="font-size:'+Math.round(s*0.5)+'px;">&#9733;</span>'; // icon set arrives in 2b
+  else inner=(p.name||"?").trim().charAt(0).toUpperCase();
+  return '<div class="tok" style="width:'+s+'px;height:'+s+'px;font-size:'+Math.round(s*0.42)+'px;'
+    +'background:radial-gradient(circle at 35% 30%,'+p.light+','+p.color+' 62%,'+p.dark+');">'+inner+'</div>';
+}
+function statLine(p){
+  const ks=Object.keys(p.stats||{});
+  if(!ks.length)return "no games yet";
+  let plays=0,wins=0;ks.forEach(k=>{plays+=p.stats[k].plays||0;wins+=p.stats[k].wins||0;});
+  return plays+" game"+(plays===1?"":"s")+" \u00b7 "+wins+" win"+(wins===1?"":"s");
+}
+const TITLES={yahtzee:"Yahtzee",farkle:"Farkle",shutbox:"Shut the Box",chess:"Chess",onecardleft:"One Card Left!",
+  checkers:"Checkers",connect4:"Connect 4",reversi:"Reversi",mancala:"Mancala",dots:"Dots & Boxes",
+  ur:"Royal Game of Ur",trouble:"Trouble",snakes:"Snakes & Ladders",war:"War",sorry:"Sorry!"};
+
+function render(){
+  const owner=GN.profiles.owner();
+  $("ownerBox").innerHTML = owner
+    ? ('This device&rsquo;s owner: '+tokenHTML(owner,28)+'<b>'+esc(owner.name)+'</b>')
+    : 'No owner set for this device yet &mdash; tap a player and choose <b>Make owner</b>.';
+  const list=$("list");list.innerHTML="";
+  GN.profiles.list().forEach(p=>{
+    const row=document.createElement("div");row.className="row"+(owner&&owner.id===p.id?" isowner":"");
+    row.innerHTML=tokenHTML(p,44)
+      +'<div style="flex:1;min-width:0;"><div class="nm">'+esc(p.name)+(owner&&owner.id===p.id?' <span class="crown">&#9733; this device</span>':'')+'</div>'
+      +'<div class="sub">'+statLine(p)+'</div></div>';
+    row.onclick=()=>openEditor(p.id);
+    list.appendChild(row);
+  });
+}
+function esc(s){return (s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+
+function openEditor(id){
+  editId=id;
+  const isNew=!id;
+  const p=isNew?{name:"",...GN.palette()[ firstFreeColorIdx() ],avatar:{kind:"color"},stats:{}}:GN.profiles.get(id);
+  pickColor={color:p.color,light:p.light,dark:p.dark};
+  const card=$("card");
+  let h='<h3 id="eh">'+(isNew?"New player":"Edit player")+'</h3>';
+  h+='<div class="fld"><label>Name</label><input id="enm" maxlength="16" placeholder="Name" value="'+esc(p.name)+'"></div>';
+  h+='<div class="fld"><label>Token color</label><div class="grid" id="egrid"></div></div>';
+  if(!isNew){
+    h+='<div class="fld"><label>Stats</label><div class="statbox" id="estats"></div></div>';
+  }
+  h+='<div class="btns">';
+  h+='<button class="btn primary" id="esave">'+(isNew?"Create":"Save")+'</button>';
+  if(!isNew)h+='<button class="btn owner" id="eowner">Make this device&rsquo;s owner</button>';
+  h+='<button class="btn ghost" id="ecancel">Cancel</button>';
+  if(!isNew)h+='<button class="btn danger" id="eremove">Remove</button>';
+  h+='</div>';
+  card.innerHTML=h;
+  // color grid
+  const grid=card.querySelector("#egrid");
+  GN.palette().forEach(pal=>{
+    const sw=document.createElement("div");sw.className="sw"+(pal.color===pickColor.color?" sel":"");
+    sw.style.background="radial-gradient(circle at 35% 30%,"+pal.light+","+pal.color+" 62%,"+pal.dark+")";
+    sw.onclick=()=>{pickColor={color:pal.color,light:pal.light,dark:pal.dark};
+      [...grid.children].forEach(c=>c.classList.remove("sel"));sw.classList.add("sel");};
+    grid.appendChild(sw);
+  });
+  if(!isNew)renderStats(card.querySelector("#estats"),p);
+  card.querySelector("#esave").onclick=saveEditor;
+  card.querySelector("#ecancel").onclick=closeEditor;
+  if(!isNew){
+    card.querySelector("#eowner").onclick=()=>{GN.profiles.setOwner(id);closeEditor();render();};
+    card.querySelector("#eremove").onclick=()=>removeProfile(id,p.name);
+  }
+  $("ov").classList.add("show");
+  setTimeout(()=>{const i=card.querySelector("#enm");if(i&&isNew)i.focus();},30);
+}
+function renderStats(box,p){
+  const ks=Object.keys(p.stats||{});
+  if(!ks.length){box.innerHTML='<span class="statempty">No games recorded yet.</span>';return;}
+  let h='<table>';
+  ks.sort().forEach(k=>{const s=p.stats[k];
+    h+='<tr><td>'+(TITLES[k]||k)+'</td><td class="r">'+(s.plays||0)+' played \u00b7 '+(s.wins||0)+' won'
+      +(s.best!=null?' \u00b7 best '+s.best:'')+'</td></tr>';});
+  h+='</table>';box.innerHTML=h;
+}
+function firstFreeColorIdx(){
+  const used=new Set(GN.profiles.list().map(p=>p.color));
+  const pal=GN.palette();for(let i=0;i<pal.length;i++)if(!used.has(pal[i].color))return i;
+  return GN.profiles.list().length%pal.length;
+}
+function saveEditor(){
+  const name=($("card").querySelector("#enm").value||"").trim();
+  if(!name){$("card").querySelector("#enm").focus();return;}
+  if(editId){GN.profiles.rename(editId,name);GN.profiles.recolor(editId,pickColor);}
+  else{const np=GN.profiles.add(name,pickColor);if(np)GN.profiles.recolor(np.id,pickColor);}
+  closeEditor();render();
+}
+function removeProfile(id,name){
+  if(GN.profiles.list().length<=1){alert("You need at least one player.");return;}
+  if(confirm("Remove "+name+"? Their stats will be deleted. This can\u2019t be undone."))
+    {GN.profiles.remove(id);closeEditor();render();}
+}
+function closeEditor(){$("ov").classList.remove("show");editId=null;}
+$("addBtn").onclick=()=>openEditor(null);
+$("ov").addEventListener("click",e=>{if(e.target===$("ov"))closeEditor();});
+render();
+</script>
+</body></html>

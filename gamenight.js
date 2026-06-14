@@ -78,18 +78,51 @@ function defaultPlayers(){return[
   {name:"Garrett",...PALETTE[2]}];}
 function pload(){try{const l=JSON.parse(localStorage.getItem(PKEY));return(l&&l.length)?l:defaultPlayers();}catch(e){return defaultPlayers();}}
 function psave(l){try{localStorage.setItem(PKEY,JSON.stringify(l));}catch(e){}}
-GN.players=function(){return pload();};
-GN.addPlayer=function(name,chosenPal){name=(name||"").trim();if(!name)return null;
-  const l=pload();if(l.some(p=>p.name.toLowerCase()===name.toLowerCase()))return l.find(p=>p.name.toLowerCase()===name.toLowerCase());
-  const used=new Set(l.map(p=>p.color));
-  const pal=chosenPal||PALETTE.find(c=>!used.has(c.color))||PALETTE[l.length%PALETTE.length];
-  const p={name,...pal};l.push(p);psave(l);
-  mirror(()=>_db.doc("households/"+_hh+"/state/players").set({list:FV().arrayUnion(p)},{merge:true}));
-  return p;};
-GN.recolorPlayer=function(name,pal){const l=pload();const i=l.findIndex(p=>p.name.toLowerCase()===(name||"").toLowerCase());if(i<0)return null;
-  l[i]={name:l[i].name,...pal};psave(l);
-  mirror(()=>_db.doc("households/"+_hh+"/state/players").set({list:l}));
-  return l[i];};
+/* ---------- PLAYER PROFILES (foundation — see PROFILES_SPEC.md) ---------- */
+const PROFKEY="gn_profiles",OWNERKEY="gn_owner";
+function newId(){return "p_"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+function profSave(l){try{localStorage.setItem(PROFKEY,JSON.stringify(l));}catch(e){}
+  try{psave(l.map(p=>({name:p.name,color:p.color,light:p.light,dark:p.dark})));}catch(e){} } // mirror name/color into legacy roster (sync continuity until Phase 5)
+function profLoad(){
+  try{const l=JSON.parse(localStorage.getItem(PROFKEY));if(l&&l.length)return l;}catch(e){}
+  const seed=pload().map(p=>({id:newId(),name:p.name,color:p.color,light:p.light,dark:p.dark,avatar:{kind:"color"},prefs:{},stats:{}}));
+  profSave(seed);return seed;
+}
+function mirrorProfiles(l){mirror(()=>_db.doc("households/"+_hh+"/state/profiles").set({list:l}));}
+function applyOwnerPrefs(){/* Phase 3 wires Easy View / sound / TV to the owner's prefs */}
+GN.profiles={
+  list:function(){return profLoad();},
+  get:function(id){return profLoad().find(p=>p.id===id)||null;},
+  byName:function(n){n=(n||"").toLowerCase();return profLoad().find(p=>p.name.toLowerCase()===n)||null;},
+  add:function(name,pal){name=(name||"").trim();if(!name)return null;const l=profLoad();
+    const ex=l.find(p=>p.name.toLowerCase()===name.toLowerCase());if(ex)return ex;
+    const used=new Set(l.map(p=>p.color));const c=pal||PALETTE.find(x=>!used.has(x.color))||PALETTE[l.length%PALETTE.length];
+    const p={id:newId(),name:name,color:c.color,light:c.light,dark:c.dark,avatar:{kind:"color"},prefs:{},stats:{}};
+    l.push(p);profSave(l);mirrorProfiles(l);return p;},
+  rename:function(id,name){name=(name||"").trim();if(!name)return null;const l=profLoad();const p=l.find(x=>x.id===id);if(!p)return null;p.name=name;profSave(l);mirrorProfiles(l);return p;},
+  recolor:function(id,pal){const l=profLoad();const p=l.find(x=>x.id===id);if(!p||!pal)return null;p.color=pal.color;p.light=pal.light;p.dark=pal.dark;profSave(l);mirrorProfiles(l);return p;},
+  setAvatar:function(id,av){const l=profLoad();const p=l.find(x=>x.id===id);if(!p)return null;p.avatar=av||{kind:"color"};profSave(l);mirrorProfiles(l);return p;},
+  remove:function(id){let l=profLoad();if(l.length<=1)return false;l=l.filter(p=>p.id!==id);profSave(l);mirrorProfiles(l);
+    try{if(localStorage.getItem(OWNERKEY)===id)localStorage.removeItem(OWNERKEY);}catch(e){}return true;},
+  owner:function(){try{const id=localStorage.getItem(OWNERKEY);if(id){const p=this.get(id);if(p)return p;}}catch(e){}return null;},
+  needsOwner:function(){return !this.owner();},
+  setOwner:function(id){try{localStorage.setItem(OWNERKEY,id);}catch(e){}applyOwnerPrefs();return this.owner();},
+  pref:function(k,d){const o=this.owner();return(o&&o.prefs&&(k in o.prefs))?o.prefs[k]:d;},
+  setPref:function(k,v){const o=this.owner();if(!o)return;const l=profLoad();const p=l.find(x=>x.id===o.id);if(!p)return;p.prefs=p.prefs||{};p.prefs[k]=v;profSave(l);mirrorProfiles(l);applyOwnerPrefs();},
+  bump:function(idOrName,gameKey,delta){const l=profLoad();const p=l.find(x=>x.id===idOrName)||l.find(x=>x.name.toLowerCase()===(idOrName||"").toLowerCase());if(!p)return;
+    delta=delta||{};const s=p.stats[gameKey]||(p.stats[gameKey]={plays:0,wins:0});
+    s.plays+=(delta.plays!=null?delta.plays:1);
+    if(delta.win)s.wins=(s.wins||0)+1;
+    if(delta.loss)s.losses=(s.losses||0)+1;
+    if(delta.draw)s.draws=(s.draws||0)+1;
+    if(delta.score!=null)s.best=Math.max(s.best||0,delta.score);
+    profSave(l);mirrorProfiles(l);},
+  recordResult:function(gameKey,results){(results||[]).forEach(r=>this.bump(r.id||r.name,gameKey,r));}
+};
+/* roster now sourced from profiles; shape preserved so all games keep working */
+GN.players=function(){return profLoad().map(p=>({name:p.name,color:p.color,light:p.light,dark:p.dark}));};
+GN.addPlayer=function(name,chosenPal){return GN.profiles.add(name,chosenPal);};
+GN.recolorPlayer=function(name,pal){const p=GN.profiles.byName(name);if(!p)return null;return GN.profiles.recolor(p.id,pal);};
 GN.lastPair=function(){try{const pr=JSON.parse(localStorage.getItem(PAIRKEY));
     if(pr&&pr.length===2){const l=pload();
       const a=l.find(p=>p.name===pr[0]),b=l.find(p=>p.name===pr[1]);
@@ -351,6 +384,140 @@ GN.matchStart=function(done,opts){injectCSS();GN._inPlay=false;opts=opts||{};
       go.onclick=function(){ov.remove();GN._inPlay=true;
         done(mode==="cpu"?{a,b,first,bot:botLevel,vsComputer:true,friendly:true}:{a,b,first,friendly});};}
     requestAnimationFrame(toss);};};
+
+/* ---------- party start: 2-4 seats, humans + computers ---------- */
+/* GN.partyStart(done,{min,max,start}) -> done({seats:[{name,color,light,dark,bot}],first,friendly:true})
+   bot is a level string ("easy"/"medium"/"hard") for a computer seat, or null for a human. */
+GN.partyStart=function(done,opts){injectCSS();GN._inPlay=false;opts=opts||{};
+  const MIN=opts.min||2,MAX=Math.min(opts.max||4,8);
+  const NEUTRAL={color:"#6b7280",light:"#9aa3af",dark:"#3f454d"};
+  const LEVELS=[["Easy","easy"],["Medium","medium"],["Hard","hard"]];
+  function pcLoad(){try{return +localStorage.getItem("gn_party_n")||0;}catch(e){return 0;}}
+  function pcSave(n){try{localStorage.setItem("gn_party_n",n);}catch(e){}}
+  let count=Math.min(MAX,Math.max(MIN,pcLoad()||opts.start||MIN));
+  let seats=[];
+  function freshSeats(n){const r=GN.players(),s=[];
+    for(let i=0;i<n;i++){
+      if(i<r.length){const h=r[i];s.push({kind:"human",name:h.name,color:h.color,light:h.light,dark:h.dark,bot:null});}
+      else s.push({kind:"cpu",bot:"medium"});}
+    return s;}
+  function normalize(){ // distinct colors for computers + numbering
+    const used=new Set(seats.filter(s=>s.kind==="human").map(s=>s.color));
+    const pool=PALETTE.filter(c=>!used.has(c.color));let pi=0,cn=0;
+    seats.forEach(s=>{if(s.kind==="cpu"){cn++;const col=pool[pi++]||NEUTRAL;
+      s.color=col.color;s.light=col.light;s.dark=col.dark;s.name=cn>1?("Computer "+cn):"Computer";}});}
+  seats=freshSeats(count);normalize();
+
+  const ov=document.createElement("div");ov.className="gnOv";
+  const back=document.createElement("a");back.href="index.html";back.textContent="\u2329 Shelf";
+  back.style.cssText="position:absolute;top:14px;left:14px;color:#cfe6d8;border:1px solid #3a5a47;border-radius:999px;padding:7px 14px;text-decoration:none;font-size:14px;z-index:2;";
+  ov.appendChild(back);
+  ov.innerHTML+='<div class="gnTitle" id="pT">Who\u2019s playing?</div>';
+  document.body.appendChild(ov);
+  const title=ov.querySelector("#pT");
+
+  const cRow=document.createElement("div");
+  cRow.style.cssText="display:flex;gap:8px;justify-content:center;margin:2px 0 2px;";
+  const cBtns={};
+  for(let n=MIN;n<=MAX;n++){const b=document.createElement("button");b.textContent=n;
+    b.style.cssText="font-family:inherit;font-weight:800;font-size:16px;cursor:pointer;border-radius:10px;padding:9px 15px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;";
+    b.onclick=()=>setCount(n);cBtns[n]=b;cRow.appendChild(b);}
+  ov.appendChild(cRow);
+  const cLbl=document.createElement("div");cLbl.textContent="players";
+  cLbl.style.cssText="color:#7d9a88;font-size:11px;text-align:center;margin:2px 0 10px;letter-spacing:1.5px;text-transform:uppercase;";
+  ov.appendChild(cLbl);
+
+  const slist=document.createElement("div");
+  slist.style.cssText="display:flex;flex-direction:column;gap:8px;align-items:center;width:min(320px,86vw);";
+  ov.appendChild(slist);
+
+  const hint=document.createElement("div");
+  hint.style.cssText="color:#7d9a88;font-size:12.5px;text-align:center;margin:12px 0 4px;";
+  hint.textContent="First player is chosen at random.";
+  ov.appendChild(hint);
+
+  const togVals={};
+  if(opts.toggles&&opts.toggles.length){
+    const tWrap=document.createElement("div");
+    tWrap.style.cssText="display:flex;flex-direction:column;gap:7px;align-items:stretch;width:min(320px,86vw);margin:4px 0 2px;";
+    opts.toggles.forEach(tg=>{
+      let on;try{const v=localStorage.getItem("gn_party_tog_"+tg.key);on=(v===null)?!!tg.default:(v==="1");}catch(e){on=!!tg.default;}
+      togVals[tg.key]=on;
+      const row=document.createElement("button");
+      row.style.cssText="display:flex;align-items:center;gap:10px;text-align:left;font-family:inherit;cursor:pointer;border-radius:12px;padding:9px 12px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;width:100%;";
+      const txt=document.createElement("div");txt.style.cssText="flex:1;min-width:0;";
+      txt.innerHTML='<div style="font-weight:800;font-size:14.5px;">'+tg.label+'</div>'+(tg.sub?'<div style="font-size:11.5px;color:#7d9a88;">'+tg.sub+'</div>':'');
+      const pill=document.createElement("div");pill.style.cssText="flex:none;width:46px;height:26px;border-radius:999px;position:relative;transition:background .15s;";
+      const knob=document.createElement("div");knob.style.cssText="position:absolute;top:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left .15s;";
+      pill.appendChild(knob);
+      function paint(){pill.style.background=togVals[tg.key]?"#2f7d4f":"#3a4750";knob.style.left=togVals[tg.key]?"23px":"3px";}
+      paint();
+      row.onclick=()=>{togVals[tg.key]=!togVals[tg.key];try{localStorage.setItem("gn_party_tog_"+tg.key,togVals[tg.key]?"1":"0");}catch(e){}paint();};
+      row.appendChild(txt);row.appendChild(pill);tWrap.appendChild(row);
+    });
+    ov.appendChild(tWrap);
+  }
+
+  const go=document.createElement("button");go.className="gnBtn";go.textContent="Start";
+  ov.appendChild(go);
+
+  function setCount(n){count=n;
+    if(seats.length<n)seats=seats.concat(freshSeats(n).slice(seats.length));
+    else seats=seats.slice(0,n);
+    normalize();render();}
+  function seatLabel(s){return s.kind==="cpu"?("\ud83e\udd16 "+s.name+" \u00b7 "+s.bot):s.name;}
+  function mkRow(label,c,l,d){const b=document.createElement("button");b.className="gnSeat";
+    b.style.width="min(300px,82vw)";b.style.minWidth="0";b.style.fontSize="16px";
+    b.style.background="linear-gradient(160deg,"+l+","+c+" 60%,"+d+")";b.textContent=label;return b;}
+  function openChooser(i){
+    const used=new Set(seats.filter((s,j)=>j!==i&&s.kind==="human").map(s=>s.name));
+    const avail=GN.players().filter(h=>!used.has(h.name));
+    const sheet=document.createElement("div");
+    sheet.style.cssText="position:fixed;inset:0;z-index:3;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:rgba(10,16,12,.85);padding:20px;overflow:auto;";
+    const t=document.createElement("div");t.className="gnTitle";t.style.fontSize="20px";t.textContent="Seat "+(i+1)+" \u2014 who?";sheet.appendChild(t);
+    avail.forEach(h=>{const b=mkRow(h.name,h.color,h.light,h.dark);
+      b.onclick=()=>{seats[i]={kind:"human",name:h.name,color:h.color,light:h.light,dark:h.dark,bot:null};normalize();sheet.remove();render();};
+      sheet.appendChild(b);});
+    LEVELS.forEach(L=>{const b=mkRow("\ud83e\udd16 Computer \u00b7 "+L[0],NEUTRAL.color,NEUTRAL.light,NEUTRAL.dark);
+      b.onclick=()=>{seats[i]={kind:"cpu",bot:L[1]};normalize();sheet.remove();render();};
+      sheet.appendChild(b);});
+    const cx=document.createElement("button");cx.className="gnAdd";cx.textContent="cancel";cx.onclick=()=>sheet.remove();sheet.appendChild(cx);
+    ov.appendChild(sheet);
+  }
+  function render(){
+    for(const n in cBtns)cBtns[n].style.background=(+n===count)?"#2f7d4f":"#15241b";
+    slist.innerHTML="";
+    seats.forEach((s,i)=>{const btn=document.createElement("button");btn.className="gnSeat";
+      btn.style.width="100%";btn.style.minWidth="0";
+      btn.style.background="linear-gradient(160deg,"+s.light+","+s.color+" 60%,"+s.dark+")";
+      btn.appendChild(document.createTextNode(seatLabel(s)));
+      const sm=document.createElement("small");sm.textContent=s.kind==="cpu"?"computer \u2014 tap to change":"tap to change";btn.appendChild(sm);
+      btn.onclick=()=>openChooser(i);slist.appendChild(btn);});
+    const humans=seats.filter(s=>s.kind==="human").length;
+    go.disabled=humans<1;go.style.opacity=humans<1?".5":"";go.textContent=humans<1?"Add a person":"Start";
+  }
+  go.onclick=function(){
+    if(go.disabled)return;
+    pcSave(count);
+    const out=seats.map(s=>({name:s.name,color:s.color,light:s.light,dark:s.dark,bot:s.kind==="cpu"?s.bot:null}));
+    const items=[...slist.children];
+    const first=Math.floor(Math.random()*count);
+    go.disabled=true;go.textContent="Choosing\u2026";cRow.style.pointerEvents="none";slist.style.pointerEvents="none";
+    title.textContent="Who goes first?";
+    function hi(k){items.forEach((el,j)=>el.style.outline=(j===k)?"3px solid #f4c542":"none");}
+    let cur=0,t=0;const minT=count*2+Math.floor(Math.random()*count);
+    const iv=setInterval(()=>{
+      hi(cur);
+      if(t>=minT&&cur===first){clearInterval(iv);
+        const f=out[first];title.textContent=f.name+" goes first!";title.style.color=f.color;
+        GN.friendly=true;
+        setTimeout(()=>{ov.remove();GN._inPlay=true;done({seats:out,first:first,friendly:true,rules:Object.assign({},togVals)});},700);
+        return;}
+      cur=(cur+1)%count;t++;
+    },110);
+  };
+  render();
+};
 
 /* ---------- stats overlay ---------- */
 /* GN.openStats({title,key,specials:[{label,of:(recs,name)=>num}]}) — h2h is the last pairing */
