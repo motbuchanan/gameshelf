@@ -86,6 +86,10 @@ GN.addPlayer=function(name,chosenPal){name=(name||"").trim();if(!name)return nul
   const p={name,...pal};l.push(p);psave(l);
   mirror(()=>_db.doc("households/"+_hh+"/state/players").set({list:FV().arrayUnion(p)},{merge:true}));
   return p;};
+GN.recolorPlayer=function(name,pal){const l=pload();const i=l.findIndex(p=>p.name.toLowerCase()===(name||"").toLowerCase());if(i<0)return null;
+  l[i]={name:l[i].name,...pal};psave(l);
+  mirror(()=>_db.doc("households/"+_hh+"/state/players").set({list:l}));
+  return l[i];};
 GN.lastPair=function(){try{const pr=JSON.parse(localStorage.getItem(PAIRKEY));
     if(pr&&pr.length===2){const l=pload();
       const a=l.find(p=>p.name===pr[0]),b=l.find(p=>p.name===pr[1]);
@@ -197,6 +201,7 @@ GN.matchStart=function(done,opts){injectCSS();GN._inPlay=false;opts=opts||{};
   ov.innerHTML+='<div class="gnTitle" id="gnT">Who\u2019s playing?</div>'+
     '<div class="gnSeats"><button class="gnSeat" id="gnA"></button><span class="gnVs">vs</span><button class="gnSeat" id="gnB"></button></div>'+
     '<button class="gnAdd" id="gnNew">+ add a player</button>'+
+    '<button class="gnAdd" id="gnRecolor">\ud83c\udfa8 change a color</button>'+
     '<button class="gnAdd" id="gnFr" style="color:#cfe6d8;">\u2713 Counts for the record</button>'+
     '<div class="gnScene" style="display:none" id="gnSc"><div class="gnCoin" id="gnC"></div><div class="gnShadow"></div></div>'+
     '<button class="gnBtn" id="gnGo">Flip for first</button>';
@@ -206,70 +211,110 @@ GN.matchStart=function(done,opts){injectCSS();GN._inPlay=false;opts=opts||{};
   function seat(el,p){el.textContent=p.name;el.style.background="linear-gradient(160deg,"+p.light+","+p.color+" 60%,"+p.dark+")";
     const s=document.createElement("small");s.textContent="tap to change";el.appendChild(s);}
   function refresh(){seat(eA,a);seat(eB,b);}
-  let solo=false;
-  if(opts.solo){
+  let mode="2p",botLevel=null;              // "1p" | "2p" | "cpu"; botLevel null until chosen
+  const CPU={name:"Computer",color:"#6b7280",light:"#9aa3af",dark:"#3f454d"};
+  const origB=b;
+  if(opts.solo||opts.bot){
     const modeRow=document.createElement("div");
-    modeRow.style.cssText="display:flex;gap:8px;justify-content:center;margin:2px 0 4px;";
-    const b1=document.createElement("button"),b2=document.createElement("button");
-    b1.textContent="1 player";b2.textContent="2 players";
-    [b1,b2].forEach(btn=>btn.style.cssText="font-family:inherit;cursor:pointer;border-radius:999px;padding:9px 18px;font-size:15px;font-weight:700;border:1px solid #3a5a47;color:#cfe6d8;");
+    modeRow.style.cssText="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:2px 0 4px;";
+    const btns={};
+    function mk(label,key){const btn=document.createElement("button");btn.textContent=label;
+      btn.style.cssText="font-family:inherit;cursor:pointer;border-radius:999px;padding:9px 16px;font-size:15px;font-weight:700;border:1px solid #3a5a47;color:#cfe6d8;";
+      btn.onclick=function(){mode=key;applyMode();};btns[key]=btn;modeRow.appendChild(btn);}
+    if(opts.solo)mk("1 player","1p");
+    mk("2 players","2p");
+    if(opts.bot)mk("vs Computer","cpu");
+    const wantDiff=opts.bot&&!opts.botSimple;
+    const diffRow=document.createElement("div");
+    diffRow.style.cssText="display:none;gap:8px;justify-content:center;margin:0 0 6px;";
+    const diffBtns={};
+    [["Easy","easy"],["Medium","medium"],["Hard","hard"]].forEach(function(pair){
+      const d=document.createElement("button");d.textContent=pair[0];
+      d.style.cssText="font-family:inherit;cursor:pointer;border-radius:999px;padding:7px 14px;font-size:13px;font-weight:700;border:1px solid #4a5a6a;color:#cfe0ee;";
+      d.onclick=function(){botLevel=pair[1];applyDiff();};diffBtns[pair[1]]=d;diffRow.appendChild(d);});
+    function updateGo(){const isCpu=mode==="cpu",isSolo=mode==="1p";
+      const needDiff=isCpu&&wantDiff&&!botLevel;
+      go.disabled=needDiff;go.style.opacity=needDiff?".5":"";
+      go.textContent=isSolo?"Start":(needDiff?"Pick a difficulty":"Flip for first");}
+    function applyDiff(){for(const k in diffBtns)diffBtns[k].style.background=(botLevel===k)?"#2f6fd0":"#15202b";updateGo();}
     function applyMode(){
-      b1.style.background=solo?"#2f7d4f":"#15241b";b2.style.background=solo?"#15241b":"#2f7d4f";
-      eB.style.display=solo?"none":"";const vs=ov.querySelector(".gnVs");if(vs)vs.style.display=solo?"none":"";
-      title.textContent=solo?"Playing solo":"Who\u2019s playing?";
-      go.textContent=solo?"Start":"Flip for first";}
-    b1.onclick=()=>{solo=true;applyMode();};
-    b2.onclick=()=>{solo=false;applyMode();};
-    modeRow.appendChild(b1);modeRow.appendChild(b2);
-    const seatsEl=ov.querySelector(".gnSeats");seatsEl.parentNode.insertBefore(modeRow,seatsEl);
-    applyMode();
+      for(const k in btns)btns[k].style.background=(mode===k)?"#2f7d4f":"#15241b";
+      const isCpu=mode==="cpu",isSolo=mode==="1p";
+      diffRow.style.display=(isCpu&&wantDiff)?"flex":"none";
+      eB.style.display=isSolo?"none":"";
+      const vs=ov.querySelector(".gnVs");if(vs)vs.style.display=isSolo?"none":"";
+      const frB=ov.querySelector("#gnFr");if(frB)frB.style.display=isCpu?"none":"";
+      if(isCpu){b=CPU;}else if(b===CPU){b=origB;}
+      refresh();
+      title.textContent=isSolo?"Playing solo":(isCpu?"You vs the Computer":"Who\u2019s playing?");
+      updateGo();}
+    const seatsEl=ov.querySelector(".gnSeats");
+    seatsEl.parentNode.insertBefore(modeRow,seatsEl);
+    if(wantDiff)seatsEl.parentNode.insertBefore(diffRow,seatsEl);
+    applyDiff();applyMode();
   }
   function cycle(cur,other){const l=GN.players();let i=l.findIndex(p=>p.name===cur.name);
     for(let k=1;k<=l.length;k++){const c=l[(i+k)%l.length];if(c.name!==other.name)return c;}return cur;}
   eA.onclick=()=>{a=cycle(a,b);refresh();};
-  eB.onclick=()=>{b=cycle(b,a);refresh();};
-  ov.querySelector("#gnNew").onclick=()=>{const n=(prompt("Player name?")||"").trim();
-    if(!n)return;
-    const existing=GN.players().find(p=>p.name.toLowerCase()===n.toLowerCase());
-    if(existing){if(existing.name!==a.name){b=existing;refresh();}return;}
-    // color picker
-    const seats=ov.querySelector(".gnSeats"),nw=ov.querySelector("#gnNew"),frB=ov.querySelector("#gnFr");
-    seats.style.display="none";nw.style.display="none";frB.style.display="none";go.style.display="none";
-    const oldTitle=title.textContent;title.textContent="Pick "+n+"'s color";
+  eB.onclick=()=>{if(mode==="cpu")return;b=cycle(b,a);refresh();};
+  function gnHideChrome(){[ov.querySelector(".gnSeats"),ov.querySelector("#gnNew"),ov.querySelector("#gnFr"),ov.querySelector("#gnRecolor"),go].forEach(e=>{if(e)e.style.display="none";});}
+  function applyChrome(){const isCpu=mode==="cpu",isSolo=mode==="1p";
+    if(eB)eB.style.display=isSolo?"none":"";
+    const vs=ov.querySelector(".gnVs");if(vs)vs.style.display=isSolo?"none":"";
+    const frB=ov.querySelector("#gnFr");if(frB)frB.style.display=isCpu?"none":"";}
+  function gnShowChrome(){[[".gnSeats",""],["#gnNew",""],["#gnRecolor",""]].forEach(m=>{const e=ov.querySelector(m[0]);if(e)e.style.display=m[1];});go.style.display="";const fr=ov.querySelector("#gnFr");if(fr)fr.style.display="";applyChrome();}
+  function openColorGrid(labelName,ownerName,onPick){
+    gnHideChrome();
+    const oldTitle=title.textContent;title.textContent="Pick "+labelName+"'s color";
     const pick=document.createElement("div");
     pick.style.cssText="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:6px 4px 2px;justify-items:center;";
-    const taken={};for(const p of GN.players())taken[p.color]=p.name;
+    const taken={};for(const p of GN.players())if(!ownerName||p.name.toLowerCase()!==ownerName.toLowerCase())taken[p.color]=p.name;
+    function close(){pick.remove();title.textContent=oldTitle;gnShowChrome();}
     GN.palette().forEach(pal=>{
-      const w=document.createElement("button");
-      const owner=taken[pal.color];
+      const w=document.createElement("button");const owner=taken[pal.color];
       w.style.cssText="width:52px;height:52px;border-radius:50%;border:2px solid rgba(255,255,255,"+(owner?".12":".45")+");cursor:"+(owner?"default":"pointer")+";position:relative;font-family:inherit;"+
         "background:radial-gradient(circle at 35% 30%,"+pal.light+","+pal.color+" 65%,"+pal.dark+");"+
         "box-shadow:inset 0 -5px 8px rgba(0,0,0,.35),inset 0 3px 4px rgba(255,255,255,.4),0 4px 9px rgba(0,0,0,.45);"+
         (owner?"opacity:.35;filter:saturate(.6);":"");
-      if(owner){const t=document.createElement("div");
-        t.textContent=owner;
+      if(owner){const t=document.createElement("div");t.textContent=owner;
         t.style.cssText="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:9px;font-weight:800;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.8);max-width:48px;overflow:hidden;text-overflow:ellipsis;";
         w.appendChild(t);}
-      else w.onclick=()=>{const p=GN.addPlayer(n,pal);
-        pick.remove();title.textContent=oldTitle;
-        seats.style.display="";nw.style.display="";frB.style.display="";go.style.display="";
-        if(p&&p.name!==a.name){b=p;refresh();}};
+      else w.onclick=()=>{close();onPick(pal);};
       pick.appendChild(w);});
-    const cancel=document.createElement("button");
-    cancel.textContent="cancel";
+    const cancel=document.createElement("button");cancel.textContent="cancel";
     cancel.style.cssText="grid-column:1/-1;margin-top:4px;background:none;border:none;color:#9fbdac;font-size:12px;text-decoration:underline;cursor:pointer;font-family:inherit;";
-    cancel.onclick=()=>{pick.remove();title.textContent=oldTitle;
-      seats.style.display="";nw.style.display="";frB.style.display="";go.style.display="";};
-    pick.appendChild(cancel);
-    go.parentNode.insertBefore(pick,go);};
+    cancel.onclick=close;pick.appendChild(cancel);
+    go.parentNode.insertBefore(pick,go);}
+  ov.querySelector("#gnNew").onclick=()=>{const n=(prompt("Player name?")||"").trim();
+    if(!n)return;
+    const existing=GN.players().find(p=>p.name.toLowerCase()===n.toLowerCase());
+    if(existing){if(existing.name!==a.name){b=existing;refresh();}return;}
+    openColorGrid(n,null,pal=>{const p=GN.addPlayer(n,pal);if(p&&p.name!==a.name){b=p;refresh();}});};
+  (function(){const rc=ov.querySelector("#gnRecolor");if(!rc)return;
+    rc.onclick=()=>{gnHideChrome();
+      const oldTitle=title.textContent;title.textContent="Whose color?";
+      const list=document.createElement("div");list.style.cssText="display:flex;flex-direction:column;gap:8px;padding:4px 0;align-items:center;";
+      function closeList(){list.remove();title.textContent=oldTitle;gnShowChrome();}
+      GN.players().forEach(p=>{const btn=document.createElement("button");btn.textContent=p.name;
+        btn.style.cssText="font-family:inherit;cursor:pointer;border-radius:999px;padding:10px 18px;font-size:15px;font-weight:700;border:1px solid rgba(255,255,255,.25);color:#fff;min-width:150px;background:linear-gradient(160deg,"+p.light+","+p.color+" 60%,"+p.dark+");";
+        btn.onclick=()=>{list.remove();title.textContent=oldTitle;
+          openColorGrid(p.name,p.name,pal=>{GN.recolorPlayer(p.name,pal);
+            const l=GN.players();const na=l.find(x=>x.name===a.name);if(na)a=na;
+            if(b&&b.name){const nb=l.find(x=>x.name===b.name);if(nb)b=nb;}refresh();});};
+        list.appendChild(btn);});
+      const cancel=document.createElement("button");cancel.textContent="cancel";
+      cancel.style.cssText="margin-top:2px;background:none;border:none;color:#9fbdac;font-size:12px;text-decoration:underline;cursor:pointer;font-family:inherit;";
+      cancel.onclick=closeList;list.appendChild(cancel);
+      go.parentNode.insertBefore(list,go);};})();
   let friendly=false;const fr=ov.querySelector("#gnFr");
   fr.onclick=()=>{friendly=!friendly;
     fr.textContent=friendly?"\u26a0 Friendly game \u2014 not recorded":"\u2713 Counts for the record";
     fr.style.color=friendly?"#f4c542":"#cfe6d8";};
   refresh();
   go.onclick=function(){
-    if(solo){GN.friendly=friendly;ov.remove();GN._inPlay=true;done({a,b:null,first:a,solo:true,friendly});return;}
-    savePair(a,b);
+    if(go.disabled)return;
+    if(mode==="1p"){GN.friendly=friendly;ov.remove();GN._inPlay=true;done({a,b:null,first:a,solo:true,friendly});return;}
+    if(mode!=="cpu")savePair(a,b);
     eA.disabled=true;eB.disabled=true;ov.querySelector("#gnNew").style.display="none";
     ov.querySelector(".gnSeats").style.display="none";scene.style.display="";
     title.textContent="Who goes first?";go.style.visibility="hidden";
@@ -298,11 +343,13 @@ GN.matchStart=function(done,opts){injectCSS();GN._inPlay=false;opts=opts||{};
       if(p<1){requestAnimationFrame(land);return;}
       coin.style.transform="rotateX("+finalDeg+"deg)";
       const first=heads?a:b;
-      GN.friendly=friendly;
-      if(!friendly)GN.g.addFlip(first.name);
+      const fr2=(mode==="cpu")?true:friendly;
+      GN.friendly=fr2;
+      if(!fr2)GN.g.addFlip(first.name);
       title.textContent=first.name+" goes first!";title.style.color=first.color;
       go.textContent="Begin";go.style.visibility="visible";
-      go.onclick=function(){ov.remove();GN._inPlay=true;done({a,b,first,friendly});};}
+      go.onclick=function(){ov.remove();GN._inPlay=true;
+        done(mode==="cpu"?{a,b,first,bot:botLevel,vsComputer:true,friendly:true}:{a,b,first,friendly});};}
     requestAnimationFrame(toss);};};
 
 /* ---------- stats overlay ---------- */

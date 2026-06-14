@@ -47,6 +47,7 @@ let P={top:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19",pits:[7,8,9
          bot:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182",pits:[0,1,2,3,4,5],store:6}};
 const canvas=document.getElementById("board"),ctx=canvas.getContext("2d");
 let W=600,H=300,pits=[],turn="bot",phase="pick",pulsing=false,GS=null,sowing=null;
+let vsComputer=false,botLevel="medium",cpuSide=null;
 let LY={}; // all vertical-layout geometry, recomputed in fit()
 const KEY="mancala_games";let _mem=[];
 function S(n,o){window.GNS&&GNS.play(n,0,o);}
@@ -75,10 +76,11 @@ function newGame(){pits=Array(14).fill(4);pits[6]=0;pits[13]=0;
   phase="over";sowing=null;
   document.getElementById("overlay").classList.remove("show");document.getElementById("confetti").innerHTML="";render();
   GN.matchStart(function(m){P={top:seatFrom(m.a,P.top),bot:seatFrom(m.b,P.bot)};
+    vsComputer=!!m.vsComputer;botLevel=m.bot||"medium";cpuSide=vsComputer?"bot":null;
     turn=(m.first===m.a)?"top":"bot";phase="pick";
     GS={start:Date.now(),flipWinner:m.first.name,mode:MODE,captures:{},extras:{}};
     GS.captures[m.a.name]=0;GS.captures[m.b.name]=0;GS.extras[m.a.name]=0;GS.extras[m.b.name]=0;
-    updateBar();setMode(MODE);setMessage(P[turn].name+" sows first ("+(MODE==="kalah"?"Kalah":"Avalanche")+" rules) \u2014 tap one of your pits");render();ensurePulse();});}
+    updateBar();setMode(MODE);setMessage(P[turn].name+" sows first ("+(MODE==="kalah"?"Kalah":"Avalanche")+" rules) \u2014 tap one of your pits");render();ensurePulse();maybeBot();},{bot:true});}
 function setMessage(t){document.getElementById("msg").textContent=t;}
 function updateBar(){const pc=P[turn];document.getElementById("turnName").textContent=pc.name+"'s turn";
   const d=document.getElementById("dot");
@@ -128,9 +130,45 @@ function finishMove(plan){const side=turn;
     for(const s of["top","bot"])for(const i of P[s].pits){pits[P[s].store]+=pits[i];pits[i]=0;}
     render();endGame();return;}
   if(plan.extra){GS.extras[P[side].name]++;phase="pick";
-    setMessage(P[side].name+" landed in the store \u2014 go again!");render();ensurePulse();return;}
+    setMessage(P[side].name+" landed in the store \u2014 go again!");render();ensurePulse();maybeBot();return;}
   turn=side==="top"?"bot":"top";phase="pick";updateBar();
-  setMessage(P[turn].name+"'s sow");render();ensurePulse();}
+  setMessage(P[turn].name+"'s sow");render();ensurePulse();maybeBot();}
+const M_STORE={top:13,bot:6},M_PITS={top:[7,8,9,10,11,12],bot:[0,1,2,3,4,5]};
+function mOther(s){return s==="top"?"bot":"top";}
+function mSimulate(board,side,pit,mode){
+  const b=board.slice(),store=M_STORE[side],skip=(side==="top"?6:13);let extra=false;
+  if(mode==="avalanche"){
+    let hand=b[pit],i=pit,guard=0;b[pit]=0;
+    while(guard++<600){
+      while(hand>0){i=(i+1)%14;if(i===skip)continue;b[i]++;hand--;}
+      if(i===store){extra=true;break;}
+      if(b[i]>1&&i!==6&&i!==13){hand=b[i];b[i]=0;continue;}
+      break;}
+    return{board:b,extra};}
+  let n=b[pit],i=pit;b[pit]=0;
+  while(n>0){i=(i+1)%14;if(i===skip)continue;b[i]++;n--;}
+  const last=i;
+  if(last===store)extra=true;
+  else if(M_PITS[side].includes(last)&&last!==pit&&b[last]===1&&board[oppOf(last)]>0){b[store]+=b[last]+b[oppOf(last)];b[last]=0;b[oppOf(last)]=0;}
+  return{board:b,extra};}
+function mSideEmpty(b,side){return M_PITS[side].every(i=>b[i]===0);}
+const MANCALA_SPEC={
+  current:s=>s.turn,
+  moves:s=>M_PITS[s.turn].filter(i=>s.board[i]>0),
+  apply:(s,pit)=>{const r=mSimulate(s.board,s.turn,pit,MODE);return{board:r.board,turn:r.extra?s.turn:mOther(s.turn)};},
+  terminal:s=>mSideEmpty(s.board,"top")||mSideEmpty(s.board,"bot"),
+  evaluate:(s,me)=>{const opp=mOther(me);let b=s.board;
+    if(mSideEmpty(b,"top")||mSideEmpty(b,"bot")){b=b.slice();
+      for(const sd of["top","bot"])for(const i of M_PITS[sd]){b[M_STORE[sd]]+=b[i];b[i]=0;}
+      return(b[M_STORE[me]]-b[M_STORE[opp]])*1000;}
+    let sc=(b[M_STORE[me]]-b[M_STORE[opp]])*10;
+    for(const i of M_PITS[me])sc+=b[i]*0.5;
+    for(const i of M_PITS[opp])sc-=b[i]*0.5;
+    return sc;}
+};
+function maybeBot(){if(!vsComputer||phase!=="pick"||turn!==cpuSide)return;
+  const state={board:pits.slice(),turn:cpuSide};
+  GN.bot.play(state,MANCALA_SPEC,botLevel,function(pit){if(pit==null||phase!=="pick"||turn!==cpuSide)return;doSow(pit);},650);}
 function endGame(){phase="over";
   const m=pits[13],k=pits[6];
   const winSide=m>k?"top":k>m?"bot":null;
@@ -193,7 +231,7 @@ function render(){ctx.clearRect(0,0,W,H);
   ctx.textBaseline="bottom";ctx.fillStyle=P.bot.light;ctx.fillText("\u2193 "+P.bot.name,W/2,H-5);ctx.restore();}
 function ensurePulse(){if(pulsing)return;pulsing=true;
   (function tick(){if(phase!=="pick"){pulsing=false;render();return;}render();requestAnimationFrame(tick);})();}
-canvas.addEventListener("pointerup",e=>{if(phase!=="pick")return;
+canvas.addEventListener("pointerup",e=>{if(phase!=="pick")return;if(vsComputer&&turn===cpuSide)return;
   const rect=canvas.getBoundingClientRect(),f=canvas.width/rect.width;
   const x=(e.clientX-rect.left)*f,y=(e.clientY-rect.top)*f;
   let best=null,bd=1e9;

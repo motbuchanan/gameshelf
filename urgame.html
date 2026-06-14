@@ -184,11 +184,12 @@ function gameOver(w){phase="over";S("fanfare");
   document.getElementById("overlay").classList.add("show");}
 function newGame(){phase="over";document.getElementById("overlay").classList.remove("show");
   GN.matchStart(function(m){P={A:seatFrom(m.a),B:seatFrom(m.b)};
+    botLevel=m.vsComputer?(m.bot||"medium"):null;botKey="";
     st=freshState();st.turn=(m.first===m.a)?"A":"B";
     GS={start:Date.now(),flipWinner:m.first.name,friendly:m.friendly,captures:{},rosettes:{},rolls:{}};
     for(const nm of[m.a.name,m.b.name]){GS.captures[nm]=0;GS.rosettes[nm]=0;GS.rolls[nm]=0;}
     roll=null;moves=[];phase="roll";showDice([]);
-    render();setMsg(P[st.turn].name+" rolls first.");});}
+    render();setMsg(P[st.turn].name+" rolls first.");},{bot:true});}
 /* ---- bot (policy: capture > rosette > bear off > enter > advance leader) ---- */
 const BOT_SPEC={policy:function(state,level){
   const side="B",opts=moves.slice();
@@ -237,9 +238,7 @@ GN.statsButton(document.getElementById("foot"),{title:"Royal Game of Ur",key:KEY
   {label:"Captures",of:(r,n)=>r.reduce((a,x)=>a+((x.captures&&x.captures[n])||0),0)},
   {label:"Rosettes hit",of:(r,n)=>r.reduce((a,x)=>a+((x.rosettes&&x.rosettes[n])||0),0)},
   {label:"Coin flips won",of:(r,n)=>r.filter(x=>x.flipWinner===n).length}]});
-if(window.GN&&GN.bot)GN.bot.skillButton(document.getElementById("foot"),{onChange:k=>{botLevel=k;botKey="";
-  setMsg(k?("Computer plays "+P.B.name+"'s seat ("+k+").")
-         :(P.B.name+"'s seat is human again."));}});
+/* difficulty is now chosen in the player picker (vs Computer) */
 if(window.GNS)GNS.button(document.getElementById("foot"));
 buildBoard();newGame();
 window.GN&&GN.sync&&GN.sync();

@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Sudoku</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:#1b120b;color:#e6ddd0;
+    background-image:radial-gradient(ellipse at 50% -10%,#2a1c10,#1b120b 70%);min-height:100vh;}
+  #bar{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#15100c;border-bottom:1px solid #3a2a1a;}
+  #bar a{color:#e6ddd0;text-decoration:none;font-size:13px;border:1px solid #6e5f50;background:#2a241e;border-radius:999px;padding:6px 12px;}
+  #title{font-weight:800;font-size:17px;}
+  #prog{margin-left:auto;font-size:13px;color:#c9ab85;font-weight:700;}
+  #wrap{max-width:520px;margin:0 auto;padding:12px;}
+  #pager{display:flex;align-items:center;justify-content:center;gap:10px;margin:6px 0 12px;}
+  #pager button{font-family:inherit;cursor:pointer;border:1px solid #6e5f50;background:#2a241e;color:#e6ddd0;border-radius:10px;padding:8px 14px;font-size:15px;font-weight:700;}
+  #label{font-weight:800;font-size:18px;color:#f4c542;text-align:center;min-width:150px;}
+  #board{display:grid;grid-template-columns:repeat(9,1fr);background:#3a2a18;border:3px solid #6b4f2c;
+    border-radius:10px;overflow:hidden;box-shadow:0 6px 18px rgba(0,0,0,.45);margin:0 auto;touch-action:manipulation;user-select:none;max-width:460px;}
+  .cell{aspect-ratio:1;position:relative;display:flex;align-items:center;justify-content:center;
+    background:#f3e6c7;color:#2a1c0c;font-weight:700;cursor:pointer;
+    font-size:clamp(16px,5.4vw,28px);border-right:1px solid #cbb78d;border-bottom:1px solid #cbb78d;}
+  .cell.thr{border-right:2.5px solid #6b4f2c;}
+  .cell.thb{border-bottom:2.5px solid #6b4f2c;}
+  .cell.given{color:#23160a;font-weight:800;background:#ecdcb8;}
+  .cell.hint{color:#1f6b3a;}
+  .cell.user{color:#1d5fb0;}
+  .cell.wrong{color:#c62828;background:#f7d9d2;}
+  .cell.hl{background:#f6e7a8;}
+  .cell.hl.given{background:#eedd9f;}
+  .cell.same{background:#f3d674;}
+  .cell.sel{background:#f4c542;box-shadow:inset 0 0 0 3px #b8860b;}
+  .cell.sel.wrong{background:#f1b0a4;}
+  .marks{position:absolute;inset:0;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);
+    font-size:clamp(7px,2.3vw,11px);color:#6b5a3c;font-weight:700;line-height:1;padding:1px;}
+  .marks span{display:flex;align-items:center;justify-content:center;}
+  #msg{text-align:center;color:#cfc4b4;font-size:14px;min-height:20px;margin:12px 4px 6px;}
+  #pad{max-width:460px;margin:10px auto 0;display:grid;grid-template-columns:repeat(9,1fr);gap:6px;}
+  #pad button{font-family:inherit;font-weight:800;font-size:clamp(17px,5vw,24px);padding:12px 0;border-radius:10px;
+    border:1px solid #6e5f50;background:#efe2c4;color:#2a1c0c;cursor:pointer;}
+  #pad button:active{transform:translateY(1px);}
+  #pad button.spent{opacity:.32;}
+  #tools{max-width:460px;margin:8px auto 0;display:flex;gap:8px;}
+  #tools button{flex:1;font-family:inherit;font-weight:700;font-size:14px;padding:11px 0;border-radius:10px;
+    border:1px solid #6e5f50;background:#2a241e;color:#e6ddd0;cursor:pointer;}
+  #tools button:active{transform:translateY(1px);}
+  #tools button.on{background:#f4c542;color:#2a1c0c;border-color:#b8860b;}
+  #tools .hintn{font-size:11px;color:#c9ab85;font-weight:700;}
+  .ov{position:fixed;inset:0;background:rgba(16,12,8,.95);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:60;text-align:center;padding:22px;}
+  .ov.show{display:flex;}
+  .ov h1{font-size:26px;margin:0;}
+  .ov p{color:#cfc4b4;max-width:330px;font-size:15px;}
+  .act{font-family:inherit;font-size:15px;font-weight:bold;padding:11px 20px;border-radius:10px;border:none;
+    background:#46b06a;color:#0c2014;box-shadow:0 4px 0 #1e6038;cursor:pointer;}
+  html.gn-easy .cell{font-size:clamp(20px,6.4vw,32px);}
+  html.gn-easy .marks{font-size:clamp(8px,2.7vw,13px);}
+  html.gn-easy #pad button{font-size:clamp(20px,6vw,28px);}
+  html.gn-easy #title,html.gn-easy #label{font-size:21px;}
+  html.gn-easy #tools button{font-size:16px;}
+</style>
+</head>
+<body>
+<div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">Sudoku</div><div id="prog"></div></div>
+<div id="wrap">
+  <div id="pager"><button id="prev">&#8249; Prev</button><div id="label"></div><button id="next">Next &#8250;</button></div>
+  <div id="board"></div>
+  <div id="pad"></div>
+  <div id="tools">
+    <button id="pencil">&#9998; Pencil <span class="hintn" id="penState">off</span></button>
+    <button id="erase">&#9003; Erase</button>
+    <button id="hint">&#128161; Hint <span class="hintn" id="hintn"></span></button>
+  </div>
+  <div id="msg">Tap a square, then tap a number.</div>
+</div>
+<div class="ov" id="overlay"><div style="font-size:48px;">&#127881;</div><h1 id="ovTitle">Solved!</h1><p id="ovText"></p>
+  <button class="act" id="ovBtn">Next puzzle</button>
+  <a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #6e5f50;background:#2a241e;color:#e6ddd0;text-decoration:none;">Back to shelf</a></div>
+<script src="gamenight.js?v=12"></script>
+<script src="sfx.js?v=5"></script>
+<script src="sudoku.js"></script>
+<script>
+const PUZZLES=window.SUDOKUS||[];
+const PKEY="shelf_sudoku";
+function S(n){try{window.GNS&&GNS.play(n);}catch(e){}}
+const boardEl=document.getElementById("board"),padEl=document.getElementById("pad"),
+      labelEl=document.getElementById("label"),progEl=document.getElementById("prog"),msgEl=document.getElementById("msg");
+
+let pi=0;                 // current puzzle index
+let given=[],sol=[],val=[],marks=[],hintCells=null,hintsUsed=0;
+let sel=-1, pen=false;
+
+function loadAll(){try{return JSON.parse(localStorage.getItem(PKEY))||{};}catch(e){return{};}}
+function saveAll(o){try{localStorage.setItem(PKEY,JSON.stringify(o));}catch(e){}}
+function save(){
+  const all=loadAll();
+  const e={},m={};
+  for(let i=0;i<81;i++){
+    if(!given[i]&&val[i]) e[i]=val[i];
+    if(marks[i]&&marks[i].length) m[i]=marks[i].slice();
+  }
+  all.pi=pi;
+  all.p=all.p||{};
+  all.p[cur().id]={e,m,h:[...hintCells],used:hintsUsed,solved:isSolved()};
+  saveAll(all);
+}
+function cur(){return PUZZLES[pi];}
+
+function loadPuzzle(idx){
+  pi=((idx%PUZZLES.length)+PUZZLES.length)%PUZZLES.length;
+  const p=cur();
+  given=p.givens.split("").map(Number);
+  sol=p.solution.split("").map(Number);
+  val=given.slice();
+  marks=Array.from({length:81},()=>[]);
+  hintCells=new Set(); hintsUsed=0; sel=-1;
+  const saved=(loadAll().p||{})[p.id];
+  if(saved){
+    if(saved.e) for(const k in saved.e){const i=+k; if(!given[i]) val[i]=saved.e[k];}
+    if(saved.m) for(const k in saved.m){const i=+k; if(!given[i]) marks[i]=saved.m[k].slice();}
+    if(saved.h) saved.h.forEach(i=>{hintCells.add(i); val[i]=sol[i];});
+    hintsUsed=saved.used||0;
+  }
+  render();
+}
+
+function isSolved(){for(let i=0;i<81;i++) if(val[i]!==sol[i]) return false; return true;}
+function digitDone(d){ // every cell of digit d correctly placed
+  let n=0; for(let i=0;i<81;i++) if(val[i]===d){ if(val[i]!==sol[i]) return false; n++; } return n===9;
+}
+
+function render(){
+  const p=cur();
+  labelEl.textContent="Puzzle "+p.id+"  \u00b7  Gentle";
+  boardEl.innerHTML="";
+  const selVal=(sel>=0)?val[sel]:0;
+  for(let i=0;i<81;i++){
+    const r=Math.floor(i/9),c=i%9;
+    const cell=document.createElement("div");
+    cell.className="cell";
+    if(c===2||c===5)cell.classList.add("thr");
+    if(r===2||r===5)cell.classList.add("thb");
+    if(given[i])cell.classList.add("given");
+    else if(hintCells.has(i))cell.classList.add("hint");
+    else if(val[i])cell.classList.add("user");
+    if(!given[i]&&val[i]&&val[i]!==sol[i])cell.classList.add("wrong");
+    if(i===sel)cell.classList.add("sel");
+    else if(selVal&&val[i]===selVal)cell.classList.add("same");
+    else if(sel>=0&&(r===Math.floor(sel/9)||c===sel%9))cell.classList.add("hl");
+    if(val[i]){cell.textContent=val[i];}
+    else if(marks[i]&&marks[i].length){
+      const mk=document.createElement("div");mk.className="marks";
+      for(let d=1;d<=9;d++){const s=document.createElement("span");s.textContent=marks[i].includes(d)?d:"";mk.appendChild(s);}
+      cell.appendChild(mk);
+    }
+    cell.addEventListener("click",()=>{sel=i;render();});
+    boardEl.appendChild(cell);
+  }
+  // number pad
+  padEl.innerHTML="";
+  for(let d=1;d<=9;d++){
+    const b=document.createElement("button");b.textContent=d;
+    if(digitDone(d))b.classList.add("spent");
+    b.addEventListener("click",()=>place(d));
+    padEl.appendChild(b);
+  }
+  document.getElementById("penState").textContent=pen?"on":"off";
+  document.getElementById("pencil").classList.toggle("on",pen);
+  document.getElementById("hintn").textContent=hintsUsed?("("+hintsUsed+")"):"";
+  let filled=0;for(let i=0;i<81;i++)if(val[i])filled++;
+  progEl.textContent=filled+"/81";
+  const solvedNow=Object.values((loadAll().p||{})).filter(x=>x&&x.solved).length;
+  msgEl.textContent=pen?"Pencil: tap a square, then numbers to jot notes.":(solvedNow?(solvedNow+" of "+PUZZLES.length+" solved."):"Tap a square, then tap a number.");
+}
+
+function place(d){
+  if(sel<0){msgEl.textContent="Tap a square first.";return;}
+  if(given[sel]||hintCells.has(sel)){S("err");return;}
+  if(pen){
+    if(val[sel])return;                       // can't pencil over a written number
+    const a=marks[sel],k=a.indexOf(d);
+    if(k>=0)a.splice(k,1); else a.push(d);
+    S("tap");
+  }else{
+    val[sel]=d; marks[sel]=[];
+    if(d===sol[sel]){S("place");}
+    else {S("err");}
+  }
+  save();render();
+  if(!pen&&isSolved())win();
+}
+function eraseCell(){
+  if(sel<0)return;
+  if(given[sel]||hintCells.has(sel)){S("err");return;}
+  val[sel]=0;marks[sel]=[];S("tap");save();render();
+}
+function doHint(){
+  let t=-1;
+  if(sel>=0&&!given[sel]&&!hintCells.has(sel)&&val[sel]!==sol[sel])t=sel;
+  if(t<0){const empties=[];for(let i=0;i<81;i++)if(!given[i]&&val[i]!==sol[i])empties.push(i);
+    if(!empties.length)return;t=empties[Math.floor(Math.random()*empties.length)];}
+  val[t]=sol[t];marks[t]=[];hintCells.add(t);hintsUsed++;sel=t;
+  S("place");save();render();
+  if(isSolved())win();
+}
+function win(){
+  S("win");
+  const p=cur();save();
+  document.getElementById("ovText").textContent=
+    "Puzzle "+p.id+" complete"+(hintsUsed?(" with "+hintsUsed+" hint"+(hintsUsed>1?"s":"")):" with no hints")+". Nice work!";
+  document.getElementById("overlay").classList.add("show");
+}
+
+document.getElementById("prev").addEventListener("click",()=>{document.getElementById("overlay").classList.remove("show");loadPuzzle(pi-1);save();});
+document.getElementById("next").addEventListener("click",()=>{document.getElementById("overlay").classList.remove("show");loadPuzzle(pi+1);save();});
+document.getElementById("pencil").addEventListener("click",()=>{pen=!pen;render();});
+document.getElementById("erase").addEventListener("click",eraseCell);
+document.getElementById("hint").addEventListener("click",doHint);
+document.getElementById("ovBtn").addEventListener("click",()=>{document.getElementById("overlay").classList.remove("show");loadPuzzle(pi+1);save();});
+
+if(!PUZZLES.length){msgEl.textContent="No puzzles loaded.";}
+else{loadPuzzle(loadAll().pi||0);}
+</script>
+</body>
+</html>

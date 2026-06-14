@@ -46,6 +46,7 @@ let P={red:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},blue:{name
 function seatFrom(p){return{name:p.name,main:p.color,light:p.light,dark:p.dark};}
 const canvas=document.getElementById("board"),ctx=canvas.getContext("2d");
 let CELL=64,grid=Array.from({length:ROWS},()=>Array(COLS).fill(null)),turn="red",animating=false,over=false,winLine=null,GS=null,moves={Mot:0,Kathy:0},pulseRAF=0;
+let vsComputer=false,botLevel="medium",cpuColor=null;
 const KEY="c4_games";let _mem=[];
 function S(n,o){window.GNS&&GNS.play(n,0,o);}
 const Store={load(){try{return JSON.parse(localStorage.getItem(KEY))||[];}catch(e){return _mem.slice();}},
@@ -58,8 +59,9 @@ function newGame(){grid=Array.from({length:ROWS},()=>Array(COLS).fill(null));
   document.getElementById("overlay").classList.remove("show");
   document.getElementById("confetti").innerHTML="";render();
   GN.matchStart(function(m){P={red:seatFrom(m.a),blue:seatFrom(m.b)};
+    vsComputer=!!m.vsComputer;botLevel=m.bot||"medium";cpuColor=vsComputer?"blue":null;
     turn=(m.first===m.a)?"red":"blue";over=false;moves={};moves[m.a.name]=0;moves[m.b.name]=0;
-    GS={start:Date.now(),flipWinner:m.first.name,players:[m.a.name,m.b.name],friendly:m.friendly};updateBar();render();});}
+    GS={start:Date.now(),flipWinner:m.first.name,players:[m.a.name,m.b.name],friendly:m.friendly};updateBar();render();maybeBot();},{bot:true});}
 function updateBar(){const pc=P[turn];document.getElementById("turnName").textContent=pc.name+"'s turn";
   const d=document.getElementById("dot");
   d.style.background="radial-gradient(circle at 35% 30%,"+pc.light+","+pc.main+" 70%,"+pc.dark+")";
@@ -115,7 +117,7 @@ function render(dropY,dropCol,dropColor){
     ctx.strokeStyle="rgba(160,205,255,.35)";ctx.lineWidth=Math.max(1.5,CELL*0.035);ctx.stroke();}
   ctx.restore();}
 function landRow(c){for(let r=ROWS-1;r>=0;r--)if(!grid[r][c])return r;return -1;}
-function drop(c){if(animating||over)return;const r=landRow(c);if(r<0)return;
+function drop(c,byBot){if(animating||over)return;if(vsComputer&&turn===cpuColor&&!byBot)return;const r=landRow(c);if(r<0)return;
   animating=true;const pc=turn,targetY=r*CELL+CELL/2;let y=-CELL*0.5,v=0,t0=null;
   function step(ts){v+=2.2*(CELL/64);y+=v;
     if(y>=targetY){y=targetY;
@@ -127,7 +129,7 @@ function drop(c){if(animating||over)return;const r=landRow(c);if(r<0)return;
 function afterDrop(r,c){const w=checkWin(r,c);
   if(w){winLine=w;over=true;render();startPulse();finish(grid[r][c]);return;}
   if(grid[0].every((_,i)=>grid[0][i]!==null&&landRow(i)<0)||grid.every(row=>row.every(v=>v))){over=true;render();finish(null);return;}
-  turn=turn==="red"?"blue":"red";updateBar();render();}
+  turn=turn==="red"?"blue":"red";updateBar();render();maybeBot();}
 function checkWin(r,c){const me=grid[r][c];
   for(const[dr,dc]of[[0,1],[1,0],[1,1],[1,-1]]){const line=[[r,c]];
     for(const s of[1,-1]){let rr=r+dr*s,cc=c+dc*s;
@@ -139,6 +141,34 @@ function startPulse(){cancelAnimationFrame(pulseRAF);
 function winDirection(line){if(!line||line.length<2)return null;
   const dr=line[1][0]-line[0][0],dc=line[1][1]-line[0][1];
   if(dr===0)return"horizontal";if(dc===0)return"vertical";return"diagonal";}
+function c4winner(g){
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){const v=g[r][c];if(!v)continue;
+    for(const d of [[0,1],[1,0],[1,1],[1,-1]]){let k=1;while(k<4){const rr=r+d[0]*k,cc=c+d[1]*k;if(rr<0||rr>=ROWS||cc<0||cc>=COLS||g[rr][cc]!==v)break;k++;}if(k===4)return v;}}
+  return null;}
+function c4Land(g,c){for(let r=ROWS-1;r>=0;r--)if(!g[r][c])return r;return -1;}
+const C4_SPEC={
+  current:s=>s.turn,
+  moves:s=>{const m=[],order=[3,2,4,1,5,0,6];for(const c of order)if(s.grid[0][c]===null)m.push(c);return m;},
+  apply:(s,c)=>{const g=s.grid.map(row=>row.slice());const r=c4Land(g,c);g[r][c]=s.turn;return{grid:g,turn:s.turn==="red"?"blue":"red"};},
+  terminal:s=>c4winner(s.grid)!==null||s.grid[0].every(v=>v!==null),
+  evaluate:(s,me)=>{const opp=me==="red"?"blue":"red",w=c4winner(s.grid);
+    if(w===me)return 1000000;if(w===opp)return -1000000;
+    let sc=0;
+    for(let r=0;r<ROWS;r++){if(s.grid[r][3]===me)sc+=6;else if(s.grid[r][3]===opp)sc-=6;}
+    const win=cells=>{let mc=0,oc=0,ec=0;for(const rc of cells){const v=s.grid[rc[0]][rc[1]];if(v===me)mc++;else if(v===opp)oc++;else ec++;}
+      if(mc&&oc)return 0;
+      if(mc===3&&ec===1)return 100;if(mc===2&&ec===2)return 10;if(mc===1&&ec===3)return 1;
+      if(oc===3&&ec===1)return -120;if(oc===2&&ec===2)return -10;if(oc===1&&ec===3)return -1;return 0;};
+    for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+      if(c+3<COLS)sc+=win([[r,c],[r,c+1],[r,c+2],[r,c+3]]);
+      if(r+3<ROWS)sc+=win([[r,c],[r+1,c],[r+2,c],[r+3,c]]);
+      if(r+3<ROWS&&c+3<COLS)sc+=win([[r,c],[r+1,c+1],[r+2,c+2],[r+3,c+3]]);
+      if(r+3<ROWS&&c-3>=0)sc+=win([[r,c],[r+1,c-1],[r+2,c-2],[r+3,c-3]]);}
+    return sc;}
+};
+function maybeBot(){if(!vsComputer||over||turn!==cpuColor)return;
+  const state={grid:grid.map(row=>row.slice()),turn:cpuColor};
+  GN.bot.play(state,C4_SPEC,botLevel,function(c){if(c==null||over)return;drop(c,true);},650);}
 function finish(color){const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
   winner:color?P[color].name:null,loser:color?P[color==="red"?"blue":"red"].name:null,draw:!color,
   flipWinner:GS.flipWinner,dir:winDirection(winLine),moves:{...moves}};

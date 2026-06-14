@@ -52,6 +52,7 @@ let P={A:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},B:{name:"Kat
 function seatFrom(p){return{name:p.name,main:p.color,light:p.light,dark:p.dark};}
 // edges: H[r][c] = horizontal edge above box row r (r 0..B, c 0..B-1); V[r][c] vertical (r 0..B-1, c 0..B)
 let H,V,owner,turn="A",phase="over",GS=null,boxes={A:0,B:0},turnBoxes=0,lastEdge=null;
+let vsComputer=false,botLevel="medium",cpuSeat=null;
 const canvas=document.getElementById("cv"),ctx=canvas.getContext("2d");
 let SZ=320,CELL=52,M=26;
 function fit(){const w=Math.min(window.innerWidth-14,window.innerHeight-250,440);
@@ -109,6 +110,7 @@ function newGame(){phase="over";lastEdge=null;
   document.getElementById("overlay").classList.remove("show");
   document.getElementById("confetti").innerHTML="";
   GN.matchStart(function(m){P={A:seatFrom(m.a),B:seatFrom(m.b)};
+    vsComputer=!!m.vsComputer;botLevel=m.bot||"medium";cpuSeat=vsComputer?"B":null;
     H=Array.from({length:B+1},()=>Array(B).fill(null));
     V=Array.from({length:B},()=>Array(B+1).fill(null));
     owner=Array.from({length:B},()=>Array(B).fill(null));
@@ -117,7 +119,7 @@ function newGame(){phase="over";lastEdge=null;
     GS={start:Date.now(),flipWinner:m.first.name,friendly:m.friendly,bestRun:{}};
     GS.bestRun[m.a.name]=0;GS.bestRun[m.b.name]=0;
     setMessage(m.first.name+" won the flip \u2014 tap between two dots to draw a line.");
-    refresh();render();});}
+    refresh();render();maybeBot();},{bot:true});}
 function setMessage(t){document.getElementById("msg").textContent=t;}
 function refresh(){const pc=P[turn];
   document.getElementById("turnName").textContent=pc.name+"'s line";
@@ -130,11 +132,14 @@ function refresh(){const pc=P[turn];
   const recs=GN.readGames(KEY);let a=0,b=0;
   for(const r of recs){if(r.winner===P.A.name)a++;else if(r.winner===P.B.name)b++;}
   document.getElementById("score").textContent=P.A.name+" "+a+" \u00b7 "+b+" "+P.B.name+((GS&&GS.friendly)?" \u00b7 friendly":"");}
-canvas.addEventListener("click",e=>{if(phase!=="play")return;
+canvas.addEventListener("click",e=>{if(phase!=="play")return;if(vsComputer&&turn===cpuSeat)return;
   const rect=canvas.getBoundingClientRect();
   const x=(e.clientX-rect.left)*(SZ/rect.width),y=(e.clientY-rect.top)*(SZ/rect.height);
   const ed=nearestEdge(x,y);if(!ed)return;
   const[k,r,c]=ed;
+  if(k==="H"?H[r][c]:V[r][c])return;
+  applyEdge(ed);});
+function applyEdge(ed){const[k,r,c]=ed;
   if(k==="H")H[r][c]=turn;else V[r][c]=turn;
   lastEdge=ed;
   const done=claimAround(k,r,c);
@@ -142,11 +147,58 @@ canvas.addEventListener("click",e=>{if(phase!=="play")return;
     if(turnBoxes>GS.bestRun[P[turn].name])GS.bestRun[P[turn].name]=turnBoxes;
     if(boxes.A+boxes.B>=B*B){render();refresh();finishGame();return;}
     setMessage(P[turn].name+" boxes "+done.length+" \u2014 and goes again!");
-    refresh();render();return;}
+    refresh();render();maybeBot();return;}
   turnBoxes=0;
   turn=turn==="A"?"B":"A";
   setMessage(P[turn].name+" \u2014 your line. Careful with the third side\u2026");
-  refresh();render();});
+  refresh();render();maybeBot();}
+function dUndrawn(){const m=[];
+  for(let r=0;r<=B;r++)for(let c=0;c<B;c++)if(!H[r][c])m.push(["H",r,c]);
+  for(let r=0;r<B;r++)for(let c=0;c<=B;c++)if(!V[r][c])m.push(["V",r,c]);
+  return m;}
+function dBoxesOf(k,r,c){const bx=[];
+  if(k==="H"){if(r-1>=0)bx.push([r-1,c]);if(r<B)bx.push([r,c]);}
+  else{if(c-1>=0)bx.push([r,c-1]);if(c<B)bx.push([r,c]);}
+  return bx;}
+function dSides(h,v,br,bc){return (h[br][bc]?1:0)+(h[br+1][bc]?1:0)+(v[br][bc]?1:0)+(v[br][bc+1]?1:0);}
+function dClone(){return{h:H.map(x=>x.slice()),v:V.map(x=>x.slice())};}
+function dClassify(mv){const k=mv[0],r=mv[1],c=mv[2],cl=dClone();if(k==="H")cl.h[r][c]=1;else cl.v[r][c]=1;
+  let completes=0,makes3=0;for(const b of dBoxesOf(k,r,c)){const s=dSides(cl.h,cl.v,b[0],b[1]);if(s===4)completes++;else if(s===3)makes3++;}
+  return{completes,makes3};}
+function dEatAll(h,v){const claimed=Array.from({length:B},()=>Array(B).fill(false));
+  for(let br=0;br<B;br++)for(let bc=0;bc<B;bc++)if(dSides(h,v,br,bc)===4)claimed[br][bc]=true;
+  let total=0,go=true;
+  while(go){go=false;
+    const moves=[];
+    for(let r=0;r<=B;r++)for(let c=0;c<B;c++)if(!h[r][c])moves.push(["H",r,c]);
+    for(let r=0;r<B;r++)for(let c=0;c<=B;c++)if(!v[r][c])moves.push(["V",r,c]);
+    for(const mv of moves){const k=mv[0],r=mv[1],c=mv[2];
+      if(k==="H")h[r][c]=1;else v[r][c]=1;
+      let nc=0;for(const b of dBoxesOf(k,r,c))if(!claimed[b[0]][b[1]]&&dSides(h,v,b[0],b[1])===4)nc++;
+      if(nc>0){for(const b of dBoxesOf(k,r,c))if(!claimed[b[0]][b[1]]&&dSides(h,v,b[0],b[1])===4)claimed[b[0]][b[1]]=true;total+=nc;go=true;break;}
+      else{if(k==="H")h[r][c]=0;else v[r][c]=0;}}}
+  return total;}
+function dPolicy(state,L){
+  const moves=dUndrawn();if(!moves.length)return null;
+  const completing=[],safe=[],unsafe=[];
+  for(const mv of moves){const cl=dClassify(mv);
+    if(cl.completes>0)completing.push(mv);
+    else if(cl.makes3===0)safe.push(mv);
+    else unsafe.push(mv);}
+  const pick=a=>a[(Math.random()*a.length)|0];
+  if(completing.length)return pick(completing);     // grab a free box (all levels chain these)
+  if(L.depth<=1)return pick(moves);                 // Easy: no safety sense
+  if(safe.length)return pick(safe);                 // Medium+: never give the 3rd side if avoidable
+  if(L.depth>=6){                                    // Hard: forced -> open the SHORTEST chain
+    let best=null,bg=1e9;
+    for(const mv of unsafe){const cl=dClone();if(mv[0]==="H")cl.h[mv[1]][mv[2]]=1;else cl.v[mv[1]][mv[2]]=1;
+      const g=dEatAll(cl.h,cl.v);if(g<bg){bg=g;best=mv;}}
+    return best||pick(unsafe);}
+  return pick(unsafe);                               // Medium: forced -> any
+}
+const DOTS_SPEC={policy:dPolicy};
+function maybeBot(){if(!vsComputer||phase!=="play"||turn!==cpuSeat)return;
+  GN.bot.play({},DOTS_SPEC,botLevel,function(ed){if(!ed||phase!=="play"||turn!==cpuSeat)return;applyEdge(ed);},600);}
 function finishGame(){phase="over";
   const w=boxes.A===boxes.B?null:(boxes.A>boxes.B?"A":"B");
   const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
