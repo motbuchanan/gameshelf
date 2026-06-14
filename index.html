@@ -115,7 +115,7 @@
 <header>
   <h1>The Game Shelf</h1>
   <div class="sub">Pick a box. Loser racks up the next one.</div>
-  <div style="margin-top:10px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;"><button id="tvToggle" class="tally" style="cursor:pointer;border:1px solid rgba(255,220,170,.25);font-family:inherit;">📺 TV mode: <b id="tvState">Off</b></button><button id="sortToggle" class="tally" style="cursor:pointer;border:1px solid rgba(255,220,170,.25);font-family:inherit;">🔀 Sort: <b id="sortState">Shelf</b></button><button id="easyToggle" class="tally" style="cursor:pointer;border:1px solid rgba(255,220,170,.25);font-family:inherit;">🔎 Easy view: <b id="easyState">Off</b></button></div>
+  <div style="margin-top:10px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;"><button id="tvToggle" class="tally" style="cursor:pointer;border:1px solid rgba(255,220,170,.25);font-family:inherit;">📺 TV mode: <b id="tvState">Off</b></button><button id="sortToggle" class="tally" style="cursor:pointer;border:1px solid rgba(255,220,170,.25);font-family:inherit;">🔀 Sort: <b id="sortState">Shelf</b></button><button id="easyToggle" class="tally" style="cursor:pointer;border:1px solid rgba(255,220,170,.25);font-family:inherit;">🔎 Easy view: <b id="easyState">Off</b></button><button id="padHelp" class="tally" style="cursor:pointer;border:1px solid rgba(255,220,170,.25);font-family:inherit;">🎮 Controller</button></div>
 </header>
 
 <div id="shelves"></div>
@@ -302,6 +302,33 @@ document.getElementById("resetStats").addEventListener("click",function(){
     st.textContent=on?"On":"Off";btn.style.background=on?"rgba(176,210,53,.18)":"rgba(0,0,0,.25)";}
   btn.addEventListener("click",()=>{GN.easyView.toggle();refresh();});
   refresh();})();
+/* 🎮 Controller help overlay */
+(function(){const btn=document.getElementById("padHelp");if(!btn)return;
+  function statusText(){return (window.GN&&GN.pad&&GN.pad.connected&&GN.pad.connected())?["\u2713 Controller connected","#9fd6a0"]:["Waiting for a controller\u2026","#c9a87a"];}
+  function open(){
+    const ov=document.createElement("div");
+    ov.style.cssText="position:fixed;inset:0;z-index:9998;background:rgba(8,5,2,.82);display:flex;align-items:center;justify-content:center;padding:20px;";
+    const s0=statusText();
+    ov.innerHTML='<div style="max-width:380px;width:100%;background:linear-gradient(160deg,#241608,#160d04);border:1px solid #6b4a28;border-radius:16px;padding:22px 22px 18px;color:#e8d4b4;box-shadow:0 20px 60px rgba(0,0,0,.6);">'
+      +'<div style="font-size:21px;font-weight:800;color:#f4c542;margin-bottom:6px;">\ud83c\udfae Play with a controller</div>'
+      +'<div style="font-size:13px;line-height:1.55;color:#d8c3a4;">Any Bluetooth game controller works \u2014 Xbox, PlayStation, or generic.</div>'
+      +'<ol style="margin:12px 0 8px;padding-left:20px;font-size:13.5px;line-height:1.6;">'
+        +'<li>Open your phone or tablet\u2019s <b>Bluetooth settings</b> and pair the controller.</li>'
+        +'<li>Come back here and <b>press any button</b> on it.</li>'
+        +'<li>A gold ring appears \u2014 you\u2019re in!</li></ol>'
+      +'<div style="display:flex;gap:16px;justify-content:center;margin:12px 0 4px;font-size:13px;color:#d8c3a4;flex-wrap:wrap;">'
+        +'<span>\u271b move</span><span><b style="color:#f4c542;">\u24b6</b> select</span><span><b style="color:#f4c542;">\u24b7</b> back</span></div>'
+      +'<div id="padStatus" style="text-align:center;font-size:13px;font-weight:700;margin:10px 0 14px;color:'+s0[1]+';">'+s0[0]+'</div>'
+      +'<button id="padClose" style="width:100%;font-family:inherit;font-size:15px;font-weight:bold;padding:11px;border-radius:10px;border:none;background:#f4c542;color:#3a2a05;cursor:pointer;">Got it</button>'
+      +'</div>';
+    document.body.appendChild(ov);
+    const t=setInterval(()=>{const s=ov.querySelector("#padStatus");if(!s)return;const st=statusText();s.textContent=st[0];s.style.color=st[1];},600);
+    function close(){clearInterval(t);ov.remove();}
+    ov.querySelector("#padClose").onclick=close;
+    ov.addEventListener("click",e=>{if(e.target===ov)close();});
+  }
+  btn.addEventListener("click",open);
+})();
 // (all-games tally removed from the shelf; stats will live on the Bookshelf)
 /* ---------- first-launch onboarding: who owns this device? ---------- */
 (function(){
@@ -353,10 +380,16 @@ document.getElementById("resetStats").addEventListener("click",function(){
     const grid=document.createElement("div");grid.style.cssText="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;";
     let iconGrid;
     function paintIcons(){if(!iconGrid)return;iconGrid.innerHTML="";
-      GN.AVATARS.forEach(a=>{const d=document.createElement("div");
-        d.style.cssText="width:44px;height:44px;border-radius:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;border:3px solid "+(pickIcon===a.id?"#f4c542":"transparent")+";";
-        d.title=a.set;d.innerHTML=GN.tokenHTML({name:"?",color:pick.color,light:pick.light,dark:pick.dark,avatar:{kind:"icon",icon:a.id}},38);
-        d.onclick=()=>{pickIcon=(pickIcon===a.id)?null:a.id;paintIcons();up();};iconGrid.appendChild(d);});}
+      GN.avatarSets().forEach(grp=>{
+        const lab=document.createElement("div");lab.textContent=grp.set;
+        lab.style.cssText="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:#b89a6e;margin:8px 0 3px;align-self:flex-start;";
+        iconGrid.appendChild(lab);
+        const row=document.createElement("div");row.style.cssText="display:flex;flex-wrap:wrap;gap:7px;justify-content:center;";
+        grp.icons.forEach(a=>{const d=document.createElement("div");
+          d.style.cssText="width:42px;height:42px;border-radius:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;border:3px solid "+(pickIcon===a.id?"#f4c542":"transparent")+";";
+          d.title=a.id;d.innerHTML=GN.tokenHTML({name:"?",color:pick.color,light:pick.light,dark:pick.dark,avatar:{kind:"icon",icon:a.id}},36);
+          d.onclick=()=>{pickIcon=(pickIcon===a.id)?null:a.id;paintIcons();up();};row.appendChild(d);});
+        iconGrid.appendChild(row);});}
     GN.palette().forEach(pal=>{const sw=document.createElement("div");
       sw.style.cssText="width:40px;height:40px;border-radius:50%;cursor:pointer;border:3px solid "+(pal.color===pick.color?"#f4c542":"transparent")+";"
         +"background:radial-gradient(circle at 35% 30%,"+pal.light+","+pal.color+" 62%,"+pal.dark+");";
@@ -365,7 +398,7 @@ document.getElementById("resetStats").addEventListener("click",function(){
     wrap.appendChild(grid);
     const ilabel=document.createElement("div");ilabel.textContent="or add an icon";
     ilabel.style.cssText="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#b89a6e;text-align:center;";wrap.appendChild(ilabel);
-    iconGrid=document.createElement("div");iconGrid.style.cssText="display:flex;flex-wrap:wrap;gap:7px;justify-content:center;";wrap.appendChild(iconGrid);paintIcons();
+    iconGrid=document.createElement("div");iconGrid.style.cssText="display:flex;flex-direction:column;align-items:stretch;gap:1px;width:100%;max-height:210px;overflow:auto;";wrap.appendChild(iconGrid);paintIcons();
     const go=document.createElement("button");go.textContent="Create & start playing";
     go.style.cssText=BTN+"font-size:17px;padding:13px;border:none;background:#f4c542;color:#3a2a05;margin-top:4px;";
     go.onclick=()=>{const name=(inp.value||"").trim();if(!name){inp.focus();return;}

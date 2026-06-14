@@ -12,7 +12,23 @@ const PALETTE=[
   {color:"#b06ad0",light:"#cf9ce6",dark:"#6e3a8a"},
   {color:"#3fb6b2",light:"#7fd6d2",dark:"#1f6f6c"},
   {color:"#f4c542",light:"#f9dd8a",dark:"#9a7414"},
-  {color:"#e25c8e",light:"#f09ab9",dark:"#8e2f55"}];
+  {color:"#e25c8e",light:"#f09ab9",dark:"#8e2f55"},
+  {color:"#5b5bd6",light:"#8f8fe8",dark:"#3636a0"},
+  {color:"#8bbf3c",light:"#b0d976",dark:"#5e8420"},
+  {color:"#d63aa8",light:"#e87cc7",dark:"#8e2270"},
+  {color:"#36a3e0",light:"#79c4ec",dark:"#1c6ea0"},
+  {color:"#f2674a",light:"#f79a85",dark:"#b03a22"},
+  {color:"#2e9e6b",light:"#66c79b",dark:"#1a6244"},
+  {color:"#c79a2e",light:"#e0c071",dark:"#856219"},
+  {color:"#5d7290",light:"#93a4bd",dark:"#3a4a62"},
+  {color:"#9a6440",light:"#c0906e",dark:"#62381f"},
+  {color:"#7a4fb0",light:"#a883d6",dark:"#4d2e75"},
+  {color:"#4cc79a",light:"#86dcbd",dark:"#2a8466"},
+  {color:"#a63a4e",light:"#c87183",dark:"#6c2030"},
+  {color:"#34508f",light:"#6f86bd",dark:"#1d2f5e"},
+  {color:"#9a8cf0",light:"#c0b6f7",dark:"#6354b0"},
+  {color:"#7e8338",light:"#aab06a",dark:"#51541f"},
+  {color:"#6f86e8",light:"#9fb0f2",dark:"#44539e"}];
 GN.palette=function(){return PALETTE.slice();};
 // ---- shared 3D cube die ----
 const CUBE_RING={1:[2,3],2:[1,4],3:[1,2],4:[1,5],5:[1,3],6:[2,4]};
@@ -127,22 +143,59 @@ GN.recolorPlayer=function(name,pal){const p=GN.profiles.byName(name);if(!p)retur
 /* each icon = white-forward inner SVG (with translucent-black detail) on a 0 0 100 100 canvas,
    drawn over the profile's color gradient so it reads on any color. */
 GN.AVATARS=[
- {id:"die",set:"Yahtzee · Farkle",svg:'<rect x="24" y="24" width="52" height="52" rx="11" fill="#fff"/><g fill="rgba(0,0,0,.32)"><circle cx="36" cy="36" r="4.5"/><circle cx="64" cy="36" r="4.5"/><circle cx="50" cy="50" r="4.5"/><circle cx="36" cy="64" r="4.5"/><circle cx="64" cy="64" r="4.5"/></g>'},
- {id:"cards",set:"One Card Left!",svg:'<g stroke="rgba(0,0,0,.22)" stroke-width="1.5"><rect x="28" y="36" width="26" height="38" rx="4" fill="#fff" transform="rotate(-16 41 55)"/><rect x="37" y="32" width="26" height="38" rx="4" fill="#fff"/><rect x="46" y="36" width="26" height="38" rx="4" fill="#fff" transform="rotate(16 59 55)"/></g>'},
- {id:"king",set:"Chess",svg:'<path d="M28 62 l-5-26 16 13 11-21 11 21 16-13 -5 26 z" fill="#fff"/><rect x="28" y="62" width="44" height="9" rx="2" fill="#fff"/><rect x="47" y="14" width="6" height="14" fill="#fff"/><rect x="42" y="18" width="16" height="6" fill="#fff"/>'},
- {id:"pawn",set:"Chess",svg:'<circle cx="50" cy="33" r="11" fill="#fff"/><path d="M40 47 h20 l6 30 h-32 z" fill="#fff"/>'},
- {id:"checker",set:"Checkers",svg:'<circle cx="50" cy="50" r="26" fill="#fff"/><circle cx="50" cy="50" r="19" fill="none" stroke="rgba(0,0,0,.22)" stroke-width="3"/><circle cx="50" cy="50" r="12" fill="none" stroke="rgba(0,0,0,.22)" stroke-width="3"/>'},
- {id:"marble",set:"Chinese Checkers",svg:'<circle cx="50" cy="50" r="26" fill="rgba(255,255,255,.85)"/><circle cx="43" cy="41" r="8" fill="#fff"/>'},
- {id:"domino",set:"Dominoes",svg:'<rect x="34" y="22" width="32" height="56" rx="6" fill="#fff"/><rect x="36" y="48.5" width="28" height="3" fill="rgba(0,0,0,.3)"/><g fill="rgba(0,0,0,.3)"><circle cx="50" cy="36" r="4"/><circle cx="43" cy="63" r="3.5"/><circle cx="57" cy="63" r="3.5"/></g>'},
- {id:"ladder",set:"Snakes & Ladders",svg:'<g stroke="#fff" stroke-width="5" stroke-linecap="round"><line x1="38" y1="22" x2="38" y2="78"/><line x1="62" y1="22" x2="62" y2="78"/><line x1="38" y1="34" x2="62" y2="34"/><line x1="38" y1="50" x2="62" y2="50"/><line x1="38" y1="66" x2="62" y2="66"/></g>'},
- {id:"snake",set:"Snakes & Ladders",svg:'<path d="M34 28 c22 0 22 20 0 22 c-22 2 -22 24 0 24" fill="none" stroke="#fff" stroke-width="8" stroke-linecap="round"/><circle cx="34" cy="28" r="7" fill="#fff"/><circle cx="32" cy="27" r="1.8" fill="rgba(0,0,0,.55)"/>'},
+ /* ----- Games ----- */
+ {id:"die",set:"Games",svg:'<rect x="24" y="24" width="52" height="52" rx="11" fill="#fff"/><g fill="rgba(0,0,0,.32)"><circle cx="36" cy="36" r="4.5"/><circle cx="64" cy="36" r="4.5"/><circle cx="50" cy="50" r="4.5"/><circle cx="36" cy="64" r="4.5"/><circle cx="64" cy="64" r="4.5"/></g>'},
+ {id:"cards",set:"Games",svg:'<g stroke="rgba(0,0,0,.22)" stroke-width="1.5"><rect x="28" y="36" width="26" height="38" rx="4" fill="#fff" transform="rotate(-16 41 55)"/><rect x="37" y="32" width="26" height="38" rx="4" fill="#fff"/><rect x="46" y="36" width="26" height="38" rx="4" fill="#fff" transform="rotate(16 59 55)"/></g>'},
+ {id:"king",set:"Games",svg:'<path d="M28 62 l-5-26 16 13 11-21 11 21 16-13 -5 26 z" fill="#fff"/><rect x="28" y="62" width="44" height="9" rx="2" fill="#fff"/><rect x="47" y="14" width="6" height="14" fill="#fff"/><rect x="42" y="18" width="16" height="6" fill="#fff"/>'},
+ {id:"pawn",set:"Games",svg:'<circle cx="50" cy="33" r="11" fill="#fff"/><path d="M40 47 h20 l6 30 h-32 z" fill="#fff"/>'},
+ {id:"checker",set:"Games",svg:'<circle cx="50" cy="50" r="26" fill="#fff"/><circle cx="50" cy="50" r="19" fill="none" stroke="rgba(0,0,0,.22)" stroke-width="3"/><circle cx="50" cy="50" r="12" fill="none" stroke="rgba(0,0,0,.22)" stroke-width="3"/>'},
+ {id:"marble",set:"Games",svg:'<circle cx="50" cy="50" r="26" fill="rgba(255,255,255,.85)"/><circle cx="43" cy="41" r="8" fill="#fff"/>'},
+ {id:"domino",set:"Games",svg:'<rect x="34" y="22" width="32" height="56" rx="6" fill="#fff"/><rect x="36" y="48.5" width="28" height="3" fill="rgba(0,0,0,.3)"/><g fill="rgba(0,0,0,.3)"><circle cx="50" cy="36" r="4"/><circle cx="43" cy="63" r="3.5"/><circle cx="57" cy="63" r="3.5"/></g>'},
+ {id:"ladder",set:"Games",svg:'<g stroke="#fff" stroke-width="5" stroke-linecap="round"><line x1="38" y1="22" x2="38" y2="78"/><line x1="62" y1="22" x2="62" y2="78"/><line x1="38" y1="34" x2="62" y2="34"/><line x1="38" y1="50" x2="62" y2="50"/><line x1="38" y1="66" x2="62" y2="66"/></g>'},
+ {id:"snake",set:"Games",svg:'<path d="M34 28 c22 0 22 20 0 22 c-22 2 -22 24 0 24" fill="none" stroke="#fff" stroke-width="8" stroke-linecap="round"/><circle cx="34" cy="28" r="7" fill="#fff"/><circle cx="32" cy="27" r="1.8" fill="rgba(0,0,0,.55)"/>'},
+ /* ----- Fun ----- */
  {id:"star",set:"Fun",svg:'<path d="M50 18 l9 20 22 2 -16 15 5 22 -20-11 -20 11 5-22 -16-15 22-2 z" fill="#fff"/>'},
  {id:"heart",set:"Fun",svg:'<path d="M50 74 L29 51 a13 13 0 0 1 21-15 a13 13 0 0 1 21 15 z" fill="#fff"/>'},
  {id:"crown",set:"Fun",svg:'<path d="M27 64 l-5-28 16 14 12-22 12 22 16-14 -5 28 z" fill="#fff"/><rect x="27" y="64" width="46" height="9" rx="2" fill="#fff"/>'},
  {id:"smiley",set:"Fun",svg:'<circle cx="50" cy="50" r="28" fill="#fff"/><g fill="rgba(0,0,0,.5)"><circle cx="40" cy="45" r="4"/><circle cx="60" cy="45" r="4"/></g><path d="M37 59 q13 13 26 0" fill="none" stroke="rgba(0,0,0,.5)" stroke-width="4" stroke-linecap="round"/>'},
  {id:"bolt",set:"Fun",svg:'<path d="M56 16 L30 56 h16 l-6 28 26-44 h-16 z" fill="#fff"/>'},
- {id:"paw",set:"Fun",svg:'<g fill="#fff"><ellipse cx="50" cy="63" rx="16" ry="13"/><circle cx="33" cy="45" r="7"/><circle cx="45" cy="36" r="7"/><circle cx="55" cy="36" r="7"/><circle cx="67" cy="45" r="7"/></g>'}
+ {id:"paw",set:"Fun",svg:'<g fill="#fff"><ellipse cx="50" cy="63" rx="16" ry="13"/><circle cx="33" cy="45" r="7"/><circle cx="45" cy="36" r="7"/><circle cx="55" cy="36" r="7"/><circle cx="67" cy="45" r="7"/></g>'},
+ /* ----- Animals ----- */
+ {id:"cat",set:"Animals",svg:'<polygon points="34,30 30,14 46,26" fill="#fff"/><polygon points="66,30 70,14 54,26" fill="#fff"/><circle cx="50" cy="50" r="24" fill="#fff"/><g fill="rgba(0,0,0,.45)"><circle cx="41" cy="46" r="3"/><circle cx="59" cy="46" r="3"/></g><path d="M44 56 Q50 62 56 56" stroke="rgba(0,0,0,.4)" stroke-width="2.5" fill="none" stroke-linecap="round"/>'},
+ {id:"dog",set:"Animals",svg:'<ellipse cx="28" cy="46" rx="9" ry="18" fill="#fff"/><ellipse cx="72" cy="46" rx="9" ry="18" fill="#fff"/><circle cx="50" cy="48" r="24" fill="#fff"/><g fill="rgba(0,0,0,.45)"><circle cx="42" cy="44" r="3"/><circle cx="58" cy="44" r="3"/><circle cx="50" cy="56" r="4"/></g>'},
+ {id:"fish",set:"Animals",svg:'<ellipse cx="46" cy="50" rx="26" ry="17" fill="#fff"/><polygon points="68,50 86,36 86,64" fill="#fff"/><circle cx="34" cy="46" r="3" fill="rgba(0,0,0,.5)"/>'},
+ {id:"bird",set:"Animals",svg:'<circle cx="50" cy="52" r="22" fill="#fff"/><circle cx="50" cy="34" r="13" fill="#fff"/><polygon points="62,34 74,38 62,42" fill="rgba(0,0,0,.35)"/><circle cx="55" cy="32" r="2.5" fill="rgba(0,0,0,.5)"/>'},
+ {id:"bunny",set:"Animals",svg:'<ellipse cx="40" cy="22" rx="6" ry="18" fill="#fff"/><ellipse cx="60" cy="22" rx="6" ry="18" fill="#fff"/><circle cx="50" cy="56" r="22" fill="#fff"/><g fill="rgba(0,0,0,.45)"><circle cx="42" cy="52" r="3"/><circle cx="58" cy="52" r="3"/></g><circle cx="50" cy="62" r="3" fill="rgba(0,0,0,.35)"/>'},
+ {id:"bear",set:"Animals",svg:'<circle cx="32" cy="32" r="10" fill="#fff"/><circle cx="68" cy="32" r="10" fill="#fff"/><circle cx="50" cy="52" r="24" fill="#fff"/><g fill="rgba(0,0,0,.45)"><circle cx="42" cy="48" r="3"/><circle cx="58" cy="48" r="3"/></g><circle cx="50" cy="58" r="5" fill="rgba(0,0,0,.3)"/>'},
+ {id:"butterfly",set:"Animals",svg:'<ellipse cx="50" cy="50" rx="3" ry="20" fill="rgba(0,0,0,.4)"/><circle cx="36" cy="38" r="14" fill="#fff"/><circle cx="64" cy="38" r="14" fill="#fff"/><circle cx="36" cy="62" r="11" fill="#fff"/><circle cx="64" cy="62" r="11" fill="#fff"/>'},
+ {id:"turtle",set:"Animals",svg:'<circle cx="50" cy="30" r="8" fill="#fff"/><g fill="#fff"><circle cx="26" cy="64" r="6"/><circle cx="74" cy="64" r="6"/><circle cx="32" cy="44" r="5"/><circle cx="68" cy="44" r="5"/></g><ellipse cx="50" cy="54" rx="26" ry="20" fill="#fff"/><path d="M40 54 H60 M50 44 V64" stroke="rgba(0,0,0,.22)" stroke-width="3"/>'},
+ /* ----- Nature ----- */
+ {id:"tree",set:"Nature",svg:'<rect x="45" y="52" width="10" height="26" rx="2" fill="rgba(0,0,0,.3)"/><circle cx="50" cy="40" r="24" fill="#fff"/>'},
+ {id:"flower",set:"Nature",svg:'<g fill="#fff"><circle cx="50" cy="30" r="11"/><circle cx="69" cy="44" r="11"/><circle cx="62" cy="66" r="11"/><circle cx="38" cy="66" r="11"/><circle cx="31" cy="44" r="11"/></g><circle cx="50" cy="50" r="10" fill="rgba(0,0,0,.3)"/>'},
+ {id:"sun",set:"Nature",svg:'<circle cx="50" cy="50" r="18" fill="#fff"/><g stroke="#fff" stroke-width="5" stroke-linecap="round"><line x1="50" y1="14" x2="50" y2="24"/><line x1="50" y1="76" x2="50" y2="86"/><line x1="14" y1="50" x2="24" y2="50"/><line x1="76" y1="50" x2="86" y2="50"/><line x1="25" y1="25" x2="32" y2="32"/><line x1="75" y1="75" x2="68" y2="68"/><line x1="75" y1="25" x2="68" y2="32"/><line x1="25" y1="75" x2="32" y2="68"/></g>'},
+ {id:"moon",set:"Nature",svg:'<path d="M62 22 A30 30 0 1 0 62 78 A24 24 0 1 1 62 22 Z" fill="#fff"/>'},
+ {id:"cloud",set:"Nature",svg:'<g fill="#fff"><circle cx="38" cy="54" r="14"/><circle cx="56" cy="48" r="18"/><circle cx="68" cy="56" r="13"/><rect x="36" y="54" width="34" height="16" rx="8"/></g>'},
+ {id:"leaf",set:"Nature",svg:'<path d="M30 70 Q30 28 70 30 Q72 70 30 70 Z" fill="#fff"/><path d="M34 66 Q50 50 66 34" stroke="rgba(0,0,0,.25)" stroke-width="3" fill="none"/>'},
+ {id:"snowflake",set:"Nature",svg:'<g stroke="#fff" stroke-width="4" stroke-linecap="round"><line x1="50" y1="18" x2="50" y2="82"/><line x1="22" y1="34" x2="78" y2="66"/><line x1="78" y1="34" x2="22" y2="66"/></g>'},
+ /* ----- Space ----- */
+ {id:"rocket",set:"Space",svg:'<path d="M50 16 Q64 32 64 56 L36 56 Q36 32 50 16 Z" fill="#fff"/><circle cx="50" cy="38" r="6" fill="rgba(0,0,0,.4)"/><polygon points="36,52 26,68 36,62" fill="#fff"/><polygon points="64,52 74,68 64,62" fill="#fff"/><polygon points="44,56 56,56 50,76" fill="rgba(0,0,0,.3)"/>'},
+ {id:"planet",set:"Space",svg:'<circle cx="50" cy="50" r="20" fill="#fff"/><ellipse cx="50" cy="50" rx="34" ry="11" fill="none" stroke="#fff" stroke-width="5" transform="rotate(-20 50 50)"/>'},
+ {id:"alien",set:"Space",svg:'<path d="M30 44 Q30 20 50 20 Q70 20 70 44 Q70 70 50 78 Q30 70 30 44 Z" fill="#fff"/><g fill="rgba(0,0,0,.5)"><ellipse cx="41" cy="46" rx="5" ry="8"/><ellipse cx="59" cy="46" rx="5" ry="8"/></g>'},
+ /* ----- Food ----- */
+ {id:"icecream",set:"Food",svg:'<polygon points="40,48 60,48 50,82" fill="rgba(0,0,0,.3)"/><circle cx="50" cy="38" r="16" fill="#fff"/><circle cx="42" cy="44" r="11" fill="#fff"/><circle cx="58" cy="44" r="11" fill="#fff"/>'},
+ {id:"cupcake",set:"Food",svg:'<path d="M30 50 Q30 30 50 30 Q70 30 70 50 Z" fill="#fff"/><circle cx="50" cy="26" r="4" fill="rgba(0,0,0,.3)"/><path d="M32 50 L38 78 L62 78 L68 50 Z" fill="#fff"/><g stroke="rgba(0,0,0,.22)" stroke-width="2"><line x1="44" y1="54" x2="42" y2="76"/><line x1="50" y1="54" x2="50" y2="76"/><line x1="56" y1="54" x2="58" y2="76"/></g>'},
+ {id:"apple",set:"Food",svg:'<circle cx="40" cy="52" r="18" fill="#fff"/><circle cx="60" cy="52" r="18" fill="#fff"/><rect x="48" y="26" width="4" height="14" rx="2" fill="rgba(0,0,0,.4)"/><ellipse cx="60" cy="30" rx="9" ry="5" fill="rgba(0,0,0,.25)" transform="rotate(-25 60 30)"/>'},
+ {id:"donut",set:"Food",svg:'<circle cx="50" cy="50" r="26" fill="#fff"/><circle cx="50" cy="50" r="9" fill="rgba(0,0,0,.4)"/><g stroke="rgba(0,0,0,.3)" stroke-width="3" stroke-linecap="round"><line x1="40" y1="36" x2="44" y2="40"/><line x1="62" y1="42" x2="58" y2="46"/><line x1="38" y1="60" x2="42" y2="62"/><line x1="60" y1="62" x2="64" y2="58"/><line x1="50" y1="30" x2="50" y2="34"/></g>'},
+ /* ----- Things ----- */
+ {id:"robot",set:"Things",svg:'<line x1="50" y1="32" x2="50" y2="20" stroke="#fff" stroke-width="4"/><circle cx="50" cy="18" r="4" fill="#fff"/><rect x="30" y="32" width="40" height="36" rx="8" fill="#fff"/><g fill="rgba(0,0,0,.5)"><circle cx="41" cy="48" r="5"/><circle cx="59" cy="48" r="5"/></g><rect x="40" y="60" width="20" height="4" rx="2" fill="rgba(0,0,0,.4)"/>'},
+ {id:"car",set:"Things",svg:'<path d="M22 56 L30 42 L70 42 L78 56 Z" fill="#fff"/><rect x="22" y="54" width="56" height="12" rx="4" fill="#fff"/><g fill="rgba(0,0,0,.4)"><circle cx="34" cy="68" r="7"/><circle cx="66" cy="68" r="7"/></g><polygon points="38,44 46,52 34,52" fill="rgba(0,0,0,.22)"/><polygon points="62,44 54,52 66,52" fill="rgba(0,0,0,.22)"/>'},
+ {id:"boat",set:"Things",svg:'<polygon points="50,20 50,56 74,56" fill="#fff"/><rect x="48" y="20" width="3" height="40" fill="rgba(0,0,0,.3)"/><path d="M24 60 L76 60 L68 74 L32 74 Z" fill="#fff"/>'},
+ {id:"gift",set:"Things",svg:'<circle cx="42" cy="36" r="8" fill="none" stroke="#fff" stroke-width="5"/><circle cx="58" cy="36" r="8" fill="none" stroke="#fff" stroke-width="5"/><rect x="28" y="44" width="44" height="32" rx="3" fill="#fff"/><rect x="46" y="44" width="8" height="32" fill="rgba(0,0,0,.3)"/><rect x="28" y="44" width="44" height="9" fill="rgba(0,0,0,.16)"/>'},
+ {id:"music",set:"Things",svg:'<rect x="46" y="24" width="5" height="44" fill="#fff"/><path d="M51 24 Q66 28 64 44 Q60 34 51 36 Z" fill="#fff"/><ellipse cx="38" cy="68" rx="11" ry="8" fill="#fff" transform="rotate(-20 38 68)"/>'},
+ {id:"gem",set:"Things",svg:'<polygon points="50,22 72,40 50,80 28,40" fill="#fff"/><g stroke="rgba(0,0,0,.22)" stroke-width="2" fill="none"><line x1="28" y1="40" x2="72" y2="40"/><line x1="40" y1="40" x2="50" y2="80"/><line x1="60" y1="40" x2="50" y2="80"/><line x1="40" y1="40" x2="50" y2="22"/><line x1="60" y1="40" x2="50" y2="22"/></g>'}
 ];
+/* ordered groups of icons by theme (Games, Fun, Animals, ...) for the picker */
+GN.avatarSets=function(){const order=[],map={};GN.AVATARS.forEach(a=>{if(!map[a.set]){map[a.set]=[];order.push(a.set);}map[a.set].push(a);});return order.map(s=>({set:s,icons:map[s]}));};
 GN.avatarInner=function(p,size){const av=(p&&p.avatar)||{kind:"color"};
   if(av.kind==="photo"&&av.photo)return '<img src="'+av.photo+'" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;">';
   if(av.kind==="icon"&&av.icon){const ic=GN.AVATARS.find(a=>a.id===av.icon);if(ic)return '<svg viewBox="0 0 100 100" style="width:80%;height:80%;display:block;">'+ic.svg+'</svg>';}
@@ -758,5 +811,79 @@ GN.easyView={
   toggle:function(){this.set(!this.on());return this.on();}
 };
 GN.easyView.apply();
+/* ---------- Bluetooth / gamepad controller support ----------
+   Pairing happens in the device's system Bluetooth settings; this reads the
+   controller via the standard Gamepad API and drives a focus cursor over the
+   page's links/buttons. Activates only once a controller connects. */
+GN.pad=(function(){
+  let enabled=false,raf=null,ring=null,focusEl=null,backFn=null;
+  let sel='a[href]:not([data-pad-skip]),button:not([disabled]):not([data-pad-skip]),[data-pad]';
+  const prev={},onConn=[],onDisc=[];
+  let dirHeld=null,dirNext=0;
+  function visible(el){
+    if(el.disabled)return false;
+    const r=el.getBoundingClientRect();if(r.width<2||r.height<2)return false;
+    if(r.bottom<0||r.top>(window.innerHeight||9999)||r.right<0||r.left>(window.innerWidth||9999))return false;
+    let cs;try{cs=getComputedStyle(el);}catch(e){return true;}
+    if(cs.display==="none"||cs.visibility==="hidden"||cs.opacity==="0")return false;
+    return true;
+  }
+  function focusables(){return Array.prototype.slice.call(document.querySelectorAll(sel)).filter(visible);}
+  function ensureRing(){if(ring)return;ring=document.createElement("div");ring.id="gnPadRing";
+    ring.style.cssText="position:fixed;pointer-events:none;z-index:99998;border:3px solid #f4c542;border-radius:12px;"+
+      "box-shadow:0 0 0 2px rgba(0,0,0,.45),0 0 16px rgba(244,197,66,.7);transition:left .08s,top .08s,width .08s,height .08s;display:none;";
+    document.body.appendChild(ring);}
+  function paint(){if(!ring)return;
+    if(!focusEl||!document.body.contains(focusEl)||!visible(focusEl)){ring.style.display="none";return;}
+    const r=focusEl.getBoundingClientRect();ring.style.display="block";
+    ring.style.left=(r.left-4)+"px";ring.style.top=(r.top-4)+"px";ring.style.width=(r.width+2)+"px";ring.style.height=(r.height+2)+"px";}
+  function setFocus(el){focusEl=el||null;if(el){ensureRing();try{el.scrollIntoView({block:"nearest",inline:"nearest"});}catch(e){}paint();}else paint();}
+  function center(el){const r=el.getBoundingClientRect();return{x:r.left+r.width/2,y:r.top+r.height/2};}
+  function move(dir){const items=focusables();if(!items.length)return;
+    if(!focusEl||items.indexOf(focusEl)<0){setFocus(items[0]);return;}
+    const c=center(focusEl);let best=null,bestScore=Infinity;
+    for(const el of items){if(el===focusEl)continue;const e=center(el),dx=e.x-c.x,dy=e.y-c.y;let primary,cross;
+      if(dir==="up"){if(dy>-2)continue;primary=-dy;cross=Math.abs(dx);}
+      else if(dir==="down"){if(dy<2)continue;primary=dy;cross=Math.abs(dx);}
+      else if(dir==="left"){if(dx>-2)continue;primary=-dx;cross=Math.abs(dy);}
+      else{if(dx<2)continue;primary=dx;cross=Math.abs(dy);}
+      const score=primary+cross*2;if(score<bestScore){bestScore=score;best=el;}}
+    if(best)setFocus(best);}
+  function activate(){if(focusEl){try{focusEl.focus({preventScroll:true});}catch(e){}focusEl.click();}}
+  function back(){if(backFn){backFn();return;}
+    let b=document.querySelector('[data-pad-back]');
+    if(!b)b=Array.prototype.slice.call(document.querySelectorAll('button,a')).filter(visible).find(x=>/\b(back|cancel|close|shelf)\b/i.test(x.textContent||""));
+    if(b){b.click();return;}
+    try{document.dispatchEvent(new KeyboardEvent("keydown",{key:"Escape",keyCode:27,which:27,bubbles:true}));}catch(e){}}
+  function toast(txt){try{const t=document.createElement("div");t.textContent=txt;
+    t.style.cssText="position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:99999;background:#15241b;color:#cfe6d8;"+
+      "border:1px solid #3a5a47;border-radius:999px;padding:10px 18px;font:600 15px system-ui;box-shadow:0 6px 20px rgba(0,0,0,.5);opacity:0;transition:opacity .25s;";
+    document.body.appendChild(t);requestAnimationFrame(()=>t.style.opacity="1");
+    setTimeout(()=>{t.style.opacity="0";setTimeout(()=>t.remove(),300);},2200);}catch(e){}}
+  const DZ=0.55;
+  function poll(){
+    const gps=(navigator.getGamepads?navigator.getGamepads():[])||[];let gp=null;
+    for(let i=0;i<gps.length;i++){if(gps[i]&&gps[i].connected){gp=gps[i];break;}}
+    if(gp){const ax=gp.axes||[],bt=gp.buttons||[];const pr=i=>bt[i]&&bt[i].pressed;
+      const up=pr(12)||ax[1]<-DZ,down=pr(13)||ax[1]>DZ,left=pr(14)||ax[0]<-DZ,right=pr(15)||ax[0]>DZ;
+      const dir=up?"up":down?"down":left?"left":right?"right":null;const now=(performance&&performance.now)?performance.now():Date.now();
+      if(dir){if(dir!==dirHeld){dirHeld=dir;dirNext=now+340;move(dir);}else if(now>=dirNext){dirNext=now+140;move(dir);}}else{dirHeld=null;}
+      const edge=i=>{const p=!!pr(i),was=prev[i];prev[i]=p;return p&&!was;};
+      if(edge(0))activate();if(edge(1))back();
+      paint();}
+    raf=requestAnimationFrame(poll);}
+  function start(){if(enabled)return;enabled=true;ensureRing();const items=focusables();if(items.length&&!focusEl)setFocus(items[0]);
+    raf=requestAnimationFrame(poll);window.addEventListener("resize",paint);window.addEventListener("scroll",paint,true);}
+  function stop(){enabled=false;if(raf)cancelAnimationFrame(raf);raf=null;if(ring)ring.style.display="none";}
+  if(typeof window!=="undefined"){
+    window.addEventListener("gamepadconnected",e=>{start();toast("\ud83c\udfae Controller connected");onConn.forEach(f=>{try{f(e.gamepad);}catch(_){}});});
+    window.addEventListener("gamepaddisconnected",e=>{const list=navigator.getGamepads?navigator.getGamepads():[];let any=false;for(let i=0;i<list.length;i++){if(list[i]&&list[i].connected)any=true;}if(!any)stop();onDisc.forEach(f=>{try{f(e.gamepad);}catch(_){}});});}
+  return{start,stop,
+    connected:()=>!!(navigator.getGamepads&&Array.prototype.some.call(navigator.getGamepads(),g=>g&&g.connected)),
+    setSelector:s=>{if(s)sel=s;},focusables:focusables,focus:setFocus,current:()=>focusEl,
+    refresh:()=>{if(focusEl&&focusables().indexOf(focusEl)<0)setFocus(focusables()[0]||null);paint();},
+    onConnect:cb=>onConn.push(cb),onDisconnect:cb=>onDisc.push(cb),setBack:fn=>{backFn=fn;},
+    _move:move,_activate:activate,_back:back,_visible:visible};
+})();
 try{injectCSS();}catch(e){}
 })();

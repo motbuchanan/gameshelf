@@ -42,6 +42,8 @@
   .iconGrid{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;}
   .ico{width:48px;height:48px;border-radius:12px;cursor:pointer;border:3px solid transparent;display:flex;align-items:center;justify-content:center;}
   .ico.sel{border-color:#22303a;}
+  .avSetLabel{font-size:10.5px;letter-spacing:1.5px;text-transform:uppercase;color:#8aa0ad;margin:10px 2px 5px;text-align:left;font-weight:700;}
+  .avSetLabel:first-child{margin-top:2px;}
   .photoBtn{display:inline-block;padding:10px 14px;border-radius:10px;background:#eef3f1;color:#2a3a30;font-weight:700;cursor:pointer;font-size:14px;}
   .photoBtn input{display:none;}
   .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;}
@@ -158,15 +160,20 @@ function updatePreview(){const prev=$("card").querySelector("#eprev");if(prev)pr
 function renderAvSection(){
   const card=$("card");[...card.querySelectorAll(".tab")].forEach(t=>t.classList.toggle("on",t.dataset.m===avMode));
   const box=card.querySelector("#eav");if(!box)return;
+  box.style.maxHeight="";box.style.overflow="";
   if(avMode==="color"){box.innerHTML='<div style="font-size:13px;color:#7a8a98;text-align:center;padding:4px;">Shows your first initial on your color.</div>';return;}
   if(avMode==="icon"){
-    box.innerHTML='<div class="iconGrid" id="eicons"></div>';const g=box.querySelector("#eicons");
-    GN.AVATARS.forEach(a=>{const d=document.createElement("div");
-      const sel=pickAvatar&&pickAvatar.kind==="icon"&&pickAvatar.icon===a.id;
-      d.className="ico"+(sel?" sel":"");d.title=a.set;
-      d.innerHTML=GN.tokenHTML({name:"?",color:pickColor.color,light:pickColor.light,dark:pickColor.dark,avatar:{kind:"icon",icon:a.id}},40);
-      d.onclick=()=>{pickAvatar={kind:"icon",icon:a.id};renderAvSection();updatePreview();};
-      g.appendChild(d);});
+    box.innerHTML="";box.style.maxHeight="300px";box.style.overflow="auto";
+    GN.avatarSets().forEach(grp=>{
+      const h=document.createElement("div");h.className="avSetLabel";h.textContent=grp.set;box.appendChild(h);
+      const g=document.createElement("div");g.className="iconGrid";box.appendChild(g);
+      grp.icons.forEach(a=>{const d=document.createElement("div");
+        const sel=pickAvatar&&pickAvatar.kind==="icon"&&pickAvatar.icon===a.id;
+        d.className="ico"+(sel?" sel":"");d.title=a.id;
+        d.innerHTML=GN.tokenHTML({name:"?",color:pickColor.color,light:pickColor.light,dark:pickColor.dark,avatar:{kind:"icon",icon:a.id}},40);
+        d.onclick=()=>{pickAvatar={kind:"icon",icon:a.id};renderAvSection();updatePreview();};
+        g.appendChild(d);});
+    });
     return;
   }
   // photo
