@@ -303,6 +303,67 @@ document.getElementById("resetStats").addEventListener("click",function(){
   btn.addEventListener("click",()=>{GN.easyView.toggle();refresh();});
   refresh();})();
 // (all-games tally removed from the shelf; stats will live on the Bookshelf)
+/* ---------- first-launch onboarding: who owns this device? ---------- */
+(function(){
+  if(!window.GN||!GN.profiles||!GN.profiles.needsOwner())return;
+  function esc(s){return (s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+  function token(p,s){return '<span style="flex:none;width:'+s+'px;height:'+s+'px;border-radius:50%;display:inline-flex;'
+    +'align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:'+Math.round(s*0.42)+'px;'
+    +'box-shadow:0 1px 3px rgba(0,0,0,.4) inset;background:radial-gradient(circle at 35% 30%,'+p.light+','+p.color+' 62%,'+p.dark+');">'
+    +esc((p.name||"?").charAt(0).toUpperCase())+'</span>';}
+  function firstFree(){const used=new Set(GN.profiles.list().map(p=>p.color));const pal=GN.palette();
+    for(let i=0;i<pal.length;i++)if(!used.has(pal[i].color))return i;return 0;}
+  let pick=GN.palette()[firstFree()];
+  const ov=document.createElement("div");
+  ov.style.cssText="position:fixed;inset:0;z-index:9999;background:linear-gradient(160deg,#3a2615,#180f06);"
+    +"color:#f3e7d0;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:auto;"
+    +"padding:34px 20px;font-family:system-ui,sans-serif;text-align:center;";
+  document.body.appendChild(ov);document.body.style.overflow="hidden";
+  const BTN="font-family:inherit;cursor:pointer;border-radius:12px;font-weight:800;";
+  function rowBtn(inner){const b=document.createElement("button");
+    b.style.cssText=BTN+"display:flex;align-items:center;gap:12px;width:min(360px,86vw);text-align:left;font-size:17px;"
+      +"padding:12px 16px;margin:6px 0;border:1.5px solid #6b4a2a;background:rgba(255,255,255,.06);color:#f3e7d0;";
+    b.innerHTML=inner;return b;}
+  function chooser(){
+    ov.innerHTML='<div style="font-size:27px;font-weight:800;color:#f4c542;margin-bottom:6px;">Welcome to the Game Shelf</div>'
+      +'<div style="font-size:14.5px;color:#d8c4a0;max-width:340px;line-height:1.5;margin-bottom:20px;">'
+      +'Who owns this device? We&rsquo;ll use their preferences here &mdash; everyone&rsquo;s scores are still tracked.</div>';
+    const box=document.createElement("div");box.style.cssText="display:flex;flex-direction:column;align-items:center;";
+    GN.profiles.list().forEach(p=>{const b=rowBtn(token(p,38)+'<span style="flex:1;">'+esc(p.name)+'</span><span style="color:#f4c542;font-size:13px;">this is me</span>');
+      b.onclick=()=>claim(p.id);box.appendChild(b);});
+    const nb=document.createElement("button");
+    nb.style.cssText=BTN+"width:min(360px,86vw);font-size:16px;padding:12px;margin:12px 0 0;border:1.5px dashed #f4c542;background:none;color:#f4c542;";
+    nb.innerHTML="&#43; New player";nb.onclick=create;box.appendChild(nb);
+    ov.appendChild(box);
+  }
+  function create(){
+    ov.innerHTML='<div style="font-size:24px;font-weight:800;color:#f4c542;margin-bottom:14px;">Create your profile</div>';
+    const wrap=document.createElement("div");wrap.style.cssText="width:min(360px,86vw);display:flex;flex-direction:column;align-items:stretch;gap:14px;";
+    const inp=document.createElement("input");inp.maxLength=16;inp.placeholder="Your name";
+    inp.style.cssText="font-family:inherit;font-size:18px;padding:12px 14px;border-radius:10px;border:1.5px solid #6b4a2a;background:rgba(255,255,255,.95);color:#22303a;text-align:center;";
+    wrap.appendChild(inp);
+    const glabel=document.createElement("div");glabel.textContent="pick a color";
+    glabel.style.cssText="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#b89a6e;";wrap.appendChild(glabel);
+    const grid=document.createElement("div");grid.style.cssText="display:flex;flex-wrap:wrap;gap:9px;justify-content:center;";
+    GN.palette().forEach(pal=>{const sw=document.createElement("div");
+      sw.style.cssText="width:40px;height:40px;border-radius:50%;cursor:pointer;border:3px solid "+(pal.color===pick.color?"#f4c542":"transparent")+";"
+        +"background:radial-gradient(circle at 35% 30%,"+pal.light+","+pal.color+" 62%,"+pal.dark+");";
+      sw.onclick=()=>{pick=pal;[...grid.children].forEach(c=>c.style.borderColor="transparent");sw.style.borderColor="#f4c542";};
+      grid.appendChild(sw);});
+    wrap.appendChild(grid);
+    const go=document.createElement("button");go.textContent="Create & start playing";
+    go.style.cssText=BTN+"font-size:17px;padding:13px;border:none;background:#f4c542;color:#3a2a05;margin-top:4px;";
+    go.onclick=()=>{const name=(inp.value||"").trim();if(!name){inp.focus();return;}
+      const p=GN.profiles.add(name,pick);if(p){GN.profiles.recolor(p.id,pick);claim(p.id);}};
+    wrap.appendChild(go);
+    const back=document.createElement("button");back.textContent="\u2329 back";
+    back.style.cssText=BTN+"background:none;border:none;color:#b89a6e;font-size:14px;padding:6px;";back.onclick=chooser;
+    wrap.appendChild(back);
+    ov.appendChild(wrap);setTimeout(()=>inp.focus(),40);
+  }
+  function claim(id){GN.profiles.setOwner(id);document.body.style.overflow="";ov.remove();}
+  chooser();
+})();
 </script>
 </body>
 </html>

@@ -138,7 +138,10 @@ GN.profiles.recordResult(gameKey, [{id|name, win, score, place}])  (N-player fin
      (confirm + drops stats), "Make this device's owner" (crown + owner banner), and a per-profile
      stats panel. Color avatars only (icons/photos = 2b). `tokenHTML()` already branches on
      avatar.kind so icon/photo drop in later. Added to sw.js CORE; CACHE v6→v7. 13/13 interaction
-     test. Onboarding (first-launch prompt) is the NEXT sub-chunk.
+     test. Onboarding ✅ DONE (validated 2026-06-14): on the shelf, if `needsOwner()`, a
+     walnut/gold "Welcome to the Game Shelf — who owns this device?" overlay blocks the shelf and
+     lets you claim an existing profile OR create a new one (name + color); choosing sets the
+     owner and dismisses. Hidden once an owner exists. 13/13 flow test (claim / create / skip).
    - **2b:** avatar picker upgrade — the game-themed **icon gallery** (original SVGs) + **photo
      upload** (canvas crop/downscale → dataURL), wired into the profile screen + onboarding.
 3. **Owner prefs:** Easy View / sound / TV read from the owner profile (fills the Phase-1
