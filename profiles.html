@@ -35,6 +35,15 @@
   .grid{display:flex;flex-wrap:wrap;gap:8px;}
   .sw{width:38px;height:38px;border-radius:50%;cursor:pointer;border:3px solid transparent;}
   .sw.sel{border-color:#22303a;transform:scale(1.08);}
+  .prev{display:flex;justify-content:center;margin:2px 0 12px;}
+  .tabs{display:flex;gap:6px;margin-bottom:8px;}
+  .tab{flex:1;font-family:inherit;font-weight:700;font-size:13px;padding:8px;border-radius:9px;border:1.5px solid #c0d0da;background:#fff;color:#3a566e;cursor:pointer;}
+  .tab.on{background:#2f7d4f;color:#fff;border-color:#2f7d4f;}
+  .iconGrid{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;}
+  .ico{width:48px;height:48px;border-radius:12px;cursor:pointer;border:3px solid transparent;display:flex;align-items:center;justify-content:center;}
+  .ico.sel{border-color:#22303a;}
+  .photoBtn{display:inline-block;padding:10px 14px;border-radius:10px;background:#eef3f1;color:#2a3a30;font-weight:700;cursor:pointer;font-size:14px;}
+  .photoBtn input{display:none;}
   .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;}
   .btn{flex:1;min-width:120px;font-family:inherit;font-weight:800;font-size:15px;padding:11px;border-radius:10px;border:none;cursor:pointer;}
   .btn.primary{background:#2f7d4f;color:#fff;}
@@ -64,17 +73,9 @@
 <script src="gamenight.js?v=12"></script>
 <script>
 const $=id=>document.getElementById(id);
-let editId=null, pickColor=null; // editor state
+let editId=null, pickColor=null, pickAvatar=null, avMode="color"; // editor state
 
-function tokenHTML(p,size){
-  const s=size||40, av=p.avatar||{kind:"color"};
-  let inner='';
-  if(av.kind==="photo"&&av.photo)inner='<img src="'+av.photo+'" alt="">';
-  else if(av.kind==="icon"&&av.icon)inner='<span style="font-size:'+Math.round(s*0.5)+'px;">&#9733;</span>'; // icon set arrives in 2b
-  else inner=(p.name||"?").trim().charAt(0).toUpperCase();
-  return '<div class="tok" style="width:'+s+'px;height:'+s+'px;font-size:'+Math.round(s*0.42)+'px;'
-    +'background:radial-gradient(circle at 35% 30%,'+p.light+','+p.color+' 62%,'+p.dark+');">'+inner+'</div>';
-}
+function tokenHTML(p,size){return GN.tokenHTML(p,size||40);}
 function statLine(p){
   const ks=Object.keys(p.stats||{});
   if(!ks.length)return "no games yet";
@@ -107,13 +108,18 @@ function openEditor(id){
   const isNew=!id;
   const p=isNew?{name:"",...GN.palette()[ firstFreeColorIdx() ],avatar:{kind:"color"},stats:{}}:GN.profiles.get(id);
   pickColor={color:p.color,light:p.light,dark:p.dark};
+  pickAvatar=p.avatar?JSON.parse(JSON.stringify(p.avatar)):{kind:"color"};
+  avMode=pickAvatar.kind||"color";
   const card=$("card");
   let h='<h3 id="eh">'+(isNew?"New player":"Edit player")+'</h3>';
+  h+='<div class="prev" id="eprev"></div>';
   h+='<div class="fld"><label>Name</label><input id="enm" maxlength="16" placeholder="Name" value="'+esc(p.name)+'"></div>';
-  h+='<div class="fld"><label>Token color</label><div class="grid" id="egrid"></div></div>';
-  if(!isNew){
-    h+='<div class="fld"><label>Stats</label><div class="statbox" id="estats"></div></div>';
-  }
+  h+='<div class="fld"><label>Look</label><div class="tabs">'
+    +'<button class="tab" data-m="color">Initial</button>'
+    +'<button class="tab" data-m="icon">Icon</button>'
+    +'<button class="tab" data-m="photo">Photo</button></div><div id="eav"></div></div>';
+  h+='<div class="fld"><label>Color</label><div class="grid" id="egrid"></div></div>';
+  if(!isNew)h+='<div class="fld"><label>Stats</label><div class="statbox" id="estats"></div></div>';
   h+='<div class="btns">';
   h+='<button class="btn primary" id="esave">'+(isNew?"Create":"Save")+'</button>';
   if(!isNew)h+='<button class="btn owner" id="eowner">Make this device&rsquo;s owner</button>';
@@ -127,9 +133,15 @@ function openEditor(id){
     const sw=document.createElement("div");sw.className="sw"+(pal.color===pickColor.color?" sel":"");
     sw.style.background="radial-gradient(circle at 35% 30%,"+pal.light+","+pal.color+" 62%,"+pal.dark+")";
     sw.onclick=()=>{pickColor={color:pal.color,light:pal.light,dark:pal.dark};
-      [...grid.children].forEach(c=>c.classList.remove("sel"));sw.classList.add("sel");};
+      [...grid.children].forEach(c=>c.classList.remove("sel"));sw.classList.add("sel");
+      renderAvSection();updatePreview();};
     grid.appendChild(sw);
   });
+  // avatar tabs
+  [...card.querySelectorAll(".tab")].forEach(t=>t.onclick=()=>{avMode=t.dataset.m;
+    if(avMode==="color")pickAvatar={kind:"color"};renderAvSection();updatePreview();});
+  renderAvSection();updatePreview();
+  card.querySelector("#enm").addEventListener("input",updatePreview);
   if(!isNew)renderStats(card.querySelector("#estats"),p);
   card.querySelector("#esave").onclick=saveEditor;
   card.querySelector("#ecancel").onclick=closeEditor;
@@ -139,6 +151,44 @@ function openEditor(id){
   }
   $("ov").classList.add("show");
   setTimeout(()=>{const i=card.querySelector("#enm");if(i&&isNew)i.focus();},30);
+}
+function curProfile(){const nm=(($("card").querySelector("#enm")||{}).value||"").trim();
+  return {name:nm||"?",color:pickColor.color,light:pickColor.light,dark:pickColor.dark,avatar:pickAvatar};}
+function updatePreview(){const prev=$("card").querySelector("#eprev");if(prev)prev.innerHTML=GN.tokenHTML(curProfile(),60);}
+function renderAvSection(){
+  const card=$("card");[...card.querySelectorAll(".tab")].forEach(t=>t.classList.toggle("on",t.dataset.m===avMode));
+  const box=card.querySelector("#eav");if(!box)return;
+  if(avMode==="color"){box.innerHTML='<div style="font-size:13px;color:#7a8a98;text-align:center;padding:4px;">Shows your first initial on your color.</div>';return;}
+  if(avMode==="icon"){
+    box.innerHTML='<div class="iconGrid" id="eicons"></div>';const g=box.querySelector("#eicons");
+    GN.AVATARS.forEach(a=>{const d=document.createElement("div");
+      const sel=pickAvatar&&pickAvatar.kind==="icon"&&pickAvatar.icon===a.id;
+      d.className="ico"+(sel?" sel":"");d.title=a.set;
+      d.innerHTML=GN.tokenHTML({name:"?",color:pickColor.color,light:pickColor.light,dark:pickColor.dark,avatar:{kind:"icon",icon:a.id}},40);
+      d.onclick=()=>{pickAvatar={kind:"icon",icon:a.id};renderAvSection();updatePreview();};
+      g.appendChild(d);});
+    return;
+  }
+  // photo
+  const has=pickAvatar&&pickAvatar.kind==="photo"&&pickAvatar.photo;
+  box.innerHTML='<div style="text-align:center;"><label class="photoBtn">'+(has?"Change photo":"Choose a photo")
+    +'<input type="file" accept="image/*" id="ephoto"></label>'
+    +(has?' <button class="photoBtn" id="ephotoRm" style="background:#fbe7e4;color:#b23a2e;">Remove</button>':'')
+    +'<div style="font-size:11.5px;color:#7a8a98;margin-top:8px;">Stored on this device, shrunk to a small square.</div></div>';
+  const inp=box.querySelector("#ephoto");if(inp)inp.onchange=e=>{const fl=e.target.files&&e.target.files[0];if(fl)handlePhoto(fl);};
+  const rm=box.querySelector("#ephotoRm");if(rm)rm.onclick=()=>{pickAvatar={kind:"color"};avMode="color";renderAvSection();updatePreview();};
+}
+function handlePhoto(file){
+  const fr=new FileReader();
+  fr.onload=()=>{const img=new Image();
+    img.onload=()=>{let data=fr.result;
+      try{const sz=128,cv=document.createElement("canvas");cv.width=cv.height=sz;const ctx=cv.getContext("2d");
+        const s=Math.min(img.width,img.height),sx=(img.width-s)/2,sy=(img.height-s)/2;
+        ctx.drawImage(img,sx,sy,s,s,0,0,sz,sz);data=cv.toDataURL("image/jpeg",0.7);}catch(e){}
+      pickAvatar={kind:"photo",photo:data};avMode="photo";renderAvSection();updatePreview();};
+    img.onerror=()=>{pickAvatar={kind:"photo",photo:fr.result};renderAvSection();updatePreview();};
+    img.src=fr.result;};
+  fr.readAsDataURL(file);
 }
 function renderStats(box,p){
   const ks=Object.keys(p.stats||{});
@@ -157,8 +207,10 @@ function firstFreeColorIdx(){
 function saveEditor(){
   const name=($("card").querySelector("#enm").value||"").trim();
   if(!name){$("card").querySelector("#enm").focus();return;}
-  if(editId){GN.profiles.rename(editId,name);GN.profiles.recolor(editId,pickColor);}
-  else{const np=GN.profiles.add(name,pickColor);if(np)GN.profiles.recolor(np.id,pickColor);}
+  let id=editId;
+  if(id){GN.profiles.rename(id,name);GN.profiles.recolor(id,pickColor);}
+  else{const np=GN.profiles.add(name,pickColor);if(!np){closeEditor();return;}id=np.id;GN.profiles.recolor(id,pickColor);}
+  GN.profiles.setAvatar(id,pickAvatar||{kind:"color"});
   closeEditor();render();
 }
 function removeProfile(id,name){

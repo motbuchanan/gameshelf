@@ -123,6 +123,36 @@ GN.profiles={
 GN.players=function(){return profLoad().map(p=>({name:p.name,color:p.color,light:p.light,dark:p.dark}));};
 GN.addPlayer=function(name,chosenPal){return GN.profiles.add(name,chosenPal);};
 GN.recolorPlayer=function(name,pal){const p=GN.profiles.byName(name);if(!p)return null;return GN.profiles.recolor(p.id,pal);};
+/* ---------- avatars: game-themed icon catalog + shared token renderer ---------- */
+/* each icon = white-forward inner SVG (with translucent-black detail) on a 0 0 100 100 canvas,
+   drawn over the profile's color gradient so it reads on any color. */
+GN.AVATARS=[
+ {id:"die",set:"Yahtzee · Farkle",svg:'<rect x="24" y="24" width="52" height="52" rx="11" fill="#fff"/><g fill="rgba(0,0,0,.32)"><circle cx="36" cy="36" r="4.5"/><circle cx="64" cy="36" r="4.5"/><circle cx="50" cy="50" r="4.5"/><circle cx="36" cy="64" r="4.5"/><circle cx="64" cy="64" r="4.5"/></g>'},
+ {id:"cards",set:"One Card Left!",svg:'<g stroke="rgba(0,0,0,.22)" stroke-width="1.5"><rect x="28" y="36" width="26" height="38" rx="4" fill="#fff" transform="rotate(-16 41 55)"/><rect x="37" y="32" width="26" height="38" rx="4" fill="#fff"/><rect x="46" y="36" width="26" height="38" rx="4" fill="#fff" transform="rotate(16 59 55)"/></g>'},
+ {id:"king",set:"Chess",svg:'<path d="M28 62 l-5-26 16 13 11-21 11 21 16-13 -5 26 z" fill="#fff"/><rect x="28" y="62" width="44" height="9" rx="2" fill="#fff"/><rect x="47" y="14" width="6" height="14" fill="#fff"/><rect x="42" y="18" width="16" height="6" fill="#fff"/>'},
+ {id:"pawn",set:"Chess",svg:'<circle cx="50" cy="33" r="11" fill="#fff"/><path d="M40 47 h20 l6 30 h-32 z" fill="#fff"/>'},
+ {id:"checker",set:"Checkers",svg:'<circle cx="50" cy="50" r="26" fill="#fff"/><circle cx="50" cy="50" r="19" fill="none" stroke="rgba(0,0,0,.22)" stroke-width="3"/><circle cx="50" cy="50" r="12" fill="none" stroke="rgba(0,0,0,.22)" stroke-width="3"/>'},
+ {id:"marble",set:"Chinese Checkers",svg:'<circle cx="50" cy="50" r="26" fill="rgba(255,255,255,.85)"/><circle cx="43" cy="41" r="8" fill="#fff"/>'},
+ {id:"domino",set:"Dominoes",svg:'<rect x="34" y="22" width="32" height="56" rx="6" fill="#fff"/><rect x="36" y="48.5" width="28" height="3" fill="rgba(0,0,0,.3)"/><g fill="rgba(0,0,0,.3)"><circle cx="50" cy="36" r="4"/><circle cx="43" cy="63" r="3.5"/><circle cx="57" cy="63" r="3.5"/></g>'},
+ {id:"ladder",set:"Snakes & Ladders",svg:'<g stroke="#fff" stroke-width="5" stroke-linecap="round"><line x1="38" y1="22" x2="38" y2="78"/><line x1="62" y1="22" x2="62" y2="78"/><line x1="38" y1="34" x2="62" y2="34"/><line x1="38" y1="50" x2="62" y2="50"/><line x1="38" y1="66" x2="62" y2="66"/></g>'},
+ {id:"snake",set:"Snakes & Ladders",svg:'<path d="M34 28 c22 0 22 20 0 22 c-22 2 -22 24 0 24" fill="none" stroke="#fff" stroke-width="8" stroke-linecap="round"/><circle cx="34" cy="28" r="7" fill="#fff"/><circle cx="32" cy="27" r="1.8" fill="rgba(0,0,0,.55)"/>'},
+ {id:"star",set:"Fun",svg:'<path d="M50 18 l9 20 22 2 -16 15 5 22 -20-11 -20 11 5-22 -16-15 22-2 z" fill="#fff"/>'},
+ {id:"heart",set:"Fun",svg:'<path d="M50 74 L29 51 a13 13 0 0 1 21-15 a13 13 0 0 1 21 15 z" fill="#fff"/>'},
+ {id:"crown",set:"Fun",svg:'<path d="M27 64 l-5-28 16 14 12-22 12 22 16-14 -5 28 z" fill="#fff"/><rect x="27" y="64" width="46" height="9" rx="2" fill="#fff"/>'},
+ {id:"smiley",set:"Fun",svg:'<circle cx="50" cy="50" r="28" fill="#fff"/><g fill="rgba(0,0,0,.5)"><circle cx="40" cy="45" r="4"/><circle cx="60" cy="45" r="4"/></g><path d="M37 59 q13 13 26 0" fill="none" stroke="rgba(0,0,0,.5)" stroke-width="4" stroke-linecap="round"/>'},
+ {id:"bolt",set:"Fun",svg:'<path d="M56 16 L30 56 h16 l-6 28 26-44 h-16 z" fill="#fff"/>'},
+ {id:"paw",set:"Fun",svg:'<g fill="#fff"><ellipse cx="50" cy="63" rx="16" ry="13"/><circle cx="33" cy="45" r="7"/><circle cx="45" cy="36" r="7"/><circle cx="55" cy="36" r="7"/><circle cx="67" cy="45" r="7"/></g>'}
+];
+GN.avatarInner=function(p,size){const av=(p&&p.avatar)||{kind:"color"};
+  if(av.kind==="photo"&&av.photo)return '<img src="'+av.photo+'" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;">';
+  if(av.kind==="icon"&&av.icon){const ic=GN.AVATARS.find(a=>a.id===av.icon);if(ic)return '<svg viewBox="0 0 100 100" style="width:80%;height:80%;display:block;">'+ic.svg+'</svg>';}
+  return (p&&p.name?p.name:"?").trim().charAt(0).toUpperCase();
+};
+GN.tokenHTML=function(p,size){size=size||40;
+  return '<span class="gnTok" style="flex:none;width:'+size+'px;height:'+size+'px;border-radius:50%;display:inline-flex;'
+    +'align-items:center;justify-content:center;overflow:hidden;color:#fff;font-weight:800;font-size:'+Math.round(size*0.42)+'px;'
+    +'box-shadow:0 1px 3px rgba(0,0,0,.35) inset;background:radial-gradient(circle at 35% 30%,'+p.light+','+p.color+' 62%,'+p.dark+');">'
+    +GN.avatarInner(p,size)+'</span>';};
 GN.lastPair=function(){try{const pr=JSON.parse(localStorage.getItem(PAIRKEY));
     if(pr&&pr.length===2){const l=pload();
       const a=l.find(p=>p.name===pr[0]),b=l.find(p=>p.name===pr[1]);

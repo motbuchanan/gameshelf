@@ -142,8 +142,13 @@ GN.profiles.recordResult(gameKey, [{id|name, win, score, place}])  (N-player fin
      walnut/gold "Welcome to the Game Shelf — who owns this device?" overlay blocks the shelf and
      lets you claim an existing profile OR create a new one (name + color); choosing sets the
      owner and dismisses. Hidden once an owner exists. 13/13 flow test (claim / create / skip).
-   - **2b:** avatar picker upgrade — the game-themed **icon gallery** (original SVGs) + **photo
-     upload** (canvas crop/downscale → dataURL), wired into the profile screen + onboarding.
+   - **2b — ✅ DONE (validated 2026-06-14):** shared avatar layer in gamenight.js — `GN.AVATARS`
+     (15 original game-themed + fun icons: die, cards, king, pawn, checker, marble, domino, ladder,
+     snake, star, heart, crown, smiley, bolt, paw), `GN.avatarInner()`, and `GN.tokenHTML()` (used
+     everywhere). Players editor got an Initial/Icon/Photo picker with a live preview; photo =
+     file → canvas center-crop + downscale to 128px JPEG dataURL (guarded fallback). Onboarding
+     "create" flow gained a color + icon picker with preview. Validated: catalog 9/9, picker 7/7,
+     onboarding+icon 7/7; all icon SVGs parse.
 3. **Owner prefs:** Easy View / sound / TV read from the owner profile (fills the Phase-1
    `applyOwnerPrefs` stub); switching owner re-applies; fold flat `gn_easy`/`gn_muted`/`gn_tv`
    into `owner.prefs` (incidentally fixes the tv key-mismatch).

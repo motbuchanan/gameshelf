@@ -313,7 +313,7 @@ document.getElementById("resetStats").addEventListener("click",function(){
     +esc((p.name||"?").charAt(0).toUpperCase())+'</span>';}
   function firstFree(){const used=new Set(GN.profiles.list().map(p=>p.color));const pal=GN.palette();
     for(let i=0;i<pal.length;i++)if(!used.has(pal[i].color))return i;return 0;}
-  let pick=GN.palette()[firstFree()];
+  let pick=GN.palette()[firstFree()], pickIcon=null;
   const ov=document.createElement("div");
   ov.style.cssText="position:fixed;inset:0;z-index:9999;background:linear-gradient(160deg,#3a2615,#180f06);"
     +"color:#f3e7d0;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:auto;"
@@ -337,29 +337,45 @@ document.getElementById("resetStats").addEventListener("click",function(){
     ov.appendChild(box);
   }
   function create(){
-    ov.innerHTML='<div style="font-size:24px;font-weight:800;color:#f4c542;margin-bottom:14px;">Create your profile</div>';
-    const wrap=document.createElement("div");wrap.style.cssText="width:min(360px,86vw);display:flex;flex-direction:column;align-items:stretch;gap:14px;";
+    pickIcon=null;
+    ov.innerHTML='<div style="font-size:24px;font-weight:800;color:#f4c542;margin-bottom:10px;">Create your profile</div>';
+    const wrap=document.createElement("div");wrap.style.cssText="width:min(360px,86vw);display:flex;flex-direction:column;align-items:stretch;gap:12px;";
+    const prev=document.createElement("div");prev.style.cssText="display:flex;justify-content:center;";wrap.appendChild(prev);
     const inp=document.createElement("input");inp.maxLength=16;inp.placeholder="Your name";
     inp.style.cssText="font-family:inherit;font-size:18px;padding:12px 14px;border-radius:10px;border:1.5px solid #6b4a2a;background:rgba(255,255,255,.95);color:#22303a;text-align:center;";
     wrap.appendChild(inp);
-    const glabel=document.createElement("div");glabel.textContent="pick a color";
-    glabel.style.cssText="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#b89a6e;";wrap.appendChild(glabel);
-    const grid=document.createElement("div");grid.style.cssText="display:flex;flex-wrap:wrap;gap:9px;justify-content:center;";
+    function curP(){return {name:(inp.value||"").trim()||"?",color:pick.color,light:pick.light,dark:pick.dark,
+      avatar:pickIcon?{kind:"icon",icon:pickIcon}:{kind:"color"}};}
+    function up(){prev.innerHTML=GN.tokenHTML(curP(),64);}
+    inp.addEventListener("input",up);
+    const clabel=document.createElement("div");clabel.textContent="pick a color";
+    clabel.style.cssText="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#b89a6e;text-align:center;";wrap.appendChild(clabel);
+    const grid=document.createElement("div");grid.style.cssText="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;";
+    let iconGrid;
+    function paintIcons(){if(!iconGrid)return;iconGrid.innerHTML="";
+      GN.AVATARS.forEach(a=>{const d=document.createElement("div");
+        d.style.cssText="width:44px;height:44px;border-radius:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;border:3px solid "+(pickIcon===a.id?"#f4c542":"transparent")+";";
+        d.title=a.set;d.innerHTML=GN.tokenHTML({name:"?",color:pick.color,light:pick.light,dark:pick.dark,avatar:{kind:"icon",icon:a.id}},38);
+        d.onclick=()=>{pickIcon=(pickIcon===a.id)?null:a.id;paintIcons();up();};iconGrid.appendChild(d);});}
     GN.palette().forEach(pal=>{const sw=document.createElement("div");
       sw.style.cssText="width:40px;height:40px;border-radius:50%;cursor:pointer;border:3px solid "+(pal.color===pick.color?"#f4c542":"transparent")+";"
         +"background:radial-gradient(circle at 35% 30%,"+pal.light+","+pal.color+" 62%,"+pal.dark+");";
-      sw.onclick=()=>{pick=pal;[...grid.children].forEach(c=>c.style.borderColor="transparent");sw.style.borderColor="#f4c542";};
+      sw.onclick=()=>{pick=pal;[...grid.children].forEach(c=>c.style.borderColor="transparent");sw.style.borderColor="#f4c542";paintIcons();up();};
       grid.appendChild(sw);});
     wrap.appendChild(grid);
+    const ilabel=document.createElement("div");ilabel.textContent="or add an icon";
+    ilabel.style.cssText="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#b89a6e;text-align:center;";wrap.appendChild(ilabel);
+    iconGrid=document.createElement("div");iconGrid.style.cssText="display:flex;flex-wrap:wrap;gap:7px;justify-content:center;";wrap.appendChild(iconGrid);paintIcons();
     const go=document.createElement("button");go.textContent="Create & start playing";
     go.style.cssText=BTN+"font-size:17px;padding:13px;border:none;background:#f4c542;color:#3a2a05;margin-top:4px;";
     go.onclick=()=>{const name=(inp.value||"").trim();if(!name){inp.focus();return;}
-      const p=GN.profiles.add(name,pick);if(p){GN.profiles.recolor(p.id,pick);claim(p.id);}};
+      const p=GN.profiles.add(name,pick);if(p){GN.profiles.recolor(p.id,pick);
+        GN.profiles.setAvatar(p.id,pickIcon?{kind:"icon",icon:pickIcon}:{kind:"color"});claim(p.id);}};
     wrap.appendChild(go);
     const back=document.createElement("button");back.textContent="\u2329 back";
     back.style.cssText=BTN+"background:none;border:none;color:#b89a6e;font-size:14px;padding:6px;";back.onclick=chooser;
     wrap.appendChild(back);
-    ov.appendChild(wrap);setTimeout(()=>inp.focus(),40);
+    ov.appendChild(wrap);up();setTimeout(()=>inp.focus(),40);
   }
   function claim(id){GN.profiles.setOwner(id);document.body.style.overflow="";ov.remove();}
   chooser();
