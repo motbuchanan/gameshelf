@@ -4,16 +4,17 @@
    Offline: requests fall back to the cache, so the whole shelf plays with no signal.
    CACHE name only needs bumping when the precache LIST changes (e.g. a new game),
    to seed offline copies; day-to-day edits need nothing. */
-const CACHE="gameshelf-v14";
-const CORE=["index.html","gamenight.js","sfx.js","bot.js","words.js","manifest.webmanifest",
+const CACHE="gameshelf-v16";
+const CORE=["index.html","gamenight.js","sfx.js","bot.js","words.js","achievements.js","manifest.webmanifest",
   "icon192.png","icon512.png","iconmaskable512.png",
-  "rules.html","records.html","howto.html","profiles.html","rulesdata.js",
+  "rules.html","records.html","achievements.html","highscores.html","howto.html","profiles.html","rulesdata.js",
   "wordsearch.html","wordsearch.js","sudoku.html","sudoku.js",
   "backgammon.html","battleship.html","bridge.html","checkers.html","chess.html","chinese.html",
   "codebreaker.html","connect4.html","dominoes.html","dots.html","farkle.html",
   "gofish.html","gomoku.html","guesswho.html","hex.html","mancala.html","morris.html",
   "reversi.html","scrabble.html","shutbox.html","snakes.html","sorry.html","trouble.html","urgame.html",
-  "uttt.html","war.html","yahtzee.html","onecardleft.html"];
+  "uttt.html","war.html","yahtzee.html","onecardleft.html",
+  "snake.html","paddleduel.html","brickbreak.html","blocks.html","stardefender.html"];
 self.addEventListener("install",e=>{
   e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting()));
 });

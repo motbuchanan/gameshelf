@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Paddle Duel</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;}
+  html,body{height:100%;}
+  body{font-family:system-ui,sans-serif;color:#e8f0e4;overflow:hidden;display:flex;flex-direction:column;
+    background:radial-gradient(120% 80% at 50% 18%,#26331c 0%,#0c130a 70%);touch-action:none;}
+  #bar{display:flex;align-items:center;gap:10px;padding:12px 14px;}
+  #bar a{color:#dfe9cf;text-decoration:none;font-size:14px;border:1px solid #4f5a3a;border-radius:999px;padding:6px 12px;}
+  #title{font-weight:800;font-size:19px;}
+  #scoreWrap{margin-left:auto;font-weight:800;font-size:15px;color:#d8f0a0;}
+  #scoreWrap b{color:#fff;}
+  #stageWrap{flex:1;display:flex;align-items:center;justify-content:center;padding:6px;}
+  #board{position:relative;border-radius:12px;overflow:hidden;
+    box-shadow:0 14px 30px rgba(0,0,0,.6),inset 0 0 0 2px rgba(190,210,150,.18);background:#0d150a;touch-action:none;}
+  #cv{display:block;height:min(64vh,520px);width:auto;max-width:94vw;}
+  #foot{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;padding:8px 14px 16px;}
+  .act{font-family:inherit;font-size:15px;font-weight:bold;padding:10px 18px;border-radius:10px;border:none;
+    color:#22300f;background:#c2d84e;cursor:pointer;box-shadow:0 4px 0 #8a9a2c,0 5px 10px rgba(0,0,0,.4);}
+  .act.ghost{background:#1b2412;color:#dfe9cf;box-shadow:0 4px 0 #0e1409;border:1px solid #4f5a3a;font-size:14px;}
+  .act:active{transform:translateY(2px);}
+  .ov{position:fixed;inset:0;background:rgba(9,13,7,.93);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:50;text-align:center;padding:24px;}
+  .ov.show{display:flex;}
+  .ov h1{font-size:28px;}
+  .ov p{font-size:16px;color:#dfe9cf;}
+  .ov .row{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;}
+</style>
+</head>
+<body>
+<div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">Paddle Duel</div>
+  <div id="scoreWrap"><span id="sTop">0</span> &nbsp;&#8211;&nbsp; <b id="sBot">0</b></div></div>
+<div id="stageWrap"><div id="board"><canvas id="cv"></canvas></div></div>
+<div id="foot"><button class="act ghost" id="newBtn">New game</button></div>
+
+<div class="ov show" id="start">
+  <div style="font-size:48px;">&#127955;</div>
+  <h1>Paddle Duel</h1>
+  <p>First to 5 wins. Slide your paddle to send the ball back.</p>
+  <div class="row">
+    <button class="act" id="modeCpu">1 Player &#183; vs Computer</button>
+    <button class="act ghost" id="mode2p">2 Players</button>
+  </div>
+  <a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #4f5a3a;background:#1b2412;color:#dfe9cf;text-decoration:none;">Back to shelf</a>
+</div>
+
+<div class="ov" id="overlay">
+  <div style="font-size:48px;" id="ovEmoji">&#127942;</div>
+  <h1 id="ovTitle">You win!</h1>
+  <p id="ovText"></p>
+  <div class="row">
+    <button class="act" id="ovBtn">Play again</button>
+    <a href="index.html" style="font-size:14px;padding:11px 16px;border-radius:10px;border:1px solid #4f5a3a;background:#1b2412;color:#dfe9cf;text-decoration:none;align-self:center;">Back to shelf</a>
+  </div>
+</div>
+
+<script src="gamenight.js?v=12"></script>
+<script src="sfx.js?v=5"></script>
+<script>
+const KEY="paddleduel_games";
+function S(n,o){window.GNS&&GNS.play(n,0,o);}
+const cv=document.getElementById("cv"),ctx=cv.getContext("2d");
+const overlay=document.getElementById("overlay"),startOv=document.getElementById("start");
+
+const G={
+  W:300,H:460, pw:66, ph:12, r:7, target:5, speed:4.0,
+  px:{top:150,bot:150}, py:{top:30,bot:430},
+  ball:{x:150,y:230,vx:0,vy:0},
+  score:{top:0,bot:0},
+  mode:"cpu", running:false, over:false, raf:0
+};
+window.__PD=G;
+cv.width=G.W;cv.height=G.H;
+
+function resetMatch(mode){
+  G.mode=mode;G.score.top=0;G.score.bot=0;G.over=false;
+  G.px.top=G.W/2;G.px.bot=G.W/2;updateScore();
+  startOv.classList.remove("show");overlay.classList.remove("show");
+  serve(Math.random()<0.5?1:-1);
+  if(!G.raf)loop();
+}
+function updateScore(){document.getElementById("sTop").textContent=G.score.top;document.getElementById("sBot").textContent=G.score.bot;}
+
+function serve(dirY){
+  const b=G.ball;b.x=G.W/2;b.y=G.H/2;
+  const ang=Math.random()*0.7-0.35;
+  b.vx=Math.sin(ang)*G.speed;
+  b.vy=dirY*Math.abs(Math.cos(ang))*G.speed;
+  G.running=true;
+}
+
+function cpuMove(){
+  const d=G.ball.x-G.px.top, max=2.7;
+  if(Math.abs(d)>4)G.px.top+=Math.max(-max,Math.min(max,d));
+  clampPad("top");
+}
+function clampPad(w){G.px[w]=Math.max(G.pw/2,Math.min(G.W-G.pw/2,G.px[w]));}
+
+function hitPaddle(which){
+  const b=G.ball,py=G.py[which],px=G.px[which],half=G.pw/2,hh=G.ph/2;
+  const toward=which==="bot"?b.vy>0:b.vy<0;
+  if(!toward)return;
+  if(b.x>=px-half-G.r&&b.x<=px+half+G.r&&b.y>=py-hh-G.r&&b.y<=py+hh+G.r){
+    const off=Math.max(-1,Math.min(1,(b.x-px)/half));
+    const sp=G.speed+Math.min(2.2,(G.score.top+G.score.bot)*0.18); // nudges faster as game goes
+    b.vx=off*sp*0.85;
+    const vy=Math.sqrt(Math.max(1,sp*sp-b.vx*b.vx));
+    b.vy=which==="bot"?-vy:vy;
+    b.y=which==="bot"?py-hh-G.r-0.5:py+hh+G.r+0.5;
+    S("pop");
+  }
+}
+
+function point(scorer){
+  G.score[scorer]++;updateScore();
+  if(G.score[scorer]>=G.target)return win(scorer);
+  S("chime");
+  G.running=false;
+  setTimeout(()=>{if(!G.over)serve(scorer==="bot"?-1:1);},700);
+}
+
+function physics(){
+  if(!G.running||G.over)return;
+  if(G.mode==="cpu")cpuMove();
+  const b=G.ball;
+  b.x+=b.vx;b.y+=b.vy;
+  if(b.x<G.r){b.x=G.r;b.vx=Math.abs(b.vx);S("tap");}
+  if(b.x>G.W-G.r){b.x=G.W-G.r;b.vx=-Math.abs(b.vx);S("tap");}
+  hitPaddle("bot");hitPaddle("top");
+  if(b.y<-12)point("bot");
+  else if(b.y>G.H+12)point("top");
+}
+
+function draw(){
+  ctx.fillStyle="#0d150a";ctx.fillRect(0,0,G.W,G.H);
+  // center dashed line
+  ctx.strokeStyle="rgba(200,220,150,.18)";ctx.lineWidth=2;ctx.setLineDash([8,10]);
+  ctx.beginPath();ctx.moveTo(0,G.H/2);ctx.lineTo(G.W,G.H/2);ctx.stroke();ctx.setLineDash([]);
+  // big faint scores
+  ctx.fillStyle="rgba(216,240,160,.12)";ctx.font="bold 64px system-ui";ctx.textAlign="center";
+  ctx.fillText(G.score.top,G.W/2,G.H/2-26);ctx.fillText(G.score.bot,G.W/2,G.H/2+82);
+  // paddles
+  ctx.fillStyle="#9fbf4e";rrect(G.px.top-G.pw/2,G.py.top-G.ph/2,G.pw,G.ph,6);ctx.fill();
+  ctx.fillStyle="#d8f0a0";rrect(G.px.bot-G.pw/2,G.py.bot-G.ph/2,G.pw,G.ph,6);ctx.fill();
+  // ball
+  ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(G.ball.x,G.ball.y,G.r,0,Math.PI*2);ctx.fill();
+}
+function rrect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+
+function loop(){G.raf=requestAnimationFrame(loop);physics();draw();}
+
+function win(which){
+  G.over=true;G.running=false;S("fanfare");
+  const youWin=(G.mode==="cpu"&&which==="bot");
+  let title,text;
+  if(G.mode==="cpu"){title=which==="bot"?"You win! \u{1F389}":"Computer wins";text="Final "+G.score.bot+"\u2013"+G.score.top+" (you\u2013computer)";}
+  else{title=(which==="bot"?"Player 1":"Player 2")+" wins! \u{1F389}";text="Final "+G.score.bot+"\u2013"+G.score.top;}
+  document.getElementById("ovEmoji").innerHTML=youWin||G.mode==="2p"?"&#127942;":"&#129303;";
+  document.getElementById("ovTitle").textContent=title;
+  document.getElementById("ovText").textContent=text;
+  const winnerName=G.mode==="cpu"?(which==="bot"?"You":"Computer"):(which==="bot"?"Player 1":"Player 2");
+  GN.recordGame(KEY,{start:G.tStart||Date.now(),end:Date.now(),durationMs:Date.now()-(G.tStart||Date.now()),
+    winner:winnerName,solo:G.mode==="cpu"});
+  overlay.classList.add("show");
+}
+
+/* ---------- input ---------- */
+function toCanvasX(clientX){const rc=cv.getBoundingClientRect();return (clientX-rc.left)*(G.W/rc.width);}
+function handleTouch(e){
+  const rc=cv.getBoundingClientRect();
+  for(const t of e.touches){
+    const y=(t.clientY-rc.top)*(G.H/rc.height);
+    const x=toCanvasX(t.clientX);
+    if(y>G.H/2){G.px.bot=x;clampPad("bot");}
+    else if(G.mode==="2p"){G.px.top=x;clampPad("top");}
+  }
+  e.preventDefault();
+}
+cv.addEventListener("touchstart",handleTouch,{passive:false});
+cv.addEventListener("touchmove",handleTouch,{passive:false});
+document.addEventListener("keydown",e=>{
+  const step=22;
+  if(e.key==="ArrowLeft"){G.px.bot-=step;clampPad("bot");e.preventDefault();}
+  else if(e.key==="ArrowRight"){G.px.bot+=step;clampPad("bot");e.preventDefault();}
+  else if(G.mode==="2p"&&(e.key==="a"||e.key==="A")){G.px.top-=step;clampPad("top");}
+  else if(G.mode==="2p"&&(e.key==="d"||e.key==="D")){G.px.top+=step;clampPad("top");}
+},{passive:false});
+
+function begin(mode){G.tStart=Date.now();resetMatch(mode);}
+document.getElementById("modeCpu").addEventListener("click",()=>begin("cpu"));
+document.getElementById("mode2p").addEventListener("click",()=>begin("2p"));
+document.getElementById("ovBtn").addEventListener("click",()=>{overlay.classList.remove("show");startOv.classList.add("show");});
+document.getElementById("newBtn").addEventListener("click",()=>{G.over=true;G.running=false;overlay.classList.remove("show");startOv.classList.add("show");});
+
+GN.rulesButton(document.getElementById("foot"),{title:"Paddle Duel",sections:[
+  {h:"Goal",b:"First player to 5 points wins. You score when the ball gets past the other paddle."},
+  {h:"Move",b:"Slide your finger along your half of the board to move your paddle. On a keyboard, the arrow keys move the bottom paddle (A and D move the top paddle in 2-player)."},
+  {h:"Spin",b:"Where the ball hits your paddle changes its angle \u2014 hit with the edge to send it sideways."}
+]});
+if(window.GNS)GNS.button(document.getElementById("foot"));
+draw();
+</script>
+</body>
+</html>

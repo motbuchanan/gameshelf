@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>High Scores</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  body{font-family:system-ui,sans-serif;color:#22303a;min-height:100vh;display:flex;flex-direction:column;align-items:center;
+    background:repeating-linear-gradient(#f6f3ea 0 27px,#eadfca 27px 28px);}
+  #bar{width:100%;max-width:640px;display:flex;align-items:center;gap:10px;padding:12px 14px;background:#f6f3ea;border-bottom:2px solid #c9941e;}
+  #bar a{color:#3a566e;text-decoration:none;font-size:14px;border:1.5px solid #c3a86a;border-radius:999px;padding:6px 12px;background:#fff;}
+  #title{font-weight:800;font-size:20px;flex:1;}
+  #wrap{width:min(96vw,640px);padding:10px 16px 44px;}
+  #prev{float:right;font-size:12px;color:#7a8a98;display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;}
+  #prev .sw{width:34px;height:18px;border-radius:9px;background:#cdd6cf;position:relative;transition:background .15s;}
+  #prev .sw::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;transition:left .15s;box-shadow:0 1px 2px rgba(0,0,0,.3);}
+  #prev.on .sw{background:#c9941e;}#prev.on .sw::after{left:18px;}
+  h2{font-size:13px;letter-spacing:1.5px;text-transform:uppercase;color:#7a5a2e;margin:22px 0 10px;
+    border-bottom:2px solid #c9941e;display:inline-block;padding-bottom:2px;}
+  .titles{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+  @media(max-width:520px){.titles{grid-template-columns:1fr;}}
+  .tcard{background:rgba(255,255,255,.85);border-radius:14px;padding:14px 12px;text-align:center;box-shadow:0 2px 5px rgba(40,60,80,.16);
+    border:1px solid #e3d8bd;}
+  .tcard .ic{font-size:30px;}
+  .tcard .lb{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#7a5a2e;font-weight:700;margin:4px 0 8px;}
+  .tcard .who{display:flex;align-items:center;justify-content:center;gap:7px;font-weight:800;font-size:16px;}
+  .tcard .num{font-size:13px;color:#5a6e7e;margin-top:3px;font-variant-numeric:tabular-nums;}
+  .tcard.none .who{color:#9aa7b0;font-weight:600;font-size:14px;}
+  .scores,.champs{display:flex;flex-direction:column;gap:7px;}
+  .row{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.82);border-radius:10px;padding:9px 13px;box-shadow:0 1px 3px rgba(40,60,80,.13);}
+  .row .g{font-weight:700;flex:1;}
+  .row .h{display:flex;align-items:center;gap:7px;font-weight:700;color:#3a4a56;}
+  .row .h.none{color:#9aa7b0;font-weight:500;}
+  .row .v{font-variant-numeric:tabular-nums;font-weight:800;color:#7a5a2e;width:78px;text-align:right;}
+  .tok{width:22px;height:22px;border-radius:50%;flex:none;}
+  .note{font-size:12px;color:#8a8470;font-style:italic;margin-top:22px;line-height:1.5;}
+</style></head><body>
+<div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">&#127942; High Scores</div></div>
+<div id="wrap">
+  <div id="prev"><span>Preview sample</span><span class="sw"></span></div>
+  <h2>First place</h2><div class="titles" id="titles"></div>
+  <h2>Top scores</h2><div class="scores" id="scores"></div>
+  <h2>Game champions</h2><div class="champs" id="champs"></div>
+  <div class="note">Each title is held by one person at a time &mdash; whoever currently leads. Win counts come from games
+    finished on this device; friendly games don&rsquo;t count. Beat a record and the title changes hands.</div>
+</div>
+<script src="gamenight.js?v=12"></script>
+<script src="achievements.js"></script>
+<script>
+const CHAL=[["snakearcade_games","Snake","pts"],["brickbreak_games","Brick Break","pts"],
+  ["blocks_games","Blocks","lvl"],["stardefender_games","Star Defender","wave"]];
+let previewOn=false;
+const A=window.Achievements;
+
+function tokenFor(name){
+  const p=(GN.players()||[]).filter(x=>x.name===name)[0];
+  if(p&&GN.tokenHTML)return GN.tokenHTML(p,22);
+  return '<span class="tok" style="background:'+((p&&p.color)||'#9aa7b0')+'"></span>';
+}
+function topOf(obj){let max=0,names=[];for(const k in obj){const v=obj[k]||0;
+  if(v>max){max=v;names=[k];}else if(v===max&&v>0)names.push(k);}
+  return max>0?{names:names,count:max}:null;}
+
+function realBundle(){
+  const led=(GN.g&&GN.g.read)?GN.g.read():{wins:{},flips:{won:{}}};
+  const names=A?A.players():[];
+  const fp={};names.forEach(nm=>{fp[nm]=A.forPlayer(nm);});
+  const valOf=(nm,id)=>{const it=(fp[nm]||[]).filter(a=>a.id===id)[0];return it?it.value:0;};
+  const played={};names.forEach(nm=>{played[nm]=valOf(nm,"played:all");});
+  const titles={wins:topOf(led.wins||{}),flips:topOf((led.flips&&led.flips.won)||{}),played:topOf(played)};
+  const scores=CHAL.map(c=>{let max=0,name=null;
+    names.forEach(nm=>{const v=valOf(nm,"chal:"+c[0]);if(v>max){max=v;name=nm;}});
+    return {key:c[0],name:c[1],unit:c[2],holder:name,value:max||0};});
+  const BAD={tie:1,"(draw)":1,Computer:1,You:1};
+  const champs=[];(A?A.knownGames():[]).forEach(k=>{
+    const recs=GN.readGames(k)||[];const w={};
+    recs.forEach(r=>{if(r&&r.winner&&!BAD[r.winner])w[r.winner]=(w[r.winner]||0)+1;});
+    const t=topOf(w);if(t)champs.push({name:A.nameFor(k),holder:t.names.join(" & "),wins:t.count});});
+  champs.sort((a,b)=>b.wins-a.wins);
+  return {titles,scores,champs};
+}
+function sampleBundle(){
+  const names=(GN.players()||[{name:"Mot"},{name:"Kathy"},{name:"Garrett"}]).map(p=>p.name);
+  let seed=12345;const rnd=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;};
+  const pick=()=>names[(rnd()*names.length)|0];
+  const titles={wins:{names:[pick()],count:18+(rnd()*40|0)},flips:{names:[pick()],count:9+(rnd()*25|0)},
+    played:{names:[pick()],count:40+(rnd()*120|0)}};
+  const scores=CHAL.map(c=>({key:c[0],name:c[1],unit:c[2],holder:pick(),
+    value:c[2]==="pts"?(30+(rnd()*180|0)):(4+(rnd()*9|0))}));
+  const champs=[["Connect Four"],["Checkers"],["Tic-Tac-Toe"],["Backgammon"],["Yahtzee"],["Chess"]]
+    .map(g=>({name:g[0],holder:pick(),wins:1+(rnd()*22|0)})).sort((a,b)=>b.wins-a.wins);
+  return {titles,scores,champs};
+}
+function titleCard(ic,label,t){
+  const d=document.createElement("div");
+  if(!t){d.className="tcard none";d.innerHTML='<div class="ic">'+ic+'</div><div class="lb">'+label+'</div><div class="who">No one yet</div>';return d;}
+  d.className="tcard";
+  const who=t.names.map(n=>tokenFor(n)+'<span>'+n+'</span>').join(' ');
+  d.innerHTML='<div class="ic">'+ic+'</div><div class="lb">'+label+'</div><div class="who">'+who+'</div><div class="num">'+t.count+'</div>';
+  return d;
+}
+function render(){
+  const b=previewOn?sampleBundle():realBundle();
+  const T=document.getElementById("titles");T.innerHTML="";
+  T.appendChild(titleCard("\u{1F451}","Most wins",b.titles.wins));
+  T.appendChild(titleCard("\u{1FA99}","Most coin flips",b.titles.flips));
+  T.appendChild(titleCard("\u{1F3AE}","Most games played",b.titles.played));
+  const S=document.getElementById("scores");S.innerHTML="";
+  b.scores.forEach(s=>{const r=document.createElement("div");r.className="row";
+    r.innerHTML='<span class="g">'+s.name+'</span>'+
+      (s.holder?'<span class="h">'+tokenFor(s.holder)+'<span>'+s.holder+'</span></span><span class="v">'+s.value+' '+s.unit+'</span>'
+              :'<span class="h none">no scores yet</span><span class="v">\u2013</span>');
+    S.appendChild(r);});
+  const C=document.getElementById("champs");C.innerHTML="";
+  if(!b.champs.length){C.innerHTML='<div class="row"><span class="h none">No games recorded yet \u2014 play some!</span></div>';}
+  else b.champs.forEach(c=>{const r=document.createElement("div");r.className="row";
+    r.innerHTML='<span class="g">'+c.name+'</span><span class="h">'+tokenFor(c.holder)+'<span>'+c.holder+'</span></span><span class="v">'+c.wins+'</span>';
+    C.appendChild(r);});
+}
+document.getElementById("prev").onclick=function(){previewOn=!previewOn;this.classList.toggle("on",previewOn);render();};
+render();
+</script>
+</body></html>

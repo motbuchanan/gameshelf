@@ -253,7 +253,92 @@ GN.recordGame=function(key,rec){
   l.push(rec);
   try{localStorage.setItem(key,JSON.stringify(l));}catch(e){}
   mirror(()=>_db.doc("households/"+_hh+"/records/"+key).set({list:FV().arrayUnion(rec)},{merge:true}));
-  GN.g.addResult(rec.winner,rec.loser,rec.durationMs);};
+  GN.g.addResult(rec.winner,rec.loser,rec.durationMs);
+  try{GN._award(key,rec);}catch(e){}};
+
+/* feed the per-player achievements engine + show a ceremony for new badges */
+var _BADW={tie:1,"(draw)":1,Computer:1,You:1};
+GN._award=function(key,rec){
+  var A=GN.achievements||(typeof window!=="undefined"&&window.Achievements);if(!A)return;
+  var players=(rec.players&&rec.players.length)?rec.players.slice()
+    :(GN._participants&&GN._participants.length)?GN._participants.slice():[];
+  if(!players.length){if(rec.winner&&typeof rec.winner==="string"&&!_BADW[rec.winner])players.push(rec.winner);
+    if(rec.loser&&!_BADW[rec.loser])players.push(rec.loser);}
+  var winner=(rec.winner&&!_BADW[rec.winner]&&players.indexOf(rec.winner)>=0)?rec.winner:null;
+  var metric=A.metricFromRec?A.metricFromRec(key,rec):null;
+  var fired=A.applyResult({gameKey:key,players:players,winner:winner,metric:metric,metricPlayer:players[0]});
+  if(fired&&fired.length)GN._ceremony(fired);
+};
+GN._ceremony=function(list){
+  if(!list||!list.length||typeof document==="undefined")return;
+  setTimeout(function(){try{
+    var ov=document.getElementById("gnAch");if(ov)ov.remove();
+    ov=document.createElement("div");ov.id="gnAch";
+    ov.style.cssText="position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:13px;padding:24px;background:rgba(10,14,20,.88);text-align:center;font-family:system-ui,sans-serif;";
+    var t=document.createElement("div");t.style.cssText="color:#fff;font-weight:900;font-size:22px;";
+    t.textContent=list.length>1?"Badges unlocked!":(list[0].leveledUp?"Level up!":"Badge unlocked!");
+    ov.appendChild(t);
+    var COL=["#b9c6d0","#a4642f","#8ea0ac","#cf9a1e","#1f8e7e","#6a3fc0"];
+    list.slice(0,6).forEach(function(b){
+      var row=document.createElement("div");
+      row.style.cssText="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:10px 16px;max-width:340px;width:100%;";
+      var m=document.createElement("div");
+      m.style.cssText="width:46px;height:46px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-weight:900;color:#fff;font-size:16px;border:2px solid rgba(255,255,255,.55);box-shadow:inset 0 -3px 6px rgba(0,0,0,.3);background:"+(COL[Math.min(b.tier,5)]||"#888")+";";
+      m.textContent=(b.tier===b.tiers)?"\u2605":b.tier;
+      var tx=document.createElement("div");tx.style.cssText="text-align:left;color:#fff;";
+      tx.innerHTML='<div style="font-weight:800;font-size:15px;">'+b.name+'</div><div style="font-size:12.5px;color:#cfe0ec;">'+(b.leveledUp?"Leveled up to ":"")+b.tierName+'</div>';
+      row.appendChild(m);row.appendChild(tx);ov.appendChild(row);
+    });
+    var btn=document.createElement("button");btn.textContent="Nice!";
+    btn.style.cssText="margin-top:6px;font-family:inherit;font-weight:800;font-size:16px;color:#10202e;background:#f4c542;border:none;border-radius:10px;padding:11px 28px;box-shadow:0 4px 0 #a8852a;cursor:pointer;";
+    btn.onclick=function(){ov.remove();};
+    ov.appendChild(btn);
+    ov.addEventListener("click",function(e){if(e.target===ov)ov.remove();});
+    document.body.appendChild(ov);
+    if(typeof window!=="undefined"&&window.GNS)GNS.play("fanfare");
+  }catch(e){}},500);
+};
+/* GN.soloStart(done,opts) -> "who's playing?" for solo games.
+   Sets GN._participants + GN.friendly, then done(name,{friendly}). */
+GN.soloStart=function(done,opts){
+  try{injectCSS();}catch(e){}opts=opts||{};GN._inPlay=false;
+  var players=GN.players(),sel=null;
+  try{var last=localStorage.getItem("gn_solo_player");if(last)sel=players.filter(function(p){return p.name===last;})[0];}catch(e){}
+  if(!sel&&GN.profiles&&GN.profiles.owner){var o=GN.profiles.owner();if(o)sel=players.filter(function(p){return p.name===o.name;})[0];}
+  if(!sel)sel=players[0];
+  var friendly=false;
+  var ov=document.createElement("div");ov.className="gnOv";
+  var t=document.createElement("div");t.className="gnTitle";t.textContent=opts.title||"Who\u2019s playing?";ov.appendChild(t);
+  var seats=document.createElement("div");seats.className="gnSeats";
+  seats.style.flexWrap="wrap";seats.style.justifyContent="center";seats.style.maxWidth="430px";ov.appendChild(seats);
+  function drawSeats(){seats.innerHTML="";players.forEach(function(p){
+    var b=document.createElement("button");b.className="gnSeat";b.style.minWidth="0";
+    b.style.display="inline-flex";b.style.alignItems="center";b.style.gap="8px";
+    b.style.outline=(sel&&p.name===sel.name)?"3px solid #f4c542":"none";
+    b.innerHTML=(GN.tokenHTML?GN.tokenHTML(p,24):"")+"<span>"+p.name+"</span>";
+    b.onclick=function(){sel=p;drawSeats();};seats.appendChild(b);});}
+  drawSeats();
+  if(opts.allowFriendly!==false){
+    var fr=document.createElement("button");fr.className="gnAdd";fr.style.color="#cfe6d8";
+    fr.textContent="\u2713 Counts for the record";
+    fr.onclick=function(){friendly=!friendly;
+      fr.textContent=friendly?"\u26a0 Just for fun \u2014 won\u2019t be saved":"\u2713 Counts for the record";
+      fr.style.color=friendly?"#f4c542":"#cfe6d8";};
+    ov.appendChild(fr);
+  }
+  var go=document.createElement("button");go.className="gnBtn";go.textContent=opts.go||"Start";
+  go.onclick=function(){if(!sel)return;try{localStorage.setItem("gn_solo_player",sel.name);}catch(e){}
+    GN._participants=[sel.name];GN.friendly=!!friendly;GN._inPlay=true;ov.remove();
+    if(done)done(sel.name,{friendly:!!friendly});};
+  ov.appendChild(go);
+  document.body.appendChild(ov);
+};
+/* small "Player: X" badge that re-opens the picker when tapped */
+GN.whoBadge=function(el,name,onChange){
+  if(!el)return;var p=GN.players().filter(function(x){return x.name===name;})[0]||{name:name||"Player",color:"#888"};
+  el.innerHTML=(GN.tokenHTML?GN.tokenHTML(p,20):"")+"<span style=\"margin-left:6px\">"+p.name+"</span>";
+  el.style.display="inline-flex";el.style.alignItems="center";el.onclick=onChange||null;el.style.cursor=onChange?"pointer":"default";
+};
 GN.readGames=function(key){try{return JSON.parse(localStorage.getItem(key))||[];}catch(e){return[];}};
 
 /* ---------- shared CSS ---------- */
@@ -434,7 +519,7 @@ GN.matchStart=function(done,opts){injectCSS();GN._inPlay=false;opts=opts||{};
   refresh();
   go.onclick=function(){
     if(go.disabled)return;
-    if(mode==="1p"){GN.friendly=friendly;ov.remove();GN._inPlay=true;done({a,b:null,first:a,solo:true,friendly});return;}
+    if(mode==="1p"){GN.friendly=friendly;ov.remove();GN._inPlay=true;GN._participants=[a.name];done({a,b:null,first:a,solo:true,friendly});return;}
     if(mode!=="cpu")savePair(a,b);
     eA.disabled=true;eB.disabled=true;ov.querySelector("#gnNew").style.display="none";
     ov.querySelector(".gnSeats").style.display="none";scene.style.display="";
@@ -470,6 +555,7 @@ GN.matchStart=function(done,opts){injectCSS();GN._inPlay=false;opts=opts||{};
       title.textContent=first.name+" goes first!";title.style.color=first.color;
       go.textContent="Begin";go.style.visibility="visible";
       go.onclick=function(){ov.remove();GN._inPlay=true;
+        GN._participants=(mode==="cpu")?[a.name]:[a.name,b.name];
         done(mode==="cpu"?{a,b,first,bot:botLevel,vsComputer:true,friendly:true}:{a,b,first,friendly});};}
     requestAnimationFrame(toss);};};
 
@@ -601,7 +687,7 @@ GN.partyStart=function(done,opts){injectCSS();GN._inPlay=false;opts=opts||{};
       if(t>=minT&&cur===first){clearInterval(iv);
         const f=out[first];title.textContent=f.name+" goes first!";title.style.color=f.color;
         GN.friendly=true;
-        setTimeout(()=>{ov.remove();GN._inPlay=true;done({seats:out,first:first,friendly:true,rules:Object.assign({},togVals)});},700);
+        setTimeout(()=>{ov.remove();GN._inPlay=true;GN._participants=out.filter(s=>!s.bot).map(s=>s.name);done({seats:out,first:first,friendly:true,rules:Object.assign({},togVals)});},700);
         return;}
       cur=(cur+1)%count;t++;
     },110);
@@ -887,3 +973,6 @@ GN.pad=(function(){
 })();
 try{injectCSS();}catch(e){}
 })();
+
+/* auto-load the achievements engine on every page that uses the runtime */
+try{if(typeof document!=="undefined"&&typeof window!=="undefined"&&!window.Achievements){var _gnA=document.createElement("script");_gnA.src="achievements.js";_gnA.async=true;document.head.appendChild(_gnA);}}catch(e){}

@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Brick Break</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;}
+  html,body{height:100%;}
+  body{font-family:system-ui,sans-serif;color:#e8eef0;overflow:hidden;display:flex;flex-direction:column;
+    background:radial-gradient(120% 80% at 50% 18%,#1d2a33 0%,#0a1014 70%);touch-action:none;}
+  #bar{display:flex;align-items:center;gap:10px;padding:12px 14px;}
+  #bar a{color:#cfe0e6;text-decoration:none;font-size:14px;border:1px solid #3a4f5a;border-radius:999px;padding:6px 12px;}
+  #title{font-weight:800;font-size:19px;}
+  #hud{margin-left:auto;display:flex;align-items:center;gap:12px;font-weight:800;font-size:15px;}
+  #lives{color:#ff6b6b;letter-spacing:2px;}
+  #score{color:#7fd0ff;}#score small{color:#5e93ad;font-weight:600;font-size:12px;}
+  #stageWrap{flex:1;display:flex;align-items:center;justify-content:center;padding:6px;}
+  #board{position:relative;border-radius:12px;overflow:hidden;
+    box-shadow:0 14px 30px rgba(0,0,0,.6),inset 0 0 0 2px rgba(150,190,210,.18);background:#0b1116;touch-action:none;}
+  #cv{display:block;height:min(64vh,520px);width:auto;max-width:94vw;}
+  #hint{position:absolute;left:0;right:0;bottom:18%;text-align:center;color:#dff0f6;font-weight:700;font-size:16px;padding:0 24px;}
+  #hint.hide{display:none;}
+  #foot{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;padding:8px 14px 16px;}
+  .act{font-family:inherit;font-size:15px;font-weight:bold;padding:10px 18px;border-radius:10px;border:none;
+    color:#0e2230;background:#5cc6ff;cursor:pointer;box-shadow:0 4px 0 #2f86b5,0 5px 10px rgba(0,0,0,.4);}
+  .act.ghost{background:#13202a;color:#cfe0e6;box-shadow:0 4px 0 #0a141b;border:1px solid #3a4f5a;font-size:14px;}
+  .act:active{transform:translateY(2px);}
+  .ov{position:fixed;inset:0;background:rgba(7,11,14,.93);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:50;text-align:center;padding:24px;}
+  .ov.show{display:flex;}
+  .ov h1{font-size:28px;}.ov p{font-size:16px;color:#cfe0e6;}
+  .ov .big{font-size:44px;font-weight:900;color:#7fd0ff;}
+  #who{font-family:inherit;font-size:12px;font-weight:700;color:#fff;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:999px;padding:3px 9px 3px 4px;margin-left:8px;cursor:pointer;}
+</style>
+</head>
+<body>
+<div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">Brick Break</div><button id="who"></button>
+  <div id="hud"><span id="lives">&#9829;&#9829;&#9829;</span><span id="score">0 <small>best <span id="best">0</span></small></span></div></div>
+<div id="stageWrap"><div id="board"><canvas id="cv"></canvas><div id="hint">Tap the board to launch</div></div></div>
+<div id="foot"><button class="act ghost" id="newBtn">New game</button></div>
+<div class="ov" id="overlay">
+  <div style="font-size:48px;" id="ovEmoji">&#128165;</div>
+  <h1 id="ovTitle">Game over</h1>
+  <div class="big" id="ovScore">0</div>
+  <p id="ovText"></p>
+  <button class="act" id="ovBtn">Play again</button>
+  <a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a4f5a;background:#13202a;color:#cfe0e6;text-decoration:none;">Back to shelf</a>
+</div>
+<script src="gamenight.js?v=12"></script>
+<script src="sfx.js?v=5"></script>
+<script>
+const KEY="brickbreak_games";
+function S(n,o){window.GNS&&GNS.play(n,0,o);}
+const cv=document.getElementById("cv"),ctx=cv.getContext("2d");
+const overlay=document.getElementById("overlay"),hintEl=document.getElementById("hint");
+const COLS=7,BRICKH=18,STACK_TOP=16;
+const PAL=["#ff8a5c","#ffd25c","#8ce06a","#5cc6ff","#c98cff","#ff7aa8"];
+const G={
+  W:308,H:462,r:6,speed:3.8,padW:64,padH:12,
+  padX:154, padY:432,
+  ball:{x:154,y:418,vx:0,vy:0,px:154,py:418},
+  rows:[], colorIdx:0, score:0, best:0, lives:3,
+  rowEvery:9000, lastRow:0, running:false, over:false, raf:0
+};
+window.__BB=G;
+cv.width=G.W;cv.height=G.H;
+const BRW=G.W/COLS, dangerY=G.padY-G.padH/2-4;
+
+function readBest(){let b=0;const recs=GN.readGames(KEY)||[];for(const r of recs)if((r.score||0)>b)b=r.score;return b;}
+function makeRow(){const cells=[];for(let c=0;c<COLS;c++)cells.push(true);return {cells:cells,color:PAL[(G.colorIdx++)%PAL.length]};}
+function prune(){while(G.rows.length&&!G.rows[0].cells.some(Boolean))G.rows.shift();
+  while(G.rows.length&&!G.rows[G.rows.length-1].cells.some(Boolean))G.rows.pop();}
+function lowestAlive(){let m=-1;for(let i=0;i<G.rows.length;i++)if(G.rows[i].cells.some(Boolean))m=i;return m;}
+function addRow(){G.rows.unshift(makeRow());prune();checkDanger();}
+function checkDanger(){const m=lowestAlive();if(m<0)return;if(STACK_TOP+(m+1)*BRICKH>=dangerY)gameOver("reached");}
+
+function newGame(){
+  clearTimeout(G.raf);cancelAnimationFrame(G.raf);G.raf=0;
+  G.rows=[];G.colorIdx=0;for(let i=0;i<4;i++)G.rows.push(makeRow());
+  G.score=0;G.lives=3;G.over=false;G.running=false;G.padX=G.W/2;
+  restBall();updateHud();overlay.classList.remove("show");showHint("Tap the board to launch");
+  draw();loop();
+}
+function restBall(){G.ball.x=G.padX;G.ball.y=G.padY-G.padH/2-G.r-1;G.ball.vx=0;G.ball.vy=0;}
+function launch(){if(G.running||G.over)return;G.running=true;hideHint();G.lastRow=Date.now();
+  G.ball.vx=(Math.random()*1.4-0.7);G.ball.vy=-G.speed;}
+function showHint(t){hintEl.textContent=t;hintEl.classList.remove("hide");}
+function hideHint(){hintEl.classList.add("hide");}
+function updateHud(){document.getElementById("lives").innerHTML="\u2665".repeat(Math.max(0,G.lives));
+  document.getElementById("score").firstChild.textContent=G.score+" ";document.getElementById("best").textContent=G.best;}
+
+function paddleBounce(){
+  const b=G.ball;if(b.vy<=0)return;const half=G.padW/2,hh=G.padH/2;
+  if(b.x>=G.padX-half-G.r&&b.x<=G.padX+half+G.r&&b.y>=G.padY-hh-G.r&&b.y<=G.padY+hh+G.r){
+    const off=Math.max(-1,Math.min(1,(b.x-G.padX)/half));
+    b.vx=off*G.speed*0.8;b.vy=-Math.sqrt(Math.max(1,G.speed*G.speed-b.vx*b.vx));
+    b.y=G.padY-hh-G.r-0.5;S("pop");
+  }
+}
+function brickAt(px,py){
+  const i=Math.floor((py-STACK_TOP)/BRICKH);if(i<0||i>=G.rows.length)return null;
+  const c=Math.floor(px/BRW);if(c<0||c>=COLS)return null;
+  if(G.rows[i]&&G.rows[i].cells[c])return {i:i,c:c};return null;
+}
+function brickCollide(){
+  const b=G.ball;const hit=brickAt(b.x,b.y);if(!hit)return;
+  G.rows[hit.i].cells[hit.c]=false;G.score++;S("tap");
+  const by=STACK_TOP+hit.i*BRICKH,bx=hit.c*BRW;
+  const wasVert=b.py<=by||b.py>=by+BRICKH,wasSide=b.px<=bx||b.px>=bx+BRW;
+  if(wasVert&&!wasSide)b.vy=-b.vy;else if(wasSide&&!wasVert)b.vx=-b.vx;else b.vy=-b.vy;
+  b.y+=b.vy>0?2:-2;prune();updateHud();checkDanger();
+}
+function loseLife(){
+  G.lives--;updateHud();S("bump");
+  if(G.lives<=0)return gameOver("lost");
+  G.running=false;restBall();showHint("Tap to launch");
+}
+function physics(){
+  if(!G.running||G.over)return;
+  const now=Date.now();if(now-G.lastRow>G.rowEvery){addRow();G.lastRow=now;if(G.over)return;}
+  const b=G.ball;b.px=b.x;b.py=b.y;b.x+=b.vx;b.y+=b.vy;
+  if(b.x<G.r){b.x=G.r;b.vx=Math.abs(b.vx);S("tap");}
+  if(b.x>G.W-G.r){b.x=G.W-G.r;b.vx=-Math.abs(b.vx);S("tap");}
+  if(b.y<G.r){b.y=G.r;b.vy=Math.abs(b.vy);S("tap");}
+  paddleBounce();brickCollide();
+  if(b.y>G.H+G.r)loseLife();
+}
+function draw(){
+  ctx.fillStyle="#0b1116";ctx.fillRect(0,0,G.W,G.H);
+  // danger line
+  ctx.strokeStyle="rgba(255,107,107,.18)";ctx.setLineDash([6,8]);ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(0,dangerY);ctx.lineTo(G.W,dangerY);ctx.stroke();ctx.setLineDash([]);
+  // bricks
+  for(let i=0;i<G.rows.length;i++){const row=G.rows[i];const y=STACK_TOP+i*BRICKH;
+    for(let c=0;c<COLS;c++){if(!row.cells[c])continue;
+      ctx.fillStyle=row.color;rrect(c*BRW+2,y+2,BRW-4,BRICKH-4,4);ctx.fill();
+      ctx.fillStyle="rgba(255,255,255,.18)";rrect(c*BRW+2,y+2,BRW-4,4,2);ctx.fill();}}
+  // paddle
+  ctx.fillStyle="#cfe9f7";rrect(G.padX-G.padW/2,G.padY-G.padH/2,G.padW,G.padH,6);ctx.fill();
+  // ball
+  ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(G.ball.x,G.ball.y,G.r,0,Math.PI*2);ctx.fill();
+}
+function rrect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+function loop(){G.raf=requestAnimationFrame(loop);physics();draw();}
+
+function gameOver(reason){
+  if(G.over)return;G.over=true;G.running=false;S("bump");
+  const prev=G.best;G.best=Math.max(G.best,G.score);
+  GN.recordGame(KEY,{start:G.tStart||Date.now(),end:Date.now(),durationMs:Date.now()-(G.tStart||Date.now()),
+    score:G.score,solo:true,winner:null,draw:true});
+  G.best=readBest();updateHud();
+  document.getElementById("ovScore").textContent=G.score;
+  document.getElementById("ovTitle").textContent=reason==="reached"?"The bricks broke through!":"Out of lives";
+  const beat=G.score>0&&G.score>=G.best&&G.score>prev;
+  document.getElementById("ovText").textContent=beat?"New best score! \u{1F389}":("Best "+G.best);
+  if(beat)S("fanfare");
+  overlay.classList.add("show");
+}
+
+/* input */
+function moveTo(clientX){const rc=cv.getBoundingClientRect();G.padX=(clientX-rc.left)*(G.W/rc.width);
+  G.padX=Math.max(G.padW/2,Math.min(G.W-G.padW/2,G.padX));if(!G.running)restBall();}
+cv.addEventListener("touchstart",e=>{moveTo(e.touches[0].clientX);launch();e.preventDefault();},{passive:false});
+cv.addEventListener("touchmove",e=>{moveTo(e.touches[0].clientX);e.preventDefault();},{passive:false});
+document.addEventListener("keydown",e=>{
+  if(e.key==="ArrowLeft"){G.padX-=24;G.padX=Math.max(G.padW/2,G.padX);if(!G.running)restBall();e.preventDefault();}
+  else if(e.key==="ArrowRight"){G.padX+=24;G.padX=Math.min(G.W-G.padW/2,G.padX);if(!G.running)restBall();e.preventDefault();}
+  else if(e.key===" "||e.key==="ArrowUp"){launch();e.preventDefault();}
+},{passive:false});
+document.getElementById("newBtn").addEventListener("click",()=>{G.tStart=Date.now();newGame();});
+document.getElementById("ovBtn").addEventListener("click",()=>{G.tStart=Date.now();newGame();});
+
+GN.rulesButton(document.getElementById("foot"),{title:"Brick Break",sections:[
+  {h:"Goal",b:"Smash bricks with the ball for points. New rows keep dropping in \u2014 don't let the bricks reach your paddle."},
+  {h:"Move",b:"Slide your finger along the board to move the paddle (arrow keys work too). Tap or press up to launch the ball."},
+  {h:"Lives",b:"You have three lives. Letting the ball fall past the paddle costs one. Lose all three and the game ends."}
+]});
+if(window.GNS)GNS.button(document.getElementById("foot"));
+G.best=readBest();G.tStart=Date.now();
+const whoEl=document.getElementById("who");
+function pickPlayer(){if(window.GN&&GN.soloStart){GN.soloStart(function(name){if(GN.whoBadge)GN.whoBadge(whoEl,name,pickPlayer);newGame();});}else newGame();}
+pickPlayer();
+</script>
+</body>
+</html>

@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Star Defender</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;}
+  html,body{height:100%;}
+  body{font-family:system-ui,sans-serif;color:#dfeaf2;overflow:hidden;display:flex;flex-direction:column;
+    background:radial-gradient(120% 80% at 50% 14%,#101a2e 0%,#05080f 70%);touch-action:none;}
+  #bar{display:flex;align-items:center;gap:10px;padding:12px 14px;}
+  #bar a{color:#cfe0f0;text-decoration:none;font-size:14px;border:1px solid #34465f;border-radius:999px;padding:6px 12px;}
+  #title{font-weight:800;font-size:19px;}
+  #hud{margin-left:auto;display:flex;align-items:center;gap:12px;font-weight:800;font-size:15px;}
+  #lives{color:#5ce0a0;letter-spacing:2px;}
+  #score{color:#7fb6ff;}#wave{color:#ffd25c;}
+  #stageWrap{flex:1;display:flex;align-items:center;justify-content:center;padding:6px;}
+  #board{position:relative;border-radius:12px;overflow:hidden;
+    box-shadow:0 14px 30px rgba(0,0,0,.6),inset 0 0 0 2px rgba(120,160,210,.18);background:#060a14;touch-action:none;}
+  #cv{display:block;height:min(62vh,520px);width:auto;max-width:94vw;}
+  #pad{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:340px;width:94vw;margin:0 auto;padding:0 14px;}
+  #pad button{font-family:inherit;font-size:24px;font-weight:800;color:#06121e;border:none;border-radius:14px;cursor:pointer;padding:16px 0;
+    background:linear-gradient(180deg,#88c0ff,#5a93d6);box-shadow:0 4px 0 #2f5e96,0 5px 9px rgba(0,0,0,.4);}
+  #pad button:active{transform:translateY(2px);box-shadow:0 2px 0 #2f5e96;}
+  #foot{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;padding:10px 14px 16px;}
+  .act{font-family:inherit;font-size:15px;font-weight:bold;padding:10px 18px;border-radius:10px;border:none;
+    color:#06121e;background:#7fb6ff;cursor:pointer;box-shadow:0 4px 0 #3f6ea5,0 5px 10px rgba(0,0,0,.4);}
+  .act.ghost{background:#101a2a;color:#cfe0f0;box-shadow:0 4px 0 #08101c;border:1px solid #34465f;font-size:14px;}
+  .act:active{transform:translateY(2px);}
+  .ov{position:fixed;inset:0;background:rgba(4,7,12,.93);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:50;text-align:center;padding:24px;}
+  .ov.show{display:flex;}
+  .ov h1{font-size:28px;}.ov p{font-size:16px;color:#cfe0f0;}
+  .ov .big{font-size:44px;font-weight:900;color:#7fb6ff;}
+  #who{font-family:inherit;font-size:12px;font-weight:700;color:#fff;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:999px;padding:3px 9px 3px 4px;margin-left:8px;cursor:pointer;}
+</style>
+</head>
+<body>
+<div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">Star Defender</div><button id="who"></button>
+  <div id="hud"><span id="lives">&#9650;&#9650;&#9650;</span><span id="wave">W1</span><span id="score">0</span></div></div>
+<div id="stageWrap"><div id="board"><canvas id="cv"></canvas></div></div>
+<div id="pad"><button data-a="left">&#9664;</button><button data-a="right">&#9654;</button></div>
+<div id="foot"><button class="act ghost" id="newBtn">New game</button></div>
+<div class="ov" id="overlay">
+  <div style="font-size:48px;">&#128126;</div>
+  <h1 id="ovTitle">Game over</h1>
+  <div class="big" id="ovScore">0</div>
+  <p id="ovText"></p>
+  <button class="act" id="ovBtn">Play again</button>
+  <a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #34465f;background:#101a2a;color:#cfe0f0;text-decoration:none;">Back to shelf</a>
+</div>
+<script src="gamenight.js?v=12"></script>
+<script src="sfx.js?v=5"></script>
+<script>
+const KEY="stardefender_games";
+function S(n,o){window.GNS&&GNS.play(n,0,o);}
+const cv=document.getElementById("cv"),ctx=cv.getContext("2d");
+const overlay=document.getElementById("overlay");
+const COLS=7;
+const G={
+  W:300,H:444,aSize:22,sx:34,sy:30,stepX:8,dropStep:16,shipW:32,shipH:16,shipY:418,
+  shipX:150, cols:COLS, rows:3, fx:48, fy:48, dir:1,
+  aliens:[], bullets:[], bombs:[],
+  score:0, lives:3, wave:1, over:false, running:false, raf:0, invuln:0,
+  lastMarch:0, lastFire:0, lastBomb:0, tStart:0, best:0
+};
+window.__SD=G;
+cv.width=G.W;cv.height=G.H;
+const ACOLORS=["#ff8a5c","#ffd25c","#8ce06a","#7fb6ff","#c98cff"];
+
+function readBest(){let b=0;const r=GN.readGames(KEY)||[];for(const x of r)if((x.score||0)>b)b=x.score;return b;}
+function aliveCount(){let n=0;for(let r=0;r<G.rows;r++)for(let c=0;c<G.cols;c++)if(G.aliens[r][c])n++;return n;}
+function totalAliens(){return G.rows*G.cols;}
+function marchEvery(){return Math.max(110,520-G.wave*40-(totalAliens()-aliveCount())*6);}
+function bombEvery(){return Math.max(650,1700-G.wave*120);}
+const FIRE_EVERY=340;
+
+function spawnWave(){
+  G.rows=3+Math.min(G.wave-1,2);
+  G.aliens=[];for(let r=0;r<G.rows;r++){const row=[];for(let c=0;c<G.cols;c++)row.push(true);G.aliens.push(row);}
+  G.fx=(G.W-(G.cols-1)*G.sx)/2;G.fy=46;G.dir=1;G.bullets=[];G.bombs=[];
+  G.lastMarch=G.lastBomb=Date.now();
+}
+function newGame(){
+  cancelAnimationFrame(G.raf);G.raf=0;
+  G.score=0;G.lives=3;G.wave=1;G.over=false;G.running=true;G.invuln=0;G.shipX=G.W/2;G.tStart=Date.now();
+  spawnWave();updateHud();overlay.classList.remove("show");G.lastFire=Date.now();
+  G.raf=requestAnimationFrame(loop);
+}
+function updateHud(){
+  document.getElementById("lives").innerHTML="\u25b2".repeat(Math.max(0,G.lives));
+  document.getElementById("wave").textContent="W"+G.wave;
+  document.getElementById("score").textContent=G.score;
+}
+function ax(c){return G.fx+c*G.sx;}
+function ay(r){return G.fy+r*G.sy;}
+
+function autoFire(now){if(now-G.lastFire<FIRE_EVERY)return;G.lastFire=now;G.bullets.push({x:G.shipX,y:G.shipY-12});}
+function stepBullets(){
+  const half=G.aSize/2;
+  for(let i=G.bullets.length-1;i>=0;i--){
+    const b=G.bullets[i];b.y-=7;
+    if(b.y<-8){G.bullets.splice(i,1);continue;}
+    let hit=false;
+    for(let r=0;r<G.rows&&!hit;r++)for(let c=0;c<G.cols&&!hit;c++){
+      if(!G.aliens[r][c])continue;
+      if(Math.abs(b.x-ax(c))<half&&Math.abs(b.y-ay(r))<half){
+        G.aliens[r][c]=false;G.score+=10+G.wave;hit=true;S("pop");
+      }
+    }
+    if(hit)G.bullets.splice(i,1);
+  }
+}
+function maybeBomb(now){
+  if(aliveCount()===0)return;if(now-G.lastBomb<bombEvery())return;G.lastBomb=now;
+  // pick a random alive alien
+  const live=[];for(let r=0;r<G.rows;r++)for(let c=0;c<G.cols;c++)if(G.aliens[r][c])live.push([r,c]);
+  const p=live[(Math.random()*live.length)|0];
+  G.bombs.push({x:ax(p[1]),y:ay(p[0])+G.aSize/2});
+}
+function stepBombs(now){
+  for(let i=G.bombs.length-1;i>=0;i--){
+    const b=G.bombs[i];b.y+=4;
+    if(b.y>G.H+8){G.bombs.splice(i,1);continue;}
+    if(Math.abs(b.x-G.shipX)<G.shipW/2+3&&Math.abs(b.y-G.shipY)<G.shipH/2+3){
+      G.bombs.splice(i,1);hitShip(now);
+    }
+  }
+}
+function hitShip(now){
+  if(now<G.invuln)return;
+  G.lives--;updateHud();S("bump");
+  if(G.lives<=0)return gameOver();
+  G.invuln=now+1300;
+}
+function checkInvade(){
+  for(let r=G.rows-1;r>=0;r--)for(let c=0;c<G.cols;c++){
+    if(G.aliens[r][c]&&ay(r)+G.aSize/2>=G.shipY-G.shipH/2-2)return gameOver();
+  }
+}
+function stepMarch(now){
+  if(now-G.lastMarch<marchEvery())return;G.lastMarch=now;
+  let minC=99,maxC=-1;
+  for(let r=0;r<G.rows;r++)for(let c=0;c<G.cols;c++)if(G.aliens[r][c]){if(c<minC)minC=c;if(c>maxC)maxC=c;}
+  if(maxC<0)return;
+  const half=G.aSize/2,next=G.fx+G.dir*G.stepX;
+  const leftX=next+minC*G.sx-half,rightX=next+maxC*G.sx+half;
+  if(leftX<4||rightX>G.W-4){G.dir*=-1;G.fy+=G.dropStep;S("move");}
+  else G.fx=next;
+  checkInvade();
+}
+function checkWave(){if(!G.over&&aliveCount()===0){G.wave++;updateHud();spawnWave();S("fanfare");}}
+
+function draw(now){
+  ctx.fillStyle="#060a14";ctx.fillRect(0,0,G.W,G.H);
+  // stars
+  ctx.fillStyle="rgba(180,200,240,.25)";
+  for(let i=0;i<26;i++){const sx=(i*53%G.W),sy=((i*97+ (now/40))%G.H);ctx.fillRect(sx,sy,2,2);}
+  // aliens
+  for(let r=0;r<G.rows;r++)for(let c=0;c<G.cols;c++){if(!G.aliens[r][c])continue;
+    const x=ax(c),y=ay(r),h=G.aSize/2;ctx.fillStyle=ACOLORS[r%ACOLORS.length];
+    rrect(x-h,y-h,G.aSize,G.aSize,5);ctx.fill();
+    ctx.fillStyle="#060a14";ctx.fillRect(x-5,y-2,3,3);ctx.fillRect(x+2,y-2,3,3);}
+  // bullets
+  ctx.fillStyle="#fff";for(const b of G.bullets)ctx.fillRect(b.x-1.5,b.y-7,3,10);
+  // bombs
+  ctx.fillStyle="#ff6b6b";for(const b of G.bombs){ctx.beginPath();ctx.arc(b.x,b.y,3.5,0,Math.PI*2);ctx.fill();}
+  // ship (blink when invuln)
+  const blink=now<G.invuln&&((now/120)|0)%2===0;
+  if(!blink){ctx.fillStyle="#9fd6ff";
+    ctx.beginPath();ctx.moveTo(G.shipX,G.shipY-G.shipH/2);
+    ctx.lineTo(G.shipX+G.shipW/2,G.shipY+G.shipH/2);ctx.lineTo(G.shipX-G.shipW/2,G.shipY+G.shipH/2);ctx.closePath();ctx.fill();
+    ctx.fillStyle="#cfe9ff";ctx.fillRect(G.shipX-2.5,G.shipY-G.shipH/2-4,5,6);}
+}
+function rrect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+
+function loop(ts){G.raf=requestAnimationFrame(loop);
+  if(G.over||!G.running){draw(ts||0);return;}
+  const now=Date.now();
+  autoFire(now);stepBullets();maybeBomb(now);stepBombs(now);stepMarch(now);checkWave();
+  draw(ts||now);
+}
+function gameOver(){
+  if(G.over)return;G.over=true;G.running=false;S("bump");
+  const prev=G.best;
+  GN.recordGame(KEY,{start:G.tStart||Date.now(),end:Date.now(),durationMs:Date.now()-(G.tStart||Date.now()),
+    score:G.score,wave:G.wave,solo:true,winner:null,draw:true});
+  G.best=readBest();
+  document.getElementById("ovScore").textContent=G.score;
+  const beat=G.score>0&&G.score>=G.best&&G.score>prev;
+  document.getElementById("ovText").textContent=(beat?"New best! \u{1F389}  ":"")+"Reached wave "+G.wave;
+  if(beat)S("fanfare");
+  overlay.classList.add("show");
+}
+
+/* input: steer only (auto-fire) */
+function steerTo(clientX){const rc=cv.getBoundingClientRect();G.shipX=(clientX-rc.left)*(G.W/rc.width);
+  G.shipX=Math.max(G.shipW/2,Math.min(G.W-G.shipW/2,G.shipX));}
+cv.addEventListener("touchstart",e=>{steerTo(e.touches[0].clientX);e.preventDefault();},{passive:false});
+cv.addEventListener("touchmove",e=>{steerTo(e.touches[0].clientX);e.preventDefault();},{passive:false});
+let held=null;
+function holdStart(dir){held=dir;}function holdEnd(){held=null;}
+document.querySelectorAll("#pad button").forEach(b=>{
+  const dir=b.dataset.a==="left"?-1:1;
+  b.addEventListener("touchstart",e=>{holdStart(dir);e.preventDefault();},{passive:false});
+  b.addEventListener("mousedown",()=>holdStart(dir));
+  b.addEventListener("touchend",holdEnd);b.addEventListener("mouseup",holdEnd);b.addEventListener("mouseleave",holdEnd);
+});
+setInterval(()=>{if(held&&!G.over){G.shipX+=held*7;G.shipX=Math.max(G.shipW/2,Math.min(G.W-G.shipW/2,G.shipX));}},16);
+document.addEventListener("keydown",e=>{
+  if(e.key==="ArrowLeft"){G.shipX=Math.max(G.shipW/2,G.shipX-18);e.preventDefault();}
+  else if(e.key==="ArrowRight"){G.shipX=Math.min(G.W-G.shipW/2,G.shipX+18);e.preventDefault();}
+},{passive:false});
+document.getElementById("newBtn").addEventListener("click",newGame);
+document.getElementById("ovBtn").addEventListener("click",newGame);
+document.addEventListener("visibilitychange",()=>{if(document.hidden){G.running=false;}else if(!G.over){G.running=true;G.lastMarch=G.lastBomb=G.lastFire=Date.now();}});
+
+GN.rulesButton(document.getElementById("foot"),{title:"Star Defender",sections:[
+  {h:"Goal",b:"Defend the bottom of the screen. Your ship fires on its own \u2014 just steer to line up your shots and clear each wave of invaders."},
+  {h:"Move",b:"Slide your finger across the board, hold the on-screen arrows, or use the left/right arrow keys."},
+  {h:"Watch out",b:"Dodge the bombs the invaders drop, and don't let them reach your ship. You have three lives, and every wave gets tougher."}
+]});
+if(window.GNS)GNS.button(document.getElementById("foot"));
+G.best=readBest();
+const whoEl=document.getElementById("who");
+function pickPlayer(){if(window.GN&&GN.soloStart){GN.soloStart(function(name){if(GN.whoBadge)GN.whoBadge(whoEl,name,pickPlayer);newGame();});}else newGame();}
+pickPlayer();
+</script>
+</body>
+</html>

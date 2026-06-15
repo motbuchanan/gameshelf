@@ -5,7 +5,42 @@ Live: motbuchanan.github.io/gameshelf · repo motbuchanan/gameshelf (Pages from 
 **The newest gameshelf zip uploaded to the chat is the current code — work from it, not from stale project files.**
 CLAUDE.md inside the zip is the living engineering log: full version history, conventions, hard-won gotchas. READ IT FIRST.
 
-## State NOW (post-v37, 28 games + 2 books) — newest first
+## State NOW (June 2026 — RETRO ARCADE + ACHIEVEMENTS; SW gameshelf-v16, 33 games + 2 puzzle books) — newest first
+
+Shelf bookshelf now has 8 spines: Rulebook, Record Book, **Achievements**, **High Scores**, How-To, Word Search, Sudoku, Players. Runtime still **gamenight.js?v=12** (network-first SW; ?v inert). sw.js CACHE bumped **v14→v16** (precaches the 5 arcade games + achievements.html + highscores.html).
+
+### Retro arcade — 5 NEW house games (original code; generic/house names, no trademarks)
+Single-file canvas games matching the game-page shell (⌂ Shelf bar, GNS sounds via `S(n)`, Rules + Sound buttons, best-score, game-over overlay). Touch + keyboard + on-screen controls. Each records via GN.recordGame with a numeric metric. All 5 wired into index.html GAMES (cover-art SVGs, viewBox 0 0 100 100) and sw.js precache.
+- **Snake** (snake.html, key `snakearcade_games`, metric `score`) — 16×16 grid, eat/grow/speed-up; swipe + d-pad + arrows. NB DISTINCT from snakes.html (Snakes & Ladders, key sl_games).
+- **Paddle Duel** (paddleduel.html, `paddleduel_games`) — house Pong; vs-Computer OR 2-player pass-and-play, first to 5. (Versus, no challenge ladder; NOT in the solo who's-playing picker.)
+- **Brick Break** (brickbreak.html, `brickbreak_games`, metric `score`) — Breakout; ENDLESS descending rows + 3 lives; red danger line = game over if bricks reach the paddle.
+- **Blocks** (blocks.html, `blocks_games`, metric `level`) — Tetris; 7 pieces, wall-kick rotate, ghost preview, levels every 10 lines, next-piece.
+- **Star Defender** (stardefender.html, `stardefender_games`, metric `wave`) — Space Invaders; AUTO-FIRE, endless escalating waves, 3 lives.
+
+### Achievements + High Scores — TWO SEPARATE systems (Mot specced the split)
+**achievements.js** — standalone, data-driven ENGINE. Load after gamenight.js; storage `gn_achievements` (localStorage + in-memory fallback). Auto-loaded on EVERY page by a loader appended to the end of gamenight.js (no per-game `<script>` needed). PER-PLAYER tiered milestones; everyone can earn the same ones:
+- Per-game "played" ladder **1/10/50/100/250** → Newcomer/Regular/Veteran/Devotee/Legend (`PLAYED_LADDER` + `TIER_NAMES` constants at top — tune there).
+- Cross-game "Game Nights" (totalPlayed) + "Winner" (wins) ladders (`TOTAL_LADDER`/`WIN_LADDER`).
+- Per-game CHALLENGE ladders on a best metric: Snake/Brick Break (score), Blocks (level), Star Defender (wave) — `CHALLENGES` + `METRIC` maps.
+- API: `applyResult(ctx{gameKey,players,winner,metric,metricPlayer})` → returns newly-earned/leveled badges; `forPlayer(name)`, `summary`, `players`, `nameFor`, `metricFromRec`, `knownGames`, `ladders`, `reset`. (No `all()` — derive via forPlayer.)
+
+**Wire-in lives in gamenight.js (centralized — zero per-game edits beyond the arcade picker):**
+- `GN.recordGame` now ends with `try{GN._award(key,rec)}catch(e){}` — achievements can NEVER break recording. `GN._award` feeds the engine with participants + metric, then `GN._ceremony(fired)` pops a celebratory overlay (`#gnAch`, ~500ms after game-over, GNS fanfare).
+- Participants captured into **`GN._participants`** at matchStart (1p→[a]; vs→[a,b]; cpu→[a]) and partyStart (non-bot seats). Winner credited ONLY if it's a real participant (`_BADW` filter drops tie/(draw)/Computer/You).
+- **`GN.soloStart(done,opts)`** = "Who's playing?" picker (roster chips via .gnSeat + a "just for fun — won't be saved" toggle); sets GN._participants + GN.friendly; remembers last via `gn_solo_player`. Wired into the 4 SOLO arcade games (snake/brickbreak/blocks/stardefender) on load (`pickPlayer()`), plus a tappable **#who** badge in the bar to switch player (uses `GN.whoBadge`).
+
+**achievements.html** — per-player Achievements VIEW (Record-Book book aesthetic): player picker, Overall / Challenges / Games-played sections, tier medals + progress-to-next-tier, **"Preview sample"** toggle (in-memory synth, never written to storage).
+**highscores.html** — High Scores BOOK = single-holder FIRST-PLACE titles (conceptually DIFFERENT from achievements): 👑 Most Wins + 🪙 Most Coin Flips (from the household ledger **GN.g** — these ALREADY sync via Firebase), 🎮 Most Games Played (engine totalPlayed), top score per arcade game (engine bests), and per-game champions (most wins, counted from per-game records). "Preview sample" toggle.
+
+**KNOWN GAP — the only remaining piece:** achievement badges + per-game top-scores are stored PER DEVICE (`gn_achievements`, no Firebase mirror yet) → they differ between phones. The ledger-backed titles (Most Wins, Most Coin Flips) DO sync. Next optional chunk: mirror `gn_achievements` like GN.g does, OR recompute per-player best/played from the already-synced per-game records.
+
+### Bug fix shipped earlier this session
+- **Bot-freeze fix** (dots/connect4/mancala vs-Computer "did nothing"): those 3 called `GN.bot.play` but never loaded bot.js → silent throw on the computer's turn. Added `<script src="bot.js?v=1">` to all three + a fail-loud guard in each `maybeBot()` ("Computer's brain didn't load — reload"). (SW bumped v13→v14 then; v16 now supersedes.)
+
+### Concept only — NOT live, NOT in the zip
+- **shelf2.html** = "standing-boxes cabinet" redesign concept (5-across rich-cover board grid, standing card-game boxes, activity books, retro cases, pull-off-the-shelf tap-to-enlarge). Iterated with Mot to a state he likes; NOT cut over to live index.html.
+
+## State (prior session — post-v37, 28 games + 2 books) — newest first
 - **MULTIPLAYER** exists: `GN.partyStart(done,{min,max,start,toggles})` — a separate 2–4 seat picker (humans and/or computers, per-seat difficulty, distinct colors, random first, forced friendly). matchStart (the 2-seat picker) is untouched. partyStart also renders optional **house-rule toggle switches** (opts.toggles → persisted, returned as `rules:{}` in the payload). So far One Card Left! is its only consumer.
 - **"ONE CARD LEFT!"** = the shelf's first house CARD game (original name + original card art; Uno-family mechanics are free). Pure engine `tools/ocl_engine.js` (108 cards, match color-or-kind, Skip/Reverse/Draw2/Wild/Wild4, draw-until-playable, auto announce, conservation-proven over thousands of harness games) embedded BYTE-IDENTICAL into onecardleft.html. Rich SVG card art, GNS sounds (🔊 in #bar; respects global mute), flying-card animations, pass-the-device for multi-human / auto-bots for solo-vs-computers. In the Rulebook + an in-game "?" (both generated from one canonical `tools/ocl_rules.js` so they can't drift). Tile = 2nd on the shelf; never recorded (friendly). sw.js CACHE bumped to v6 (onecardleft.html precached).
 - **House rule STACKING** (toggle in the picker, off by default): a Draw card can be answered with another Draw card (any +2/+4, "any on any") — `st.pending` builds, shown as a red **+N** on the discard, until someone taps **Take N** and is skipped. Engine-level (`st.pending`, `playable()`, `takeStack`, botMove handles it); validated ~8,500 harness games (conservation never broke) + 8 in-page play-throughs.
@@ -25,6 +60,8 @@ CLAUDE.md inside the zip is the living engineering log: full version history, co
 - CHESS = flagship: perft-certified engine, L1-10 ladder (calibrated N beats N-2), coach (hint/blunder nudge/takeback), 4×4 themes, original SVG pieces. Sent to Mot's chess-playing coworker — feedback may arrive. r2 SHIPPED (v28): opening variety (random among moves within OPENING_SPREAD=35cp of best for first OPENING_MOVES=5 — varied AND sound, harness-verified 0 weak picks) + end-game "3 moves that decided it" recap (static-eval swings, RECAP_MIN=60cp).
 
 ## Untested by humans (verdicts pending)
+- **The 5 retro arcade games on a real phone** (Garrett first): control feel (swipe/d-pad/keys), difficulty/speed curves, Paddle Duel 2-player on one device, best-score tracking. Tunable constants are single values at the top of each (grid size, speeds, ladders).
+- **Achievements end-to-end in real play**: the badge ceremony popping after recorded games, the who's-playing picker on the 4 solo arcade games, the #who switch-player badge, the Achievements view + High Scores book populated with real data (medal colors, milestone numbers, layout — all easy to tune).
 - The two puzzle BOOKS on a real phone — Word Search and Sudoku (Garrett, and grandmother on Easy View): grid/cell sizes, pencil-mark legibility, the resume flow, hint feel
 - The new picker flow on a real device: ask-for-difficulty gating + coin-flip-first vs Computer (does the disabled "Pick a difficulty" Start read clearly; does the CPU-wins-flip-moves-first feel right)
 - The five newer bots' strength feel in real play (connect4 / mancala / dots / war / snakes) and the four migrated ones now that difficulty comes from the picker
@@ -53,7 +90,7 @@ SOLO-GRINDABLE:
 - Validate EVERYTHING: awk-extract inline scripts → node --check; brace counts; logic harnesses for engines (perft for chess); boot tests w/ DOM stubs; patch scripts use assert + grep-verify. Paren-counting (not regex) to find call ends; never prepend statements to expression arrows.
 - Mot iterates by screenshot and decides looks; favor single tunable constants (--w/--rot style).
 - Copyright: mechanics free, branded content not; original art/text only; house versions fine for family play. Kid-appropriate always (Garrett plays and helps build).
-- True storage keys (don't guess): chess/scrabble/bridge/sorry/trouble/guesswho/checkers/ur/c4/bs/yahtzee/bg/mancala/dom/gofish/war/farkle/reversi/morris/gomoku/uttt/hex/dots/sl/sb/cc/cb + "_games".
+- True storage keys (don't guess): chess/scrabble/bridge/sorry/trouble/guesswho/checkers/ur/c4/bs/yahtzee/bg/mancala/dom/gofish/war/farkle/reversi/morris/gomoku/uttt/hex/dots/sl/sb/cc/cb + "_games"; arcade: snakearcade_games, paddleduel_games, brickbreak_games, blocks_games, stardefender_games. Non-record localStorage: gn_achievements (per-player badges/bests), gn_solo_player (last who's-playing pick), gn_global (household ledger: wins, flips, dice…).
 - Zips: full versioned zips on request; Mot uploads to GitHub manually; remind him new files must all land.
 
 ## Known soft edges (accepted)

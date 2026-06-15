@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Blocks</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;}
+  html,body{height:100%;}
+  body{font-family:system-ui,sans-serif;color:#e9e6f2;overflow:hidden;display:flex;flex-direction:column;
+    background:radial-gradient(120% 80% at 50% 16%,#2a2340 0%,#0e0b16 70%);touch-action:none;}
+  #bar{display:flex;align-items:center;gap:10px;padding:12px 14px;}
+  #bar a{color:#d9d2ec;text-decoration:none;font-size:14px;border:1px solid #4a3f63;border-radius:999px;padding:6px 12px;}
+  #title{font-weight:800;font-size:19px;}
+  #stageWrap{flex:1;display:flex;align-items:center;justify-content:center;gap:14px;padding:6px;}
+  #board{position:relative;border-radius:10px;overflow:hidden;
+    box-shadow:0 14px 30px rgba(0,0,0,.6),inset 0 0 0 2px rgba(180,160,220,.18);background:#120d1f;touch-action:none;}
+  #cv{display:block;height:min(62vh,520px);width:auto;}
+  #side{display:flex;flex-direction:column;gap:12px;align-items:flex-start;font-weight:800;}
+  #side .lab{font-size:11px;color:#9a8fc0;font-weight:600;text-transform:uppercase;letter-spacing:1px;}
+  #side .val{font-size:20px;color:#c9b6ff;}
+  #nx{background:#120d1f;border-radius:8px;box-shadow:inset 0 0 0 2px rgba(180,160,220,.18);}
+  #pad{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;max-width:340px;width:94vw;margin:0 auto;padding:0 14px;}
+  #pad button{font-family:inherit;font-size:18px;font-weight:800;color:#1a1230;border:none;border-radius:12px;cursor:pointer;padding:14px 0;
+    background:linear-gradient(180deg,#c8b6ff,#9a86d6);box-shadow:0 4px 0 #5a4a8a,0 5px 9px rgba(0,0,0,.4);}
+  #pad button:active{transform:translateY(2px);box-shadow:0 2px 0 #5a4a8a;}
+  #pad .wide{grid-column:span 2;}
+  #foot{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;padding:10px 14px 16px;}
+  .act{font-family:inherit;font-size:15px;font-weight:bold;padding:10px 18px;border-radius:10px;border:none;
+    color:#1a1230;background:#c8b6ff;cursor:pointer;box-shadow:0 4px 0 #5a4a8a,0 5px 10px rgba(0,0,0,.4);}
+  .act.ghost{background:#1a1430;color:#d9d2ec;box-shadow:0 4px 0 #0e0a1c;border:1px solid #4a3f63;font-size:14px;}
+  .act:active{transform:translateY(2px);}
+  .ov{position:fixed;inset:0;background:rgba(9,7,14,.93);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:50;text-align:center;padding:24px;}
+  .ov.show{display:flex;}
+  .ov h1{font-size:28px;}.ov p{font-size:16px;color:#d9d2ec;}
+  .ov .big{font-size:44px;font-weight:900;color:#c9b6ff;}
+  #who{font-family:inherit;font-size:12px;font-weight:700;color:#fff;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:999px;padding:3px 9px 3px 4px;margin-left:8px;cursor:pointer;}
+</style>
+</head>
+<body>
+<div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">Blocks</div><button id="who"></button></div>
+<div id="stageWrap">
+  <div id="board"><canvas id="cv"></canvas></div>
+  <div id="side">
+    <div><div class="lab">Score</div><div class="val" id="score">0</div></div>
+    <div><div class="lab">Lines</div><div class="val" id="lines">0</div></div>
+    <div><div class="lab">Level</div><div class="val" id="level">1</div></div>
+    <div><div class="lab">Next</div><canvas id="nx" width="76" height="76"></canvas></div>
+  </div>
+</div>
+<div id="pad">
+  <button data-a="left">&#9664;</button>
+  <button data-a="rot">&#8635;</button>
+  <button data-a="right">&#9654;</button>
+  <button data-a="down">&#9660;</button>
+  <button data-a="drop" class="wide" style="grid-column:span 4;">Drop</button>
+</div>
+<div id="foot"><button class="act ghost" id="newBtn">New game</button></div>
+<div class="ov" id="overlay">
+  <div style="font-size:48px;">&#129513;</div>
+  <h1 id="ovTitle">Game over</h1>
+  <div class="big" id="ovScore">0</div>
+  <p id="ovText"></p>
+  <button class="act" id="ovBtn">Play again</button>
+  <a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #4a3f63;background:#1a1430;color:#d9d2ec;text-decoration:none;">Back to shelf</a>
+</div>
+<script src="gamenight.js?v=12"></script>
+<script src="sfx.js?v=5"></script>
+<script>
+const KEY="blocks_games";
+function S(n,o){window.GNS&&GNS.play(n,0,o);}
+const W=10,H=20,CELL=24;
+const cv=document.getElementById("cv"),ctx=cv.getContext("2d");
+const nx=document.getElementById("nx"),nctx=nx.getContext("2d");
+const overlay=document.getElementById("overlay");
+cv.width=W*CELL;cv.height=H*CELL;
+const PIECES={
+  I:{c:"#49ccdd",m:[[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]]},
+  O:{c:"#f2cf4b",m:[[1,1],[1,1]]},
+  T:{c:"#b06cf0",m:[[0,1,0],[1,1,1],[0,0,0]]},
+  S:{c:"#6ce06a",m:[[0,1,1],[1,1,0],[0,0,0]]},
+  Z:{c:"#f0685c",m:[[1,1,0],[0,1,1],[0,0,0]]},
+  J:{c:"#5c8cf0",m:[[1,0,0],[1,1,1],[0,0,0]]},
+  L:{c:"#f0a24b",m:[[0,0,1],[1,1,1],[0,0,0]]}
+};
+const TYPES=Object.keys(PIECES);
+const LINE_SCORE=[0,100,300,500,800];
+const G={board:[],active:null,nextType:null,score:0,lines:0,level:1,over:false,running:false,raf:0,acc:0,last:0,tStart:0,best:0};
+window.__BL=G;
+
+function readBest(){let b=0;const r=GN.readGames(KEY)||[];for(const x of r)if((x.score||0)>b)b=x.score;return b;}
+function emptyBoard(){const b=[];for(let r=0;r<H;r++){b.push(new Array(W).fill(null));}return b;}
+function rotateCW(m){const n=m.length,o=[];for(let r=0;r<n;r++){o.push(new Array(n).fill(0));}
+  for(let r=0;r<n;r++)for(let c=0;c<n;c++)o[c][n-1-r]=m[r][c];return o;}
+function collide(m,x,y){
+  for(let r=0;r<m.length;r++)for(let c=0;c<m[r].length;c++){
+    if(!m[r][c])continue;const gx=x+c,gy=y+r;
+    if(gx<0||gx>=W||gy>=H)return true;
+    if(gy>=0&&G.board[gy][gx])return true;
+  }return false;
+}
+function randType(){return TYPES[(Math.random()*TYPES.length)|0];}
+function spawn(){
+  const t=G.nextType||randType();G.nextType=randType();
+  const p=PIECES[t],m=p.m.map(r=>r.slice());
+  const x=Math.floor((W-m[0].length)/2),y= t==="I"?-1:0;
+  G.active={type:t,mat:m,x:x,y:y,color:p.c};
+  drawNext();
+  if(collide(m,x,y))gameOver();
+}
+function move(dx){if(G.over||!G.active)return;const a=G.active;if(!collide(a.mat,a.x+dx,a.y)){a.x+=dx;draw();}}
+function rotate(){
+  if(G.over||!G.active)return;const a=G.active;if(a.type==="O"){return;}
+  const nm=rotateCW(a.mat);
+  for(const k of [0,-1,1,-2,2]){if(!collide(nm,a.x+k,a.y)){a.mat=nm;a.x+=k;S("tap");draw();return;}}
+}
+function dropStep(){
+  if(G.over||!G.active)return false;const a=G.active;
+  if(!collide(a.mat,a.x,a.y+1)){a.y++;draw();return true;}
+  lock();return false;
+}
+function softDrop(){if(dropStep()){G.score+=1;updateHud();}}
+function hardDrop(){if(G.over||!G.active)return;const a=G.active;let d=0;
+  while(!collide(a.mat,a.x,a.y+1)){a.y++;d++;}G.score+=d*2;updateHud();S("place");lock();}
+function lock(){
+  const a=G.active;let aboveTop=false;
+  for(let r=0;r<a.mat.length;r++)for(let c=0;c<a.mat[r].length;c++){
+    if(!a.mat[r][c])continue;const gx=a.x+c,gy=a.y+r;
+    if(gy<0){aboveTop=true;continue;}G.board[gy][gx]=a.color;
+  }
+  G.active=null;
+  if(aboveTop){return gameOver();}
+  clearLines();
+  if(!G.over)spawn();
+}
+function clearLines(){
+  let cleared=0;
+  for(let r=H-1;r>=0;r--){
+    if(G.board[r].every(v=>v)){G.board.splice(r,1);G.board.unshift(new Array(W).fill(null));cleared++;r++;}
+  }
+  if(cleared){
+    G.lines+=cleared;G.score+=LINE_SCORE[cleared]*G.level;
+    G.level=Math.floor(G.lines/10)+1;
+    S(cleared>=4?"fanfare":"chime");updateHud();
+  }
+}
+function dropInterval(){return Math.max(90,800-(G.level-1)*70);}
+function updateHud(){document.getElementById("score").textContent=G.score;
+  document.getElementById("lines").textContent=G.lines;document.getElementById("level").textContent=G.level;}
+
+function ghostY(){const a=G.active;let y=a.y;while(!collide(a.mat,a.x,y+1))y++;return y;}
+function cell(x,y,color,alpha){ctx.globalAlpha=alpha==null?1:alpha;ctx.fillStyle=color;
+  rrect(x*CELL+1,y*CELL+1,CELL-2,CELL-2,4);ctx.fill();
+  if(alpha==null){ctx.fillStyle="rgba(255,255,255,.18)";rrect(x*CELL+1,y*CELL+1,CELL-2,5,2);ctx.fill();}ctx.globalAlpha=1;}
+function draw(){
+  ctx.fillStyle="#120d1f";ctx.fillRect(0,0,cv.width,cv.height);
+  ctx.strokeStyle="rgba(180,160,220,.05)";ctx.lineWidth=1;
+  for(let i=1;i<W;i++){ctx.beginPath();ctx.moveTo(i*CELL,0);ctx.lineTo(i*CELL,cv.height);ctx.stroke();}
+  for(let i=1;i<H;i++){ctx.beginPath();ctx.moveTo(0,i*CELL);ctx.lineTo(cv.width,i*CELL);ctx.stroke();}
+  for(let r=0;r<H;r++)for(let c=0;c<W;c++)if(G.board[r][c])cell(c,r,G.board[r][c]);
+  if(G.active){const a=G.active,gy=ghostY();
+    for(let r=0;r<a.mat.length;r++)for(let c=0;c<a.mat[r].length;c++)if(a.mat[r][c]){
+      if(gy+r>=0)cell(a.x+c,gy+r,a.color,.22);
+    }
+    for(let r=0;r<a.mat.length;r++)for(let c=0;c<a.mat[r].length;c++)if(a.mat[r][c]){
+      if(a.y+r>=0)cell(a.x+c,a.y+r,a.color);
+    }
+  }
+}
+function drawNext(){
+  nctx.clearRect(0,0,nx.width,nx.height);
+  if(!G.nextType)return;const p=PIECES[G.nextType],m=p.m,sz=16,n=m.length;
+  const off=(nx.width-n*sz)/2;
+  for(let r=0;r<n;r++)for(let c=0;c<n;c++)if(m[r][c]){nctx.fillStyle=p.c;
+    nctx.beginPath();nctx.rect(off+c*sz+1,off+r*sz+1,sz-2,sz-2);nctx.fill();}
+}
+function rrect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+
+function loop(ts){G.raf=requestAnimationFrame(loop);
+  if(G.over||!G.running)return;
+  if(!G.last)G.last=ts;const dt=ts-G.last;G.last=ts;G.acc+=dt;
+  if(G.acc>=dropInterval()){G.acc=0;dropStep();}
+}
+function newGame(){
+  cancelAnimationFrame(G.raf);G.raf=0;
+  G.board=emptyBoard();G.score=0;G.lines=0;G.level=1;G.over=false;G.running=true;
+  G.acc=0;G.last=0;G.nextType=randType();G.active=null;G.tStart=Date.now();
+  spawn();updateHud();draw();overlay.classList.remove("show");G.raf=requestAnimationFrame(loop);
+}
+function gameOver(){
+  if(G.over)return;G.over=true;G.running=false;S("bump");
+  const prev=G.best;
+  GN.recordGame(KEY,{start:G.tStart||Date.now(),end:Date.now(),durationMs:Date.now()-(G.tStart||Date.now()),
+    score:G.score,lines:G.lines,level:G.level,solo:true,winner:null,draw:true});
+  G.best=readBest();
+  document.getElementById("ovScore").textContent=G.score;
+  const beat=G.score>0&&G.score>=G.best&&G.score>prev;
+  document.getElementById("ovText").textContent=(beat?"New best! \u{1F389}  ":"")+G.lines+" lines \u00b7 level "+G.level;
+  if(beat)S("fanfare");
+  overlay.classList.add("show");
+}
+
+/* input */
+document.querySelectorAll("#pad button").forEach(b=>b.addEventListener("click",()=>{
+  const a=b.dataset.a;
+  if(a==="left")move(-1);else if(a==="right")move(1);else if(a==="rot")rotate();
+  else if(a==="down")softDrop();else if(a==="drop")hardDrop();
+}));
+document.addEventListener("keydown",e=>{
+  if(e.key==="ArrowLeft"){move(-1);e.preventDefault();}
+  else if(e.key==="ArrowRight"){move(1);e.preventDefault();}
+  else if(e.key==="ArrowUp"||e.key==="x"||e.key==="X"){rotate();e.preventDefault();}
+  else if(e.key==="ArrowDown"){softDrop();e.preventDefault();}
+  else if(e.key===" "){hardDrop();e.preventDefault();}
+},{passive:false});
+// swipe on board: horizontal move, down = soft, up tap = rotate
+let tsx=0,tsy=0,moved=false;
+const board=document.getElementById("board");
+board.addEventListener("touchstart",e=>{const t=e.changedTouches[0];tsx=t.clientX;tsy=t.clientY;moved=false;},{passive:true});
+board.addEventListener("touchend",e=>{const t=e.changedTouches[0];const dx=t.clientX-tsx,dy=t.clientY-tsy;
+  if(Math.abs(dx)<14&&Math.abs(dy)<14){rotate();return;}
+  if(Math.abs(dx)>Math.abs(dy)){move(dx>0?1:-1);}else{if(dy>0)hardDrop();}
+},{passive:true});
+document.getElementById("newBtn").addEventListener("click",newGame);
+document.getElementById("ovBtn").addEventListener("click",newGame);
+document.addEventListener("visibilitychange",()=>{if(document.hidden){G.running=false;}else if(!G.over){G.running=true;G.last=0;}});
+
+GN.rulesButton(document.getElementById("foot"),{title:"Blocks",sections:[
+  {h:"Goal",b:"Fit the falling blocks together to complete full rows. Each completed row clears and scores points."},
+  {h:"Move",b:"Arrows or the on-screen buttons move and drop. Rotate with the \u21bb button, up arrow, or a tap on the board. Drop sends the piece straight down."},
+  {h:"Levels",b:"Every 10 lines you go up a level and the blocks fall faster. The faint outline shows where a piece will land."}
+]});
+if(window.GNS)GNS.button(document.getElementById("foot"));
+G.best=readBest();
+const whoEl=document.getElementById("who");
+function pickPlayer(){if(window.GN&&GN.soloStart){GN.soloStart(function(name){if(GN.whoBadge)GN.whoBadge(whoEl,name,pickPlayer);newGame();});}else newGame();}
+pickPlayer();
+</script>
+</body>
+</html>

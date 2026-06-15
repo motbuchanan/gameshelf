@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Achievements</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  body{font-family:system-ui,sans-serif;color:#22303a;min-height:100vh;display:flex;flex-direction:column;align-items:center;
+    background:repeating-linear-gradient(#f4f2ea 0 27px,#e7e0cf 27px 28px);}
+  #bar{width:100%;max-width:640px;display:flex;align-items:center;gap:10px;padding:12px 14px;background:#f4f2ea;border-bottom:2px solid #c9941e;}
+  #bar a{color:#3a566e;text-decoration:none;font-size:14px;border:1.5px solid #c3a86a;border-radius:999px;padding:6px 12px;background:#fff;}
+  #title{font-weight:800;font-size:20px;flex:1;}
+  #wrap{width:min(96vw,640px);padding:10px 16px 44px;}
+  /* player picker */
+  #players{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 4px;}
+  .pchip{display:flex;align-items:center;gap:7px;background:#fff;border:1.5px solid #d8cdb0;border-radius:999px;padding:5px 12px 5px 5px;
+    cursor:pointer;font-weight:700;font-size:14px;color:#3a4a56;}
+  .pchip.sel{border-color:#c9941e;box-shadow:0 0 0 2px rgba(201,148,30,.25);}
+  .pchip .tok{width:26px;height:26px;border-radius:50%;flex:none;}
+  #summary{font-size:13px;color:#7a5a2e;margin:8px 0 2px;font-weight:600;}
+  #prev{float:right;font-size:12px;color:#7a8a98;display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;}
+  #prev .sw{width:34px;height:18px;border-radius:9px;background:#cdd6cf;position:relative;transition:background .15s;}
+  #prev .sw::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;transition:left .15s;box-shadow:0 1px 2px rgba(0,0,0,.3);}
+  #prev.on .sw{background:#c9941e;}#prev.on .sw::after{left:18px;}
+  h2{font-size:13px;letter-spacing:1.5px;text-transform:uppercase;color:#7a5a2e;margin:22px 0 10px;
+    border-bottom:2px solid #c9941e;display:inline-block;padding-bottom:2px;}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .badge{background:rgba(255,255,255,.82);border-radius:12px;padding:10px 11px;box-shadow:0 1px 3px rgba(40,60,80,.15);
+    display:flex;gap:10px;align-items:center;}
+  .badge.locked{opacity:.62;}
+  .medal{width:42px;height:42px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;
+    font-weight:900;font-size:15px;color:#fff;box-shadow:inset 0 2px 3px rgba(255,255,255,.5),inset 0 -3px 5px rgba(0,0,0,.25),0 2px 4px rgba(0,0,0,.25);
+    border:2px solid rgba(255,255,255,.55);}
+  .t0{background:#b9c6d0;color:#5e6e7a;}
+  .t1{background:radial-gradient(circle at 35% 30%,#d89a63,#a4642f);}
+  .t2{background:radial-gradient(circle at 35% 30%,#cdd8e0,#8ea0ac);}
+  .t3{background:radial-gradient(circle at 35% 30%,#f0cf6a,#cf9a1e);}
+  .t4{background:radial-gradient(circle at 35% 30%,#5fd0bd,#1f8e7e);}
+  .t5{background:radial-gradient(circle at 35% 30%,#b78cf0,#6a3fc0);}
+  .bMain{flex:1;min-width:0;}
+  .bName{font-weight:800;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .bTier{font-size:11.5px;color:#7a5a2e;font-weight:700;margin-top:1px;}
+  .bTier.lock{color:#8a97a2;font-weight:600;}
+  .bBar{height:7px;border-radius:4px;background:#e2dcce;margin-top:6px;overflow:hidden;}
+  .bBar>i{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,#c9941e,#e8c45e);}
+  .bNext{font-size:10.5px;color:#8a97a2;margin-top:3px;}
+  .note{font-size:12px;color:#8a8470;font-style:italic;margin-top:22px;line-height:1.5;}
+</style></head><body>
+<div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">&#127941; Achievements</div></div>
+<div id="wrap">
+  <div id="prev"><span>Preview sample</span><span class="sw"></span></div>
+  <div id="players"></div>
+  <div id="summary"></div>
+  <div id="sections"></div>
+  <div class="note">Badges are earned per player by playing and hitting milestones &mdash; everyone can earn the same ones.
+    First-place titles (most wins, most coin flips, highest scores ever) live in the High Scores book instead.</div>
+</div>
+<script src="gamenight.js?v=12"></script>
+<script src="achievements.js"></script>
+<script>
+const roster=(GN.players&&GN.players().length?GN.players():[{name:"Player",color:"#888"}]);
+let selected=(GN.profiles&&GN.profiles.owner&&GN.profiles.owner()&&GN.profiles.owner().name)||roster[0].name;
+let previewOn=false;
+
+function tok(p){if(GN.tokenHTML)return GN.tokenHTML(p,26);
+  return '<span class="tok" style="background:'+(p.color||'#888')+'"></span>';}
+function drawPlayers(){
+  const el=document.getElementById("players");el.innerHTML="";
+  roster.forEach(p=>{const c=document.createElement("div");c.className="pchip"+(p.name===selected?" sel":"");
+    c.innerHTML=tok(p)+'<span>'+p.name+'</span>';
+    c.onclick=()=>{selected=p.name;render();};el.appendChild(c);});
+}
+function pct(a){return Math.max(4,Math.min(100,Math.round(a*100)));}
+function badgeEl(b){
+  const d=document.createElement("div");d.className="badge"+(b.tier?"":" locked");
+  const maxed=b.tier===b.tiers;
+  const face=maxed?"\u2605":(b.tier||"\u2013");
+  let sub,frac,nextTxt;
+  if(b.tier===0){sub='<div class="bTier lock">Locked</div>';frac=0;nextTxt="Play "+b.ladder[0]+" to begin";}
+  else if(maxed){sub='<div class="bTier">'+b.tierName+' \u00b7 maxed</div>';frac=1;nextTxt=b.value+" so far";}
+  else{sub='<div class="bTier">'+b.tierName+' \u00b7 '+b.ladder[b.tier-1]+'+</div>';
+    const base=b.ladder[b.tier-1],span=(b.next-base)||1;frac=(b.value-base)/span;nextTxt=b.value+" / "+b.next+" for next";}
+  d.innerHTML='<div class="medal t'+b.tier+'">'+face+'</div><div class="bMain">'+
+    '<div class="bName">'+b.name+'</div>'+sub+
+    '<div class="bBar"><i style="width:'+pct(frac)+'%"></i></div>'+
+    '<div class="bNext">'+nextTxt+'</div></div>';
+  return d;
+}
+function section(title,items){
+  if(!items.length)return;
+  const h=document.createElement("h2");h.textContent=title;
+  const g=document.createElement("div");g.className="grid";
+  items.forEach(b=>g.appendChild(badgeEl(b)));
+  const s=document.getElementById("sections");s.appendChild(h);s.appendChild(g);
+}
+function sortByProgress(a,b){if((b.tier>0)-(a.tier>0))return (b.tier>0)-(a.tier>0);
+  if(b.tier!==a.tier)return b.tier-a.tier;return a.name.localeCompare(b.name);}
+
+function sampleFor(name){
+  const L=Achievements.ladders(),games=Achievements.knownGames();
+  let seed=2166136261;for(const ch of name){seed^=ch.charCodeAt(0);seed=(seed*16777619)>>>0;}
+  const rnd=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;};
+  const mk=(id,nm,kind,ladder,value)=>{let t=0;for(let i=0;i<ladder.length;i++)if(value>=ladder[i])t=i+1;
+    return {id,name:nm,kind,value,tier:t,tiers:ladder.length,ladder,
+      tierName:t?L.tierNames[Math.min(t-1,L.tierNames.length-1)]:null,next:t<ladder.length?ladder[t]:null,earned:t>0};};
+  const out=[mk("played:all","Game Nights","totalPlayed",L.total,Math.floor(rnd()*200)),
+    mk("wins:all","Winner","wins",L.wins,Math.floor(rnd()*80))];
+  const CH={snakearcade_games:["Snake Charmer",[15,30,60,100],110],brickbreak_games:["Brick Buster",[50,150,300,600],450],
+    blocks_games:["Block Master",[3,5,8,12],10],stardefender_games:["Star Defender",[3,5,8,12],7]};
+  for(const k in CH)out.push(mk("chal:"+k,CH[k][0],"best",CH[k][1],Math.floor(rnd()*CH[k][2])));
+  for(const k of games)out.push(mk("played:"+k,Achievements.nameFor(k),"played",L.played,Math.floor(rnd()*rnd()*140)));
+  return out;
+}
+function render(){
+  drawPlayers();
+  document.getElementById("sections").innerHTML="";
+  const list=previewOn?sampleFor(selected):Achievements.forPlayer(selected);
+  const overall=list.filter(b=>b.kind==="totalPlayed"||b.kind==="wins");
+  const chal=list.filter(b=>b.kind==="best").sort(sortByProgress);
+  const played=list.filter(b=>b.kind==="played").sort(sortByProgress);
+  const earned=list.filter(b=>b.tier>0).length;
+  const tiers=list.reduce((s,b)=>s+b.tier,0);
+  document.getElementById("summary").textContent=earned+" of "+list.length+" badges \u00b7 "+tiers+" tiers earned";
+  section("Overall",overall);
+  section("Challenges",chal);
+  section("Games played",played);
+}
+document.getElementById("prev").onclick=function(){previewOn=!previewOn;this.classList.toggle("on",previewOn);render();};
+render();
+</script>
+</body></html>
