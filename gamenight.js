@@ -748,7 +748,9 @@ const GAME_KEYS=["chess_games","ur_games","sorry_games","checkers_games","c4_gam
   "war_games","sb_games","sl_games","uttt_games",
   "gomoku_games","dots_games","hex_games","cb_games","scrabble_games",
   "farkle_games","gofish_games","reversi_games","morris_games",
-  "bridge_games","guesswho_games"];
+  "bridge_games","guesswho_games",
+  "blackjack_games","solitaire_games","memory_games","gin_games","oldmaid_games",
+  "onecardleft_games"];
 GN.GAME_KEYS=GAME_KEYS;
 /* ---- pinch zoom + pan for dense boards ----
    GN.pinchZoom(boardEl): wraps the board; pinch to zoom (1x-3x), drag to pan when

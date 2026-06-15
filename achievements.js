@@ -32,7 +32,9 @@ var NAMES={
   reversi_games:"Reversi", sb_games:"Shut the Box", snakearcade_games:"Snake",
   sl_games:"Snakes & Ladders", sorry_games:"Sorry!", stardefender_games:"Star Defender",
   trouble_games:"Trouble", ur_games:"Royal Game of Ur", uttt_games:"Tic-Tac-Toe",
-  war_games:"War", yahtzee_games:"Yahtzee"
+  war_games:"War", yahtzee_games:"Yahtzee",
+  blackjack_games:"Blackjack", solitaire_games:"Solitaire", memory_games:"Memory",
+  gin_games:"Gin Rummy", oldmaid_games:"Old Maid", onecardleft_games:"One Card Left!"
 };
 
 /* per-game "challenge" ladders: a single higher-is-better metric (score/level/wave).

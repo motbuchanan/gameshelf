@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Gin Rummy</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;}
+  html,body{height:100%;}
+  body{font-family:system-ui,sans-serif;color:#e9e4f2;overflow:hidden;display:flex;flex-direction:column;
+    background:radial-gradient(120% 80% at 50% 14%,#23314f 0%,#0c1018 72%);}
+  #bar{display:flex;align-items:center;gap:10px;padding:11px 13px;}
+  #bar a{color:#cdd8ec;text-decoration:none;font-size:14px;border:1px solid #3d4d6a;border-radius:999px;padding:6px 12px;}
+  #title{font-weight:800;font-size:19px;}
+  #who{margin-left:auto;font-size:13px;color:#cdd8ec;cursor:pointer;}
+  #score{font-size:13px;color:#9fb0cc;margin-left:8px;}
+  #score b{color:#f4c542;font-variant-numeric:tabular-nums;}
+  #botrow{text-align:center;padding:4px 8px;}
+  #botrow .lab{font-size:12px;color:#9fb0cc;margin-bottom:4px;}
+  .fan{display:flex;justify-content:center;flex-wrap:wrap;gap:3px;}
+  .mini{width:38px;height:54px;border-radius:5px;position:relative;flex:none;color:#1c1c1c;
+    background:linear-gradient(160deg,#fffdf6,#ece3cf);box-shadow:0 3px 7px rgba(0,0,0,.45),inset 0 1px 0 #fff;
+    display:flex;align-items:flex-start;justify-content:flex-start;font-weight:800;font-size:15px;padding:2px 3px;line-height:1;}
+  .mini.red{color:#c0271f;}
+  .mini.back{background:repeating-linear-gradient(45deg,#46406e 0 5px,#37325a 5px 10px);color:transparent;}
+  .mini.back::after{content:"";position:absolute;inset:4px;border-radius:3px;border:1.3px solid rgba(255,255,255,.3);}
+  .mini.meld{box-shadow:0 0 0 2px #5ad17a inset,0 3px 7px rgba(0,0,0,.45);}
+  .mini.sel{transform:translateY(-9px);box-shadow:0 0 0 2px #f4c542 inset,0 6px 10px rgba(0,0,0,.5);}
+  .mini.tap{cursor:pointer;}
+  #mid{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:0;}
+  #piles{display:flex;gap:22px;align-items:center;justify-content:center;}
+  .pilewrap{text-align:center;} .pilewrap .cap{font-size:11px;color:#9fb0cc;margin-top:4px;}
+  .pile{width:46px;height:64px;border-radius:6px;cursor:pointer;position:relative;}
+  .pile.stock{background:repeating-linear-gradient(45deg,#46406e 0 6px,#37325a 6px 12px);box-shadow:0 4px 9px rgba(0,0,0,.5);}
+  .pile.stock::after{content:"";position:absolute;inset:5px;border-radius:4px;border:1.5px solid rgba(255,255,255,.3);}
+  .pile.empty{border:1.5px dashed rgba(255,255,255,.2);background:transparent;cursor:default;}
+  #msg{min-height:22px;text-align:center;font-size:14.5px;color:#dfe6f2;padding:1px 12px;font-weight:600;}
+  #handrow{text-align:center;padding:2px 8px 4px;}
+  #dwlab{font-size:12px;color:#9fb0cc;margin-bottom:4px;}
+  #dwlab b{color:#f4c542;}
+  #foot{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;padding:6px 12px 14px;}
+  .act{font-family:inherit;font-size:15px;font-weight:bold;padding:10px 17px;border-radius:10px;border:none;
+    color:#13203a;background:#7fa6e8;cursor:pointer;box-shadow:0 4px 0 #4f72b3,0 5px 10px rgba(0,0,0,.4);}
+  .act:disabled{opacity:.4;box-shadow:0 4px 0 #555;cursor:default;}
+  .act.gold{background:#f4c542;color:#3a2c08;box-shadow:0 4px 0 #b08a1e,0 5px 10px rgba(0,0,0,.4);}
+  .act.ghost{background:#161f30;color:#cdd8ec;box-shadow:0 4px 0 #0b121d;border:1px solid #3d4d6a;}
+  .ov{position:fixed;inset:0;background:rgba(8,10,16,.93);display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;z-index:50;text-align:center;padding:24px;}
+  .ov.show{display:flex;} .ov h1{font-size:28px;} .ov p{font-size:15px;color:#cdd8ec;max-width:340px;line-height:1.5;}
+  #confetti{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
+  .cf{position:absolute;width:10px;height:14px;top:-20px;animation:fall linear forwards;}
+  @keyframes fall{to{transform:translateY(110vh) rotate(720deg);}}
+  html.gn-easy .mini{width:42px;height:60px;font-size:17px;} html.gn-easy #msg{font-size:17px;}
+</style>
+</head>
+<body>
+<div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">Gin Rummy</div><div id="who"></div><div id="score"></div></div>
+<div id="botrow"><div class="lab" id="botLab">Computer</div><div class="fan" id="fanB"></div></div>
+<div id="mid">
+  <div id="piles">
+    <div class="pilewrap"><div class="pile stock" id="stock"></div><div class="cap" id="stockCap"></div></div>
+    <div class="pilewrap"><div class="pile" id="discard"></div><div class="cap">discard</div></div>
+  </div>
+  <div id="msg"></div>
+</div>
+<div id="handrow"><div id="dwlab"></div><div class="fan" id="fanA"></div></div>
+<div id="foot"></div>
+<div class="ov" id="overlay"><div id="confetti"></div><div id="ovEmoji" style="font-size:50px;">&#127881;</div><h1 id="ovTitle"></h1><p id="ovText"></p>
+  <button class="act" id="ovBtn">Play again</button>
+  <a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3d4d6a;background:#161f30;color:#cdd8ec;text-decoration:none;">Back to shelf</a></div>
+<script src="gamenight.js?v=12"></script>
+<script src="sfx.js?v=5"></script>
+<script>
+const KEY="gin_games",TARGET=100;
+function S(n,o){window.GNS&&GNS.play(n,0,o);}
+const SUITS=[{s:"\u2660",red:false},{s:"\u2665",red:true},{s:"\u2666",red:true},{s:"\u2663",red:false}];
+function disp(r){return r===1?"A":r===11?"J":r===12?"Q":r===13?"K":""+r;}
+function val(c){return Math.min(c.r,10);}
+function cid(c){return c.r+c.s;}
+
+/* ---- meld / deadwood engine ---- */
+function meldCandidates(cards){
+  const cand=[];
+  const byRank={};cards.forEach((c,i)=>{(byRank[c.r]=byRank[c.r]||[]).push(i);});
+  for(const r in byRank){const idx=byRank[r];
+    if(idx.length>=3){cand.push(idx.slice());
+      if(idx.length===4)for(let k=0;k<4;k++)cand.push(idx.filter((_,j)=>j!==k));}}
+  const bySuit={};cards.forEach((c,i)=>{(bySuit[c.s]=bySuit[c.s]||[]).push(i);});
+  for(const s in bySuit){const idx=bySuit[s].slice().sort((a,b)=>cards[a].r-cards[b].r);
+    let run=[idx[0]];
+    for(let k=1;k<idx.length;k++){if(cards[idx[k]].r===cards[idx[k-1]].r+1)run.push(idx[k]);
+      else{pushRuns(run,cand);run=[idx[k]];}}
+    pushRuns(run,cand);}
+  return cand;
+}
+function pushRuns(run,cand){for(let i=0;i<run.length;i++)for(let j=i+2;j<run.length;j++)cand.push(run.slice(i,j+1));}
+function bestMelds(cards){
+  const cand=meldCandidates(cards);let best={cov:0,sel:[]};
+  const used=new Array(cards.length).fill(false);
+  (function dfs(start,sel,cov){
+    if(cov>best.cov){best={cov,sel:sel.slice()};}
+    if(cov===cards.length)return;
+    for(let k=start;k<cand.length;k++){const m=cand[k];let ok=true;
+      for(const i of m)if(used[i]){ok=false;break;}
+      if(!ok)continue;
+      for(const i of m)used[i]=true;sel.push(m);
+      dfs(k+1,sel,cov+m.length);
+      sel.pop();for(const i of m)used[i]=false;}
+  })(0,[],0);
+  const inMeld=new Array(cards.length).fill(false);best.sel.forEach(m=>m.forEach(i=>inMeld[i]=true));
+  const dead=[];let dw=0;cards.forEach((c,i)=>{if(!inMeld[i]){dead.push(c);dw+=val(c);}});
+  const meldedIds={};best.sel.forEach(m=>m.forEach(i=>meldedIds[cid(cards[i])]=true));
+  return {dwValue:dw,deadwood:dead,meldedIds,melds:best.sel.map(m=>m.map(i=>cards[i]))};
+}
+function minDiscard(cards11){ // returns {idx,dw} best card to discard to minimize deadwood
+  let bestIdx=0,bestDw=Infinity;
+  for(let i=0;i<cards11.length;i++){const rest=cards11.slice(0,i).concat(cards11.slice(i+1));
+    const dw=bestMelds(rest).dwValue;
+    if(dw<bestDw||(dw===bestDw&&val(cards11[i])>val(cards11[bestIdx]))){bestDw=dw;bestIdx=i;}}
+  return {idx:bestIdx,dw:bestDw};
+}
+
+/* ---- game state ---- */
+let stock=[],discard=[],handA=[],handB=[],turn="A",phase="over",GS=null,playerName="You",
+    scoreA=0,scoreB=0,selIdx=-1,busy=false,drawnFromDiscard=false;
+
+function freshDeck(){const d=[];for(let si=0;si<4;si++)for(let r=1;r<=13;r++)d.push({r,s:SUITS[si].s,si,red:SUITS[si].red});
+  for(let i=d.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[d[i],d[j]]=[d[j],d[i]];}return d;}
+function sortHand(h){h.sort((a,b)=>a.si-b.si||a.r-b.r);}
+
+function newMatch(name){
+  playerName=name||playerName;
+  if(document.getElementById("who")&&GN.whoBadge)GN.whoBadge(document.getElementById("who"),playerName,pickPlayer);
+  scoreA=0;scoreB=0;
+  document.getElementById("overlay").classList.remove("show");
+  document.getElementById("confetti").innerHTML="";
+  startHand(Math.random()<0.5?"A":"B");
+}
+function startHand(first){
+  const d=freshDeck();handA=d.splice(0,10);handB=d.splice(0,10);
+  discard=[d.shift()];stock=d;
+  sortHand(handA);sortHand(handB);
+  turn=first;phase="draw";selIdx=-1;busy=false;drawnFromDiscard=false;
+  GS=GS||{start:Date.now(),hands:0};
+  setMsg((turn==="A"?"Your turn":playerNameB()+"\u2019s turn")+" \u2014 draw a card.");
+  render();
+  if(turn==="B"){busy=true;setTimeout(botTurn,900);}
+}
+function playerNameB(){return "Computer";}
+function setMsg(t){document.getElementById("msg").textContent=t;}
+function miniEl(c,opts){opts=opts||{};const e=document.createElement("div");
+  e.className="mini"+(opts.back?" back":(c.red?" red":""))+(opts.meld?" meld":"")+(opts.sel?" sel":"")+(opts.tap?" tap":"");
+  if(!opts.back)e.innerHTML=disp(c.r)+c.s;
+  if(opts.onclick)e.addEventListener("click",opts.onclick);return e;}
+
+function render(){
+  document.getElementById("score").innerHTML="<b>"+scoreA+"</b> \u2013 <b>"+scoreB+"</b> to "+TARGET;
+  document.getElementById("botLab").textContent=playerNameB()+" \u00b7 "+handB.length+" cards"+(turn==="B"&&phase!=="over"?"  \u2190 turn":"");
+  // bot hand face down (revealed at hand end)
+  const fb=document.getElementById("fanB");fb.innerHTML="";
+  const reveal=phase==="over";const bm=reveal?bestMelds(handB):null;
+  handB.forEach(c=>fb.appendChild(miniEl(c,{back:!reveal,meld:reveal&&bm.meldedIds[cid(c)]})));
+  // piles
+  const st=document.getElementById("stock");st.className="pile stock"+(stock.length?"":" empty");
+  document.getElementById("stockCap").textContent=stock.length+" left";
+  st.onclick=(phase==="draw"&&turn==="A"&&!busy&&stock.length)?()=>humanDraw("stock"):null;
+  const di=document.getElementById("discard");di.innerHTML="";
+  if(discard.length){const top=discard[discard.length-1];const m=miniEl(top,{});m.style.margin="0 auto";di.className="pile";di.appendChild(m);}
+  else di.className="pile empty";
+  di.onclick=(phase==="draw"&&turn==="A"&&!busy&&discard.length)?()=>humanDraw("discard"):null;
+  // human hand
+  const bmA=bestMelds(handA);
+  document.getElementById("dwlab").innerHTML=playerName+" \u00b7 deadwood <b>"+bmA.dwValue+"</b>";
+  const fa=document.getElementById("fanA");fa.innerHTML="";
+  handA.forEach((c,i)=>fa.appendChild(miniEl(c,{meld:bmA.meldedIds[cid(c)],sel:i===selIdx,
+    tap:(phase==="discard"&&turn==="A"&&!busy),onclick:(phase==="discard"&&turn==="A"&&!busy)?()=>selectCard(i):null})));
+  renderFoot();
+}
+function renderFoot(){const foot=document.getElementById("foot");foot.innerHTML="";
+  if(phase==="draw"&&turn==="A"&&!busy){
+    foot.appendChild(btn("Draw from stock",()=>humanDraw("stock"),!stock.length));
+    foot.appendChild(btn("Take discard",()=>humanDraw("discard"),!discard.length,"ghost"));
+  } else if(phase==="discard"&&turn==="A"&&!busy){
+    const dis=btn("Discard",function(){doHumanDiscard(false);},selIdx<0);foot.appendChild(dis);
+    // knock available?
+    let knockDw=Infinity;
+    if(selIdx>=0){const rest=handA.slice(0,selIdx).concat(handA.slice(selIdx+1));knockDw=bestMelds(rest).dwValue;}
+    const k=btn(knockDw===0?"Gin!":"Knock",()=>doHumanDiscard(true),!(selIdx>=0&&knockDw<=10),"gold");
+    foot.appendChild(k);
+  }
+  foot.appendChild(btn("New game",pickPlayer,false,"ghost"));
+  attachTools(foot);
+}
+function btn(label,fn,disabled,cls){const b=document.createElement("button");b.className="act"+(cls?" "+cls:"");
+  b.textContent=label;b.disabled=!!disabled;if(!disabled)b.addEventListener("click",fn);return b;}
+let toolsAttached=false;
+function attachTools(foot){ /* rules/stats/sound appended once per render via GN helpers */
+  GN.rulesButton(foot,RULES);GN.statsButton(foot,STATS);if(window.GNS)GNS.button(foot);}
+
+function selectCard(i){if(phase!=="discard"||turn!=="A"||busy)return;selIdx=(selIdx===i?-1:i);render();}
+function humanDraw(src){if(phase!=="draw"||turn!=="A"||busy)return;
+  if(src==="stock"){if(!stock.length)return;handA.push(stock.pop());drawnFromDiscard=false;}
+  else{if(!discard.length)return;handA.push(discard.pop());drawnFromDiscard=true;}
+  sortHand(handA);phase="discard";selIdx=-1;S("flip");
+  setMsg("Pick a card to discard"+( ""));render();}
+function doHumanDiscard(knock){
+  if(selIdx<0)return;const card=handA.splice(selIdx,1)[0];discard.push(card);
+  const rest=handA.slice();const bm=bestMelds(rest);selIdx=-1;S("place");
+  if(knock&&bm.dwValue<=10){endHand("A",bm.dwValue);return;}
+  // pass to bot
+  turn="B";phase="draw";busy=true;render();setTimeout(botTurn,850);
+}
+function botTurn(){if(phase==="over")return;
+  // draw decision
+  const top=discard[discard.length-1];
+  const base=minDiscard(handB.concat(stock.length?[]:[])).dw; // current best (10 cards) -> deadwood
+  const curDw=bestMelds(handB).dwValue;
+  let took=false;
+  if(top){const withTop=minDiscard(handB.concat([top])).dw;
+    if(withTop<curDw){handB.push(discard.pop());took=true;}}
+  if(!took){if(stock.length)handB.push(stock.pop());else{return washHand();}}
+  sortHand(handB);
+  // discard decision
+  const md=minDiscard(handB);const card=handB.splice(md.idx,1)[0];
+  // avoid immediately discarding the very card just taken from discard (gin etiquette) - minor, skip
+  discard.push(card);
+  const bm=bestMelds(handB);
+  S("place");
+  if(bm.dwValue<=10){ // bot knocks
+    setMsg(playerNameB()+(bm.dwValue===0?" goes Gin!":" knocks."));
+    render();setTimeout(()=>endHand("B",bm.dwValue),700);return;}
+  // pass to human
+  turn="A";phase="draw";busy=false;
+  setMsg("Your turn \u2014 draw a card.");render();
+  if(stock.length<=2)return washCheck();
+}
+function washCheck(){ if(stock.length<=2){setTimeout(washHand,500);} }
+function washHand(){phase="over";setMsg("Stock ran out \u2014 hand is a wash. Redealing\u2026");
+  setTimeout(()=>{phase="draw";startHand(turn==="A"?"B":"A");},1100);}
+
+function endHand(knocker,knockDw){
+  phase="over";GS.hands=(GS.hands||0)+1;
+  const oppSide=knocker==="A"?"B":"A";
+  const oppDw=bestMelds(knocker==="A"?handB:handA).dwValue;
+  let scorer,pts,gin=knockDw===0,undercut=false;
+  if(gin){scorer=knocker;pts=oppDw+25;}
+  else if(oppDw>knockDw){scorer=knocker;pts=oppDw-knockDw;}
+  else{scorer=oppSide;pts=(knockDw-oppDw)+25;undercut=true;}
+  if(scorer==="A")scoreA+=pts;else scoreB+=pts;
+  render();
+  const lines=(knocker==="A"?"You":playerNameB())+(gin?" went Gin":" knocked with "+knockDw)+". ";
+  let res;
+  if(scorer==="A")res=lines+"You score "+pts+(gin?" (gin bonus)":undercut?" (undercut!)":"")+".";
+  else res=lines+playerNameB()+" scores "+pts+(gin?" (gin bonus)":undercut?" (undercut!)":"")+".";
+  // match over?
+  if(scoreA>=TARGET||scoreB>=TARGET){return endMatch(res);}
+  showHandOverlay(res,false);
+}
+function showHandOverlay(text,matchOver){
+  document.getElementById("ovEmoji").textContent="\uD83C\uDCCF";
+  document.getElementById("ovTitle").textContent="Hand done \u2014 "+scoreA+" : "+scoreB;
+  document.getElementById("ovText").textContent=text+"  (First to "+TARGET+" wins.)";
+  document.getElementById("ovBtn").textContent="Next hand";
+  document.getElementById("ovBtn").onclick=()=>{document.getElementById("overlay").classList.remove("show");
+    startHand(scoreA>scoreB?"B":"A");};
+  document.getElementById("overlay").classList.add("show");
+}
+function endMatch(lastLine){
+  const youWin=scoreA>=TARGET&&scoreA>scoreB;
+  const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,solo:true,
+    winner:youWin?playerName:null,loser:youWin?playerNameB():playerName,
+    scoreYou:scoreA,scoreOpp:scoreB,hands:GS.hands,draw:false,players:[playerName]};
+  GN.recordGame(KEY,rec);
+  document.getElementById("ovEmoji").textContent=youWin?"\uD83C\uDFC6":"\uD83E\uDD16";
+  document.getElementById("ovTitle").textContent=youWin?"You win the match!":playerNameB()+" wins the match.";
+  document.getElementById("ovText").textContent=lastLine+"  Final: "+scoreA+" \u2013 "+scoreB+" over "+GS.hands+" hands.";
+  document.getElementById("ovBtn").textContent="Play again";
+  document.getElementById("ovBtn").onclick=()=>{GS={start:Date.now(),hands:0};newMatch(playerName);};
+  if(youWin)confetti();S("fanfare");
+  document.getElementById("overlay").classList.add("show");
+}
+function confetti(){const box=document.getElementById("confetti"),cols=["#f4c542","#7fa6e8","#5ad17a","#fff"];
+  for(let i=0;i<70;i++){const d=document.createElement("div");d.className="cf";d.style.left=Math.random()*100+"%";
+    d.style.background=cols[i%cols.length];d.style.animationDuration=(2.2+Math.random()*1.8)+"s";
+    d.style.animationDelay=(Math.random()*0.8)+"s";box.appendChild(d);}}
+function pickPlayer(){if(window.GN&&GN.soloStart){GN.soloStart(function(name){GS={start:Date.now(),hands:0};newMatch(name);},{title:"Who\u2019s playing?"});}else{GS={start:Date.now(),hands:0};newMatch("You");}}
+
+const RULES={title:"Gin Rummy",sections:[
+ {h:"Goal",t:"Group your ten cards into melds and reach "+TARGET+" points across several hands before the Computer does."},
+ {h:"Melds",t:"A meld is three or more cards of the same rank (a set) or three or more in a row of one suit (a run). Cards left over are your \u201cdeadwood\u201d \u2014 face cards count 10, aces 1, the rest their number."},
+ {h:"A turn",t:"Draw the top of the stock (hidden) or take the visible discard, then throw one card away. Your melds and deadwood total update live under your hand."},
+ {h:"Knock & Gin",t:"When your deadwood is 10 or less you may Knock (discard, then reveal). Zero deadwood is Gin \u2014 a 25-point bonus.",
+  ex:"You knock with 6 deadwood; the Computer has 14. You score the 8-point difference."},
+ {h:"Undercut",t:"If the player who didn\u2019t knock has equal or less deadwood, they undercut: they score the difference plus a 25-point bonus. Knock carefully!"}]};
+const STATS={title:"Gin Rummy",key:KEY,specials:[
+ {label:"Matches won",of:(r,n)=>r.filter(x=>x.winner===n).length},
+ {label:"Best margin",of:(r)=>r.reduce((a,x)=>Math.max(a,(x.scoreYou||0)-(x.scoreOpp||0)),0)},
+ {label:"Hands played",of:(r)=>r.reduce((a,x)=>a+(x.hands||0),0)}]};
+document.getElementById("ovBtn").addEventListener("click",function(){});
+pickPlayer();
+</script>
+</body>
+</html>

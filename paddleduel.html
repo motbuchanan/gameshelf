@@ -65,8 +65,14 @@ function S(n,o){window.GNS&&GNS.play(n,0,o);}
 const cv=document.getElementById("cv"),ctx=cv.getContext("2d");
 const overlay=document.getElementById("overlay"),startOv=document.getElementById("start");
 
+/* --- difficulty tuning (turn these) ---
+   2-player on one phone was too hard, so it gets bigger paddles, a slower ball,
+   and a gentler speed-up. vs-Computer is left as it was. */
+const P2={pw:90, speed:3.0, rampPer:0.08, rampMax:1.2};  // 2 players (easier)
+const P1={pw:66, speed:4.0, rampPer:0.18, rampMax:2.2};  // vs Computer (unchanged)
+
 const G={
-  W:300,H:460, pw:66, ph:12, r:7, target:5, speed:4.0,
+  W:300,H:460, pw:66, ph:12, r:7, target:5, speed:4.0, rampPer:0.18, rampMax:2.2,
   px:{top:150,bot:150}, py:{top:30,bot:430},
   ball:{x:150,y:230,vx:0,vy:0},
   score:{top:0,bot:0},
@@ -76,6 +82,8 @@ window.__PD=G;
 cv.width=G.W;cv.height=G.H;
 
 function resetMatch(mode){
+  const t=(mode==="2p")?P2:P1;
+  G.pw=t.pw;G.speed=t.speed;G.rampPer=t.rampPer;G.rampMax=t.rampMax;
   G.mode=mode;G.score.top=0;G.score.bot=0;G.over=false;
   G.px.top=G.W/2;G.px.bot=G.W/2;updateScore();
   startOv.classList.remove("show");overlay.classList.remove("show");
@@ -105,7 +113,7 @@ function hitPaddle(which){
   if(!toward)return;
   if(b.x>=px-half-G.r&&b.x<=px+half+G.r&&b.y>=py-hh-G.r&&b.y<=py+hh+G.r){
     const off=Math.max(-1,Math.min(1,(b.x-px)/half));
-    const sp=G.speed+Math.min(2.2,(G.score.top+G.score.bot)*0.18); // nudges faster as game goes
+    const sp=G.speed+Math.min(G.rampMax,(G.score.top+G.score.bot)*G.rampPer); // nudges faster as game goes
     b.vx=off*sp*0.85;
     const vy=Math.sqrt(Math.max(1,sp*sp-b.vx*b.vx));
     b.vy=which==="bot"?-vy:vy;

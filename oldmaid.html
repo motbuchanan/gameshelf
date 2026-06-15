@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Old Maid</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{font-family:system-ui,sans-serif;color:#efe6f2;overflow:hidden;display:flex;flex-direction:column;
+    background:radial-gradient(120% 80% at 50% 16%,#3a2440 0%,#150b18 70%);}
+  #bar{display:flex;align-items:center;gap:10px;padding:12px 14px;}
+  #bar a{color:#e4d2ec;text-decoration:none;font-size:14px;border:1px solid #5a3d66;border-radius:999px;padding:6px 12px;}
+  #title{font-weight:800;font-size:20px;}
+  #turn{margin-left:auto;font-weight:700;font-size:14px;color:#e4d2ec;}
+  #table{flex:1;display:flex;flex-direction:column;justify-content:space-between;padding:6px 10px;min-height:0;gap:6px;}
+  .seat{text-align:center;}
+  .seat .nm{font-size:13px;font-weight:700;color:#c8aed4;margin-bottom:5px;}
+  .seat .nm.active{color:#f4c542;}
+  .fan{display:flex;justify-content:center;flex-wrap:wrap;gap:4px;min-height:74px;align-items:center;}
+  .mini{width:42px;height:60px;border-radius:6px;position:relative;flex:none;color:#1c1c1c;
+    background:linear-gradient(160deg,#fffdf6,#ece3cf);box-shadow:0 4px 9px rgba(0,0,0,.5),inset 0 1px 0 #fff;
+    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:17px;}
+  .mini::before{content:"";position:absolute;inset:3px;border-radius:4px;border:1px solid rgba(0,0,0,.12);}
+  .mini.red{color:#c0271f;}
+  .mini.back{background:repeating-linear-gradient(45deg,#7a3f9a 0 6px,#5e2f78 6px 12px);color:transparent;cursor:default;}
+  .mini.back::after{content:"";position:absolute;inset:5px;border-radius:3px;border:1.4px solid rgba(255,255,255,.35);}
+  .mini.pick{cursor:pointer;animation:wig 1s ease-in-out infinite;}
+  .mini.pick:active{transform:translateY(-5px);}
+  @keyframes wig{0%,100%{transform:translateY(0);}50%{transform:translateY(-4px);}}
+  #mid{text-align:center;}
+  #msg{min-height:24px;font-size:15px;color:#e8dced;padding:2px 12px;font-weight:600;}
+  #discard{font-size:12px;color:#a98fb6;margin-top:3px;}
+  #foot{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;padding:8px 14px 16px;}
+  .act{font-family:inherit;font-size:16px;font-weight:bold;padding:11px 20px;border-radius:10px;border:none;
+    color:#1c1224;background:#c98fe0;cursor:pointer;box-shadow:0 4px 0 #8a5aa3,0 5px 10px rgba(0,0,0,.4);}
+  .act.ghost{background:#241630;color:#e4d2ec;box-shadow:0 4px 0 #120a18;border:1px solid #5a3d66;}
+  .ov{position:fixed;inset:0;background:rgba(12,7,16,.93);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:50;text-align:center;padding:24px;}
+  .ov.show{display:flex;} .ov h1{font-size:30px;} .ov p{font-size:15px;color:#e4d2ec;max-width:320px;line-height:1.5;}
+  #confetti{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
+  .cf{position:absolute;width:10px;height:14px;top:-20px;animation:fall linear forwards;}
+  @keyframes fall{to{transform:translateY(110vh) rotate(720deg);}}
+  html.gn-easy #title{font-size:24px;} html.gn-easy #msg{font-size:18px;} html.gn-easy .mini{width:48px;height:68px;font-size:19px;}
+</style>
+</head>
+<body>
+<div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">Old Maid</div><div id="who" style="margin-left:auto;font-weight:700;font-size:14px;color:#e4d2ec;cursor:pointer;"></div><div id="turn" style="font-weight:700;font-size:13px;color:#c8aed4;margin-left:10px;"></div></div>
+<div id="table">
+  <div class="seat" id="seatB"><div class="nm" id="nmB"></div><div class="fan" id="fanB"></div></div>
+  <div id="mid"><div id="msg"></div><div id="discard"></div></div>
+  <div class="seat" id="seatA"><div class="nm" id="nmA"></div><div class="fan" id="fanA"></div></div>
+</div>
+<div id="foot">
+  <button class="act ghost" id="newBtn">New game</button>
+</div>
+<div class="ov" id="overlay"><div id="confetti"></div><div id="ovEmoji" style="font-size:54px;">&#127881;</div><h1 id="ovTitle"></h1><p id="ovText"></p>
+  <button class="act" id="ovBtn">Play again</button>
+  <a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #5a3d66;background:#241630;color:#e4d2ec;text-decoration:none;">Back to shelf</a></div>
+<script src="gamenight.js?v=12"></script>
+<script src="sfx.js?v=5"></script>
+<script>
+const KEY="oldmaid_games";
+function S(n,o){window.GNS&&GNS.play(n,0,o);}
+const RANKS=["2","3","4","5","6","7","8","9","10","J","Q","K","A"];
+const SUITS=[{s:"\u2660",r:false},{s:"\u2665",r:true},{s:"\u2666",r:true},{s:"\u2663",r:false}];
+let P={A:{name:"You",main:"#c98fe0"},B:{name:"Rival",main:"#5fb0e8"}};
+function seatFrom(p){return{name:p.name,main:p.color||p.main};}
+let hands={A:[],B:[]},turn="A",phase="over",GS=null,busy=false,discarded=0;
+
+function freshDeal(){
+  const d=[];for(let r=0;r<13;r++)for(const su of SUITS)d.push({r,s:su.s,red:su.r});
+  // remove one queen (rank index 10) -> one lone queen will remain
+  const qi=d.findIndex(c=>c.r===10);d.splice(qi,1);
+  for(let i=d.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[d[i],d[j]]=[d[j],d[i]];}
+  hands={A:[],B:[]};d.forEach((c,i)=>hands[i%2?"B":"A"].push(c));
+}
+function discardPairs(side){
+  const byR={};for(const c of hands[side]){(byR[c.r]=byR[c.r]||[]).push(c);}
+  const keep=[];let removed=0;
+  for(const r in byR){const arr=byR[r];const pairs=Math.floor(arr.length/2);removed+=pairs;
+    for(let i=pairs*2;i<arr.length;i++)keep.push(arr[i]);}
+  hands[side]=keep;return removed;
+}
+function sortHand(side){hands[side].sort((a,b)=>a.r-b.r||a.s.localeCompare(b.s));}
+function total(){return hands.A.length+hands.B.length;}
+
+function pickPlayer(){if(window.GN&&GN.soloStart){GN.soloStart(function(name){newGame(name);},{title:"Who\u2019s playing?"});}else newGame("You");}
+function newGame(name){
+  playerName=name||playerName;
+  const me=(window.GN&&GN.players&&GN.players().filter(function(p){return p.name===playerName;})[0])||null;
+  P={A:{name:playerName,main:(me&&me.color)||"#c98fe0"},B:{name:"Rival",main:"#5fb0e8"}};
+  document.getElementById("overlay").classList.remove("show");
+  document.getElementById("confetti").innerHTML="";
+  freshDeal();discarded=0;
+  discarded+=discardPairs("A");discarded+=discardPairs("B");
+  sortHand("A");sortHand("B");
+  phase="play";busy=false;
+  turn=Math.random()<0.5?"A":"B";
+  GS={start:Date.now(),draws:0};
+  if(document.getElementById("who")&&GN.whoBadge)GN.whoBadge(document.getElementById("who"),playerName,pickPlayer);
+  setMsg(turn==="A"?"Your turn \u2014 draw a card from "+P.B.name+".":P.B.name+" goes first\u2026");
+  render();
+  if(turn==="B")setTimeout(botTurn,800);
+}
+function setMsg(t){document.getElementById("msg").textContent=t;}
+function miniEl(c,opts){opts=opts||{};const e=document.createElement("div");
+  e.className="mini"+(opts.back?" back":(c.red?" red":""))+(opts.pick?" pick":"");
+  if(!opts.back)e.textContent=RANKS[c.r]+c.s;
+  if(opts.pick)e.addEventListener("click",()=>humanDraw(opts.idx));
+  return e;}
+function render(){
+  document.getElementById("nmA").textContent=P.A.name+" \u00b7 "+hands.A.length;
+  document.getElementById("nmB").textContent=P.B.name+" \u00b7 "+hands.B.length;
+  document.getElementById("nmA").className="nm"+(turn==="A"?" active":"");
+  document.getElementById("nmB").className="nm"+(turn==="B"?" active":"");
+  document.getElementById("turn").textContent=phase==="play"?(turn==="A"?P.A.name:P.B.name)+"\u2019s turn":"";
+  document.getElementById("discard").textContent=discarded+" pairs discarded";
+  const fA=document.getElementById("fanA");fA.innerHTML="";
+  hands.A.forEach(c=>fA.appendChild(miniEl(c,{})));            // your cards: face up
+  const fB=document.getElementById("fanB");fB.innerHTML="";
+  const youDraw=(phase==="play"&&turn==="A"&&!busy);
+  hands.B.forEach((c,i)=>fB.appendChild(miniEl(c,{back:true,pick:youDraw,idx:i}))); // rival: face down, tappable on your turn
+}
+function performDraw(drawer,victim,idx){
+  const card=hands[victim].splice(idx,1)[0];
+  hands[drawer].push(card);
+  const made=discardPairs(drawer);if(made)discarded+=made;
+  sortHand(drawer);GS.draws++;
+  S(made?"place":"flip");
+  setMsg((drawer==="A"?"You":P.B.name)+" drew "+RANKS[card.r]+card.s+(made?" \u2014 made a pair!":" \u2014 no match."));
+  render();
+  if(total()<=1){setTimeout(finish,700);return;}
+  // pass turn to the other player who still has cards
+  const other=drawer==="A"?"B":"A";
+  turn=hands[other].length?other:drawer;
+  busy=false;
+  if(turn==="B"){busy=true;setTimeout(botTurn,900);}
+  else{render();}
+}
+function humanDraw(idx){if(phase!=="play"||turn!=="A"||busy)return;if(!hands.B.length)return;
+  busy=true;performDraw("A","B",idx);}
+function botTurn(){if(phase!=="play"||turn!=="B"){busy=false;return;}
+  if(!hands.A.length){finish();return;}
+  const idx=Math.floor(Math.random()*hands.A.length);
+  performDraw("B","A",idx);}
+function finish(){phase="over";
+  // whoever still holds a card is stuck with the Old Maid
+  const maidSide=hands.A.length?"A":(hands.B.length?"B":null);
+  const maid=maidSide?P[maidSide].name:null;
+  const safe=maidSide?P[maidSide==="A"?"B":"A"].name:null;
+  const youEscaped=maidSide!=="A";
+  const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,solo:true,
+    winner:youEscaped?P.A.name:null,loser:maid,oldMaid:maid,draws:GS.draws,
+    players:[P.A.name],draw:false};
+  GN.recordGame(KEY,rec);
+  const youLost=maidSide==="A";
+  document.getElementById("ovEmoji").textContent=youLost?"\uD83D\uDC79":"\uD83C\uDF89";
+  document.getElementById("ovTitle").textContent=youLost?"You\u2019re the Old Maid!":P.B.name+" is the Old Maid!";
+  document.getElementById("ovText").textContent=youLost?("Stuck holding the lone queen after "+GS.draws+" draws."):("You shed every pair \u2014 "+P.B.name+" got stuck with the queen.");
+  if(!youLost)confetti();
+  S("fanfare");document.getElementById("overlay").classList.add("show");render();
+}
+function confetti(){const box=document.getElementById("confetti"),cols=["#f4c542","#c98fe0","#5fb0e8","#fff"];
+  for(let i=0;i<60;i++){const d=document.createElement("div");d.className="cf";d.style.left=Math.random()*100+"%";
+    d.style.background=cols[i%cols.length];d.style.animationDuration=(2.2+Math.random()*1.8)+"s";
+    d.style.animationDelay=(Math.random()*0.8)+"s";box.appendChild(d);}}
+
+document.getElementById("newBtn").addEventListener("click",pickPlayer);
+document.getElementById("ovBtn").addEventListener("click",pickPlayer);
+GN.rulesButton(document.getElementById("foot"),{title:"Old Maid",sections:[
+ {h:"Goal",t:"Don\u2019t be the one left holding the Old Maid \u2014 the single queen with no partner."},
+ {h:"Setup",t:"One queen is removed from the deck before dealing, so three remain: one pair and one lonely queen. Cards are dealt to both players, and any pairs you already hold are tossed automatically."},
+ {h:"Play",t:"On your turn, draw one face-down card from your rival\u2019s hand. If it matches a card you hold, that pair is discarded. Then it\u2019s their turn to draw from you.",
+  ex:"You pick a card and it pairs your 7 \u2014 both 7s vanish and your hand shrinks. Empty your hand and you\u2019re safe."},
+ {h:"Losing",t:"Pairs keep disappearing until only the lone queen is left in someone\u2019s hand. That player is the Old Maid. Everyone else escapes."}]});
+GN.statsButton(document.getElementById("foot"),{title:"Old Maid",key:KEY,specials:[
+ {label:"Times the Old Maid",of:(r,n)=>r.filter(x=>x.oldMaid===n).length},
+ {label:"Escapes",of:(r,n)=>r.filter(x=>x.players&&x.players.indexOf(n)>=0&&x.oldMaid!==n).length}]});
+if(window.GNS)GNS.button(document.getElementById("foot"));
+pickPlayer();
+</script>
+</body>
+</html>

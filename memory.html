@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Memory</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{font-family:system-ui,sans-serif;color:#e8f0e4;overflow:hidden;display:flex;flex-direction:column;
+    background:radial-gradient(120% 80% at 50% 16%,#26323f 0%,#0d1218 70%);}
+  #bar{display:flex;align-items:center;gap:10px;padding:12px 14px;}
+  #bar a{color:#cfe0ec;text-decoration:none;font-size:14px;border:1px solid #3d5366;border-radius:999px;padding:6px 12px;}
+  #title{font-weight:800;font-size:20px;}
+  #who{margin-left:auto;font-weight:700;font-size:14px;color:#cfe0ec;}
+  #stats{display:flex;gap:18px;justify-content:center;padding:2px 0 6px;font-size:14px;color:#9fb6c8;}
+  #stats b{color:#f4c542;font-variant-numeric:tabular-nums;}
+  #board{flex:1;display:grid;gap:9px;align-content:center;justify-content:center;padding:8px 14px;
+    grid-template-columns:repeat(4,1fr);width:100%;max-width:430px;margin:0 auto;min-height:0;}
+  .tile{aspect-ratio:.74;border-radius:10px;position:relative;cursor:pointer;transform-style:preserve-3d;transition:transform .28s;}
+  .tile .f{position:absolute;inset:0;border-radius:10px;display:flex;align-items:center;justify-content:center;backface-visibility:hidden;-webkit-backface-visibility:hidden;}
+  .tile .back{background:repeating-linear-gradient(45deg,#2f5a8e 0 7px,#244a76 7px 14px);
+    box-shadow:0 5px 12px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.18);}
+  .tile .back::after{content:"";position:absolute;inset:7px;border-radius:6px;border:1.6px solid rgba(255,255,255,.3);}
+  .tile .front{background:linear-gradient(160deg,#fffdf6,#eee6d2);transform:rotateY(180deg);font-size:34px;
+    box-shadow:0 5px 12px rgba(0,0,0,.5),inset 0 1px 0 #fff;}
+  .tile.up,.tile.done{transform:rotateY(180deg);}
+  .tile.done .front{background:linear-gradient(160deg,#cdeccd,#a9d6a9);box-shadow:0 0 0 2px #6fbf6f inset,0 4px 10px rgba(0,0,0,.4);}
+  .tile.done{opacity:.85;}
+  #msg{min-height:26px;text-align:center;font-size:15px;color:#d8e8ed;padding:2px 16px;font-weight:600;}
+  #foot{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;padding:8px 14px 16px;}
+  .act{font-family:inherit;font-size:16px;font-weight:bold;padding:11px 20px;border-radius:10px;border:none;
+    color:#13243a;background:#5fb0e8;cursor:pointer;}
+  .act{box-shadow:0 4px 0 #3a7bb3,0 5px 10px rgba(0,0,0,.4);}
+  .act.ghost{background:#16242f;color:#cfe0ec;box-shadow:0 4px 0 #0b141b;border:1px solid #3d5366;}
+  .ov{position:fixed;inset:0;background:rgba(7,11,16,.93);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:50;text-align:center;padding:24px;}
+  .ov.show{display:flex;} .ov h1{font-size:30px;} .ov p{font-size:15px;color:#cfe0ec;}
+  #confetti{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
+  .cf{position:absolute;width:10px;height:14px;top:-20px;animation:fall linear forwards;}
+  @keyframes fall{to{transform:translateY(110vh) rotate(720deg);}}
+  html.gn-easy #title{font-size:24px;} html.gn-easy #msg,html.gn-easy #stats{font-size:18px;} html.gn-easy .tile .front{font-size:40px;}
+</style>
+</head>
+<body>
+<div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">Memory</div><div id="who"></div></div>
+<div id="stats">Moves <b id="moves">0</b><span>Matches <b id="matches">0</b>/8</span>Time <b id="time">0s</b></div>
+<div id="msg">Find the matching pairs.</div>
+<div id="board"></div>
+<div id="foot">
+  <button class="act ghost" id="newBtn">New game</button>
+  <button class="act ghost" id="sizeBtn">Size: 4&times;4</button>
+</div>
+<div class="ov" id="overlay"><div id="confetti"></div><div style="font-size:54px;">&#127881;</div><h1 id="ovTitle">Cleared!</h1><p id="ovText"></p>
+  <button class="act" id="ovBtn">Play again</button>
+  <a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3d5366;background:#16242f;color:#cfe0ec;text-decoration:none;">Back to shelf</a></div>
+<script src="gamenight.js?v=12"></script>
+<script src="sfx.js?v=5"></script>
+<script>
+const KEY="memory_games";
+function S(n,o){window.GNS&&GNS.play(n,0,o);}
+const ICONS=["\uD83C\uDF4E","\uD83C\uDF1F","\uD83C\uDF88","\uD83D\uDC31","\uD83C\uDF19","\u2693","\uD83C\uDF44","\uD83C\uDFB8","\uD83D\uDE80","\uD83C\uDF53","\uD83D\uDC1D","\uD83C\uDFB2","\uD83C\uDF55","\uD83D\uDD11","\uD83C\uDF38","\uD83D\uDC22","\uD83C\uDF88","\uD83C\uDFAF"];
+const SIZES=[{c:4,r:4,p:8,lab:"4\u00d74"},{c:4,r:5,p:10,lab:"4\u00d75"},{c:6,r:6,p:18,lab:"6\u00d76"}];
+let sizeIdx=0,deck=[],first=null,second=null,moves=0,matches=0,lock=false,GS=null,playerName="You",timer=null;
+
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function fmt(ms){const s=Math.floor(ms/1000);return (s<60?s+"s":Math.floor(s/60)+"m"+String(s%60).padStart(2,"0"));}
+function tickTime(){if(GS&&!GS.done)document.getElementById("time").textContent=fmt(Date.now()-GS.start);}
+
+function newGame(name){
+  playerName=name||playerName;
+  if(document.getElementById("who")&&GN.whoBadge)GN.whoBadge(document.getElementById("who"),playerName,pickPlayer);
+  const sz=SIZES[sizeIdx];const pairs=sz.p;
+  const faces=ICONS.slice(0,pairs);
+  deck=shuffle(faces.concat(faces).map((ic,i)=>({id:i,ic,done:false})));
+  first=second=null;moves=0;matches=0;lock=false;
+  GS={start:Date.now(),done:false,pairs};
+  document.getElementById("overlay").classList.remove("show");
+  document.getElementById("confetti").innerHTML="";
+  document.getElementById("moves").textContent=0;
+  document.getElementById("msg").textContent="Find the matching pairs.";
+  const board=document.getElementById("board");
+  board.style.gridTemplateColumns="repeat("+sz.c+",1fr)";
+  board.style.maxWidth=(sz.c*78)+"px";
+  board.innerHTML="";
+  deck.forEach((card,idx)=>{
+    const t=document.createElement("div");t.className="tile";t.dataset.idx=idx;
+    t.innerHTML='<div class="f back"></div><div class="f front">'+card.ic+'</div>';
+    t.addEventListener("click",()=>flip(idx));
+    board.appendChild(t);
+  });
+  document.getElementById("matches").textContent="0";
+  document.querySelector("#stats").innerHTML='Moves <b id="moves">0</b><span>Matches <b id="matches">0</b>/'+pairs+'</span>Time <b id="time">0s</b>';
+  if(timer)clearInterval(timer);timer=setInterval(tickTime,250);
+}
+function tileEl(idx){return document.querySelector('.tile[data-idx="'+idx+'"]');}
+function flip(idx){
+  if(lock||GS.done)return;
+  const card=deck[idx];if(card.done)return;
+  const el=tileEl(idx);if(el.classList.contains("up"))return;
+  el.classList.add("up");S("flip");
+  if(first===null){first=idx;return;}
+  if(idx===first)return;
+  second=idx;moves++;document.getElementById("moves").textContent=moves;
+  if(deck[first].ic===deck[second].ic){
+    lock=true;
+    setTimeout(()=>{tileEl(first).classList.add("done");tileEl(second).classList.add("done");
+      deck[first].done=deck[second].done=true;matches++;document.getElementById("matches").textContent=matches;
+      S("place");first=second=null;lock=false;
+      if(matches===GS.pairs)win();},360);
+  }else{
+    lock=true;
+    setTimeout(()=>{tileEl(first).classList.remove("up");tileEl(second).classList.remove("up");
+      first=second=null;lock=false;},760);
+  }
+}
+function win(){GS.done=true;if(timer)clearInterval(timer);
+  const dur=Date.now()-GS.start;
+  document.getElementById("ovText").textContent="Solved in "+moves+" moves \u00b7 "+fmt(dur)+" \u00b7 "+SIZES[sizeIdx].lab;
+  confetti();S("fanfare");
+  const recs=GN.readGames(KEY);let pb=Infinity;for(const r of recs)if((r.pairs===GS.pairs)&&(r.moves||Infinity)<pb)pb=r.moves;
+  const rec={start:GS.start,end:Date.now(),durationMs:dur,solo:true,won:true,draw:true,winner:playerName,
+    moves:moves,pairs:GS.pairs,size:SIZES[sizeIdx].lab,score:moves,players:[playerName]};
+  GN.recordGame(KEY,rec);
+  if(moves<pb&&pb!==Infinity)document.getElementById("ovTitle").textContent="New best!";
+  else document.getElementById("ovTitle").textContent="Cleared!";
+  document.getElementById("overlay").classList.add("show");
+}
+function confetti(){const box=document.getElementById("confetti"),cols=["#f4c542","#5fb0e8","#7fd07f","#fff"];
+  for(let i=0;i<60;i++){const d=document.createElement("div");d.className="cf";d.style.left=Math.random()*100+"%";
+    d.style.background=cols[i%cols.length];d.style.animationDuration=(2.2+Math.random()*1.8)+"s";
+    d.style.animationDelay=(Math.random()*0.8)+"s";box.appendChild(d);}}
+function pickPlayer(){if(window.GN&&GN.soloStart){GN.soloStart(function(name){newGame(name);},{title:"Who\u2019s playing?"});}else newGame("You");}
+
+document.getElementById("newBtn").addEventListener("click",()=>newGame(playerName));
+document.getElementById("ovBtn").addEventListener("click",()=>newGame(playerName));
+document.getElementById("sizeBtn").addEventListener("click",function(){
+  sizeIdx=(sizeIdx+1)%SIZES.length;this.innerHTML="Size: "+SIZES[sizeIdx].lab;newGame(playerName);});
+GN.rulesButton(document.getElementById("foot"),{title:"Memory",sections:[
+ {h:"Goal",t:"Find every matching pair with as few flips as possible. A calm one \u2014 great for sharp eyes of any age."},
+ {h:"Play",t:"Tap a tile to turn it over, then tap a second. Match the two pictures and they stay face-up. No match and they flip back \u2014 remember where they were."},
+ {h:"Scoring",t:"Each pair of flips counts as one move. Clear the board in the fewest moves to set a new best.",
+  ex:"A perfect 4\u00d74 game is 8 moves \u2014 every flip a match. Mortals take a few more."},
+ {h:"Sizes",t:"Tap Size to switch between 4\u00d74, 4\u00d75, and a brain-bending 6\u00d76. Best scores are kept per size."}]});
+GN.statsButton(document.getElementById("foot"),{title:"Memory",key:KEY,specials:[
+ {label:"Games cleared",of:(r)=>r.length},
+ {label:"Fewest moves (4\u00d74)",of:(r)=>{const f=r.filter(x=>x.size==="4\u00d74");return f.length?Math.min.apply(null,f.map(x=>x.moves||999)):"\u2014";}},
+ {label:"Best time",of:(r)=>{if(!r.length)return "\u2014";const m=Math.min.apply(null,r.map(x=>x.durationMs||9e9));return Math.floor(m/1000)+"s";}}]});
+if(window.GNS)GNS.button(document.getElementById("foot"));
+pickPlayer();
+</script>
+</body>
+</html>

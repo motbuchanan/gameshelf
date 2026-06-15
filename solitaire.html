@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Solitaire</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;}
+  html,body{height:100%;}
+  body{font-family:system-ui,sans-serif;color:#e8f0e4;overflow:hidden;display:flex;flex-direction:column;
+    background:radial-gradient(120% 80% at 50% 12%,#1f4a32 0%,#0c1a12 72%);}
+  #bar{display:flex;align-items:center;gap:10px;padding:10px 12px;}
+  #bar a{color:#cfe6d8;text-decoration:none;font-size:14px;border:1px solid #3a5a47;border-radius:999px;padding:6px 12px;}
+  #title{font-weight:800;font-size:19px;}
+  #hud{margin-left:auto;font-size:13px;color:#bcd6c7;}
+  #hud b{color:#f4c542;font-variant-numeric:tabular-nums;}
+  #who{font-size:13px;color:#cfe6d8;margin-left:8px;cursor:pointer;}
+  #top{display:flex;gap:2.2vw;padding:6px 10px 4px;justify-content:space-between;max-width:520px;margin:0 auto;width:100%;}
+  #board{flex:1;display:flex;gap:2.2vw;padding:4px 10px;justify-content:space-between;max-width:520px;margin:0 auto;width:100%;align-items:flex-start;overflow:hidden;}
+  .col{position:relative;flex:1 1 0;min-width:0;}
+  .slot{position:relative;flex:1 1 0;min-width:0;aspect-ratio:.7;border-radius:5px;border:1.4px dashed rgba(255,255,255,.18);}
+  .slot.stock{cursor:pointer;}
+  .card{position:absolute;left:0;right:0;aspect-ratio:.7;border-radius:5px;color:#1c1c1c;
+    background:linear-gradient(160deg,#fffdf6,#efe7d4);box-shadow:0 2px 5px rgba(0,0,0,.4),inset 0 1px 0 #fff;
+    display:flex;align-items:flex-start;justify-content:flex-start;font-weight:800;padding:3px 4px;line-height:1;}
+  .card .c{font-size:min(4.6vw,22px);}
+  .card.red{color:#c0271f;}
+  .card.down{background:repeating-linear-gradient(45deg,#2f6a4a 0 5px,#245539 5px 10px);color:transparent;}
+  .card.down::after{content:"";position:absolute;inset:4px;border-radius:3px;border:1.4px solid rgba(255,255,255,.28);}
+  .card.sel{outline:3px solid #f4c542;box-shadow:0 0 12px rgba(244,197,66,.6);z-index:99;}
+  .card.tappable{cursor:pointer;}
+  .topcell{flex:1 1 0;min-width:0;}
+  #msg{min-height:22px;text-align:center;font-size:14px;color:#cfe6d8;padding:2px 12px;}
+  #foot{display:flex;gap:9px;align-items:center;justify-content:center;flex-wrap:wrap;padding:6px 14px 14px;}
+  .act{font-family:inherit;font-size:15px;font-weight:bold;padding:10px 18px;border-radius:10px;border:none;
+    color:#1c2b16;background:#b0d235;cursor:pointer;box-shadow:0 4px 0 #7e9a1f,0 5px 10px rgba(0,0,0,.4);}
+  .act.ghost{background:#15241b;color:#cfe6d8;box-shadow:0 4px 0 #0b160f;border:1px solid #3a5a47;}
+  .ov{position:fixed;inset:0;background:rgba(7,12,9,.93);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:50;text-align:center;padding:24px;}
+  .ov.show{display:flex;} .ov h1{font-size:30px;} .ov p{font-size:15px;color:#cfe6d8;}
+  #confetti{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
+  .cf{position:absolute;width:10px;height:14px;top:-20px;animation:fall linear forwards;}
+  @keyframes fall{to{transform:translateY(110vh) rotate(720deg);}}
+</style>
+</head>
+<body>
+<div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">Solitaire</div><div id="who"></div><div id="hud">Moves <b id="moves">0</b> &middot; <b id="time">0s</b></div></div>
+<div id="top">
+  <div class="topcell"><div class="slot stock" id="stock"></div></div>
+  <div class="topcell"><div class="slot" id="waste"></div></div>
+  <div class="topcell"></div>
+  <div class="topcell"><div class="slot found" id="f0"></div></div>
+  <div class="topcell"><div class="slot found" id="f1"></div></div>
+  <div class="topcell"><div class="slot found" id="f2"></div></div>
+  <div class="topcell"><div class="slot found" id="f3"></div></div>
+</div>
+<div id="msg"></div>
+<div id="board"></div>
+<div id="foot">
+  <button class="act ghost" id="newBtn">New deal</button>
+</div>
+<div class="ov" id="overlay"><div id="confetti"></div><div style="font-size:54px;">&#127881;</div><h1>You won!</h1><p id="ovText"></p>
+  <button class="act" id="ovBtn">Deal again</button>
+  <a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
+<script src="gamenight.js?v=12"></script>
+<script src="sfx.js?v=5"></script>
+<script>
+const KEY="solitaire_games";
+function S(n,o){window.GNS&&GNS.play(n,0,o);}
+const SUITS=[{s:"\u2660",red:false},{s:"\u2665",red:true},{s:"\u2666",red:true},{s:"\u2663",red:false}];
+function disp(r){return r===1?"A":r===11?"J":r===12?"Q":r===13?"K":""+r;}
+let stock=[],waste=[],tab=[[],[],[],[],[],[],[]],found=[[],[],[],[]],sel=null,moves=0,GS=null,playerName="You",timer=null;
+
+function freshDeal(){
+  const d=[];for(let si=0;si<4;si++)for(let r=1;r<=13;r++)d.push({r,s:SUITS[si].s,si,red:SUITS[si].red,up:false});
+  for(let i=d.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[d[i],d[j]]=[d[j],d[i]];}
+  tab=[[],[],[],[],[],[],[]];found=[[],[],[],[]];waste=[];
+  for(let c=0;c<7;c++)for(let k=0;k<=c;k++){const card=d.pop();card.up=(k===c);tab[c].push(card);}
+  stock=d;stock.forEach(c=>c.up=false);
+}
+function newGame(name){
+  playerName=name||playerName;
+  if(document.getElementById("who")&&GN.whoBadge)GN.whoBadge(document.getElementById("who"),playerName,pickPlayer);
+  freshDeal();sel=null;moves=0;
+  GS={start:Date.now(),done:false};
+  document.getElementById("overlay").classList.remove("show");
+  document.getElementById("confetti").innerHTML="";
+  document.getElementById("moves").textContent="0";
+  document.getElementById("msg").textContent="Build the four foundations Ace to King.";
+  if(timer)clearInterval(timer);timer=setInterval(()=>{if(GS&&!GS.done)document.getElementById("time").textContent=Math.floor((Date.now()-GS.start)/1000)+"s";},400);
+  render();
+}
+function pickPlayer(){if(window.GN&&GN.soloStart){GN.soloStart(function(name){newGame(name);},{title:"Who\u2019s playing?"});}else newGame("You");}
+
+function cardDiv(card,faceUp){const e=document.createElement("div");
+  e.className="card"+(faceUp?(card.red?" red":""):" down");
+  if(faceUp)e.innerHTML='<span class="c">'+disp(card.r)+card.s+'</span>';
+  return e;}
+function isSelected(src,idx){return sel&&sel.src===src&&sel.idx===idx;}
+
+function render(){
+  // stock
+  const st=document.getElementById("stock");st.innerHTML="";st.className="slot stock";
+  if(stock.length){const c=cardDiv(stock[stock.length-1],false);c.style.top="0";st.appendChild(c);}
+  // waste
+  const wa=document.getElementById("waste");wa.innerHTML="";wa.className="slot";
+  if(waste.length){const top=waste[waste.length-1];const c=cardDiv(top,true);c.style.top="0";
+    c.classList.add("tappable");if(isSelected("waste",waste.length-1))c.classList.add("sel");
+    c.addEventListener("click",e=>{e.stopPropagation();tapCard("waste",waste.length-1);});wa.appendChild(c);}
+  // foundations
+  for(let fi=0;fi<4;fi++){const el=document.getElementById("f"+fi);el.innerHTML="";el.className="slot found";
+    const pile=found[fi];if(pile.length){const c=cardDiv(pile[pile.length-1],true);c.style.top="0";el.appendChild(c);}
+    el.onclick=()=>placeTo("f"+fi);}
+  // tableau
+  const board=document.getElementById("board");board.innerHTML="";
+  for(let ci=0;ci<7;ci++){const col=document.createElement("div");col.className="col";
+    const pile=tab[ci];let y=0;
+    if(pile.length===0){col.style.minHeight="14vw";}
+    pile.forEach((card,idx)=>{const c=cardDiv(card,card.up);c.style.top=y+"px";
+      if(card.up){c.classList.add("tappable");if(isSelected("t"+ci,idx))c.classList.add("sel");
+        c.addEventListener("click",e=>{e.stopPropagation();tapCard("t"+ci,idx);});}
+      col.appendChild(c);y+=card.up?22:9;});
+    col.style.height=(y+ (window.innerWidth*0.13))+"px";
+    col.addEventListener("click",()=>placeTo("t"+ci));
+    board.appendChild(col);}
+  document.getElementById("moves").textContent=moves;
+}
+
+function validRun(ci,idx){const pile=tab[ci];for(let k=idx;k<pile.length-1;k++){
+  const a=pile[k],b=pile[k+1];if(!a.up||!b.up)return false;if(b.r!==a.r-1||b.red===a.red)return false;}return true;}
+function runCards(){if(!sel)return[];if(sel.src==="waste")return waste.length?[waste[waste.length-1]]:[];
+  if(sel.src.startsWith("t")){const ci=+sel.src.slice(1);return tab[ci].slice(sel.idx);}
+  if(sel.src.startsWith("f")){const fi=+sel.src.slice(1);return[found[fi][found[fi].length-1]];}return[];}
+
+function tapCard(src,idx){
+  if(GS.done)return;
+  if(src==="waste"&&!waste.length)return;
+  // tapping the already-selected card -> try auto to foundation
+  if(isSelected(src,idx)){autoFoundation();return;}
+  if(src.startsWith("t")){const ci=+src.slice(1);if(!tab[ci][idx].up)return;if(!validRun(ci,idx)){ // only a valid run is movable
+      // allow selecting just the bottom (last) single card
+      if(idx!==tab[ci].length-1){flash("That run can\u2019t move together.");return;}}
+  }
+  sel={src,idx};render();
+}
+function flash(t){document.getElementById("msg").textContent=t;}
+
+function autoFoundation(){const run=runCards();if(run.length!==1||!run[0]){sel=null;render();return;}
+  const card=run[0];
+  for(let fi=0;fi<4;fi++){if(canFound(card,fi)){doMoveToFound(fi);return;}}
+  sel=null;render(); // nothing; deselect
+}
+function canFound(card,fi){const pile=found[fi];
+  if(pile.length===0)return card.r===1; // any empty foundation accepts an Ace; suit fixed on first drop
+  return pile[0].s===card.s && card.r===pile[pile.length-1].r+1;}
+function canTab(run,ci){const dest=tab[ci];const first=run[0];
+  if(dest.length===0)return first.r===13; // King to empty
+  const top=dest[dest.length-1];return top.up && top.r===first.r+1 && top.red!==first.red;}
+
+function placeTo(dest){
+  if(GS.done||!sel)return;
+  const run=runCards();if(!run.length||run.some(function(c){return !c;})){sel=null;render();return;}
+  if(dest.startsWith("f")){const fi=+dest.slice(1);if(run.length===1&&canFound(run[0],fi)){doMoveToFound(fi);return;}flash("Can\u2019t place there.");return;}
+  const ci=+dest.slice(1);
+  if(canTab(run,ci)){removeRunFromSource();tab[ci].push(...run);afterMove();return;}
+  flash("Can\u2019t place there.");
+}
+function removeRunFromSource(){if(sel.src==="waste")waste.pop();
+  else if(sel.src.startsWith("t")){const c=+sel.src.slice(1);tab[c].splice(sel.idx);}
+  else if(sel.src.startsWith("f")){const f=+sel.src.slice(1);found[f].pop();}}
+function doMoveToFound(fi){const run=runCards();const card=run[0];removeRunFromSource();found[fi].push(card);afterMove();}
+function afterMove(){moves++;
+  // flip exposed tableau card
+  if(sel&&sel.src.startsWith("t")){const c=+sel.src.slice(1);const p=tab[c];if(p.length&&!p[p.length-1].up)p[p.length-1].up=true;}
+  sel=null;S("place");render();checkWin();}
+
+function stockTap(){if(GS.done)return;
+  if(stock.length){const c=stock.pop();c.up=true;waste.push(c);}
+  else if(waste.length){while(waste.length){const c=waste.pop();c.up=false;stock.push(c);}}
+  sel=null;S("flip");render();}
+
+function checkWin(){const total=found.reduce((a,p)=>a+p.length,0);
+  if(total===52){GS.done=true;if(timer)clearInterval(timer);
+    const dur=Date.now()-GS.start;
+    document.getElementById("ovText").textContent="Cleared in "+moves+" moves \u00b7 "+Math.floor(dur/1000)+"s";
+    confetti();S("fanfare");
+    GN.recordGame(KEY,{start:GS.start,end:Date.now(),durationMs:dur,solo:true,won:true,draw:true,
+      winner:playerName,moves,score:moves,players:[playerName]});
+    document.getElementById("overlay").classList.add("show");}
+}
+function confetti(){const box=document.getElementById("confetti"),cols=["#f4c542","#b0d235","#3f86e0","#fff"];
+  for(let i=0;i<70;i++){const d=document.createElement("div");d.className="cf";d.style.left=Math.random()*100+"%";
+    d.style.background=cols[i%cols.length];d.style.animationDuration=(2.2+Math.random()*1.8)+"s";
+    d.style.animationDelay=(Math.random()*0.8)+"s";box.appendChild(d);}}
+
+document.getElementById("stock").addEventListener("click",stockTap);
+document.getElementById("newBtn").addEventListener("click",()=>newGame(playerName));
+document.getElementById("ovBtn").addEventListener("click",()=>newGame(playerName));
+GN.rulesButton(document.getElementById("foot"),{title:"Solitaire",sections:[
+ {h:"Goal",t:"Move all 52 cards onto the four foundations, each built up in one suit from Ace to King."},
+ {h:"On the table",t:"Build the seven columns downward in alternating colours \u2014 a red six goes on a black seven. Move a single card or a whole ordered run at once. Only a King (or a King-led run) can go onto an empty column."},
+ {h:"Stock",t:"Tap the stock pile (top-left) to flip cards to the waste; play the top waste card anywhere it fits. When the stock is empty, tap it again to recycle the waste."},
+ {h:"Foundations & shortcuts",t:"Tap a card to select it, then tap where it should go. Tap a selected card a second time to send it straight to its foundation.",
+  ex:"Flip up an Ace and double-tap it \u2014 it flies to an empty foundation and you\u2019re off."},
+ {h:"Winning",t:"Get all four foundations to King. Fewer moves and a faster time make a better record."}]});
+GN.statsButton(document.getElementById("foot"),{title:"Solitaire",key:KEY,specials:[
+ {label:"Games won",of:(r)=>r.length},
+ {label:"Fewest moves",of:(r)=>r.length?Math.min.apply(null,r.map(x=>x.moves||999)):"\u2014"},
+ {label:"Best time",of:(r)=>r.length?Math.floor(Math.min.apply(null,r.map(x=>x.durationMs||9e9))/1000)+"s":"\u2014"}]});
+if(window.GNS)GNS.button(document.getElementById("foot"));
+pickPlayer();
+</script>
+</body>
+</html>
