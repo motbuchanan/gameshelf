@@ -178,17 +178,17 @@ html.gn-easy #shelves .rslabel{font-size:18px;}
 html.gn-easy #shelves .vcart .cn{font-size:8px;}
 
   /* Old Video Games: closed box -> tap -> whole box tilts toward you, games inside its walls */
-  .shelf.vbox{perspective:1200px;}
-  /* the closed cardboard face */
-  .shelf.vbox .front{transition:opacity .3s ease,max-height .45s ease,transform .45s ease;transform-origin:50% 100%;}
-  .shelf.vbox.open .front{opacity:0;max-height:0;overflow:hidden;margin:0 auto;transform:translateY(-6px) scale(.96);pointer-events:none;}
-  /* the open box you look down into */
-  .shelf.vbox .openbox{max-height:0;opacity:0;overflow:hidden;pointer-events:none;transform-origin:50% 100%;
-    transition:max-height .55s ease,opacity .4s ease,transform .55s cubic-bezier(.34,1.04,.5,1);transform:rotateX(0deg);}
-  .shelf.vbox.open .openbox{max-height:2000px;opacity:1;pointer-events:auto;transform:rotateX(23deg);}
+  /* Old Video Games box: closed taped box -> open = a clean top-down look at the games inside it (no tilt) */
+  .shelf.vbox .boxslot{position:relative;height:122px;transition:height .5s cubic-bezier(.34,.78,.3,1);}
+  /* the taped cardboard box; cross-fades out when opened */
+  .shelf.vbox .front{position:absolute;left:3.5%;right:3.5%;top:0;margin:0;width:auto;transition:opacity .32s ease;}
+  .shelf.vbox.open .front{opacity:0;pointer-events:none;}
+  /* the opened box, viewed straight down on the games (walls wrap around them) */
+  .shelf.vbox .openbox{position:absolute;left:0;right:0;top:0;opacity:0;pointer-events:none;transition:opacity .38s ease;}
+  .shelf.vbox.open .openbox{opacity:1;pointer-events:auto;}
   .obwalls{position:relative;margin:30px auto 0;border-radius:7px;
     background:linear-gradient(180deg,#4c3219 0%,#5a3c22 60%,#6a4628 100%);
-    border-top:34px solid #9c7444;border-bottom:30px solid #b88f5e;border-left:18px solid #8a6038;border-right:18px solid #8a6038;
+    border-top:40px solid #8f6a3e;border-bottom:24px solid #c49a68;border-left:17px solid #9a7340;border-right:17px solid #9a7340;
     box-shadow:0 22px 36px rgba(0,0,0,.55),inset 0 16px 26px rgba(0,0,0,.6),inset 0 -10px 16px rgba(0,0,0,.45),inset 2px 0 6px rgba(0,0,0,.4),inset -2px 0 6px rgba(0,0,0,.4);
     padding:14px 8px 16px;}
   .obwalls .oblabel{position:absolute;top:-27px;left:0;right:0;text-align:center;
@@ -366,11 +366,11 @@ function boardSection(){const items=boardList(),top=items.slice(0,3),rest=items.
 function cabCart(g){return '<a class="vcart" href="'+g.href+'"><div class="cbody" style="background:'+g.bg+';"><div class="grip"></div><div class="sticker">'+g.art+'</div><div class="cn">'+g.name+'</div></div></a>';}
 function gamesBoxSection(){const carts=ARCADE_H.map(h=>{const g=GAMES.find(x=>x.href===h);return g?cabCart(g):'';}).join('');
   return '<div class="sec"><h2>Old Video Games</h2><div class="rule"></div></div>'+
-    '<div class="shelf expandable vbox"><div class="recess vrec"><div class="cbx">'+
+    '<div class="shelf expandable vbox"><div class="recess vrec"><div class="cbx"><div class="boxslot">'+
     '<div class="front"><div class="body"><div class="tape topseam"></div><div class="tape xL"></div><div class="tape xR"></div><div class="scuff s1"></div></div>'+
     '<div class="frontflap"><div class="lblwrap"><span class="rslabel">old video games</span></div><div class="cutedge"></div></div></div>'+
     '<div class="openbox"><div class="obwalls"><div class="oblabel">old video games</div><div class="vcarts">'+carts+'</div></div></div>'+
-    '</div></div>'+
+    '</div></div></div>'+
     '<div class="plank"></div>'+
     '<button class="morebar"><span class="closed">\uFF0B open the box \u2014 '+ARCADE_H.length+' games</span><span class="openl">\u25B2 close the box</span></button>'+
     '</div>';}
@@ -383,9 +383,18 @@ function cardSection(){const items=cardList(),top=items.slice(0,3),rest=items.sl
 function build(){
   shelves.innerHTML=boardSection()+cardSection()+BOOKS_HTML+gamesBoxSection();
   var rc=document.getElementById('ruleCount');if(rc)rc.textContent='all '+GAMES.filter(function(g){return !ARCADE_H.includes(g.href);}).length+' games';
-  shelves.querySelectorAll('.shelf.expandable').forEach(sh=>{
+  shelves.querySelectorAll('.shelf.expandable:not(.vbox)').forEach(sh=>{
     sh.addEventListener('click',function(e){if(e.target.closest('a'))return;sh.classList.toggle('open');});
   });
+  var vb=shelves.querySelector('.shelf.vbox');
+  if(vb){var slot=vb.querySelector('.boxslot'),obx=vb.querySelector('.openbox');
+    vb.addEventListener('click',function(e){if(e.target.closest('a'))return;
+      var opening=!vb.classList.contains('open');
+      vb.classList.toggle('open');
+      if(opening){slot.style.height=obx.offsetHeight+'px';}
+      else{slot.style.height='';}
+    });
+  }
 }
 build();
 window.addEventListener("resize",function(){});
