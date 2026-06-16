@@ -89,9 +89,8 @@ GN.cubeDie=function(size){cubeCSSOnce();
   return{el:wrap,show,tumble,setBust:function(b){wrap.classList.toggle("gnCubeBust",!!b);}};};
 const PKEY="gn_players",PAIRKEY="gn_lastpair";
 function defaultPlayers(){return[
-  {name:"Mot",...PALETTE[0]},
-  {name:"Kathy",...PALETTE[1]},
-  {name:"Garrett",...PALETTE[2]}];}
+  {name:"Player 1",...PALETTE[0]},
+  {name:"Player 2",...PALETTE[1]}];}
 function pload(){try{const l=JSON.parse(localStorage.getItem(PKEY));return(l&&l.length)?l:defaultPlayers();}catch(e){return defaultPlayers();}}
 function psave(l){try{localStorage.setItem(PKEY,JSON.stringify(l));}catch(e){}}
 /* ---------- PLAYER PROFILES (foundation — see PROFILES_SPEC.md) ---------- */
@@ -218,7 +217,7 @@ const GKEY="gn_global";let _gmem=null;
 function blank(){return{flips:{n:0,won:{},streak:{who:null,len:0}},
   dice:{rolled:0,sixes:0,doubles:0},sentHome:0,wins:{},games:0,timeMs:0};}
 function gload(){try{const g=JSON.parse(localStorage.getItem(GKEY));if(!g)return blank();
-    if(!g.flips.won)g.flips.won={Mot:g.flips.Mot||0,Kathy:g.flips.Kathy||0}; // migrate v1
+    if(!g.flips.won)g.flips.won={}; // migrate v1
     return g;}catch(e){return _gmem||blank();}}
 function gsave(g){try{localStorage.setItem(GKEY,JSON.stringify(g));}catch(e){_gmem=g;}}
 GN.g={
@@ -245,16 +244,20 @@ GN.g={
   read(){return gload();}};
 
 GN.friendly=false;
+GN._vsComputer=false;
 GN.recordGame=function(key,rec){
   GN._inPlay=false;
   if(GN.friendly)return; // friendly games leave no trace
 
+  if(GN._vsComputer)rec=Object.assign({},rec,{vsComputer:true});
   let l=[];try{l=JSON.parse(localStorage.getItem(key))||[];}catch(e){}
   l.push(rec);
   try{localStorage.setItem(key,JSON.stringify(l));}catch(e){}
   mirror(()=>_db.doc("households/"+_hh+"/records/"+key).set({list:FV().arrayUnion(rec)},{merge:true}));
-  GN.g.addResult(rec.winner,rec.loser,rec.durationMs);
-  try{GN._award(key,rec);}catch(e){}};
+  if(!rec.vsComputer){ // vs-Computer games are recorded + tagged, but kept out of the head-to-head tallies
+    GN.g.addResult(rec.winner,rec.loser,rec.durationMs);
+    try{GN._award(key,rec);}catch(e){}
+  }};
 
 /* feed the per-player achievements engine + show a ceremony for new badges */
 var _BADW={tie:1,"(draw)":1,Computer:1,You:1};
@@ -328,7 +331,7 @@ GN.soloStart=function(done,opts){
   }
   var go=document.createElement("button");go.className="gnBtn";go.textContent=opts.go||"Start";
   go.onclick=function(){if(!sel)return;try{localStorage.setItem("gn_solo_player",sel.name);}catch(e){}
-    GN._participants=[sel.name];GN.friendly=!!friendly;GN._inPlay=true;ov.remove();
+    GN._participants=[sel.name];GN.friendly=!!friendly;GN._vsComputer=false;GN._inPlay=true;ov.remove();
     if(done)done(sel.name,{friendly:!!friendly});};
   ov.appendChild(go);
   document.body.appendChild(ov);
@@ -449,7 +452,7 @@ GN.matchStart=function(done,opts){injectCSS();GN._inPlay=false;opts=opts||{};
       diffRow.style.display=(isCpu&&wantDiff)?"flex":"none";
       eB.style.display=isSolo?"none":"";
       const vs=ov.querySelector(".gnVs");if(vs)vs.style.display=isSolo?"none":"";
-      const frB=ov.querySelector("#gnFr");if(frB)frB.style.display=isCpu?"none":"";
+      const frB=ov.querySelector("#gnFr");if(frB)frB.style.display="";
       if(isCpu){b=CPU;}else if(b===CPU){b=origB;}
       refresh();
       title.textContent=isSolo?"Playing solo":(isCpu?"You vs the Computer":"Who\u2019s playing?");
@@ -467,7 +470,7 @@ GN.matchStart=function(done,opts){injectCSS();GN._inPlay=false;opts=opts||{};
   function applyChrome(){const isCpu=mode==="cpu",isSolo=mode==="1p";
     if(eB)eB.style.display=isSolo?"none":"";
     const vs=ov.querySelector(".gnVs");if(vs)vs.style.display=isSolo?"none":"";
-    const frB=ov.querySelector("#gnFr");if(frB)frB.style.display=isCpu?"none":"";}
+    const frB=ov.querySelector("#gnFr");if(frB)frB.style.display="";}
   function gnShowChrome(){[[".gnSeats",""],["#gnNew",""],["#gnRecolor",""]].forEach(m=>{const e=ov.querySelector(m[0]);if(e)e.style.display=m[1];});go.style.display="";const fr=ov.querySelector("#gnFr");if(fr)fr.style.display="";applyChrome();}
   function openColorGrid(labelName,ownerName,onPick){
     gnHideChrome();
@@ -519,7 +522,7 @@ GN.matchStart=function(done,opts){injectCSS();GN._inPlay=false;opts=opts||{};
   refresh();
   go.onclick=function(){
     if(go.disabled)return;
-    if(mode==="1p"){GN.friendly=friendly;ov.remove();GN._inPlay=true;GN._participants=[a.name];done({a,b:null,first:a,solo:true,friendly});return;}
+    if(mode==="1p"){GN.friendly=friendly;GN._vsComputer=false;ov.remove();GN._inPlay=true;GN._participants=[a.name];done({a,b:null,first:a,solo:true,friendly});return;}
     if(mode!=="cpu")savePair(a,b);
     eA.disabled=true;eB.disabled=true;ov.querySelector("#gnNew").style.display="none";
     ov.querySelector(".gnSeats").style.display="none";scene.style.display="";
@@ -549,14 +552,14 @@ GN.matchStart=function(done,opts){injectCSS();GN._inPlay=false;opts=opts||{};
       if(p<1){requestAnimationFrame(land);return;}
       coin.style.transform="rotateX("+finalDeg+"deg)";
       const first=heads?a:b;
-      const fr2=(mode==="cpu")?true:friendly;
+      const fr2=friendly;
       GN.friendly=fr2;
-      if(!fr2)GN.g.addFlip(first.name);
+      if(!fr2&&mode!=="cpu")GN.g.addFlip(first.name);
       title.textContent=first.name+" goes first!";title.style.color=first.color;
       go.textContent="Begin";go.style.visibility="visible";
-      go.onclick=function(){ov.remove();GN._inPlay=true;
+      go.onclick=function(){ov.remove();GN._inPlay=true;GN._vsComputer=(mode==="cpu");
         GN._participants=(mode==="cpu")?[a.name]:[a.name,b.name];
-        done(mode==="cpu"?{a,b,first,bot:botLevel,vsComputer:true,friendly:true}:{a,b,first,friendly});};}
+        done(mode==="cpu"?{a,b,first,bot:botLevel,vsComputer:true,friendly}:{a,b,first,friendly});};}
     requestAnimationFrame(toss);};};
 
 /* ---------- party start: 2-4 seats, humans + computers ---------- */
@@ -632,6 +635,12 @@ GN.partyStart=function(done,opts){injectCSS();GN._inPlay=false;opts=opts||{};
     ov.appendChild(tWrap);
   }
 
+  let recordOn=true;
+  const frP=document.createElement("button");
+  frP.style.cssText="margin:8px auto 2px;background:none;border:none;color:#cfe6d8;font-size:13px;cursor:pointer;font-family:inherit;text-decoration:underline;";
+  frP.textContent="\u2713 Counts for the record";
+  frP.onclick=function(){recordOn=!recordOn;frP.textContent=recordOn?"\u2713 Counts for the record":"\u26a0 Just for fun \u2014 won\u2019t be saved";frP.style.color=recordOn?"#cfe6d8":"#f4c542";};
+  ov.appendChild(frP);
   const go=document.createElement("button");go.className="gnBtn";go.textContent="Start";
   ov.appendChild(go);
 
@@ -686,8 +695,8 @@ GN.partyStart=function(done,opts){injectCSS();GN._inPlay=false;opts=opts||{};
       hi(cur);
       if(t>=minT&&cur===first){clearInterval(iv);
         const f=out[first];title.textContent=f.name+" goes first!";title.style.color=f.color;
-        GN.friendly=true;
-        setTimeout(()=>{ov.remove();GN._inPlay=true;GN._participants=out.filter(s=>!s.bot).map(s=>s.name);done({seats:out,first:first,friendly:true,rules:Object.assign({},togVals)});},700);
+        GN.friendly=!recordOn;GN._vsComputer=false;
+        setTimeout(()=>{ov.remove();GN._inPlay=true;GN._participants=out.filter(s=>!s.bot).map(s=>s.name);done({seats:out,first:first,friendly:!recordOn,rules:Object.assign({},togVals)});},700);
         return;}
       cur=(cur+1)%count;t++;
     },110);
@@ -699,7 +708,9 @@ GN.partyStart=function(done,opts){injectCSS();GN._inPlay=false;opts=opts||{};
 /* GN.openStats({title,key,specials:[{label,of:(recs,name)=>num}]}) — h2h is the last pairing */
 GN.openStats=function(cfg){injectCSS();
   const old=document.getElementById("gnStats");if(old)old.remove();
-  const recs=GN.readGames(cfg.key);
+  const allRecs=GN.readGames(cfg.key);
+  const vsAI=allRecs.filter(r=>r&&r.vsComputer);
+  const recs=allRecs.filter(r=>!(r&&r.vsComputer));
   const[pa,pb]=GN.lastPair();
   const pairRecs=recs.filter(r=>(r.winner===pa.name||r.winner===pb.name||r.loser===pa.name||r.loser===pb.name));
   let m=0,k=0,dur=0;for(const r of recs){if(r.winner===pa.name)m++;else if(r.winner===pb.name)k++;dur+=r.durationMs||0;}
@@ -712,6 +723,8 @@ GN.openStats=function(cfg){injectCSS();
   let h='<h1>'+cfg.title+' \u2014 Stats</h1>';
   h+='<div class="gnH2H"><span style="color:'+pa.color+'"><span class="big">'+m+'</span> '+pa.name+'</span><span style="color:#7d9a88">vs</span><span style="color:'+pb.color+'">'+pb.name+' <span class="big">'+k+'</span></span></div>';
   h+='<div class="gnMeta">'+recs.length+' game'+(recs.length===1?"":"s")+' recorded \u00b7 avg '+fmt(recs.length?dur/recs.length:0)+(who?' \u00b7 '+who+' on a '+streak+'-game streak':'')+'</div>';
+  if(vsAI.length){var _won=vsAI.filter(r=>r.winner&&!/^Computer/.test(r.winner)).length;
+    h+='<div class="gnMeta">Plus '+vsAI.length+' vs Computer \u2014 you won '+_won+' (not counted for the record)</div>';}
   if(cfg.specials&&recs.length){h+='<div class="gnSec">This game</div>';
     for(const s of cfg.specials)h+=row(s.label,s.of(recs,pa.name),s.of(recs,pb.name));}
   const g=GN.g.read();

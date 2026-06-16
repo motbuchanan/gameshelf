@@ -1,4 +1,4 @@
-/* Bridge Builders core — path scoring per Mot's observed rule.
+/* Bridge Builders core — path scoring per Player 1's observed rule.
    - A player's tiles form a network (4-adjacency over own tiles only).
    - A bridge path = simple path starting on any own tile in col 0.
    - Scoring a path:

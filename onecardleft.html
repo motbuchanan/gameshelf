@@ -244,7 +244,8 @@ var OCL_RULES={"title":"One Card Left!","sections":[{"h":"Goal","t":"Be the firs
 const CNAME={r:"Red",y:"Yellow",g:"Green",b:"Blue"};
 function S(n){try{window.GNS&&GNS.play(n);}catch(e){}}
 const $=id=>document.getElementById(id);
-let st=null,seats=[],theHuman=-1,view=-1,live=false,busy=false;
+const KEY="onecardleft_games";
+let st=null,seats=[],theHuman=-1,view=-1,live=false,busy=false,startTs=0;
 
 const BODY={r:["#e5413a","#bd2620"],y:["#f4c84a","#d99e1a"],g:["#52bd76","#2f8b4e"],b:["#3f86e0","#2056a8"],w:["#2c3a54","#161f30"]};
 const INK={r:"#bd2620",y:"#9a6a10",g:"#2f8b4e",b:"#2056a8"};
@@ -301,7 +302,7 @@ function curIsBot(){return !!seats[st.turn].bot;}
 function humanCount(){return seats.filter(s=>!s.bot).length;}
 
 GN.partyStart(function(m){
-  seats=m.seats;
+  seats=m.seats;startTs=Date.now();
   theHuman=(humanCount()===1)?seats.findIndex(s=>!s.bot):-1;
   st=OCL.newGame(seats.length,m.first,Math.random,m.rules);
   view=theHuman>=0?theHuman:-1;
@@ -461,6 +462,9 @@ function pickColor(cb){
 }
 function win(){
   S("fanfare");
+  try{const players=seats.map(s=>s.name);
+    GN.recordGame(KEY,{start:startTs||Date.now(),end:Date.now(),durationMs:Date.now()-(startTs||Date.now()),
+      winner:seats[st.winner].name,players:players,friendly:GN.friendly,draw:false});}catch(e){}
   $("winName").textContent=seats[st.winner].name+" wins!";
   $("winName").style.color=seats[st.winner].light;
   $("winSub").textContent="One Card Left! \u2014 down to none.";

@@ -20,7 +20,7 @@
      GN.bot.play(state, spec, level, move => { ...apply move... });  // with a natural delay
 
    Skill levels (tunable in one place below):
-     easy   — looks 1 move ahead, blunders often       (good for Garrett to learn against)
+     easy   — looks 1 move ahead, blunders often       (good for a beginner to learn against)
      medium — looks a few moves ahead, occasional slip
      hard   — full-depth, always the best move it sees
 ============================================================ */

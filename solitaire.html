@@ -136,6 +136,17 @@ function tapCard(src,idx){
   if(src==="waste"&&!waste.length)return;
   // tapping the already-selected card -> try auto to foundation
   if(isSelected(src,idx)){autoFoundation();return;}
+  // a card is already selected and this tap is on a DIFFERENT pile -> treat it as "place here"
+  if(sel){
+    const destPile=src.startsWith("t")?("t"+(+src.slice(1))):(src.startsWith("f")?("f"+(+src.slice(1))):null);
+    if(destPile&&destPile!==sel.src){
+      const run=runCards();let ok=false;
+      if(destPile[0]==="f"){const fi=+destPile.slice(1);ok=run.length===1&&!!run[0]&&canFound(run[0],fi);}
+      else{const ci=+destPile.slice(1);ok=run.length>0&&canTab(run,ci);}
+      if(ok){placeTo(destPile);return;}
+      // not a legal move -> fall through and just re-select the tapped card
+    }
+  }
   if(src.startsWith("t")){const ci=+src.slice(1);if(!tab[ci][idx].up)return;if(!validRun(ci,idx)){ // only a valid run is movable
       // allow selecting just the bottom (last) single card
       if(idx!==tab[ci].length-1){flash("That run can\u2019t move together.");return;}}
