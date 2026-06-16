@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Nonograms</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:#1b120b;color:#e6ddd0;
+    background-image:radial-gradient(ellipse at 50% -10%,#2a1c10,#1b120b 70%);min-height:100vh;}
+  #bar{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#15100c;border-bottom:1px solid #3a2a1a;}
+  #bar a{color:#e6ddd0;text-decoration:none;font-size:13px;border:1px solid #6e5f50;background:#2a241e;border-radius:999px;padding:6px 12px;}
+  #title{font-weight:800;font-size:17px;}
+  #prog{margin-left:auto;font-size:13px;color:#c9ab85;font-weight:700;}
+  #wrap{max-width:520px;margin:0 auto;padding:12px;}
+  #pager{display:flex;align-items:center;justify-content:center;gap:10px;margin:6px 0 12px;}
+  #pager button{font-family:inherit;cursor:pointer;border:1px solid #6e5f50;background:#2a241e;color:#e6ddd0;border-radius:10px;padding:8px 14px;font-size:15px;font-weight:700;}
+  #label{font-weight:800;font-size:18px;color:#f4c542;text-align:center;min-width:160px;}
+  #puz{margin:0 auto;width:max-content;background:#f3e6c7;border:3px solid #6b4f2c;border-radius:10px;
+    box-shadow:0 6px 18px rgba(0,0,0,.45);padding:8px;display:grid;gap:0;touch-action:manipulation;user-select:none;}
+  #corner{}
+  #colC{display:grid;}
+  #colC .cc{display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:1px;
+    color:#5a4424;font-weight:700;font-size:12px;line-height:1.05;padding-bottom:3px;}
+  #rowC{display:grid;}
+  #rowC .rc{display:flex;flex-direction:row;justify-content:flex-end;align-items:center;gap:4px;
+    color:#5a4424;font-weight:700;font-size:12px;padding-right:5px;}
+  #grid{display:grid;}
+  .nc{background:#fbf3df;border:1px solid #d8c79e;cursor:pointer;display:flex;align-items:center;justify-content:center;
+    color:#9a8050;font-weight:800;}
+  .nc.f5{border-right-width:2px;border-right-color:#9c7a44;}
+  .nc.fb5{border-bottom-width:2px;border-bottom-color:#9c7a44;}
+  .nc.fill{background:#2f2417;}
+  .nc.mark{color:#b06a5a;}
+  #msg{text-align:center;color:#cfc4b4;font-size:14px;min-height:20px;margin:14px 4px 6px;}
+  #tools{max-width:340px;margin:8px auto 0;display:flex;gap:8px;}
+  #tools button{flex:1;font-family:inherit;font-weight:700;font-size:15px;padding:12px 0;border-radius:10px;
+    border:1px solid #6e5f50;background:#2a241e;color:#e6ddd0;cursor:pointer;}
+  #tools button.on{background:#f4c542;color:#2a1c0c;border-color:#b8860b;}
+  #tools button:active{transform:translateY(1px);}
+  .ov{position:fixed;inset:0;background:rgba(16,12,8,.95);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:60;text-align:center;padding:22px;}
+  .ov.show{display:flex;}
+  .ov h1{font-size:26px;margin:0;}
+  .ov p{color:#cfc4b4;max-width:330px;font-size:15px;}
+  .act{font-family:inherit;font-size:15px;font-weight:bold;padding:11px 20px;border-radius:10px;border:none;
+    background:#46b06a;color:#0c2014;box-shadow:0 4px 0 #1e6038;cursor:pointer;}
+  html.gn-easy #title,html.gn-easy #label{font-size:21px;}
+  html.gn-easy #tools button{font-size:17px;}
+</style>
+</head>
+<body>
+<div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">Nonograms</div><div id="prog"></div></div>
+<div id="wrap">
+  <div id="pager"><button id="prev">&#8249; Prev</button><div id="label"></div><button id="next">Next &#8250;</button></div>
+  <div id="puz"><div id="corner"></div><div id="colC"></div><div id="rowC"></div><div id="grid"></div></div>
+  <div id="msg">Fill the squares that match the number clues.</div>
+  <div id="tools">
+    <button id="mFill" class="on">&#9632; Fill</button>
+    <button id="mMark">&#10005; Mark</button>
+    <button id="reset">&#8634; Clear</button>
+  </div>
+</div>
+<div class="ov" id="overlay"><div style="font-size:48px;">&#127881;</div><h1 id="ovTitle">Picture done!</h1><p id="ovText"></p>
+  <button class="act" id="ovBtn">Next puzzle</button>
+  <a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #6e5f50;background:#2a241e;color:#e6ddd0;text-decoration:none;">Back to shelf</a></div>
+<script src="gamenight.js?v=12"></script>
+<script src="sfx.js?v=5"></script>
+<script>
+const PUZZLES=[
+ {id:1,name:"Heart",rows:["01010","11111","11111","01110","00100"]},
+ {id:2,name:"Plus",rows:["00100","00100","11111","00100","00100"]},
+ {id:3,name:"Diamond",rows:["00100","01110","11111","01110","00100"]},
+ {id:4,name:"Arrow",rows:["00100","01110","10101","00100","00100"]},
+ {id:5,name:"Letter C",rows:["01110","10000","10000","10000","01110"]},
+ {id:6,name:"Smiley",rows:["0111110","1000001","1010101","1000001","1100011","1011101","0111110"]},
+ {id:7,name:"Heart+",rows:["0110110","1111111","1111111","1111111","0111110","0011100","0001000"]},
+ {id:8,name:"House",rows:["00011000","00111100","01111110","11111111","11011011","11011011","11111111","11111111"]},
+ {id:9,name:"Tree",rows:["00011000","00111100","01111110","11111111","00011000","00011000","00111100","00111100"]},
+ {id:10,name:"Diamond X",rows:["0000110000","0001111000","0011111100","0111111110","1111111111","1111111111","0111111110","0011111100","0001111000","0000110000"]}
+];
+const PKEY="shelf_nono";
+function S(n){try{window.GNS&&GNS.play(n);}catch(e){}}
+const gridEl=document.getElementById("grid"),colCEl=document.getElementById("colC"),rowCEl=document.getElementById("rowC"),
+      cornerEl=document.getElementById("corner"),labelEl=document.getElementById("label"),progEl=document.getElementById("prog"),msgEl=document.getElementById("msg");
+
+let pi=0, N=5, sol=[], state=[], mode="fill"; // state: 0 empty,1 fill,2 mark
+
+function loadAll(){try{return JSON.parse(localStorage.getItem(PKEY))||{};}catch(e){return{};}}
+function saveAll(o){try{localStorage.setItem(PKEY,JSON.stringify(o));}catch(e){}}
+function runs(arr){const out=[];let c=0;for(const v of arr){if(v){c++;}else if(c){out.push(c);c=0;}}if(c)out.push(c);return out.length?out:[0];}
+function cur(){return PUZZLES[pi];}
+function save(){const a=loadAll();a.pi=pi;a.st=a.st||{};a.st[cur().id]=state.join("");a.s=a.s||{};if(isWon())a.s[cur().id]=true;saveAll(a);}
+
+function load(i){
+  pi=((i%PUZZLES.length)+PUZZLES.length)%PUZZLES.length;
+  const p=cur(); N=p.rows.length;
+  sol=[];for(let r=0;r<N;r++)for(let c=0;c<N;c++)sol.push(p.rows[r][c]==="1"?1:0);
+  state=new Array(N*N).fill(0);
+  const saved=(loadAll().st||{})[p.id];
+  if(saved&&saved.length===N*N)state=saved.split("").map(Number);
+  mode="fill";document.getElementById("mFill").classList.add("on");document.getElementById("mMark").classList.remove("on");
+  render();
+}
+function rowClue(r){const a=[];for(let c=0;c<N;c++)a.push(sol[r*N+c]);return runs(a);}
+function colClue(c){const a=[];for(let r=0;r<N;r++)a.push(sol[r*N+c]);return runs(a);}
+function isWon(){for(let i=0;i<N*N;i++){const filled=state[i]===1?1:0;if(filled!==sol[i])return false;}return true;}
+
+function render(){
+  const p=cur();
+  const cell=Math.max(20,Math.min(34,Math.floor(300/N)));
+  const rcW=Math.max(46,cell*1.5), ccH=Math.max(46,cell*1.5);
+  document.getElementById("puz").style.gridTemplateColumns=rcW+"px "+(cell*N)+"px";
+  document.getElementById("puz").style.gridTemplateRows=ccH+"px "+(cell*N)+"px";
+  cornerEl.style.width=rcW+"px";cornerEl.style.height=ccH+"px";
+  // column clues
+  colCEl.style.gridTemplateColumns="repeat("+N+","+cell+"px)";colCEl.style.height=ccH+"px";colCEl.innerHTML="";
+  for(let c=0;c<N;c++){const d=document.createElement("div");d.className="cc";
+    colClue(c).forEach(n=>{const s=document.createElement("span");s.textContent=n;d.appendChild(s);});colCEl.appendChild(d);}
+  // row clues
+  rowCEl.style.gridTemplateRows="repeat("+N+","+cell+"px)";rowCEl.style.width=rcW+"px";rowCEl.innerHTML="";
+  for(let r=0;r<N;r++){const d=document.createElement("div");d.className="rc";
+    rowClue(r).forEach(n=>{const s=document.createElement("span");s.textContent=n;d.appendChild(s);});rowCEl.appendChild(d);}
+  // grid
+  gridEl.style.gridTemplateColumns="repeat("+N+","+cell+"px)";gridEl.innerHTML="";
+  for(let i=0;i<N*N;i++){const r=Math.floor(i/N),c=i%N;
+    const el=document.createElement("div");el.className="nc";el.style.fontSize=Math.floor(cell*0.6)+"px";
+    if((c+1)%5===0&&c!==N-1)el.classList.add("f5");
+    if((r+1)%5===0&&r!==N-1)el.classList.add("fb5");
+    if(state[i]===1)el.classList.add("fill");
+    else if(state[i]===2){el.classList.add("mark");el.textContent="\u2715";}
+    el.addEventListener("click",()=>tap(i));
+    gridEl.appendChild(el);
+  }
+  const solved=Object.keys(loadAll().s||{}).length;
+  labelEl.textContent="Puzzle "+p.id+"  \u00b7  "+N+"\u00d7"+N;
+  progEl.textContent=solved+"/"+PUZZLES.length;
+  msgEl.textContent="Fill the squares that match the number clues.";
+}
+function tap(i){
+  if(mode==="fill")state[i]=state[i]===1?0:1;
+  else state[i]=state[i]===2?0:2;
+  S("tap");save();render();
+  if(isWon())win();
+}
+function win(){
+  S("win");
+  // reveal: mark all non-solution cells cleared for a clean picture
+  for(let i=0;i<N*N;i++)if(sol[i]===0)state[i]=0;
+  save();render();
+  const solved=Object.keys(loadAll().s||{}).length;
+  progEl.textContent=solved+"/"+PUZZLES.length;
+  document.getElementById("ovTitle").textContent=cur().name+"!";
+  document.getElementById("ovText").textContent="You revealed the "+cur().name.toLowerCase()+". "+(solved>=PUZZLES.length?"All pictures complete!":(solved+" of "+PUZZLES.length+" done."));
+  document.getElementById("overlay").classList.add("show");
+}
+
+document.getElementById("mFill").addEventListener("click",()=>{mode="fill";document.getElementById("mFill").classList.add("on");document.getElementById("mMark").classList.remove("on");});
+document.getElementById("mMark").addEventListener("click",()=>{mode="mark";document.getElementById("mMark").classList.add("on");document.getElementById("mFill").classList.remove("on");});
+document.getElementById("reset").addEventListener("click",()=>{state=new Array(N*N).fill(0);save();render();});
+document.getElementById("prev").addEventListener("click",()=>{document.getElementById("overlay").classList.remove("show");load(pi-1);});
+document.getElementById("next").addEventListener("click",()=>{document.getElementById("overlay").classList.remove("show");load(pi+1);});
+document.getElementById("ovBtn").addEventListener("click",()=>{document.getElementById("overlay").classList.remove("show");load(pi+1);});
+
+window.__nono=function(){return{N:N,sol:sol,state:state,won:isWon()};};
+load(loadAll().pi||0);
+</script>
+</body>
+</html>

@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Mini Crosswords</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:#1b120b;color:#e6ddd0;
+    background-image:radial-gradient(ellipse at 50% -10%,#2a1c10,#1b120b 70%);min-height:100vh;}
+  #bar{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#15100c;border-bottom:1px solid #3a2a1a;}
+  #bar a{color:#e6ddd0;text-decoration:none;font-size:13px;border:1px solid #6e5f50;background:#2a241e;border-radius:999px;padding:6px 12px;}
+  #title{font-weight:800;font-size:17px;}
+  #prog{margin-left:auto;font-size:13px;color:#c9ab85;font-weight:700;}
+  #wrap{max-width:520px;margin:0 auto;padding:12px;}
+  #pager{display:flex;align-items:center;justify-content:center;gap:10px;margin:6px 0 10px;}
+  #pager button{font-family:inherit;cursor:pointer;border:1px solid #6e5f50;background:#2a241e;color:#e6ddd0;border-radius:10px;padding:8px 14px;font-size:15px;font-weight:700;}
+  #label{font-weight:800;font-size:18px;color:#f4c542;text-align:center;min-width:160px;}
+  #grid{margin:0 auto;width:max-content;background:#2a1c0c;border:3px solid #6b4f2c;border-radius:8px;
+    box-shadow:0 6px 18px rgba(0,0,0,.45);padding:3px;display:grid;gap:2px;touch-action:manipulation;user-select:none;}
+  .xc{position:relative;background:#fbf3df;display:flex;align-items:center;justify-content:center;cursor:pointer;
+    color:#1c130a;font-weight:800;text-transform:uppercase;}
+  .xc.blk{background:#2a1c0c;cursor:default;}
+  .xc.hl{background:#f7e6a6;}
+  .xc.sel{background:#f4c542;box-shadow:inset 0 0 0 3px #b8860b;}
+  .xc.bad{color:#c62828;}
+  .xc .qn{position:absolute;top:1px;left:2px;font-size:9px;font-weight:700;color:#7a6648;line-height:1;}
+  #clue{max-width:380px;margin:12px auto 4px;display:flex;align-items:center;gap:8px;background:#241b12;border:1px solid #4a3a28;border-radius:10px;padding:10px 8px;}
+  #clue button{flex:0 0 auto;font-family:inherit;font-weight:800;font-size:18px;border:1px solid #6e5f50;background:#2a241e;color:#e6ddd0;border-radius:8px;padding:6px 11px;cursor:pointer;}
+  #clueTxt{flex:1;text-align:center;font-size:14.5px;color:#ecdfca;}
+  #clueTxt b{color:#f4c542;}
+  #kb{max-width:420px;margin:10px auto 0;display:flex;flex-direction:column;gap:6px;}
+  .krow{display:flex;justify-content:center;gap:5px;}
+  .krow button{flex:1;max-width:38px;font-family:inherit;font-weight:700;font-size:16px;padding:11px 0;border-radius:7px;
+    border:1px solid #6e5f50;background:#efe2c4;color:#2a1c0c;cursor:pointer;}
+  .krow button.wide{max-width:64px;background:#2a241e;color:#e6ddd0;font-size:13px;}
+  .krow button:active{transform:translateY(1px);}
+  #tools{max-width:380px;margin:10px auto 0;display:flex;gap:8px;}
+  #tools button{flex:1;font-family:inherit;font-weight:700;font-size:14px;padding:11px 0;border-radius:10px;
+    border:1px solid #6e5f50;background:#2a241e;color:#e6ddd0;cursor:pointer;}
+  #msg{text-align:center;color:#cfc4b4;font-size:13.5px;min-height:18px;margin:10px 4px 4px;}
+  .ov{position:fixed;inset:0;background:rgba(16,12,8,.95);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:60;text-align:center;padding:22px;}
+  .ov.show{display:flex;}
+  .ov h1{font-size:26px;margin:0;}
+  .ov p{color:#cfc4b4;max-width:330px;font-size:15px;}
+  .act{font-family:inherit;font-size:15px;font-weight:bold;padding:11px 20px;border-radius:10px;border:none;
+    background:#46b06a;color:#0c2014;box-shadow:0 4px 0 #1e6038;cursor:pointer;}
+  html.gn-easy #title,html.gn-easy #label,html.gn-easy #clueTxt{font-size:20px;}
+  html.gn-easy .krow button{font-size:18px;}
+</style>
+</head>
+<body>
+<div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">Mini Crosswords</div><div id="prog"></div></div>
+<div id="wrap">
+  <div id="pager"><button id="prev">&#8249; Prev</button><div id="label"></div><button id="next">Next &#8250;</button></div>
+  <div id="grid"></div>
+  <div id="clue"><button id="cPrev">&#8249;</button><div id="clueTxt"></div><button id="cNext">&#8250;</button></div>
+  <div id="kb"></div>
+  <div id="tools"><button id="check">&#10003; Check</button><button id="reset">&#8634; Clear</button></div>
+  <div id="msg">Tap a square, then type. Tap a square again to switch across/down.</div>
+</div>
+<div class="ov" id="overlay"><div style="font-size:48px;">&#127881;</div><h1 id="ovTitle">Solved!</h1><p id="ovText"></p>
+  <button class="act" id="ovBtn">Next puzzle</button>
+  <a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #6e5f50;background:#2a241e;color:#e6ddd0;text-decoration:none;">Back to shelf</a></div>
+<script src="gamenight.js?v=12"></script>
+<script src="sfx.js?v=5"></script>
+<script>
+// Each puzzle is a full word square: every row AND column is a real word.
+const PUZZLES=[
+ {id:1,sol:["CAT","ARE","BEE"],
+  across:["Mouse chaser","\u201CHere we ___\u201D","Honey maker"],
+  down:["Yellow city ride","Exist","Golf peg"]},
+ {id:2,sol:["SUN","USE","NET"],
+  across:["Center of our system","Put to work","Tennis divider"],
+  down:["Bright sky orb","Make use of","Soccer goal mesh"]},
+ {id:3,sol:["BAT","AGE","TEN"],
+  across:["Baseball swinger","Years lived","Perfect gymnastics score"],
+  down:["Cave flier","Grow older","Count on two hands"]},
+ {id:4,sol:["PAN","ACE","NEW"],
+  across:["Frying ___","Serve nobody returns","Just made"],
+  down:["Skillet","Top playing card","Opposite of old"]},
+ {id:5,sol:["MAP","APE","PEN"],
+  across:["It shows the roads","Gorilla cousin","Ink writer"],
+  down:["Page in an atlas","Mimic","Pig's home"]},
+ {id:6,sol:["FACT","AREA","CELL","TALC"],
+  across:["A true thing","Region","Prison room","Soft powder mineral"],
+  down:["Verified info","Square footage","Phone, casually","Baby-powder base"]},
+ {id:7,sol:["MAST","AREA","SEED","TADS"],
+  across:["Sail pole","Zone","Plant's start","Little bits"],
+  down:["Ship's flag pole","Surface measure","What you sow","Small amounts"]},
+ {id:8,sol:["HEART","EMBER","ABUSE","RESIN","TREND"],
+  across:["Valentine shape","Glowing coal","Mistreat","Violin-bow rub / pine sap","Latest fashion"],
+  down:["Love's organ","Dying-fire bit","Ill-treat","Sticky tree stuff","Popular direction"]}
+];
+const PKEY="shelf_cross";
+function S(n){try{window.GNS&&GNS.play(n);}catch(e){}}
+const gridEl=document.getElementById("grid"),labelEl=document.getElementById("label"),
+      progEl=document.getElementById("prog"),clueTxt=document.getElementById("clueTxt"),msgEl=document.getElementById("msg");
+
+let pi=0,N=3,blk=[],solL=[],user=[],across=[],down=[],nums=[],sel=-1,dir="A";
+
+function loadAll(){try{return JSON.parse(localStorage.getItem(PKEY))||{};}catch(e){return{};}}
+function saveAll(o){try{localStorage.setItem(PKEY,JSON.stringify(o));}catch(e){}}
+function cur(){return PUZZLES[pi];}
+function white(i){return !blk[i];}
+
+function buildSlots(){
+  // numbering + slots
+  nums=new Array(N*N).fill(0);across=[];down=[];
+  let n=0;
+  const aStart=[],dStart=[];
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){const i=r*N+c;if(!white(i))continue;
+    const sA=(c===0||!white(i-1)), sD=(r===0||!white(i-N));
+    if(sA||sD){n++;nums[i]=n;}
+    if(sA)aStart.push(i); if(sD)dStart.push(i);
+  }
+  aStart.forEach(i=>{const cells=[];let c=i%N,r=Math.floor(i/N);let j=i;while(c<N&&white(j)){cells.push(j);c++;j++;}across.push({num:nums[i],cells});});
+  dStart.forEach(i=>{const cells=[];let r=Math.floor(i/N),j=i;while(r<N&&white(j)){cells.push(j);r++;j+=N;}down.push({num:nums[i],cells});});
+  across.sort((a,b)=>a.num-b.num);down.sort((a,b)=>a.num-b.num);
+  const p=cur();
+  across.forEach((s,k)=>{s.clue=p.across[k];s.answer=s.cells.map(i=>solL[i]).join("");});
+  down.forEach((s,k)=>{s.clue=p.down[k];s.answer=s.cells.map(i=>solL[i]).join("");});
+}
+function load(idx){
+  pi=((idx%PUZZLES.length)+PUZZLES.length)%PUZZLES.length;
+  const p=cur();N=p.sol.length;
+  blk=[];solL=[];
+  for(let r=0;r<N;r++)for(let c=0;c<N;c++){const ch=p.sol[r][c];blk.push(ch==="#");solL.push(ch==="#"?"":ch);}
+  user=new Array(N*N).fill("");
+  const saved=(loadAll().u||{})[p.id];
+  if(saved&&saved.length===N*N)user=saved.split("").map(ch=>ch===" "?"":ch);
+  buildSlots();
+  // first selectable cell
+  sel=-1;for(let i=0;i<N*N;i++)if(white(i)){sel=i;break;}
+  dir="A";
+  render();
+}
+function curSlot(){const list=dir==="A"?across:down;return list.find(s=>s.cells.includes(sel))||((dir==="A"?down:across).find(s=>s.cells.includes(sel)));}
+function isSolved(){for(let i=0;i<N*N;i++)if(white(i)&&user[i]!==solL[i])return false;return true;}
+function save(){const a=loadAll();a.pi=pi;a.u=a.u||{};a.u[cur().id]=user.map(x=>x||" ").join("");a.s=a.s||{};if(isSolved())a.s[cur().id]=true;saveAll(a);}
+
+function render(){
+  const p=cur();
+  const sz=Math.max(46,Math.min(64,Math.floor(300/N)));
+  gridEl.style.gridTemplateColumns="repeat("+N+","+sz+"px)";gridEl.innerHTML="";
+  const slot=curSlot();const hl=slot?slot.cells:[];
+  for(let i=0;i<N*N;i++){
+    const el=document.createElement("div");el.className="xc";el.style.width=sz+"px";el.style.height=sz+"px";el.style.fontSize=Math.floor(sz*0.5)+"px";
+    if(!white(i)){el.classList.add("blk");gridEl.appendChild(el);continue;}
+    if(nums[i]){const q=document.createElement("span");q.className="qn";q.textContent=nums[i];el.appendChild(q);}
+    const t=document.createTextNode(user[i]||"");el.appendChild(t);
+    if(i===sel)el.classList.add("sel");else if(hl.includes(i))el.classList.add("hl");
+    el.addEventListener("click",()=>pick(i));
+    gridEl.appendChild(el);
+  }
+  if(slot)clueTxt.innerHTML="<b>"+slot.num+(dir==="A"?" Across":" Down")+"</b> &nbsp; "+slot.clue;
+  const solved=Object.keys(loadAll().s||{}).length;
+  labelEl.textContent="Crossword "+p.id+"  \u00b7  "+N+"\u00d7"+N;
+  progEl.textContent=solved+"/"+PUZZLES.length;
+}
+function pick(i){
+  if(!white(i))return;
+  if(i===sel){dir=dir==="A"?"D":"A";} else {sel=i;
+    const inA=across.some(s=>s.cells.includes(i)),inD=down.some(s=>s.cells.includes(i));
+    if(dir==="A"&&!inA&&inD)dir="D";if(dir==="D"&&!inD&&inA)dir="A";}
+  S("tap");render();
+}
+function advance(){const slot=curSlot();if(!slot)return;const k=slot.cells.indexOf(sel);
+  for(let j=k+1;j<slot.cells.length;j++){sel=slot.cells[j];return;} // next in slot
+}
+function typeCh(ch){
+  if(sel<0||!white(sel))return;
+  user[sel]=ch;S("place");save();advance();render();
+  if(isSolved())win();
+}
+function del(){
+  if(sel<0)return;
+  if(user[sel]){user[sel]="";}
+  else{const slot=curSlot();if(slot){const k=slot.cells.indexOf(sel);if(k>0){sel=slot.cells[k-1];user[sel]="";}}}
+  S("tap");save();render();
+}
+function check(){
+  let bad=0;[...gridEl.children].forEach((el,i)=>{if(white(i)&&user[i]&&user[i]!==solL[i]){el.classList.add("bad");bad++;}});
+  msgEl.textContent=bad?(bad+" letter"+(bad>1?"s":"")+" to fix."):"Looking good so far!";
+  setTimeout(()=>{[...gridEl.children].forEach(el=>el.classList.remove("bad"));msgEl.textContent="Tap a square, then type.";},1400);
+}
+function cycleClue(step){
+  const order=across.map(s=>["A",s]).concat(down.map(s=>["D",s]));
+  let idx=order.findIndex(([dd,s])=>dd===dir&&s.cells.includes(sel));
+  if(idx<0)idx=0;idx=(idx+step+order.length)%order.length;
+  const [dd,s]=order[idx];dir=dd;
+  sel=s.cells.find(i=>!user[i])??s.cells[0];
+  S("tap");render();
+}
+function win(){
+  S("win");save();
+  const solved=Object.keys(loadAll().s||{}).length;progEl.textContent=solved+"/"+PUZZLES.length;
+  document.getElementById("ovText").textContent="Crossword "+cur().id+" complete! "+(solved>=PUZZLES.length?"All puzzles solved!":(solved+" of "+PUZZLES.length+" done."));
+  document.getElementById("overlay").classList.add("show");
+}
+
+// keyboard
+const ROWS=["QWERTYUIOP","ASDFGHJKL","ZXCVBNM"];
+const kb=document.getElementById("kb");
+ROWS.forEach((row,ri)=>{const d=document.createElement("div");d.className="krow";
+  row.split("").forEach(ch=>{const b=document.createElement("button");b.textContent=ch;b.dataset.k=ch;b.addEventListener("click",()=>typeCh(ch));d.appendChild(b);});
+  if(ri===2){const b=document.createElement("button");b.className="wide";b.textContent="\u232B Del";b.id="kDel";b.addEventListener("click",del);d.appendChild(b);}
+  kb.appendChild(d);
+});
+document.addEventListener("keydown",e=>{if(/^[a-zA-Z]$/.test(e.key)){typeCh(e.key.toUpperCase());}else if(e.key==="Backspace"){e.preventDefault();del();}});
+
+document.getElementById("prev").addEventListener("click",()=>{document.getElementById("overlay").classList.remove("show");load(pi-1);});
+document.getElementById("next").addEventListener("click",()=>{document.getElementById("overlay").classList.remove("show");load(pi+1);});
+document.getElementById("cPrev").addEventListener("click",()=>cycleClue(-1));
+document.getElementById("cNext").addEventListener("click",()=>cycleClue(1));
+document.getElementById("check").addEventListener("click",check);
+document.getElementById("reset").addEventListener("click",()=>{user=new Array(N*N).fill("");save();render();});
+document.getElementById("ovBtn").addEventListener("click",()=>{document.getElementById("overlay").classList.remove("show");load(pi+1);});
+
+window.__cross=function(){const sol={};for(let i=0;i<N*N;i++)if(white(i))sol[i]=solL[i];return{N:N,white:solL.map((_,i)=>white(i)),sol:sol,user:user.slice(),won:isSolved()};};
+load(loadAll().pi||0);
+</script>
+</body>
+</html>
