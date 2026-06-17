@@ -53,6 +53,21 @@
   .sw{width:58px;height:42px;border-radius:9px;border:2px solid #6e5f50;cursor:pointer;overflow:hidden;display:grid;grid-template-columns:1fr 1fr;padding:0;}
   .sw.cur{border-color:#f4c542;box-shadow:0 0 0 2px rgba(244,197,66,.4);}
   .sw i{display:block;}
+  /* ---- motion: piece slides + effects ---- */
+  #frame{position:relative;}
+  #flyLayer{position:absolute;inset:9px;pointer-events:none;overflow:hidden;border-radius:6px;z-index:5;}
+  .flyPiece{position:absolute;top:0;left:0;transition:transform .22s cubic-bezier(.34,1.16,.5,1);will-change:transform;}
+  .flyPiece svg{position:absolute;inset:6%;width:88%;height:88%;filter:drop-shadow(0 3px 5px rgba(0,0,0,.5));}
+  .capFx{position:absolute;top:0;left:0;pointer-events:none;animation:capPop .3s ease-out forwards;}
+  .capFx svg{position:absolute;inset:6%;width:88%;height:88%;}
+  @keyframes capPop{from{opacity:.95;transform:translate(var(--cx),var(--cy)) scale(1);}
+    to{opacity:0;transform:translate(var(--cx),var(--cy)) scale(.32) rotate(16deg);}}
+  @keyframes chkPulse{0%,100%{box-shadow:inset 0 0 0 4px rgba(216,49,43,.85);}
+    50%{box-shadow:inset 0 0 0 7px rgba(216,49,43,.38);}}
+  .sq.chk{animation:chkPulse 1.1s ease-in-out infinite;}
+  .sq .mvDot,.sq .capRing{animation:dotIn .16s ease-out;}
+  @keyframes dotIn{from{transform:scale(.2);opacity:0;}to{transform:scale(1);opacity:1;}}
+  @media (prefers-reduced-motion:reduce){.flyPiece{transition:none;}.sq.chk{animation:none;}.sq .mvDot,.sq .capRing{animation:none;}}
 </style></head><body>
 <div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">Chess</div><div id="turnWrap"><div id="dot"></div><div id="turnName"></div></div></div>
 <div class="tray" id="trayTop"></div>
@@ -417,6 +432,29 @@ let botLevel=+(localStorage.getItem("chess_bot_level")||0),botBusy=false,botKey=
 let coach=false,hintShown=null,pendingPromo=null;
 const TVMODE=localStorage.getItem("gn_tv")==="on";
 const boardEl=document.getElementById("board");
+const RM=window.matchMedia&&window.matchMedia("(prefers-reduced-motion:reduce)").matches;
+let flyLayer=null;
+function ensureFlyLayer(){if(flyLayer&&flyLayer.isConnected)return;
+  flyLayer=document.createElement("div");flyLayer.id="flyLayer";document.getElementById("frame").appendChild(flyLayer);}
+/* animate a moving piece sliding from->to; only when board orientation is stable (vs computer / TV) */
+function fxMove(from,to,piece,capSq,capPiece){
+  if(RM||!(botLevel||TVMODE))return;
+  const cell=boardEl.clientWidth/8;if(!cell)return;
+  ensureFlyLayer();
+  if(capPiece){const cx=CH.fileOf(capSq)*cell,cy=CH.rankOf(capSq)*cell;
+    const fx=document.createElement("div");fx.className="capFx";fx.style.width=cell+"px";fx.style.height=cell+"px";
+    fx.style.setProperty("--cx",cx+"px");fx.style.setProperty("--cy",cy+"px");fx.innerHTML=pieceSVG(capPiece);
+    flyLayer.appendChild(fx);setTimeout(()=>fx.remove(),340);}
+  const x0=CH.fileOf(from)*cell,y0=CH.rankOf(from)*cell,x1=CH.fileOf(to)*cell,y1=CH.rankOf(to)*cell;
+  const fly=document.createElement("div");fly.className="flyPiece";fly.style.width=cell+"px";fly.style.height=cell+"px";
+  fly.style.transform="translate("+x0+"px,"+y0+"px)";fly.innerHTML=pieceSVG(piece);flyLayer.appendChild(fly);
+  const destSq=document.getElementById("q"+to),destSvg=destSq&&destSq.querySelector("svg");
+  if(destSvg)destSvg.style.visibility="hidden";
+  void fly.getBoundingClientRect();
+  requestAnimationFrame(()=>{fly.style.transform="translate("+x1+"px,"+y1+"px)";});
+  let done=false;const fin=()=>{if(done)return;done=true;fly.remove();if(destSvg)destSvg.style.visibility="";};
+  fly.addEventListener("transitionend",fin,{once:true});setTimeout(fin,440);
+}
 function buildBoard(){boardEl.innerHTML="";
   for(let r=0;r<8;r++)for(let f=0;f<8;f++){const d=document.createElement("button");
     d.className="sq"+(((r+f)%2)?" dk":"");d.id="q"+(r*16+f);
@@ -498,6 +536,9 @@ function commit(m,silentCoach){
 function doCommit(m){
   const mover=st.turn, moveNo=st.full, desc=describe(m,st);
   const before=st.b[m.to]||m.ep;
+  const movingPiece=st.b[m.from];
+  const capSq=m.ep?(CH.rankOf(m.from)*16+CH.fileOf(m.to)):(before?m.to:-1);
+  const capPiece=capSq>=0?st.b[capSq]:null;
   CH.make(st,m);
   GS.trace.push({n:moveNo,mover,name:P[mover].name,from:m.from,to:m.to,desc,evalW:CAI.evaluate(st)});
   lastMv=m;sel=-1;legalNow=[];hintShown=null;
@@ -507,6 +548,7 @@ function doCommit(m){
   if(CH.inCheck(st,st.turn)&&stat==="play"){S("chime",140,{rate:1.4});setMsg("Check!");}
   else setMsg("");
   render();
+  fxMove(m.from,m.to,movingPiece,capSq,capPiece);
   if(stat!=="play"){finish(stat);return;}
   if(!botLevel)setMsg((CH.inCheck(st,st.turn)?"Check! ":"")+P[st.turn].name+" to move.");}
 function escH(s){return String(s).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];});}
@@ -632,6 +674,15 @@ GN.statsButton(document.getElementById("foot"),{title:"Chess",key:KEY,specials:[
  {label:"Coin flips won",of:(r,n)=>r.filter(x=>x.flipWinner===n).length}]});
 if(window.GNS)GNS.button(document.getElementById("foot"));
 applyTheme();buildBoard();lvLabel();newGame();
+window.__chess={
+  phase:()=>phase, turn:()=>st&&st.turn, level:(l)=>{if(l!==undefined)botLevel=l;return botLevel;},
+  pieces:()=>document.querySelectorAll("#board svg").length,
+  flyCount:()=>flyLayer?flyLayer.children.length:0,
+  move:(from,to,promo)=>{if(!st)return false;const m=CH.legal(st).find(x=>x.from===from&&x.to===to&&(!promo||x.promo===promo));if(m)doCommit(m);return !!m;},
+  start:(opts)=>{P={w:{name:"White"},b:{name:"Black"}};st=CH.fresh();sel=-1;legalNow=[];lastMv=null;hintShown=null;botKey="";
+    GS={start:Date.now(),flipWinner:"White",friendly:true,moves:0,trace:[]};phase="play";
+    if(opts&&opts.level!==undefined)botLevel=opts.level;render();}
+};
 window.GN&&GN.sync&&GN.sync();
 
 </script></body></html>
