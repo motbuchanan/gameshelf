@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Knucklebones</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0;}
+  body{font-family:system-ui,-apple-system,sans-serif;color:#ece3d2;min-height:100vh;
+    background:radial-gradient(120% 90% at 50% 8%,#3a2c20,#15100b 70%);display:flex;flex-direction:column;align-items:center;}
+  #bar{width:100%;max-width:520px;display:flex;align-items:center;gap:10px;padding:11px 14px;}
+  #bar a{color:#e6ddd0;text-decoration:none;font-size:14px;border:1px solid #6e5f50;border-radius:999px;padding:6px 12px;}
+  #title{font-weight:800;font-size:18px;flex:1;}
+  #turn{font-size:12.5px;color:#e3c98a;border:1px solid #6a5526;background:#2a2114;border-radius:999px;padding:5px 11px;}
+  #wrap{width:100%;max-width:420px;padding:6px 12px 20px;display:flex;flex-direction:column;align-items:center;gap:10px;}
+  .side{width:100%;display:flex;flex-direction:column;align-items:center;gap:3px;}
+  .nameRow{display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px;}
+  .nameRow .tot{color:#e3c98a;font-variant-numeric:tabular-nums;}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;width:min(86vw,330px);}
+  .col{display:flex;flex-direction:column;gap:5px;background:rgba(0,0,0,.22);border-radius:10px;padding:6px;min-height:0;
+    border:2px solid transparent;transition:border-color .15s,background .15s;}
+  .side.bottom .col{flex-direction:column-reverse;}
+  .col.pick{cursor:pointer;border-color:#e3c98a;background:rgba(227,201,138,.12);}
+  .col.pick:active{background:rgba(227,201,138,.25);}
+  .cell{aspect-ratio:1;border-radius:9px;background:rgba(255,255,255,.04);display:flex;align-items:center;justify-content:center;}
+  .die{width:88%;height:88%;border-radius:11px;background:linear-gradient(150deg,#fbf7ec,#d9cfb6);position:relative;
+    box-shadow:0 2px 4px rgba(0,0,0,.4),inset 0 2px 2px rgba(255,255,255,.7);animation:drop .18s ease-out;}
+  @keyframes drop{from{transform:translateY(-10px) scale(.7);opacity:0;}to{transform:none;opacity:1;}}
+  .pip{position:absolute;width:17%;height:17%;border-radius:50%;background:#3a2c20;}
+  .colsum{text-align:center;font-size:11px;color:#b9a989;font-weight:700;font-variant-numeric:tabular-nums;height:13px;}
+  #mid{display:flex;align-items:center;justify-content:center;gap:16px;width:100%;padding:4px 0;}
+  #dieBox{width:62px;height:62px;border-radius:14px;background:linear-gradient(150deg,#fbf7ec,#d9cfb6);position:relative;
+    box-shadow:0 4px 9px rgba(0,0,0,.5),inset 0 2px 3px rgba(255,255,255,.7);}
+  #dieBox.empty{background:#2a2114;box-shadow:inset 0 0 0 2px #4a3d28;}
+  #dieBox .pip{width:15%;height:15%;background:#3a2c20;}
+  #rollBtn{font-family:inherit;font-weight:800;font-size:16px;padding:14px 26px;border-radius:12px;border:none;
+    color:#241c12;background:#e3c98a;box-shadow:0 4px 0 #9c7e3e;cursor:pointer;}
+  #rollBtn:disabled{opacity:.4;box-shadow:none;cursor:default;}
+  #msg{min-height:20px;text-align:center;font-size:13.5px;color:#cdbfa4;font-weight:600;}
+  #foot{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;padding:6px 12px;width:100%;max-width:520px;}
+  .ov{position:fixed;inset:0;background:rgba(16,12,8,.95);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:60;text-align:center;padding:22px;}
+  .ov.show{display:flex;} .ov h1{font-size:25px;} .ov p{color:#cfc4b4;font-size:15px;}
+  .act{font-family:inherit;font-size:15px;font-weight:bold;padding:11px 20px;border-radius:10px;border:none;background:#e3c98a;color:#241c12;box-shadow:0 4px 0 #9c7e3e;cursor:pointer;}
+  .ghost{background:#2a241e;color:#e6ddd0;border:1px solid #6e5f50;box-shadow:none;text-decoration:none;padding:10px 16px;border-radius:10px;font-size:14px;}
+  html.gn-easy #title{font-size:21px;} html.gn-easy .nameRow{font-size:16px;}
+</style>
+</head>
+<body>
+<div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">Knucklebones</div><div id="turn"></div></div>
+<div id="wrap">
+  <div class="side top" id="sideTop">
+    <div class="nameRow"><span id="nameTop"></span><span class="tot" id="totTop">0</span></div>
+    <div class="grid" id="gridTop"></div>
+  </div>
+  <div id="mid">
+    <div id="dieBox" class="empty"></div>
+    <button id="rollBtn">Roll</button>
+  </div>
+  <div class="side bottom" id="sideBot">
+    <div class="grid" id="gridBot"></div>
+    <div class="nameRow"><span id="nameBot"></span><span class="tot" id="totBot">0</span></div>
+  </div>
+  <div id="msg"></div>
+</div>
+<div id="foot"></div>
+<div class="ov" id="overlay"><div style="font-size:44px;">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p>
+  <button class="act" id="ovBtn">Play again</button><a href="index.html" class="ghost">Back to shelf</a></div>
+<script src="gamenight.js?v=12"></script>
+<script src="sfx.js?v=5"></script>
+<script>
+const KEY="knuckle_games";
+function S(n,o){window.GNS&&GNS.play(n,0,o);}
+const PIPS={1:[[50,50]],2:[[28,28],[72,72]],3:[[28,28],[50,50],[72,72]],
+  4:[[28,28],[72,28],[28,72],[72,72]],5:[[28,28],[72,28],[50,50],[28,72],[72,72]],
+  6:[[28,26],[72,26],[28,50],[72,50],[28,74],[72,74]]};
+function dieHTML(v){return PIPS[v].map(p=>'<span class="pip" style="left:'+(p[0]-8.5)+'%;top:'+(p[1]-8.5)+'%"></span>').join('');}
+
+let board=[[[],[],[]],[[],[],[]]]; // board[side][col] = array of die values (max 3)
+let turn=0, die=null, phase="over", names=["",""], botSide=-1, botDiff="medium", friendly=false, GS=null;
+
+function colScore(arr){const c={};for(const v of arr)c[v]=(c[v]||0)+1;let s=0;for(const v in c)s+=(+v)*c[v]*c[v];return s;}
+function total(side){return board[side][0].length+board[side][1].length+board[side][2].length?
+  colScore(board[side][0])+colScore(board[side][1])+colScore(board[side][2]):0;}
+function boardFull(side){return board[side].every(c=>c.length>=3);}
+
+function render(){
+  for(const[side,gid,nid,tid] of [[0,"gridTop","nameTop","totTop"],[1,"gridBot","nameBot","totBot"]]){
+    const g=document.getElementById(gid);g.innerHTML="";
+    const youCanPlace = phase==="place" && turn===side && (botSide!==side) && die!=null;
+    for(let c=0;c<3;c++){
+      const col=document.createElement("div");col.className="col"+(youCanPlace&&board[side][c].length<3?" pick":"");
+      for(let r=0;r<3;r++){
+        const cell=document.createElement("div");cell.className="cell";
+        const v=board[side][c][r];
+        if(v){const d=document.createElement("div");d.className="die";d.innerHTML=dieHTML(v);cell.appendChild(d);}
+        col.appendChild(cell);
+      }
+      const cs=document.createElement("div");cs.className="colsum";cs.textContent=board[side][c].length?colScore(board[side][c]):"";
+      // colsum below grid handled separately; attach as title row instead
+      if(youCanPlace&&board[side][c].length<3)col.addEventListener("click",()=>placeHuman(c));
+      g.appendChild(col);
+    }
+    document.getElementById(nid).textContent=names[side];
+    document.getElementById(tid).textContent=total(side);
+  }
+  const db=document.getElementById("dieBox");
+  if(die!=null){db.className="";db.innerHTML=dieHTML(die);}else{db.className="empty";db.innerHTML="";}
+  document.getElementById("rollBtn").disabled=!(phase==="roll"&&(botSide!==turn));
+  document.getElementById("turn").textContent=phase==="over"?"":(turn===botSide?"Computer\u2019s turn":names[turn]+"\u2019s turn");
+}
+function setMsg(t){document.getElementById("msg").textContent=t;}
+
+function roll(){if(phase!=="roll")return null;die=1+Math.floor(Math.random()*6);phase="place";S("dice");render();return die;}
+function rollHuman(){if(phase!=="roll"||turn===botSide)return;roll();
+  setMsg("Place your "+die+" in a column.");}
+function placeHuman(c){if(phase!=="place"||turn===botSide||die==null)return;doPlace(turn,c);}
+function doPlace(side,c){
+  if(board[side][c].length>=3)return;
+  board[side][c].push(die);
+  // destruction: remove all dice of this value from opponent's matching column
+  const opp=side^1, before=board[opp][c].length;
+  board[opp][c]=board[opp][c].filter(v=>v!==die);
+  const destroyed=before-board[opp][c].length;
+  S(destroyed?"bump":"place");
+  die=null;
+  if(boardFull(side)){render();finish();return;}
+  turn=side^1;phase="roll";render();
+  if(turn===botSide)setTimeout(botTurn,650);
+  else setMsg(names[turn]+", tap Roll.");
+}
+
+/* ---- computer ---- */
+function evalPlace(side,c,v){ // gain to `side` of placing v in column c
+  const opp=side^1;
+  const my=board[side][c].slice();my.push(v);
+  const myGain=colScore(my)-colScore(board[side][c]);
+  const theirCol=board[opp][c];
+  const theirLoss=colScore(theirCol)-colScore(theirCol.filter(x=>x!==v));
+  return myGain+theirLoss;
+}
+function botChoose(v){
+  const legal=[0,1,2].filter(c=>board[botSide][c].length<3);
+  if(botDiff==="easy"&&Math.random()<0.5)return legal[Math.floor(Math.random()*legal.length)];
+  let best=legal[0],bestScore=-1e9;
+  for(const c of legal){let s=evalPlace(botSide,c,v);
+    if(botDiff==="hard"){ // small lookahead: subtract opponent's best reply gain
+      const opp=botSide^1;const tmp=board[botSide][c].slice();tmp.push(v);
+      const saved=board[botSide][c];board[botSide][c]=tmp;
+      let oppBest=0;for(const oc of [0,1,2].filter(x=>board[opp][x].length<3))
+        for(let ov=1;ov<=6;ov++)oppBest=Math.max(oppBest,evalPlace(opp,oc,ov)/6);
+      board[botSide][c]=saved;s-=oppBest*0.6;}
+    if(botDiff!=="hard")s+=Math.random()*0.5;
+    if(s>bestScore){bestScore=s;best=c;}}
+  return best;
+}
+function botTurn(){if(phase!=="roll"||turn!==botSide)return;
+  roll();setMsg("Computer rolls "+die+"\u2026");
+  const c=botChoose(die);
+  setTimeout(()=>{if(phase==="place"&&turn===botSide)doPlace(botSide,c);},620);
+}
+
+function finish(){phase="over";
+  const t0=total(0),t1=total(1);
+  let winner=null,wn="",ln="";
+  if(t0!==t1){const w=t0>t1?0:1;winner=w;wn=names[w];ln=names[w^1];}
+  const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
+    winner:winner==null?"(draw)":wn,loser:winner==null?"(draw)":ln,
+    method:"score",scoreW:t0,scoreB:t1,draw:winner==null};
+  try{if(!GS.friendly&&winner!=null)GN.recordGame(KEY,rec);}catch(e){}
+  document.getElementById("ovTitle").textContent=winner==null?"Tie game!":(wn+" wins!");
+  document.getElementById("ovText").textContent=names[0]+" "+t0+"  \u00b7  "+names[1]+" "+t1;
+  S(winner==null?"womp":"fanfare");
+  document.getElementById("overlay").classList.add("show");
+}
+
+function startGame(cfg){
+  board=[[[],[],[]],[[],[],[]]];die=null;turn=0;phase="roll";
+  names=cfg.names;botSide=cfg.botSide;botDiff=cfg.botDiff||"medium";
+  GS={start:Date.now(),friendly:cfg.friendly};
+  document.getElementById("overlay").classList.remove("show");
+  render();
+  if(turn===botSide)setTimeout(botTurn,650);
+  else setMsg(names[turn]+", tap Roll to start.");
+}
+function newGame(){
+  if(window.GN&&GN.matchStart){
+    GN.matchStart(function(m){
+      const first=m.first, a=m.a, b=m.b||{name:"Computer"};
+      const order=(first===a)?[a,b]:[b,a];
+      const bs = m.vsComputer ? (order[0].name==="Computer"?0:(order[1].name==="Computer"?1:-1)) : -1;
+      // ensure computer named "Computer"
+      const nm=[order[0].name,order[1].name];
+      startGame({names:nm, botSide:m.vsComputer?(nm[1]==="Computer"?1:1):-1, botDiff:m.bot||"medium", friendly:m.friendly});
+    },{bot:true});
+  } else startGame({names:["Player 1","Player 2"],botSide:-1,friendly:true});
+}
+document.getElementById("rollBtn").addEventListener("click",rollHuman);
+document.getElementById("ovBtn").addEventListener("click",newGame);
+
+if(window.GN&&GN.rulesButton)GN.rulesButton(document.getElementById("foot"),{title:"Knucklebones",sections:[
+ {h:"Goal",t:"Fill your 3\u00d73 grid with dice worth more than your opponent\u2019s. When either grid fills up, highest total wins."},
+ {h:"Your turn",t:"Tap Roll for a die, then drop it into one of your three columns. You must place every die you roll."},
+ {h:"Stacking pays",t:"Matching dice in the same column multiply. Two 4s in a column score 4\u00d72\u00d72 = 16, not 8. Three 4s score 4\u00d73\u00d73 = 48. Build a column, not a spread."},
+ {h:"Smash their dice",t:"When you place a die, every die of that SAME number in your opponent\u2019s matching column is destroyed. Drop a 5 in your left column to wipe their 5s from their left column \u2014 offense and defense at once."},
+ {h:"vs Computer",t:"Easy plays loose, Medium plays the best immediate move, Hard looks a step ahead. The shelf keeps your record."}]});
+if(window.GN&&GN.statsButton)GN.statsButton(document.getElementById("foot"),{title:"Knucklebones",key:KEY,specials:[
+ {label:"Wins",of:(r,n)=>r.filter(x=>x.winner===n).length},
+ {label:"Highest score",of:(r,n)=>{let m=0;for(const x of r){if(x.winner===n)m=Math.max(m,Math.max(x.scoreW||0,x.scoreB||0));}return m;}}]});
+if(window.GNS)GNS.button(document.getElementById("foot"));
+
+window.__kb={state:()=>({board:JSON.parse(JSON.stringify(board)),turn,die,phase,t0:total(0),t1:total(1),botSide}),
+  roll:roll, place:(side,c)=>doPlace(side,c), colScore:colScore, full:boardFull,
+  start:(cfg)=>startGame(cfg||{names:["A","B"],botSide:-1,friendly:true}), botChoose:botChoose,
+  set:(d,t)=>{die=d;turn=t;phase="place";}};
+newGame();
+</script>
+</body>
+</html>

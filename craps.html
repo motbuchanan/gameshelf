@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Craps</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0;}
+  body{font-family:system-ui,-apple-system,sans-serif;color:#eaf0e6;min-height:100vh;
+    background:radial-gradient(120% 90% at 50% 8%,#1f4536,#0c1813 70%);display:flex;flex-direction:column;align-items:center;}
+  #bar{width:100%;max-width:520px;display:flex;align-items:center;gap:10px;padding:11px 14px;}
+  #bar a{color:#dfe9df;text-decoration:none;font-size:14px;border:1px solid #3f6b54;border-radius:999px;padding:6px 12px;}
+  #title{font-weight:800;font-size:18px;flex:1;}
+  #who{font-size:12.5px;color:#9fd6b4;border:1px solid #34604a;background:#13241c;border-radius:999px;padding:5px 11px;cursor:pointer;}
+  #wrap{width:100%;max-width:440px;padding:10px 14px 20px;display:flex;flex-direction:column;align-items:center;gap:16px;}
+  #stats{display:flex;gap:12px;width:100%;}
+  .stat{flex:1;background:#13241c;border:1px solid #2b4a38;border-radius:12px;padding:10px;text-align:center;}
+  .stat small{display:block;font-size:10px;color:#7fae90;font-weight:700;letter-spacing:.5px;}
+  .stat .v{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;color:#f4e2a0;}
+  #point{font-weight:800;font-size:14px;padding:7px 14px;border-radius:999px;border:1px dashed #4f7d63;color:#9fd6b4;}
+  #point.on{border-style:solid;background:#1f8a4c;color:#06140c;border-color:#1f8a4c;}
+  #dice{display:flex;gap:14px;}
+  .die{width:64px;height:64px;border-radius:14px;background:linear-gradient(150deg,#fbf7ec,#d9cfb6);position:relative;
+    box-shadow:0 4px 9px rgba(0,0,0,.5),inset 0 2px 3px rgba(255,255,255,.7);}
+  .die.empty{background:#13241c;box-shadow:inset 0 0 0 2px #2b4a38;}
+  .pip{position:absolute;width:15%;height:15%;border-radius:50%;background:#1f4536;}
+  #betRow{display:flex;align-items:center;gap:12px;}
+  #betRow button{width:42px;height:42px;border-radius:11px;border:1px solid #3f6b54;background:#13241c;color:#eaf0e6;font-size:22px;font-weight:800;cursor:pointer;}
+  #betVal{font-size:20px;font-weight:800;min-width:74px;text-align:center;color:#f4e2a0;}
+  #betRow small{display:block;font-size:10px;color:#7fae90;}
+  #act{display:flex;gap:12px;}
+  #act button{font-family:inherit;font-weight:800;font-size:16px;padding:14px 26px;border-radius:12px;border:none;cursor:pointer;}
+  #rollBtn{color:#06140c;background:#5fc98a;box-shadow:0 4px 0 #2f8a55;}
+  #cashBtn{color:#eaf0e6;background:#2a3f33;box-shadow:0 4px 0 #16261d;}
+  #act button:disabled{opacity:.4;box-shadow:none;cursor:default;}
+  #msg{min-height:22px;text-align:center;font-size:14px;color:#cfe0d3;font-weight:600;}
+  #foot{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;padding:6px 12px;width:100%;max-width:520px;}
+  .ov{position:fixed;inset:0;background:rgba(8,16,12,.95);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:60;text-align:center;padding:22px;}
+  .ov.show{display:flex;} .ov h1{font-size:25px;} .ov p{color:#cfe0d3;font-size:15px;}
+  .act2{font-family:inherit;font-size:15px;font-weight:bold;padding:11px 20px;border-radius:10px;border:none;background:#5fc98a;color:#06140c;box-shadow:0 4px 0 #2f8a55;cursor:pointer;}
+  .ghost{background:#13241c;color:#dfe9df;border:1px solid #3f6b54;box-shadow:none;text-decoration:none;padding:10px 16px;border-radius:10px;font-size:14px;}
+  html.gn-easy #title{font-size:21px;}
+</style>
+</head>
+<body>
+<div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">Craps</div><div id="who">1 player</div></div>
+<div id="wrap">
+  <div id="stats">
+    <div class="stat"><small>BANKROLL</small><div class="v" id="bank">100</div></div>
+    <div class="stat"><small>BEST</small><div class="v" id="best">100</div></div>
+  </div>
+  <div id="point">Come-out roll</div>
+  <div id="dice"><div class="die empty" id="d0"></div><div class="die empty" id="d1"></div></div>
+  <div id="betRow"><button id="betDn">&#8722;</button><div><div id="betVal">10</div><small>pass line bet</small></div><button id="betUp">&#43;</button></div>
+  <div id="act"><button id="rollBtn">Roll</button><button id="cashBtn">Cash out</button></div>
+  <div id="msg">Set your bet and roll. 7 or 11 wins; 2, 3, 12 lose; anything else sets the point.</div>
+</div>
+<div id="foot"></div>
+<div class="ov" id="overlay"><div style="font-size:44px;">&#127922;</div><h1 id="ovTitle"></h1><p id="ovText"></p>
+  <button class="act2" id="ovBtn">Play again</button><a href="index.html" class="ghost">Back to shelf</a></div>
+<script src="gamenight.js?v=12"></script>
+<script src="sfx.js?v=5"></script>
+<script>
+const KEY="craps_games";
+function S(n,o){window.GNS&&GNS.play(n,0,o);}
+const PIPS={1:[[50,50]],2:[[28,28],[72,72]],3:[[28,28],[50,50],[72,72]],
+  4:[[28,28],[72,28],[28,72],[72,72]],5:[[28,28],[72,28],[50,50],[28,72],[72,72]],
+  6:[[28,26],[72,26],[28,50],[72,50],[28,74],[72,74]]};
+function dieHTML(v){return PIPS[v].map(p=>'<span class="pip" style="left:'+(p[0]-7.5)+'%;top:'+(p[1]-7.5)+'%"></span>').join('');}
+let bank=100,best=100,bet=10,point=0,phase="bet",who="",GS=null,rolls=0;
+
+function render(){
+  document.getElementById("bank").textContent=bank;
+  document.getElementById("best").textContent=best;
+  document.getElementById("betVal").textContent=bet;
+  const pt=document.getElementById("point");
+  if(point){pt.textContent="POINT "+point;pt.classList.add("on");}else{pt.textContent="Come-out roll";pt.classList.remove("on");}
+  document.getElementById("rollBtn").disabled=phase==="over";
+  document.getElementById("cashBtn").disabled=phase==="over";
+  document.getElementById("betDn").disabled=!!point||phase==="over";
+  document.getElementById("betUp").disabled=!!point||phase==="over";
+}
+function showDice(a,b){document.getElementById("d0").className="die";document.getElementById("d0").innerHTML=dieHTML(a);
+  document.getElementById("d1").className="die";document.getElementById("d1").innerHTML=dieHTML(b);}
+function setMsg(t){document.getElementById("msg").textContent=t;}
+
+function roll(fa,fb){
+  if(phase==="over")return;
+  const a=fa||1+Math.floor(Math.random()*6), b=fb||1+Math.floor(Math.random()*6), sum=a+b;
+  rolls++;showDice(a,b);S("dice");
+  if(!point){
+    if(sum===7||sum===11){win("Natural "+sum+" \u2014 pass wins!");}
+    else if(sum===2||sum===3||sum===12){lose("Craps "+sum+" \u2014 pass loses.");}
+    else{point=sum;setMsg("Point is "+sum+". Roll it again before a 7.");render();}
+  }else{
+    if(sum===point){point=0;win("Hit the "+sum+" \u2014 pass wins!");}
+    else if(sum===7){point=0;lose("Seven out \u2014 pass loses.");}
+    else{setMsg("Rolled "+sum+". Keep rolling for the "+point+".");}
+  }
+  return sum;
+}
+function win(m){bank+=bet;if(bank>best)best=bank;S("chime");setMsg(m+" +"+bet);render();}
+function lose(m){bank-=bet;S("womp",120,{rate:.8});if(bank<bet)bet=Math.max(5,bank);
+  if(bank<=0){bank=0;render();gameOver("Out of chips!");return;}
+  setMsg(m+" \u2212"+bet);render();}
+function gameOver(title){phase="over";
+  const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,score:best,
+    solo:true,winner:null,draw:true,finalBank:bank,rolls};
+  try{if(window.GN&&GN.recordGame)GN.recordGame(KEY,rec);}catch(e){}
+  document.getElementById("ovTitle").textContent=title;
+  document.getElementById("ovText").textContent="Best bankroll: "+best+" chips over "+rolls+" rolls. Walked with "+bank+".";
+  document.getElementById("overlay").classList.add("show");}
+
+document.getElementById("rollBtn").addEventListener("click",()=>roll());
+document.getElementById("cashBtn").addEventListener("click",()=>{if(phase!=="over")gameOver("Cashed out!");});
+document.getElementById("betUp").addEventListener("click",()=>{if(!point&&bet+5<=bank){bet+=5;render();}});
+document.getElementById("betDn").addEventListener("click",()=>{if(!point&&bet-5>=5){bet-=5;render();}});
+document.getElementById("ovBtn").addEventListener("click",()=>start());
+
+function start(){bank=100;best=100;bet=10;point=0;phase="bet";rolls=0;GS={start:Date.now()};
+  document.getElementById("overlay").classList.remove("show");
+  document.getElementById("d0").className="die empty";document.getElementById("d0").innerHTML="";
+  document.getElementById("d1").className="die empty";document.getElementById("d1").innerHTML="";
+  setMsg("Set your bet and roll. 7 or 11 wins; 2, 3, 12 lose; anything else sets the point.");render();}
+function pickPlayer(){if(window.GN&&GN.soloStart){GN.soloStart(function(name){who=name;
+  if(GN.whoBadge)GN.whoBadge(document.getElementById("who"),name,pickPlayer);else document.getElementById("who").textContent=name;
+  start();},{title:"Craps"});}else start();}
+document.getElementById("who").addEventListener("click",pickPlayer);
+
+if(window.GN&&GN.rulesButton)GN.rulesButton(document.getElementById("foot"),{title:"Craps",sections:[
+ {h:"The pass line",t:"Place a bet, then roll two dice. This is a simple solo pass-line game \u2014 build your bankroll as high as you can."},
+ {h:"Come-out roll",t:"On the first roll: 7 or 11 wins instantly. 2, 3, or 12 (\u201ccraps\u201d) loses. Any other number (4,5,6,8,9,10) becomes your POINT."},
+ {h:"Chasing the point",t:"Once a point is set, keep rolling. Roll the point again and you win. Roll a 7 first (\u201cseven out\u201d) and you lose. You can\u2019t change your bet while a point is on."},
+ {h:"Bankroll",t:"Win to grow your chips, and cash out to lock in your best. Hit zero and the table\u2019s done. The shelf remembers your highest bankroll."}]});
+if(window.GN&&GN.statsButton)GN.statsButton(document.getElementById("foot"),{title:"Craps",key:KEY,specials:[
+ {label:"Best bankroll",of:(r,n)=>{let m=0;for(const x of r)m=Math.max(m,x.score||0);return m;}},
+ {label:"Sessions",of:(r,n)=>r.length}]});
+if(window.GNS)GNS.button(document.getElementById("foot"));
+
+window.__craps={state:()=>({bank,best,bet,point,phase,rolls}),roll:(a,b)=>roll(a,b),
+  setBet:(v)=>{bet=v;render();},start:start,cash:()=>gameOver("Cashed out!")};
+pickPlayer();
+</script>
+</body>
+</html>

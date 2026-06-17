@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Pig</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0;}
+  body{font-family:system-ui,-apple-system,sans-serif;color:#f0e8dc;min-height:100vh;
+    background:radial-gradient(120% 90% at 50% 8%,#2c3a52,#10141d 70%);display:flex;flex-direction:column;align-items:center;}
+  #bar{width:100%;max-width:520px;display:flex;align-items:center;gap:10px;padding:11px 14px;}
+  #bar a{color:#e6ddd0;text-decoration:none;font-size:14px;border:1px solid #4f6080;border-radius:999px;padding:6px 12px;}
+  #title{font-weight:800;font-size:18px;flex:1;}
+  #turn{font-size:12.5px;color:#9fc0ee;border:1px solid #3a5680;background:#1a2436;border-radius:999px;padding:5px 11px;}
+  #wrap{width:100%;max-width:440px;padding:10px 14px 20px;display:flex;flex-direction:column;align-items:center;gap:16px;}
+  #scores{display:flex;gap:12px;width:100%;}
+  .pcard{flex:1;background:#1a2436;border:2px solid #2c3a52;border-radius:14px;padding:14px 10px;text-align:center;transition:border-color .2s,transform .2s;}
+  .pcard.active{border-color:#6fa8e8;transform:translateY(-3px);box-shadow:0 6px 16px rgba(0,0,0,.4);}
+  .pcard .pn{font-weight:700;font-size:15px;color:#cfe0f4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .pcard .ps{font-size:40px;font-weight:800;font-variant-numeric:tabular-nums;margin-top:2px;}
+  .pcard .goal{font-size:11px;color:#7f93b3;}
+  #turnTot{font-size:15px;font-weight:700;color:#f4c542;min-height:22px;}
+  #dieBox{width:88px;height:88px;border-radius:18px;background:linear-gradient(150deg,#fbf7ec,#d9cfb6);position:relative;
+    box-shadow:0 5px 12px rgba(0,0,0,.5),inset 0 2px 3px rgba(255,255,255,.7);}
+  #dieBox.empty{background:#1a2436;box-shadow:inset 0 0 0 2px #34465e;}
+  #dieBox.roll1{background:linear-gradient(150deg,#f3a9a0,#d96a5c);}
+  .pip{position:absolute;width:15%;height:15%;border-radius:50%;background:#2c3a52;}
+  #btns{display:flex;gap:12px;}
+  #btns button{font-family:inherit;font-weight:800;font-size:16px;padding:14px 28px;border-radius:12px;border:none;cursor:pointer;}
+  #rollBtn{color:#10141d;background:#6fa8e8;box-shadow:0 4px 0 #3a6fab;}
+  #holdBtn{color:#10141d;background:#f4c542;box-shadow:0 4px 0 #a8852a;}
+  #btns button:disabled{opacity:.35;box-shadow:none;cursor:default;}
+  #msg{min-height:20px;text-align:center;font-size:13.5px;color:#bcc9dd;font-weight:600;}
+  #foot{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;padding:6px 12px;width:100%;max-width:520px;}
+  .ov{position:fixed;inset:0;background:rgba(12,16,24,.95);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:60;text-align:center;padding:22px;}
+  .ov.show{display:flex;} .ov h1{font-size:25px;} .ov p{color:#bcc9dd;font-size:15px;}
+  .act{font-family:inherit;font-size:15px;font-weight:bold;padding:11px 20px;border-radius:10px;border:none;background:#6fa8e8;color:#10141d;box-shadow:0 4px 0 #3a6fab;cursor:pointer;}
+  .ghost{background:#1a2436;color:#e6ddd0;border:1px solid #4f6080;box-shadow:none;text-decoration:none;padding:10px 16px;border-radius:10px;font-size:14px;}
+  html.gn-easy #title{font-size:21px;} html.gn-easy .pcard .pn{font-size:17px;}
+</style>
+</head>
+<body>
+<div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">Pig</div><div id="turn"></div></div>
+<div id="wrap">
+  <div id="scores">
+    <div class="pcard" id="card0"><div class="pn" id="n0"></div><div class="ps" id="s0">0</div><div class="goal">first to 100</div></div>
+    <div class="pcard" id="card1"><div class="pn" id="n1"></div><div class="ps" id="s1">0</div><div class="goal">first to 100</div></div>
+  </div>
+  <div id="turnTot"></div>
+  <div id="dieBox" class="empty"></div>
+  <div id="btns"><button id="rollBtn">Roll</button><button id="holdBtn">Hold</button></div>
+  <div id="msg"></div>
+</div>
+<div id="foot"></div>
+<div class="ov" id="overlay"><div style="font-size:44px;">&#128055;</div><h1 id="ovTitle"></h1><p id="ovText"></p>
+  <button class="act" id="ovBtn">Play again</button><a href="index.html" class="ghost">Back to shelf</a></div>
+<script src="gamenight.js?v=12"></script>
+<script src="sfx.js?v=5"></script>
+<script>
+const KEY="pig_games", TARGET=100;
+function S(n,o){window.GNS&&GNS.play(n,0,o);}
+const PIPS={1:[[50,50]],2:[[28,28],[72,72]],3:[[28,28],[50,50],[72,72]],
+  4:[[28,28],[72,28],[28,72],[72,72]],5:[[28,28],[72,28],[50,50],[28,72],[72,72]],
+  6:[[28,26],[72,26],[28,50],[72,50],[28,74],[72,74]]};
+function dieHTML(v){return PIPS[v].map(p=>'<span class="pip" style="left:'+(p[0]-7.5)+'%;top:'+(p[1]-7.5)+'%"></span>').join('');}
+let scores=[0,0],turn=0,turnTot=0,die=null,phase="over",names=["",""],botSide=-1,botDiff="medium",busy=false,GS=null;
+
+function render(){
+  document.getElementById("s0").textContent=scores[0];document.getElementById("s1").textContent=scores[1];
+  document.getElementById("n0").textContent=names[0];document.getElementById("n1").textContent=names[1];
+  document.getElementById("card0").classList.toggle("active",turn===0&&phase!=="over");
+  document.getElementById("card1").classList.toggle("active",turn===1&&phase!=="over");
+  document.getElementById("turnTot").textContent=phase==="over"?"":("Turn total: "+turnTot);
+  const db=document.getElementById("dieBox");
+  if(die!=null){db.className=die===1?"roll1":"";db.innerHTML=dieHTML(die);}else{db.className="empty";db.innerHTML="";}
+  const myTurn=phase==="roll"&&turn!==botSide&&!busy;
+  document.getElementById("rollBtn").disabled=!myTurn;
+  document.getElementById("holdBtn").disabled=!myTurn||turnTot===0;
+  document.getElementById("turn").textContent=phase==="over"?"":(turn===botSide?"Computer rolling\u2026":names[turn]+"\u2019s turn");
+}
+function setMsg(t){document.getElementById("msg").textContent=t;}
+
+function rollOnce(){die=1+Math.floor(Math.random()*6);S("dice");
+  if(die===1){turnTot=0;render();S("womp",120,{rate:.8});return 1;}
+  turnTot+=die;render();return die;}
+function rollHuman(){if(phase!=="roll"||turn===botSide||busy)return;
+  const d=rollOnce();
+  if(d===1){setMsg("Rolled a 1 \u2014 turn lost!");setTimeout(endTurn,800);}
+  else setMsg("Rolled "+d+". Roll again or hold.");}
+function holdHuman(){if(phase!=="roll"||turn===botSide||busy||turnTot===0)return;bank();}
+function bank(){scores[turn]+=turnTot;S("chime");
+  if(scores[turn]>=TARGET){render();finish();return;}
+  turnTot=0;endTurn();}
+function endTurn(){die=null;turnTot=0;turn^=1;phase="roll";render();
+  if(turn===botSide){busy=true;setTimeout(botStep,700);}
+  else{busy=false;setMsg(names[turn]+", roll to start your turn.");}}
+
+/* ---- computer ---- */
+function holdTarget(){if(botDiff==="easy")return 14+Math.floor(Math.random()*6);
+  if(botDiff==="hard"){const behind=scores[botSide^1]-scores[botSide];return Math.max(18,Math.min(30,20+Math.floor(behind/4)));}
+  return 20;}
+function botStep(){
+  if(phase!=="roll"||turn!==botSide){busy=false;return;}
+  // win if possible by holding
+  if(scores[botSide]+turnTot>=TARGET){bankBot();return;}
+  const d=rollOnce();
+  if(d===1){setMsg("Computer rolled a 1.");setTimeout(()=>{endTurn();},800);return;}
+  setMsg("Computer rolled "+d+" (turn "+turnTot+").");
+  if(turnTot>=holdTarget()||scores[botSide]+turnTot>=TARGET)setTimeout(bankBot,650);
+  else setTimeout(botStep,650);
+}
+function bankBot(){scores[botSide]+=turnTot;S("chime");
+  if(scores[botSide]>=TARGET){render();finish();return;}
+  turnTot=0;endTurn();}
+
+function finish(){phase="over";busy=false;
+  const w=scores[0]>scores[1]?0:1;
+  const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
+    winner:names[w],loser:names[w^1],method:"to100",scoreW:scores[w],draw:false};
+  try{if(!GS.friendly)GN.recordGame(KEY,rec);}catch(e){}
+  document.getElementById("ovTitle").textContent=names[w]+" wins!";
+  document.getElementById("ovText").textContent=names[0]+" "+scores[0]+"  \u00b7  "+names[1]+" "+scores[1];
+  S("fanfare");document.getElementById("overlay").classList.add("show");}
+
+function startGame(cfg){scores=[0,0];turnTot=0;die=null;turn=0;phase="roll";busy=false;
+  names=cfg.names;botSide=cfg.botSide;botDiff=cfg.botDiff||"medium";GS={start:Date.now(),friendly:cfg.friendly};
+  document.getElementById("overlay").classList.remove("show");render();
+  if(turn===botSide){busy=true;setTimeout(botStep,700);}else setMsg(names[turn]+", roll to start.");}
+function newGame(){
+  if(window.GN&&GN.matchStart){GN.matchStart(function(m){
+    const a=m.a,b=m.b||{name:"Computer"},first=m.first;const order=(first===a)?[a,b]:[b,a];
+    const nm=[order[0].name,order[1].name];
+    const bs=m.vsComputer?(nm[1]==="Computer"?1:0):-1;
+    startGame({names:nm,botSide:bs,botDiff:m.bot||"medium",friendly:m.friendly});
+  },{bot:true});}
+  else startGame({names:["Player 1","Player 2"],botSide:-1,friendly:true});
+}
+document.getElementById("rollBtn").addEventListener("click",rollHuman);
+document.getElementById("holdBtn").addEventListener("click",holdHuman);
+document.getElementById("ovBtn").addEventListener("click",newGame);
+
+if(window.GN&&GN.rulesButton)GN.rulesButton(document.getElementById("foot"),{title:"Pig",sections:[
+ {h:"Goal",t:"Be the first to reach 100 points."},
+ {h:"Your turn",t:"Roll as many times as you dare. Each roll adds to your turn total \u2014 but roll a 1 and you lose the whole turn total and your turn ends. Tap Hold to bank your turn total into your score and pass the dice."},
+ {h:"The gamble",t:"Push for big turns, but the longer you roll the more likely a 1 wipes it out. A common rule of thumb: hold around 20."},
+ {h:"vs Computer",t:"Easy holds early and loosely, Medium holds near 20, Hard presses harder when it\u2019s behind. The shelf keeps your record."}]});
+if(window.GN&&GN.statsButton)GN.statsButton(document.getElementById("foot"),{title:"Pig",key:KEY,specials:[
+ {label:"Wins",of:(r,n)=>r.filter(x=>x.winner===n).length}]});
+if(window.GNS)GNS.button(document.getElementById("foot"));
+
+window.__pig={state:()=>({scores:scores.slice(),turn,turnTot,die,phase,botSide}),
+  rollOnce:rollOnce, hold:()=>{if(turnTot>0)bank();}, endTurn:endTurn,
+  start:(cfg)=>startGame(cfg||{names:["A","B"],botSide:-1,friendly:true}),
+  setScores:(a,b,t)=>{scores=[a,b];turn=t||0;phase="roll";turnTot=0;render();}};
+newGame();
+</script>
+</body>
+</html>

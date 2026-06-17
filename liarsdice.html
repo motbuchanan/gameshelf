@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Liar's Dice</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0;}
+  body{font-family:system-ui,-apple-system,sans-serif;color:#efe6d8;min-height:100vh;
+    background:radial-gradient(120% 90% at 50% 8%,#3a2436,#150d14 70%);display:flex;flex-direction:column;align-items:center;}
+  #bar{width:100%;max-width:520px;display:flex;align-items:center;gap:10px;padding:11px 14px;}
+  #bar a{color:#e6ddd0;text-decoration:none;font-size:14px;border:1px solid #6e5070;border-radius:999px;padding:6px 12px;}
+  #title{font-weight:800;font-size:18px;flex:1;}
+  #who{font-size:12.5px;color:#e0a8cc;border:1px solid #6a3a56;background:#241420;border-radius:999px;padding:5px 11px;cursor:pointer;}
+  #wrap{width:100%;max-width:440px;padding:8px 14px 20px;display:flex;flex-direction:column;align-items:center;gap:12px;}
+  .opp{width:100%;display:flex;align-items:center;justify-content:space-between;background:#241420;border:1px solid #4a2c42;border-radius:12px;padding:10px 14px;}
+  .opp .cd{display:flex;gap:5px;}
+  .cup{width:22px;height:26px;border-radius:4px 4px 7px 7px;background:linear-gradient(160deg,#7a5068,#4a2c42);box-shadow:inset 0 2px 2px rgba(255,255,255,.15);}
+  #bidBanner{text-align:center;min-height:54px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;}
+  #bidBanner .big{font-size:22px;font-weight:800;color:#f4c542;}
+  #bidBanner .by{font-size:12px;color:#bfa9b8;}
+  #msg{min-height:20px;text-align:center;font-size:13.5px;color:#d8c4d2;font-weight:600;}
+  .mine{width:100%;display:flex;flex-direction:column;align-items:center;gap:6px;}
+  .mine .lbl{font-size:11px;color:#b78fa8;font-weight:700;letter-spacing:.5px;text-transform:uppercase;}
+  .dice{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;}
+  .die{width:46px;height:46px;border-radius:10px;background:linear-gradient(150deg,#fbf7ec,#d9cfb6);position:relative;
+    box-shadow:0 3px 6px rgba(0,0,0,.45),inset 0 2px 2px rgba(255,255,255,.7);}
+  .die.rev{background:linear-gradient(150deg,#e6c6dd,#c79bbb);}
+  .pip{position:absolute;width:16%;height:16%;border-radius:50%;background:#3a2436;}
+  #ctrl{width:100%;display:flex;flex-direction:column;gap:10px;align-items:center;}
+  .step{display:flex;align-items:center;gap:10px;}
+  .step .lab{font-size:11px;color:#b78fa8;width:54px;text-align:right;}
+  .step button{width:38px;height:38px;border-radius:10px;border:1px solid #6e5070;background:#241420;color:#efe6d8;font-size:20px;font-weight:800;cursor:pointer;}
+  .step .val{min-width:54px;text-align:center;font-size:20px;font-weight:800;color:#f4c542;}
+  .step .facedie{width:34px;height:34px;border-radius:8px;background:#fbf7ec;position:relative;display:inline-block;}
+  .step .facedie .pip{background:#3a2436;}
+  #actRow{display:flex;gap:10px;}
+  #actRow button{font-family:inherit;font-weight:800;font-size:15px;padding:13px 20px;border-radius:11px;border:none;cursor:pointer;}
+  #bidBtn{color:#1a0d16;background:#e0a8cc;box-shadow:0 4px 0 #9c5e84;}
+  #liarBtn{color:#fff;background:#c0392b;box-shadow:0 4px 0 #7a221a;}
+  #actRow button:disabled{opacity:.4;box-shadow:none;cursor:default;}
+  #foot{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;padding:6px 12px;width:100%;max-width:520px;}
+  .ov{position:fixed;inset:0;background:rgba(16,8,14,.95);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:60;text-align:center;padding:22px;}
+  .ov.show{display:flex;} .ov h1{font-size:25px;} .ov p{color:#d8c4d2;font-size:15px;max-width:330px;}
+  .act{font-family:inherit;font-size:15px;font-weight:bold;padding:11px 20px;border-radius:10px;border:none;background:#e0a8cc;color:#1a0d16;box-shadow:0 4px 0 #9c5e84;cursor:pointer;}
+  .ghost{background:#241420;color:#e6ddd0;border:1px solid #6e5070;box-shadow:none;text-decoration:none;padding:10px 16px;border-radius:10px;font-size:14px;}
+  html.gn-easy #title{font-size:21px;}
+</style>
+</head>
+<body>
+<div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">Liar's Dice</div><div id="who">1 player</div></div>
+<div id="wrap">
+  <div class="opp"><span id="oppName">Computer</span><div class="cd" id="oppCups"></div></div>
+  <div id="bidBanner"><div class="by" id="bidBy">No bid yet</div><div class="big" id="bidBig">&mdash;</div></div>
+  <div id="msg"></div>
+  <div class="mine"><div class="lbl">Your dice</div><div class="dice" id="myDice"></div></div>
+  <div id="ctrl">
+    <div class="step"><span class="lab">How many</span><button id="qDn">&#8722;</button><span class="val" id="qVal">1</span><button id="qUp">&#43;</button></div>
+    <div class="step"><span class="lab">of face</span><button id="fDn">&#8722;</button><span class="facedie" id="fFace"></span><button id="fUp">&#43;</button></div>
+    <div id="actRow"><button id="bidBtn">Bid</button><button id="liarBtn">Liar!</button></div>
+  </div>
+</div>
+<div id="foot"></div>
+<div class="ov" id="overlay"><div style="font-size:44px;">&#127922;</div><h1 id="ovTitle"></h1><p id="ovText"></p>
+  <button class="act" id="ovBtn">Play again</button><a href="index.html" class="ghost">Back to shelf</a></div>
+<script src="gamenight.js?v=12"></script>
+<script src="sfx.js?v=5"></script>
+<script>
+const KEY="liarsdice_games", START=5;
+function S(n,o){window.GNS&&GNS.play(n,0,o);}
+const PIPS={1:[[50,50]],2:[[28,28],[72,72]],3:[[28,28],[50,50],[72,72]],
+  4:[[28,28],[72,28],[28,72],[72,72]],5:[[28,28],[72,28],[50,50],[28,72],[72,72]],
+  6:[[28,26],[72,26],[28,50],[72,50],[28,74],[72,74]]};
+function dieHTML(v,sc){sc=sc||8;return PIPS[v].map(p=>'<span class="pip" style="left:'+(p[0]-sc)+'%;top:'+(p[1]-sc)+'%"></span>').join('');}
+let hand=[[],[]]; // hand[0]=you, hand[1]=computer
+let count=[START,START];
+let bid=null; // {q,f,by}
+let turn=0, phase="over", who="", botDiff="medium", GS=null;
+let qSel=1,fSel=2;
+
+function ownCount(arr,f){let c=0;for(const v of arr)if(v===f)c++;return c;}
+function totalDice(){return count[0]+count[1];}
+function rollHand(n){const a=[];for(let i=0;i<n;i++)a.push(1+Math.floor(Math.random()*6));return a;}
+/* P(Binomial(n,1/6) >= k) */
+function binomGE(n,k){if(k<=0)return 1;if(k>n)return 0;const p=1/6;let s=0;
+  function C(n,r){let x=1;for(let i=0;i<r;i++)x=x*(n-i)/(i+1);return x;}
+  for(let i=k;i<=n;i++)s+=C(n,i)*Math.pow(p,i)*Math.pow(1-p,n-i);return s;}
+
+function render(){
+  // opponent cups
+  const oc=document.getElementById("oppCups");oc.innerHTML="";
+  for(let i=0;i<count[1];i++){const c=document.createElement("div");c.className="cup";oc.appendChild(c);}
+  document.getElementById("oppName").textContent="Computer \u00b7 "+count[1]+" dice";
+  // bid banner
+  if(bid){document.getElementById("bidBy").textContent=(bid.by===0?who||"You":"Computer")+" bid";
+    document.getElementById("bidBig").innerHTML=bid.q+" \u00d7 "+'<span style="display:inline-block;width:20px;height:20px;background:#fbf7ec;border-radius:4px;position:relative;vertical-align:middle">'+dieHTML(bid.f,9).replace(/#3a2436/g,'#3a2436')+'</span>';}
+  else{document.getElementById("bidBy").textContent="No bid yet";document.getElementById("bidBig").innerHTML="&mdash;";}
+  // my dice
+  const md=document.getElementById("myDice");md.innerHTML="";
+  for(const v of hand[0]){const d=document.createElement("div");d.className="die";d.innerHTML=dieHTML(v);md.appendChild(d);}
+  // controls
+  clampSel();
+  document.getElementById("qVal").textContent=qSel;
+  document.getElementById("fFace").innerHTML=dieHTML(fSel,9);
+  const myTurn=phase==="bid"&&turn===0;
+  document.getElementById("bidBtn").disabled=!myTurn||!isLegal(qSel,fSel);
+  document.getElementById("liarBtn").disabled=!myTurn||!bid;
+  document.querySelectorAll("#ctrl .step button").forEach(b=>b.disabled=!myTurn);
+}
+function setMsg(t){document.getElementById("msg").textContent=t;}
+function higher(q,f){return !bid || q>bid.q || (q===bid.q&&f>bid.f);}
+function isLegal(q,f){return q>=1&&q<=totalDice()&&f>=1&&f<=6&&higher(q,f);}
+function minBid(){ // minimal legal bid for stepper init
+  if(!bid)return{q:1,f:2};
+  if(bid.f<6)return{q:bid.q,f:bid.f+1};
+  return{q:bid.q+1,f:1};}
+function clampSel(){if(qSel<1)qSel=1;if(qSel>totalDice())qSel=totalDice();if(fSel<1)fSel=1;if(fSel>6)fSel=6;}
+
+/* ---- human actions ---- */
+function humanBid(q,f){if(phase!=="bid"||turn!==0||!isLegal(q,f))return false;
+  bid={q,f,by:0};S("place");turn=1;render();setMsg("");setTimeout(botTurn,800);return true;}
+function humanCall(){if(phase!=="bid"||turn!==0||!bid)return;resolve(0);}
+
+/* ---- computer ---- */
+function botBestRaise(){ // most believable legal raise from computer's view
+  const cand=[];
+  if(bid){for(let f=bid.f+1;f<=6;f++)cand.push({q:bid.q,f});
+    for(let f=1;f<=6;f++)cand.push({q:bid.q+1,f});}
+  else{for(let f=1;f<=6;f++)cand.push({q:Math.max(1,ownCount(hand[1],f)),f});}
+  let best=null,bp=-1;
+  for(const c of cand){if(c.q<1||c.q>totalDice())continue;if(bid&&!(c.q>bid.q||(c.q===bid.q&&c.f>bid.f)))continue;
+    const need=c.q-ownCount(hand[1],c.f);const p=binomGE(count[0],need); // unknown dice = your dice
+    if(p>bp){bp=p;best=c;}}
+  return best;
+}
+function botTurn(){if(phase!=="bid"||turn!==1)return;
+  const diff=botDiff;
+  const callTh=diff==="easy"?0.16:diff==="hard"?0.40:0.28;
+  const bluff=diff==="easy"?0.28:diff==="hard"?0.12:0.18;
+  if(bid){
+    const need=bid.q-ownCount(hand[1],bid.f);
+    const pTrue=binomGE(count[0],need); // chance the standing bid is actually true
+    if(pTrue<callTh && Math.random()>bluff){ // believe it's a lie -> challenge
+      setMsg("Computer calls your bluff!");S("err");setTimeout(()=>resolve(1),700);return;}
+  }
+  const r=botBestRaise();
+  if(!r){setMsg("Computer calls Liar!");setTimeout(()=>resolve(1),700);return;}
+  // sanity: if even the best raise is wildly unbelievable and not bluffing, challenge instead
+  const need=r.q-ownCount(hand[1],r.f),pr=binomGE(count[0],need);
+  if(bid && pr<0.07 && Math.random()>bluff){setMsg("Computer calls Liar!");setTimeout(()=>resolve(1),700);return;}
+  bid={q:r.q,f:r.f,by:1};S("place");turn=0;render();
+  setMsg("Computer bids "+r.q+" \u00d7 "+r.f+". Raise or call Liar.");
+}
+
+/* ---- resolution: challenger = who called Liar (0 you / 1 computer) ---- */
+function resolve(challenger){
+  phase="reveal";
+  const f=bid.f, actual=ownCount(hand[0],f)+ownCount(hand[1],f);
+  const bidTrue=actual>=bid.q;
+  const loser = bidTrue ? challenger : bid.by; // if bid true, challenger loses; else bidder loses
+  // reveal computer dice
+  revealAll();
+  const bidder=bid.by===0?(who||"You"):"Computer";
+  const caller=challenger===0?(who||"You"):"Computer";
+  count[loser]--;
+  const detail="There were "+actual+" \u00d7 "+f+". "+(bidTrue?(bidder+"\u2019s bid held \u2014 "+caller+" loses a die."):(bidder+" was bluffing \u2014 loses a die."));
+  S(loser===0?"womp":"chime");
+  if(count[0]<=0||count[1]<=0){setTimeout(()=>finish(detail),900);return;}
+  setMsg(detail);
+  setTimeout(()=>nextRound(loser,detail),1600);
+}
+function revealAll(){
+  const md=document.getElementById("myDice");md.innerHTML="";
+  for(const v of hand[0]){const d=document.createElement("div");d.className="die";d.innerHTML=dieHTML(v);md.appendChild(d);}
+  const oc=document.getElementById("oppCups");oc.innerHTML='<div class="dice" style="gap:4px">'+
+    hand[1].map(v=>'<div class="die rev" style="width:30px;height:30px">'+dieHTML(v,7)+'</div>').join('')+'</div>';
+}
+function nextRound(starter,detail){
+  hand[0]=rollHand(count[0]);hand[1]=rollHand(count[1]);
+  bid=null;phase="bid";turn=starter;
+  const ms=minBid();qSel=ms.q;fSel=ms.f;
+  render();
+  if(turn===1){setMsg(detail+" Computer starts.");setTimeout(botTurn,900);}
+  else setMsg(detail+" You start \u2014 make a bid.");
+}
+function finish(detail){phase="over";
+  const youWon=count[1]<=0;
+  const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
+    winner:youWon?(who||"You"):"Computer",loser:youWon?"Computer":(who||"You"),
+    vsComputer:true,method:"liar",draw:false};
+  try{if(!GS.friendly)GN.recordGame(KEY,rec);}catch(e){}
+  document.getElementById("ovTitle").textContent=youWon?"You win!":"Computer wins!";
+  document.getElementById("ovText").textContent=detail+(youWon?" You took the last die!":" You\u2019re out of dice.");
+  S(youWon?"fanfare":"womp");document.getElementById("overlay").classList.add("show");
+}
+
+/* ---- stepper controls ---- */
+document.getElementById("qUp").addEventListener("click",()=>{qSel++;render();});
+document.getElementById("qDn").addEventListener("click",()=>{qSel--;render();});
+document.getElementById("fUp").addEventListener("click",()=>{fSel++;render();});
+document.getElementById("fDn").addEventListener("click",()=>{fSel--;render();});
+document.getElementById("bidBtn").addEventListener("click",()=>humanBid(qSel,fSel));
+document.getElementById("liarBtn").addEventListener("click",humanCall);
+document.getElementById("ovBtn").addEventListener("click",()=>pickPlayer());
+
+function startGame(cfg){count=[START,START];hand[0]=rollHand(START);hand[1]=rollHand(START);
+  bid=null;phase="bid";turn=cfg.first||0;botDiff=cfg.botDiff||"medium";GS={start:Date.now(),friendly:cfg.friendly};
+  qSel=1;fSel=2;document.getElementById("overlay").classList.remove("show");render();
+  if(turn===1){setMsg("Computer starts.");setTimeout(botTurn,800);}
+  else setMsg("Make a bid \u2014 how many of a face are on the table?");}
+function pickPlayer(){if(window.GN&&GN.soloStart){GN.soloStart(function(name){who=name;
+  if(GN.whoBadge)GN.whoBadge(document.getElementById("who"),name,pickPlayer);else document.getElementById("who").textContent=name;
+  startGame({first:Math.random()<0.5?0:1,friendly:false});},{title:"Liar's Dice"});}
+  else startGame({first:0,friendly:true});}
+document.getElementById("who").addEventListener("click",pickPlayer);
+
+if(window.GN&&GN.rulesButton)GN.rulesButton(document.getElementById("foot"),{title:"Liar's Dice",sections:[
+ {h:"The idea",t:"You and the computer each hide five dice. You take turns bidding on how many of a face exist on the WHOLE table \u2014 yours and theirs together. You can only see your own."},
+ {h:"Bidding",t:"Each bid must beat the last: either a higher quantity, or the same quantity with a higher face. \u201cThree 4s\u201d means at least three 4s exist across all dice."},
+ {h:"Calling Liar",t:"Think the last bid is too greedy? Call Liar! Everyone reveals. If the bid was true (enough of that face exist), the challenger loses a die. If it was a bluff, the bidder loses a die."},
+ {h:"Winning",t:"Lose a die each time you\u2019re caught or wrongly accuse. Last player with dice wins. Bluff, read the odds, and trust your gut."},
+ {h:"vs Computer",t:"Easy bluffs wildly and rarely challenges; Hard tracks the odds and pounces on a stretch. The shelf keeps your record."}]});
+if(window.GN&&GN.statsButton)GN.statsButton(document.getElementById("foot"),{title:"Liar's Dice",key:KEY,specials:[
+ {label:"Wins",of:(r,n)=>r.filter(x=>x.winner===n).length},
+ {label:"Wins vs computer",of:(r,n)=>r.filter(x=>x.winner===n&&x.vsComputer).length}]});
+if(window.GNS)GNS.button(document.getElementById("foot"));
+
+window.__ld={state:()=>({hand:[hand[0].slice(),hand[1].slice()],count:count.slice(),bid:bid?{...bid}:null,turn,phase}),
+  setup:(h,c,b,t)=>{hand=[h.slice(),c.slice()];count=[h.length,c.length];bid=b?{...b}:null;turn=t||0;phase="bid";GS={start:Date.now(),friendly:true};render();},
+  humanBid:humanBid, humanCall:humanCall, botTurn:botTurn, isLegal:isLegal, binomGE:binomGE,
+  start:(cfg)=>startGame(cfg||{first:0,friendly:true})};
+pickPlayer();
+</script>
+</body>
+</html>
