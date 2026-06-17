@@ -29,6 +29,16 @@
   #clue button{flex:0 0 auto;font-family:inherit;font-weight:800;font-size:18px;border:1px solid #6e5f50;background:#2a241e;color:#e6ddd0;border-radius:8px;padding:6px 11px;cursor:pointer;}
   #clueTxt{flex:1;text-align:center;font-size:14.5px;color:#ecdfca;}
   #clueTxt b{color:#f4c542;}
+  #cluelist{display:flex;gap:10px;max-width:440px;margin:14px auto 0;}
+  #cluelist .col{flex:1;min-width:0;}
+  #cluelist h3{margin:0 0 5px;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:#c9ab85;border-bottom:1px solid #4a3a28;padding-bottom:4px;}
+  #cluelist ol{list-style:none;margin:0;padding:0;max-height:150px;overflow:auto;-webkit-overflow-scrolling:touch;}
+  #cluelist li{font-size:12.5px;line-height:1.3;padding:5px 6px;border-radius:6px;color:#cfc4b4;cursor:pointer;display:flex;gap:5px;}
+  #cluelist li b{color:#c9ab85;flex:0 0 auto;}
+  #cluelist li.cur{background:#f4c542;color:#2a1c0c;}
+  #cluelist li.cur b{color:#7a5a12;}
+  #cluelist li.done{color:#7c8c74;}
+  html.gn-easy #cluelist li{font-size:14px;}
   #kb{max-width:420px;margin:10px auto 0;display:flex;flex-direction:column;gap:6px;}
   .krow{display:flex;justify-content:center;gap:5px;}
   .krow button{flex:1;max-width:38px;font-family:inherit;font-weight:700;font-size:16px;padding:11px 0;border-radius:7px;
@@ -58,6 +68,10 @@
   <div id="kb"></div>
   <div id="tools"><button id="check">&#10003; Check</button><button id="reset">&#8634; Clear</button></div>
   <div id="msg">Tap a square, then type. Tap a square again to switch across/down.</div>
+  <div id="cluelist">
+    <div class="col"><h3>Across</h3><ol id="acrossList"></ol></div>
+    <div class="col"><h3>Down</h3><ol id="downList"></ol></div>
+  </div>
 </div>
 <div class="ov" id="overlay"><div style="font-size:48px;">&#127881;</div><h1 id="ovTitle">Solved!</h1><p id="ovText"></p>
   <button class="act" id="ovBtn">Next puzzle</button>
@@ -154,10 +168,24 @@ function render(){
     gridEl.appendChild(el);
   }
   if(slot)clueTxt.innerHTML="<b>"+slot.num+(dir==="A"?" Across":" Down")+"</b> &nbsp; "+slot.clue;
+  renderClueList(slot);
   const solved=Object.keys(loadAll().s||{}).length;
   labelEl.textContent="Crossword "+p.id+"  \u00b7  "+N+"\u00d7"+N;
   progEl.textContent=solved+"/"+PUZZLES.length;
 }
+function renderClueList(curslot){
+  const aEl=document.getElementById("acrossList"),dEl=document.getElementById("downList");
+  function fill(el,list,dd){el.innerHTML="";list.forEach(s=>{
+    const li=document.createElement("li");
+    if(s.cells.every(i=>user[i]))li.classList.add("done");
+    if(curslot&&dd===dir&&s===curslot)li.classList.add("cur");
+    li.innerHTML='<b>'+s.num+'</b><span>'+s.clue+'</span>';
+    li.addEventListener("click",()=>selectClue(s,dd));
+    el.appendChild(li);
+  });}
+  fill(aEl,across,"A");fill(dEl,down,"D");
+}
+function selectClue(slot,dd){dir=dd;sel=slot.cells.find(i=>!user[i]);if(sel===undefined)sel=slot.cells[0];S("tap");render();}
 function pick(i){
   if(!white(i))return;
   if(i===sel){dir=dir==="A"?"D":"A";} else {sel=i;

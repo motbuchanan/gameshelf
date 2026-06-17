@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Slide Puzzles</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:#1b120b;color:#e6ddd0;
+    background-image:radial-gradient(ellipse at 50% -10%,#2a1c10,#1b120b 70%);min-height:100vh;}
+  #bar{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#15100c;border-bottom:1px solid #3a2a1a;}
+  #bar a{color:#e6ddd0;text-decoration:none;font-size:13px;border:1px solid #6e5f50;background:#2a241e;border-radius:999px;padding:6px 12px;}
+  #title{font-weight:800;font-size:17px;}
+  #prog{margin-left:auto;font-size:13px;color:#c9ab85;font-weight:700;}
+  #wrap{max-width:520px;margin:0 auto;padding:12px;}
+  #pager{display:flex;align-items:center;justify-content:center;gap:10px;margin:6px 0 12px;}
+  #pager button{font-family:inherit;cursor:pointer;border:1px solid #6e5f50;background:#2a241e;color:#e6ddd0;border-radius:10px;padding:8px 14px;font-size:15px;font-weight:700;}
+  #label{font-weight:800;font-size:18px;color:#f4c542;text-align:center;min-width:160px;}
+  #board{margin:0 auto;width:min(92vw,360px);height:min(92vw,360px);position:relative;background:#3a2a18;
+    border:3px solid #6b4f2c;border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,.45);padding:5px;touch-action:manipulation;}
+  .tile{position:absolute;display:flex;align-items:center;justify-content:center;border-radius:9px;cursor:pointer;
+    font-weight:800;color:#2a1c0c;background:linear-gradient(160deg,#f3e6c7,#e3d2aa);
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.5),0 2px 4px rgba(0,0,0,.35);transition:left .12s ease,top .12s ease;}
+  .tile:active{filter:brightness(.96);}
+  .tile.home{background:linear-gradient(160deg,#cfe9c9,#aad6a3);}
+  #msg{text-align:center;color:#cfc4b4;font-size:14px;min-height:20px;margin:14px 4px 6px;}
+  #tools{max-width:340px;margin:8px auto 0;display:flex;gap:8px;}
+  #tools button{flex:1;font-family:inherit;font-weight:700;font-size:14px;padding:11px 0;border-radius:10px;
+    border:1px solid #6e5f50;background:#2a241e;color:#e6ddd0;cursor:pointer;}
+  .ov{position:fixed;inset:0;background:rgba(16,12,8,.95);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:60;text-align:center;padding:22px;}
+  .ov.show{display:flex;}
+  .ov h1{font-size:26px;margin:0;}
+  .ov p{color:#cfc4b4;max-width:330px;font-size:15px;}
+  .act{font-family:inherit;font-size:15px;font-weight:bold;padding:11px 20px;border-radius:10px;border:none;
+    background:#46b06a;color:#0c2014;box-shadow:0 4px 0 #1e6038;cursor:pointer;}
+  html.gn-easy #title,html.gn-easy #label{font-size:21px;}
+</style>
+</head>
+<body>
+<div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">Slide Puzzles</div><div id="prog"></div></div>
+<div id="wrap">
+  <div id="pager"><button id="prev">&#8249; Prev</button><div id="label"></div><button id="next">Next &#8250;</button></div>
+  <div id="board"></div>
+  <div id="msg">Tap a tile next to the gap to slide it. Put the numbers back in order.</div>
+  <div id="tools"><button id="reset">&#8634; Shuffle again</button></div>
+</div>
+<div class="ov" id="overlay"><div style="font-size:48px;">&#127881;</div><h1 id="ovTitle">Solved!</h1><p id="ovText"></p>
+  <button class="act" id="ovBtn">Next puzzle</button>
+  <a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #6e5f50;background:#2a241e;color:#e6ddd0;text-decoration:none;">Back to shelf</a></div>
+<script src="gamenight.js?v=12"></script>
+<script src="sfx.js?v=5"></script>
+<script>
+const COUNT=10, PKEY="shelf_slide";
+function S(n){try{window.GNS&&GNS.play(n);}catch(e){}}
+const boardEl=document.getElementById("board"),labelEl=document.getElementById("label"),
+      progEl=document.getElementById("prog"),msgEl=document.getElementById("msg");
+
+let pi=0, N=3, tiles=[], blank=0, moves=0, won=false;
+
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function loadAll(){try{return JSON.parse(localStorage.getItem(PKEY))||{};}catch(e){return{};}}
+function saveAll(o){try{localStorage.setItem(PKEY,JSON.stringify(o));}catch(e){}}
+function solvedArr(){const a=[];for(let i=1;i<N*N;i++)a.push(i);a.push(0);return a;}
+function isSolved(){const s=solvedArr();for(let i=0;i<N*N;i++)if(tiles[i]!==s[i])return false;return true;}
+
+function scramble(seed){
+  const rnd=mulberry32(seed*2654435761>>>0);
+  tiles=solvedArr();blank=N*N-1;
+  let prev=-1, steps=N*N*18;
+  for(let s=0;s<steps;s++){
+    const nb=[];const r=Math.floor(blank/N),c=blank%N;
+    if(r>0)nb.push(blank-N);if(r<N-1)nb.push(blank+N);if(c>0)nb.push(blank-1);if(c<N-1)nb.push(blank+1);
+    const opts=nb.filter(x=>x!==prev);
+    const pick=opts[Math.floor(rnd()*opts.length)];
+    tiles[blank]=tiles[pick];tiles[pick]=0;prev=blank;blank=pick;
+  }
+  if(isSolved()){ // ensure not already solved
+    const r=Math.floor(blank/N),c=blank%N;const sw=(c>0)?blank-1:blank+1;
+    tiles[blank]=tiles[sw];tiles[sw]=0;blank=sw;
+  }
+}
+function load(idx){
+  pi=((idx%COUNT)+COUNT)%COUNT;
+  N=3+Math.floor(pi/4); if(N>5)N=5;          // 3x3,4x4,5x5
+  moves=0;won=false;
+  scramble(pi+1);
+  const saved=(loadAll().st||{})[pi];
+  if(saved&&saved.t&&saved.t.length===N*N){tiles=saved.t.slice();blank=tiles.indexOf(0);moves=saved.m||0;}
+  render();
+}
+function tap(i){
+  if(won)return;
+  const r=Math.floor(i/N),c=i%N,br=Math.floor(blank/N),bc=blank%N;
+  if(r===br){ // slide row toward blank
+    const step=(c<bc)?1:-1;let p=blank;
+    while(p!==i){tiles[p]=tiles[p-step];p-=step;}
+    tiles[i]=0;blank=i;moves++;S("tap");
+  }else if(c===bc){ // slide column toward blank
+    const step=(r<br)?N:-N;let p=blank;
+    while(p!==i){tiles[p]=tiles[p-step];p-=step;}
+    tiles[i]=0;blank=i;moves++;S("tap");
+  }else{S("err");return;}
+  save();render();
+  if(isSolved())win();
+}
+function save(){const a=loadAll();a.pi=pi;a.st=a.st||{};a.st[pi]={t:tiles.slice(),m:moves};a.s=a.s||{};if(isSolved())a.s[pi]=true;saveAll(a);}
+function render(){
+  const inner=boardEl.clientWidth-10||340; const gap=4; const sz=(inner-gap*(N-1))/N;
+  boardEl.innerHTML="";
+  for(let i=0;i<N*N;i++){
+    if(tiles[i]===0)continue;
+    const r=Math.floor(i/N),c=i%N;
+    const t=document.createElement("div");t.className="tile";
+    if(tiles[i]===i+1)t.classList.add("home");
+    t.style.width=sz+"px";t.style.height=sz+"px";
+    t.style.left=(5+c*(sz+gap))+"px";t.style.top=(5+r*(sz+gap))+"px";
+    t.style.fontSize=Math.floor(sz*0.42)+"px";
+    t.textContent=tiles[i];
+    t.addEventListener("click",()=>tap(i));
+    boardEl.appendChild(t);
+  }
+  const solved=Object.keys(loadAll().s||{}).length;
+  labelEl.textContent="Puzzle "+(pi+1)+"  \u00b7  "+N+"\u00d7"+N;
+  progEl.textContent=solved+"/"+COUNT;
+  msgEl.textContent="Moves: "+moves;
+}
+function win(){
+  won=true;S("win");save();
+  const solved=Object.keys(loadAll().s||{}).length;progEl.textContent=solved+"/"+COUNT;
+  document.getElementById("ovText").textContent="Puzzle "+(pi+1)+" solved in "+moves+" moves! "+(solved>=COUNT?"Every board done \u2014 slick.":(solved+" of "+COUNT+" done."));
+  document.getElementById("overlay").classList.add("show");
+}
+
+document.getElementById("prev").addEventListener("click",()=>{document.getElementById("overlay").classList.remove("show");load(pi-1);});
+document.getElementById("next").addEventListener("click",()=>{document.getElementById("overlay").classList.remove("show");load(pi+1);});
+document.getElementById("reset").addEventListener("click",()=>{document.getElementById("overlay").classList.remove("show");const a=loadAll();if(a.st)delete a.st[pi];saveAll(a);moves=0;won=false;scramble(pi+1+Math.floor(Math.random()*1e6));save();render();});
+document.getElementById("ovBtn").addEventListener("click",()=>{document.getElementById("overlay").classList.remove("show");load(pi+1);});
+window.addEventListener("resize",render);
+
+window.__slide=function(){return{N:N,tiles:tiles.slice(),blank:blank,won:isSolved(),moves:moves};};
+window.__tap=tap;
+load(loadAll().pi||0);
+</script>
+</body>
+</html>

@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Backup &amp; Restore</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:#1b120b;color:#e6ddd0;
+    background-image:radial-gradient(ellipse at 50% -10%,#2a1c10,#1b120b 70%);min-height:100vh;}
+  #bar{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#15100c;border-bottom:1px solid #3a2a1a;}
+  #bar a{color:#e6ddd0;text-decoration:none;font-size:13px;border:1px solid #6e5f50;background:#2a241e;border-radius:999px;padding:6px 12px;}
+  #title{font-weight:800;font-size:17px;}
+  #wrap{max-width:520px;margin:0 auto;padding:14px;}
+  .card{background:#241b12;border:1px solid #3f3022;border-radius:12px;padding:16px;margin:0 0 14px;}
+  .card h2{margin:0 0 8px;font-size:16px;color:#f4c542;}
+  .card p{margin:6px 0;font-size:13.5px;color:#cfc4b4;line-height:1.45;}
+  .sum{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 2px;}
+  .chip{background:#2f2417;border:1px solid #4a3a28;border-radius:999px;padding:6px 12px;font-size:13px;font-weight:700;color:#e6ddd0;}
+  .chip b{color:#f4c542;}
+  button{font-family:inherit;cursor:pointer;}
+  .btn{display:block;width:100%;font-weight:800;font-size:15px;padding:13px 0;border-radius:10px;border:1px solid #6e5f50;
+    background:#2a241e;color:#e6ddd0;margin-top:10px;}
+  .btn.primary{background:#46b06a;color:#0c2014;border:none;box-shadow:0 4px 0 #1e6038;}
+  .btn.warn{background:#c98a2e;color:#241502;border:none;box-shadow:0 4px 0 #8a5a14;}
+  .btn:active{transform:translateY(1px);}
+  .btn.ghost{background:#241b12;}
+  textarea{width:100%;min-height:96px;margin-top:10px;border-radius:10px;border:1px solid #4a3a28;background:#15100c;
+    color:#cfead0;font-family:ui-monospace,Menlo,monospace;font-size:11px;padding:10px;resize:vertical;}
+  .row{display:flex;gap:8px;}.row .btn{flex:1;}
+  .hide{display:none;}
+  #file{display:none;}
+  .filelbl{display:block;text-align:center;margin-top:10px;font-size:13.5px;color:#c9ab85;text-decoration:underline;cursor:pointer;}
+  #status{text-align:center;font-size:14px;font-weight:700;min-height:20px;margin:6px 4px;color:#7fd49a;}
+  .muted{color:#9a8a72;font-size:12.5px;}
+  .ov{position:fixed;inset:0;background:rgba(16,12,8,.95);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:60;text-align:center;padding:22px;}
+  .ov.show{display:flex;}
+  .ov h1{font-size:22px;margin:0;}
+  .ov p{color:#cfc4b4;max-width:340px;font-size:14.5px;line-height:1.5;}
+  .ov .row{width:100%;max-width:320px;}
+  html.gn-easy #title,html.gn-easy .card h2{font-size:19px;}
+  html.gn-easy .card p,html.gn-easy .btn{font-size:16px;}
+</style>
+</head>
+<body>
+<div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">&#128190; Backup &amp; Restore</div></div>
+<div id="wrap">
+
+  <div class="card">
+    <h2>What's saved right now</h2>
+    <div class="sum" id="summary"></div>
+    <p class="muted">Everything on this device &mdash; players, every game's records, achievements, high scores, and puzzle progress &mdash; lives only on this iPad. A backup keeps a copy you can restore on a new device or after a reset.</p>
+  </div>
+
+  <div class="card">
+    <h2>Back up</h2>
+    <p>Make a copy of all your history. Keep it somewhere safe &mdash; paste the code into Notes or Messages, or save the file.</p>
+    <button class="btn primary" id="makeBtn">&#128190; Create a backup</button>
+    <div id="backupOut" class="hide">
+      <textarea id="code" readonly></textarea>
+      <div class="row">
+        <button class="btn" id="copyBtn">&#128203; Copy code</button>
+        <button class="btn" id="dlBtn">&#11015; Save file</button>
+      </div>
+      <p class="muted" id="madeNote"></p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Restore</h2>
+    <p>Bring your history back from a backup. <b>This replaces</b> what's currently on this device &mdash; but it saves a one-tap undo first.</p>
+    <textarea id="inCode" placeholder="Paste a backup code here&hellip;"></textarea>
+    <button class="btn warn" id="restoreBtn">&#8635; Restore from this code</button>
+    <span class="filelbl" id="fileLbl">&hellip;or choose a backup file</span>
+    <input type="file" id="file" accept=".json,application/json,text/plain">
+    <button class="btn ghost hide" id="undoBtn">&#8630; Undo the last restore</button>
+    <button class="btn ghost hide" id="dailyBtn"></button>
+  </div>
+
+  <div id="status"></div>
+</div>
+
+<div class="ov" id="confirm">
+  <div style="font-size:40px;">&#9888;&#65039;</div>
+  <h1>Replace everything?</h1>
+  <p id="confirmText"></p>
+  <div class="row">
+    <button class="btn ghost" id="cCancel">Cancel</button>
+    <button class="btn warn" id="cOk">Yes, restore</button>
+  </div>
+</div>
+
+<script src="gamenight.js?v=12"></script>
+<script src="sfx.js?v=5"></script>
+<script>
+const RESERVED="gn_backup_", AUTO="gn_backup_auto";
+function S(n){try{window.GNS&&GNS.play(n);}catch(e){}}
+function $(id){return document.getElementById(id);}
+function status(m,bad){const s=$("status");s.textContent=m||"";s.style.color=bad?"#e8a59a":"#7fd49a";}
+
+function appKeys(){const out=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.indexOf(RESERVED)!==0)out.push(k);}return out;}
+function countSummary(data){
+  let players=0,games=0,puzzles=0,recKeys=0;
+  try{const p=JSON.parse(data["gn_profiles"]||"[]");players=Array.isArray(p)?p.length:0;}catch(e){}
+  for(const k in data){
+    if(/_games$/.test(k)){try{const a=JSON.parse(data[k]);if(Array.isArray(a)&&a.length){games+=a.length;recKeys++;}}catch(e){}}
+    if(/^shelf_/.test(k)){try{const o=JSON.parse(data[k]);if(o&&o.s&&Object.keys(o.s).length)puzzles++;}catch(e){}}
+  }
+  return{players,games,puzzles,recKeys};
+}
+function buildBundle(){
+  const data={};appKeys().forEach(k=>{data[k]=localStorage.getItem(k);});
+  return{app:"gameshelf",kind:"backup",version:1,date:new Date().toISOString(),counts:countSummary(data),data:data};
+}
+function applyBundle(b,takeSnapshot){
+  if(!b||b.app!=="gameshelf"||typeof b.data!=="object")throw new Error("not a Game Shelf backup");
+  if(takeSnapshot){try{localStorage.setItem(AUTO,JSON.stringify(buildBundle()));}catch(e){}}
+  appKeys().forEach(k=>localStorage.removeItem(k));            // clear current (keeps gn_backup_*)
+  const d=b.data;for(const k in d){if(k.indexOf(RESERVED)===0)continue;try{localStorage.setItem(k,d[k]);}catch(e){}}
+}
+function reloadApp(){try{location.reload();}catch(e){}}
+
+function renderSummary(){
+  const c=buildBundle().counts;
+  $("summary").innerHTML=
+    '<span class="chip"><b>'+c.players+'</b> player'+(c.players===1?'':'s')+'</span>'+
+    '<span class="chip"><b>'+c.games+'</b> games recorded</span>'+
+    '<span class="chip"><b>'+c.puzzles+'</b> puzzle book'+(c.puzzles===1?'':'s')+' started</span>';
+  $("undoBtn").classList.toggle("hide", !localStorage.getItem(AUTO));
+  const dj=localStorage.getItem("gn_backup_daily");const db=$("dailyBtn");
+  if(dj){try{const o=JSON.parse(dj);db.textContent="\u21BA Restore auto-backup from "+(o.date||"earlier");db.classList.remove("hide");}catch(e){db.classList.add("hide");}}
+  else db.classList.add("hide");
+}
+$("dailyBtn").addEventListener("click",function(){const dj=localStorage.getItem("gn_backup_daily");if(!dj){status("No auto-backup saved yet.",true);return;}askRestore(dj);});
+
+// ---- Back up ----
+let lastCode="";
+$("makeBtn").addEventListener("click",function(){
+  const b=buildBundle();lastCode=JSON.stringify(b);
+  $("code").value=lastCode;$("backupOut").classList.remove("hide");
+  $("madeNote").textContent="Backup made "+new Date(b.date).toLocaleString()+" \u00b7 "+b.counts.games+" games, "+b.counts.players+" players.";
+  S("place");status("Backup ready \u2014 copy the code or save the file.");
+});
+$("copyBtn").addEventListener("click",function(){
+  const ta=$("code");ta.select();ta.setSelectionRange(0,999999);
+  const done=()=>{S("tap");status("Copied! Paste it into Notes or Messages to keep it safe.");};
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(ta.value).then(done).catch(()=>{try{document.execCommand("copy");done();}catch(e){status("Couldn't copy \u2014 select the text and copy manually.",true);}});}
+  else{try{document.execCommand("copy");done();}catch(e){status("Select the text and copy manually.",true);}}
+});
+$("dlBtn").addEventListener("click",function(){
+  try{const blob=new Blob([lastCode],{type:"application/json"});const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");a.href=url;a.download="gameshelf-backup-"+new Date().toISOString().slice(0,10)+".json";
+    document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
+    S("tap");status("File saved.");}catch(e){status("Couldn't save the file \u2014 use the copy code instead.",true);}
+});
+
+// ---- Restore ----
+let pending=null;
+function askRestore(text){
+  let b;try{b=JSON.parse(text);}catch(e){status("That doesn't look like a backup code.",true);return;}
+  if(!b||b.app!=="gameshelf"||typeof b.data!=="object"){status("That isn't a Game Shelf backup.",true);return;}
+  pending=b;const c=b.counts||countSummary(b.data);
+  $("confirmText").innerHTML="This will replace everything on this device with the backup from <b>"+new Date(b.date).toLocaleString()+"</b><br>("+c.games+" games, "+c.players+" players, "+c.puzzles+" puzzle books).<br><br>Your current data is saved first, so you can undo.";
+  $("confirm").classList.add("show");
+}
+$("restoreBtn").addEventListener("click",function(){const t=$("inCode").value.trim();if(!t){status("Paste a backup code first.",true);return;}askRestore(t);});
+$("fileLbl").addEventListener("click",()=>$("file").click());
+$("file").addEventListener("change",function(e){const f=e.target.files&&e.target.files[0];if(!f)return;
+  const fr=new FileReader();fr.onload=()=>askRestore(String(fr.result));fr.onerror=()=>status("Couldn't read that file.",true);fr.readAsText(f);});
+$("cCancel").addEventListener("click",function(){$("confirm").classList.remove("show");pending=null;});
+$("cOk").addEventListener("click",function(){
+  if(!pending)return;try{applyBundle(pending,true);S("win");}catch(e){status(e.message||"Restore failed.",true);$("confirm").classList.remove("show");return;}
+  $("confirm").classList.remove("show");status("Restored! Reloading\u2026");setTimeout(reloadApp,500);
+});
+$("undoBtn").addEventListener("click",function(){
+  const snap=localStorage.getItem(AUTO);if(!snap){status("Nothing to undo.",true);return;}
+  let b;try{b=JSON.parse(snap);}catch(e){status("Undo data was unreadable.",true);return;}
+  try{applyBundle(b,false);S("win");status("Undone \u2014 reloading\u2026");setTimeout(reloadApp,500);}catch(e){status("Undo failed.",true);}
+});
+
+// test hooks
+window.__build=buildBundle;window.__apply=applyBundle;window.__AUTO=AUTO;
+renderSummary();
+</script>
+</body>
+</html>

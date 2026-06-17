@@ -991,3 +991,15 @@ try{injectCSS();}catch(e){}
 
 /* auto-load the achievements engine on every page that uses the runtime */
 try{if(typeof document!=="undefined"&&typeof window!=="undefined"&&!window.Achievements){var _gnA=document.createElement("script");_gnA.src="achievements.js";_gnA.async=true;document.head.appendChild(_gnA);}}catch(e){}
+
+/* once-a-day automatic local snapshot of all game data (silent fallback if no manual backup) */
+try{(function(){
+  if(typeof localStorage==="undefined")return;
+  var RES="gn_backup_", SLOT="gn_backup_daily";
+  var today=new Date().toISOString().slice(0,10);
+  var cur=null;try{cur=JSON.parse(localStorage.getItem(SLOT));}catch(e){}
+  if(cur&&cur.date===today)return;            // already captured today
+  var data={};
+  for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k&&k.indexOf(RES)!==0)data[k]=localStorage.getItem(k);}
+  try{localStorage.setItem(SLOT,JSON.stringify({app:"gameshelf",kind:"auto",date:today,data:data}));}catch(e){}
+})();}catch(e){}

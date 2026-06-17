@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Cryptograms</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:#1b120b;color:#e6ddd0;
+    background-image:radial-gradient(ellipse at 50% -10%,#2a1c10,#1b120b 70%);min-height:100vh;}
+  #bar{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#15100c;border-bottom:1px solid #3a2a1a;}
+  #bar a{color:#e6ddd0;text-decoration:none;font-size:13px;border:1px solid #6e5f50;background:#2a241e;border-radius:999px;padding:6px 12px;}
+  #title{font-weight:800;font-size:17px;}
+  #prog{margin-left:auto;font-size:13px;color:#c9ab85;font-weight:700;}
+  #wrap{max-width:560px;margin:0 auto;padding:12px;}
+  #pager{display:flex;align-items:center;justify-content:center;gap:10px;margin:6px 0 14px;}
+  #pager button{font-family:inherit;cursor:pointer;border:1px solid #6e5f50;background:#2a241e;color:#e6ddd0;border-radius:10px;padding:8px 14px;font-size:15px;font-weight:700;}
+  #label{font-weight:800;font-size:18px;color:#f4c542;text-align:center;min-width:150px;}
+  #crypt{display:flex;flex-wrap:wrap;gap:10px 14px;justify-content:center;padding:6px 2px 2px;}
+  .word{display:flex;gap:4px;}
+  .cell{display:flex;flex-direction:column;align-items:center;width:24px;cursor:pointer;}
+  .cell .pl{height:30px;width:24px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;
+    color:#1d5fb0;border-bottom:2px solid #6e5f50;border-radius:3px;}
+  .cell .cl{font-size:11px;color:#b59a72;margin-top:3px;font-weight:700;letter-spacing:.5px;}
+  .cell.sel .pl{background:#f4c542;color:#2a1c0c;border-bottom-color:#b8860b;}
+  .cell.same .pl{background:#3a3120;}
+  .cell.lock .pl{color:#1f6b3a;}
+  .cell.bad .pl{color:#c62828;}
+  .sep{width:6px;}
+  #msg{text-align:center;color:#cfc4b4;font-size:14px;min-height:20px;margin:16px 4px 8px;}
+  #kb{max-width:430px;margin:6px auto 0;display:flex;flex-direction:column;gap:6px;}
+  .krow{display:flex;justify-content:center;gap:5px;}
+  .krow button{flex:1;max-width:38px;font-family:inherit;font-weight:700;font-size:16px;padding:11px 0;border-radius:7px;
+    border:1px solid #6e5f50;background:#efe2c4;color:#2a1c0c;cursor:pointer;}
+  .krow button.wide{max-width:64px;background:#2a241e;color:#e6ddd0;font-size:13px;}
+  .krow button.used{opacity:.34;}
+  .krow button:active{transform:translateY(1px);}
+  #tools{max-width:430px;margin:10px auto 0;display:flex;gap:8px;}
+  #tools button{flex:1;font-family:inherit;font-weight:700;font-size:14px;padding:11px 0;border-radius:10px;
+    border:1px solid #6e5f50;background:#2a241e;color:#e6ddd0;cursor:pointer;}
+  .ov{position:fixed;inset:0;background:rgba(16,12,8,.95);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:60;text-align:center;padding:22px;}
+  .ov.show{display:flex;}
+  .ov h1{font-size:25px;margin:0;}
+  .ov p{color:#cfc4b4;max-width:340px;font-size:15px;line-height:1.5;}
+  .act{font-family:inherit;font-size:15px;font-weight:bold;padding:11px 20px;border-radius:10px;border:none;
+    background:#46b06a;color:#0c2014;box-shadow:0 4px 0 #1e6038;cursor:pointer;}
+  html.gn-easy #title,html.gn-easy #label{font-size:21px;}
+  html.gn-easy .cell{width:27px;}html.gn-easy .cell .pl{width:27px;font-size:22px;}
+</style>
+</head>
+<body>
+<div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">Cryptograms</div><div id="prog"></div></div>
+<div id="wrap">
+  <div id="pager"><button id="prev">&#8249; Prev</button><div id="label"></div><button id="next">Next &#8250;</button></div>
+  <div id="crypt"></div>
+  <div id="msg">Tap a letter, then type your guess. Every matching symbol fills in.</div>
+  <div id="kb"></div>
+  <div id="tools"><button id="hint">&#128161; Reveal a letter</button><button id="reset">&#8634; Clear</button></div>
+</div>
+<div class="ov" id="overlay"><div style="font-size:46px;">&#128273;</div><h1 id="ovTitle">Cracked it!</h1><p id="ovText"></p>
+  <button class="act" id="ovBtn">Next puzzle</button>
+  <a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #6e5f50;background:#2a241e;color:#e6ddd0;text-decoration:none;">Back to shelf</a></div>
+<script src="gamenight.js?v=12"></script>
+<script src="sfx.js?v=5"></script>
+<script>
+const QUOTES=[
+ "ACTIONS SPEAK LOUDER THAN WORDS",
+ "BETTER LATE THAN NEVER",
+ "PRACTICE MAKES PERFECT",
+ "HONESTY IS THE BEST POLICY",
+ "EVERY CLOUD HAS A SILVER LINING",
+ "THE EARLY BIRD CATCHES THE WORM",
+ "WHEN IN ROME DO AS THE ROMANS DO",
+ "A PICTURE IS WORTH A THOUSAND WORDS",
+ "ROME WAS NOT BUILT IN A DAY",
+ "LOOK BEFORE YOU LEAP"
+];
+const PKEY="shelf_crypto", ALPHA="ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+function S(n){try{window.GNS&&GNS.play(n);}catch(e){}}
+const cryptEl=document.getElementById("crypt"),labelEl=document.getElementById("label"),
+      progEl=document.getElementById("prog"),msgEl=document.getElementById("msg");
+
+let pi=0, sol="", perm={}, inv={}, cipher="", guess={}, locked={}, sel="";
+
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function loadAll(){try{return JSON.parse(localStorage.getItem(PKEY))||{};}catch(e){return{};}}
+function saveAll(o){try{localStorage.setItem(PKEY,JSON.stringify(o));}catch(e){}}
+function makePerm(seed){
+  const rnd=mulberry32(seed*2654435761>>>0);const A=ALPHA.split("");let p;
+  do{p=A.slice();for(let i=p.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1));const t=p[i];p[i]=p[j];p[j]=t;}}
+  while(p.some((c,i)=>c===A[i]));
+  const pm={};A.forEach((c,i)=>pm[c]=p[i]);return pm;
+}
+function load(idx){
+  pi=((idx%QUOTES.length)+QUOTES.length)%QUOTES.length;
+  sol=QUOTES[pi].toUpperCase();
+  perm=makePerm(pi+1); inv={}; for(const k in perm)inv[perm[k]]=k;
+  cipher=sol.replace(/[A-Z]/g,ch=>perm[ch]);
+  guess={}; locked={}; sel="";
+  const saved=(loadAll().st||{})[pi];
+  if(saved){if(saved.g)guess=Object.assign({},saved.g);if(saved.l)saved.l.forEach(c=>{locked[c]=true;guess[c]=inv[c];});}
+  render();
+}
+function decrypted(){let out="";for(const ch of cipher){out+= /[A-Z]/.test(ch)?(guess[ch]||"\u00b7"):ch;}return out;}
+function isWon(){for(const ch of cipher){if(/[A-Z]/.test(ch)&&guess[ch]!==inv[ch])return false;}return true;}
+function usedPlain(){const u={};for(const c in guess)if(guess[c])u[guess[c]]=c;return u;}
+
+function render(){
+  cryptEl.innerHTML="";
+  const words=cipher.split(" ");
+  words.forEach((w,wi)=>{
+    const wd=document.createElement("div");wd.className="word";
+    for(const ch of w){
+      if(!/[A-Z]/.test(ch)){const s=document.createElement("div");s.className="cell";s.innerHTML='<div class="pl" style="border:none">'+ch+'</div><div class="cl"></div>';wd.appendChild(s);continue;}
+      const cell=document.createElement("div");cell.className="cell";cell.dataset.cipher=ch;
+      if(ch===sel)cell.classList.add("sel");else if(sel&&ch===sel)cell.classList.add("same");
+      if(sel&&ch===sel)cell.classList.add("same");
+      if(locked[ch])cell.classList.add("lock");
+      const pl=document.createElement("div");pl.className="pl";pl.textContent=guess[ch]||"";
+      const cl=document.createElement("div");cl.className="cl";cl.textContent=ch;
+      cell.appendChild(pl);cell.appendChild(cl);
+      cell.addEventListener("click",()=>{sel=ch;render();});
+      wd.appendChild(cell);
+    }
+    cryptEl.appendChild(wd);
+    if(wi<words.length-1){const sp=document.createElement("div");sp.className="sep";cryptEl.appendChild(sp);}
+  });
+  // highlight all cells of selected cipher letter
+  if(sel)cryptEl.querySelectorAll('.cell[data-cipher="'+sel+'"]').forEach(c=>c.classList.add("same"));
+  // keyboard used state
+  const used=usedPlain();
+  document.querySelectorAll('#kb button[data-k]').forEach(b=>b.classList.toggle("used",!!used[b.dataset.k]));
+  const solved=Object.keys(loadAll().s||{}).length;
+  labelEl.textContent="Cryptogram "+(pi+1);
+  progEl.textContent=solved+"/"+QUOTES.length;
+}
+function place(L){
+  if(!sel){msgEl.textContent="Tap a letter in the puzzle first.";return;}
+  if(locked[sel]){S("err");return;}
+  // each plaintext letter used once: clear any other cipher letter currently guessing L
+  for(const c in guess){if(guess[c]===L&&c!==sel&&!locked[c])delete guess[c];}
+  guess[sel]=L;S("tap");save();render();
+  if(isWon())win();
+}
+function del(){if(!sel||locked[sel])return;delete guess[sel];S("tap");save();render();}
+function hint(){
+  const candidates=[];for(const ch of cipher){if(/[A-Z]/.test(ch)&&!locked[ch]&&guess[ch]!==inv[ch]&&candidates.indexOf(ch)<0)candidates.push(ch);}
+  if(!candidates.length)return;
+  const c=sel&&candidates.indexOf(sel)>=0?sel:candidates[Math.floor(Math.random()*candidates.length)];
+  for(const k in guess){if(guess[k]===inv[c]&&k!==c&&!locked[k])delete guess[k];}
+  guess[c]=inv[c];locked[c]=true;sel=c;S("place");save();render();
+  if(isWon())win();
+}
+function save(){const a=loadAll();a.pi=pi;a.st=a.st||{};a.st[pi]={g:guess,l:Object.keys(locked)};a.s=a.s||{};if(isWon())a.s[pi]=true;saveAll(a);}
+function win(){
+  S("win");save();
+  const solved=Object.keys(loadAll().s||{}).length;progEl.textContent=solved+"/"+QUOTES.length;
+  document.getElementById("ovText").innerHTML="\u201C"+sol+"\u201D<br><br>"+(solved>=QUOTES.length?"Every cryptogram solved \u2014 sharp!":(solved+" of "+QUOTES.length+" done."));
+  document.getElementById("overlay").classList.add("show");
+}
+
+const ROWS=["QWERTYUIOP","ASDFGHJKL","ZXCVBNM"];const kb=document.getElementById("kb");
+ROWS.forEach((row,ri)=>{const dv=document.createElement("div");dv.className="krow";
+  row.split("").forEach(ch=>{const b=document.createElement("button");b.textContent=ch;b.dataset.k=ch;b.addEventListener("click",()=>place(ch));dv.appendChild(b);});
+  if(ri===2){const b=document.createElement("button");b.className="wide";b.textContent="\u232B Del";b.addEventListener("click",del);dv.appendChild(b);}
+  kb.appendChild(dv);
+});
+document.addEventListener("keydown",e=>{if(/^[a-zA-Z]$/.test(e.key))place(e.key.toUpperCase());else if(e.key==="Backspace"){e.preventDefault();del();}});
+document.getElementById("prev").addEventListener("click",()=>{document.getElementById("overlay").classList.remove("show");load(pi-1);});
+document.getElementById("next").addEventListener("click",()=>{document.getElementById("overlay").classList.remove("show");load(pi+1);});
+document.getElementById("hint").addEventListener("click",hint);
+document.getElementById("reset").addEventListener("click",()=>{guess={};locked={};sel="";save();render();});
+document.getElementById("ovBtn").addEventListener("click",()=>{document.getElementById("overlay").classList.remove("show");load(pi+1);});
+
+window.__crypto=function(){return{sol:sol,cipher:cipher,inv:inv,guess:Object.assign({},guess),won:isWon()};};
+window.__place=place;window.__selCipher=function(c){sel=c;render();};
+load(loadAll().pi||0);
+</script>
+</body>
+</html>
