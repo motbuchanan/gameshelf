@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Minesweeper</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:#10140d;color:#dfe6d6;
+    background-image:radial-gradient(ellipse at 50% -10%,#1b2414,#10140d 70%);min-height:100vh;}
+  #bar{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#0c0f09;border-bottom:1px solid #2a341e;}
+  #bar a{color:#dfe6d6;text-decoration:none;font-size:13px;border:1px solid #4f6e3a;background:#1d2615;border-radius:999px;padding:6px 12px;}
+  #title{font-weight:800;font-size:17px;}
+  #who{margin-left:auto;font-size:12.5px;color:#9fc285;border:1px solid #3a5226;background:#172011;border-radius:999px;padding:5px 11px;cursor:pointer;}
+  #wrap{max-width:520px;margin:0 auto;padding:12px;}
+  #hud{display:flex;align-items:center;justify-content:center;gap:14px;margin:4px 0 12px;font-weight:800;}
+  .stat{background:#172011;border:1px solid #2f421e;border-radius:10px;padding:7px 12px;font-size:15px;color:#cfe3b6;min-width:74px;text-align:center;}
+  .stat small{display:block;font-size:10px;color:#7fa45f;font-weight:700;letter-spacing:.5px;}
+  #diff{display:flex;gap:6px;justify-content:center;margin-bottom:12px;}
+  #diff button{font-family:inherit;font-weight:700;font-size:13px;padding:8px 12px;border-radius:9px;border:1px solid #4f6e3a;background:#1d2615;color:#dfe6d6;cursor:pointer;}
+  #diff button.on{background:#7ec060;color:#10220a;border-color:#4f8a37;}
+  #board{margin:0 auto;width:max-content;max-width:100%;background:#2c3a1d;border:3px solid #4f6e3a;border-radius:8px;
+    box-shadow:0 6px 18px rgba(0,0,0,.5);padding:4px;display:grid;gap:2px;touch-action:manipulation;user-select:none;}
+  .ms{background:linear-gradient(150deg,#cdd9bb,#aebd96);border-radius:3px;display:flex;align-items:center;justify-content:center;
+    font-weight:800;cursor:pointer;color:#234;}
+  .ms.rev{background:#e9efdd;box-shadow:inset 0 0 0 1px #cdd9bb;cursor:default;}
+  .ms.flag{background:linear-gradient(150deg,#e8c98c,#d6a85c);}
+  .ms.mine{background:#e06a55;}
+  .ms.boom{background:#c0271f;}
+  .n1{color:#1f6fd6;}.n2{color:#2e9e4a;}.n3{color:#d63a2f;}.n4{color:#7a3bd0;}.n5{color:#b5651d;}.n6{color:#1aa6a6;}.n7{color:#444;}.n8{color:#777;}
+  #ctrl{max-width:340px;margin:12px auto 0;display:flex;gap:8px;}
+  #ctrl button{flex:1;font-family:inherit;font-weight:700;font-size:14px;padding:12px 0;border-radius:10px;border:1px solid #4f6e3a;background:#1d2615;color:#dfe6d6;cursor:pointer;}
+  #ctrl button.on{background:#e8c466;color:#221a02;border-color:#b8860b;}
+  #msg{text-align:center;color:#bcc9aa;font-size:13.5px;min-height:18px;margin:12px 4px 4px;}
+  .ov{position:fixed;inset:0;background:rgba(8,12,6,.95);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:60;text-align:center;padding:22px;}
+  .ov.show{display:flex;}
+  .ov h1{font-size:26px;margin:0;}
+  .ov p{color:#bcc9aa;max-width:330px;font-size:15px;}
+  .act{font-family:inherit;font-size:15px;font-weight:bold;padding:11px 20px;border-radius:10px;border:none;background:#7ec060;color:#10220a;box-shadow:0 4px 0 #3f7a2a;cursor:pointer;}
+  html.gn-easy #title{font-size:21px;}html.gn-easy .stat{font-size:17px;}
+</style>
+</head>
+<body>
+<div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">Minesweeper</div><div id="who">1 player</div></div>
+<div id="wrap">
+  <div id="diff">
+    <button data-d="0" class="on">Easy</button>
+    <button data-d="1">Medium</button>
+    <button data-d="2">Hard</button>
+  </div>
+  <div id="hud">
+    <div class="stat"><small>MINES</small><span id="mineCount">0</span></div>
+    <div class="stat"><small>TIME</small><span id="time">0</span></div>
+    <div class="stat"><small>BEST</small><span id="best">0</span></div>
+  </div>
+  <div id="board"></div>
+  <div id="ctrl">
+    <button id="mode">&#128681; Flag: <span id="modeState">off</span></button>
+    <button id="newg">&#128512; New game</button>
+  </div>
+  <div id="msg">Tap to dig. Flip to Flag to mark mines. First tap is always safe.</div>
+</div>
+<div class="ov" id="overlay"><div id="ovEmoji" style="font-size:46px;">&#128512;</div><h1 id="ovTitle">Cleared!</h1><p id="ovText"></p>
+  <button class="act" id="ovBtn">Play again</button>
+  <a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #4f6e3a;background:#1d2615;color:#dfe6d6;text-decoration:none;">Back to shelf</a></div>
+<script src="gamenight.js?v=12"></script>
+<script src="sfx.js?v=5"></script>
+<script>
+const KEY="minesweeper_games";
+const LEVELS=[{n:9,m:10,name:"Easy"},{n:12,m:25,name:"Medium"},{n:16,m:45,name:"Hard"}];
+function S(n){try{window.GNS&&GNS.play(n);}catch(e){}}
+const boardEl=document.getElementById("board"),msgEl=document.getElementById("msg");
+let di=0, N=9, M=10, mine=[], adj=[], rev=[], flag=[], started=false, dead=false, won=false, t0=0, timer=null, flagMode=false, best=0, who="";
+
+function readBest(){let b=0;const recs=(window.GN&&GN.readGames?GN.readGames(KEY):[])||[];for(const r of recs)if((r.score||0)>b)b=r.score;return b;}
+function fmtT(s){return s+"s";}
+function tick(){if(!started||dead||won)return;document.getElementById("time").textContent=Math.floor((Date.now()-t0)/1000);}
+
+function newGame(){
+  const L=LEVELS[di];N=L.n;M=L.m;
+  mine=new Array(N*N).fill(false);adj=new Array(N*N).fill(0);
+  rev=new Array(N*N).fill(false);flag=new Array(N*N).fill(false);
+  started=false;dead=false;won=false;if(timer)clearInterval(timer);timer=null;
+  best=readBest();
+  render();updateHud();
+  document.getElementById("time").textContent="0";
+  msgEl.textContent="Tap to dig. First tap is always safe.";
+}
+function place(safe){ // generate mines avoiding 'safe' cell + neighbors
+  const banned=new Set([safe,...neighbors(safe)]);
+  let placed=0;
+  while(placed<M){const i=Math.floor(Math.random()*N*N);if(mine[i]||banned.has(i))continue;mine[i]=true;placed++;}
+  for(let i=0;i<N*N;i++){if(mine[i]){adj[i]=-1;continue;}let c=0;for(const j of neighbors(i))if(mine[j])c++;adj[i]=c;}
+}
+function neighbors(i){const r=Math.floor(i/N),c=i%N,out=[];
+  for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){if(!dr&&!dc)continue;const nr=r+dr,nc=c+dc;if(nr>=0&&nr<N&&nc>=0&&nc<N)out.push(nr*N+nc);}return out;}
+function reveal(i){
+  if(rev[i]||flag[i]||dead||won)return;
+  if(!started){started=true;t0=Date.now();timer=setInterval(tick,250);place(i);}
+  rev[i]=true;
+  if(mine[i]){dead=true;S("err");endGame(false);render();return;}
+  if(adj[i]===0){for(const j of neighbors(i))if(!rev[j]&&!flag[j])reveal(j);}
+  S("tap");
+  checkWin();
+}
+function toggleFlag(i){if(rev[i]||dead||won)return;flag[i]=!flag[i];S("tap");render();updateHud();}
+function checkWin(){
+  let r=0;for(let i=0;i<N*N;i++)if(rev[i])r++;
+  if(r===N*N-M){won=true;S("win");endGame(true);}
+  render();
+}
+function countRev(){let r=0;for(let i=0;i<N*N;i++)if(rev[i])r++;return r;}
+function score(){ // higher = better: clearing harder boards scores more; reward speed on wins
+  const cells=countRev();const lvlMul=[1,2,4][di];
+  if(won){const secs=Math.max(1,Math.floor((Date.now()-t0)/1000));return Math.round((N*N)*lvlMul*10*(60/(60+secs)));}
+  return cells*lvlMul;
+}
+function endGame(win){
+  if(timer)clearInterval(timer);
+  const sc=score();const prevBest=best;
+  const rec={start:t0||Date.now(),end:Date.now(),durationMs:t0?Date.now()-t0:0,score:sc,level:LEVELS[di].name,solo:true,winner:null,draw:true};
+  try{if(window.GN&&GN.recordGame)GN.recordGame(KEY,rec);}catch(e){}
+  best=readBest();updateHud();
+  const secs=t0?Math.floor((Date.now()-t0)/1000):0;
+  document.getElementById("ovEmoji").textContent=win?"\uD83C\uDF89":"\uD83D\uDCA5";
+  document.getElementById("ovTitle").textContent=win?"Cleared!":"Boom!";
+  document.getElementById("ovText").textContent=win
+    ? ("Solved "+LEVELS[di].name+" in "+secs+"s. Score "+sc+(sc>=best&&sc>prevBest?" \u2014 new best!":"."))
+    : ("You hit a mine. Score "+sc+". Try again!");
+  document.getElementById("overlay").classList.add("show");
+}
+function updateHud(){
+  let f=0;for(let i=0;i<N*N;i++)if(flag[i])f++;
+  document.getElementById("mineCount").textContent=Math.max(0,M-f);
+  document.getElementById("best").textContent=best;
+}
+function render(){
+  const sz=Math.max(20,Math.min(34,Math.floor(330/N)));
+  boardEl.style.gridTemplateColumns="repeat("+N+","+sz+"px)";boardEl.innerHTML="";
+  for(let i=0;i<N*N;i++){
+    const el=document.createElement("div");el.className="ms";el.style.width=sz+"px";el.style.height=sz+"px";el.style.fontSize=Math.floor(sz*0.55)+"px";
+    if(rev[i]){el.classList.add("rev");
+      if(mine[i]){el.classList.add("boom");el.textContent="\uD83D\uDCA3";}
+      else if(adj[i]>0){el.textContent=adj[i];el.classList.add("n"+adj[i]);}
+    }else if(flag[i]){el.classList.add("flag");el.textContent="\uD83D\uDEA9";}
+    if(dead&&mine[i]&&!rev[i]&&!flag[i]){el.classList.add("mine");el.textContent="\uD83D\uDCA3";}
+    el.addEventListener("click",()=>{flagMode?toggleFlag(i):reveal(i);});
+    boardEl.appendChild(el);
+  }
+}
+
+document.querySelectorAll("#diff button").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll("#diff button").forEach(x=>x.classList.remove("on"));b.classList.add("on");
+  di=+b.dataset.d;document.getElementById("overlay").classList.remove("show");newGame();}));
+document.getElementById("mode").addEventListener("click",()=>{flagMode=!flagMode;
+  document.getElementById("modeState").textContent=flagMode?"on":"off";
+  document.getElementById("mode").classList.toggle("on",flagMode);});
+document.getElementById("newg").addEventListener("click",()=>{document.getElementById("overlay").classList.remove("show");newGame();});
+document.getElementById("ovBtn").addEventListener("click",()=>{document.getElementById("overlay").classList.remove("show");newGame();});
+
+function pickPlayer(){if(window.GN&&GN.soloStart){GN.soloStart(function(name){who=name;if(GN.whoBadge)GN.whoBadge(document.getElementById("who"),name,pickPlayer);else document.getElementById("who").textContent=name;newGame();},{title:"Minesweeper"});}else newGame();}
+document.getElementById("who").addEventListener("click",pickPlayer);
+
+window.__mine=function(){return{N:N,mine:mine.slice(),adj:adj.slice(),rev:rev.slice(),flag:flag.slice(),dead:dead,won:won,started:started};};
+window.__reveal=reveal;window.__flag=toggleFlag;window.__newGame=newGame;
+pickPlayer();
+</script>
+</body>
+</html>

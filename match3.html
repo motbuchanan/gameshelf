@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Gem Match</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:#120f1c;color:#e7e1f2;
+    background-image:radial-gradient(ellipse at 50% -10%,#241a38,#120f1c 70%);min-height:100vh;}
+  #bar{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#0d0b15;border-bottom:1px solid #2e2546;}
+  #bar a{color:#e7e1f2;text-decoration:none;font-size:13px;border:1px solid #5a4a86;background:#201a33;border-radius:999px;padding:6px 12px;}
+  #title{font-weight:800;font-size:17px;}
+  #who{margin-left:auto;font-size:12.5px;color:#c3b1e8;border:1px solid #4a3a72;background:#1b1530;border-radius:999px;padding:5px 11px;cursor:pointer;}
+  #wrap{max-width:520px;margin:0 auto;padding:12px;}
+  #hud{display:flex;align-items:center;justify-content:center;gap:12px;margin:4px 0 12px;}
+  .stat{background:#1b1530;border:1px solid #352a52;border-radius:10px;padding:7px 14px;font-size:16px;font-weight:800;color:#e7defc;min-width:78px;text-align:center;}
+  .stat small{display:block;font-size:10px;color:#a892d6;font-weight:700;letter-spacing:.5px;}
+  #board{margin:0 auto;width:max-content;background:#241c3a;border:3px solid #5a4a86;border-radius:10px;
+    box-shadow:0 6px 18px rgba(0,0,0,.5);padding:5px;display:grid;gap:3px;touch-action:manipulation;user-select:none;}
+  .gem{display:flex;align-items:center;justify-content:center;border-radius:9px;cursor:pointer;font-weight:900;
+    transition:transform .12s ease, opacity .12s ease;box-shadow:inset 0 2px 3px rgba(255,255,255,.35),inset 0 -3px 4px rgba(0,0,0,.3);}
+  .gem.sel{outline:3px solid #fff;outline-offset:-3px;transform:scale(.9);}
+  .gem.pop{opacity:0;transform:scale(.4);}
+  #msg{text-align:center;color:#c5bce0;font-size:13.5px;min-height:18px;margin:12px 4px 4px;}
+  #ctrl{max-width:320px;margin:12px auto 0;display:flex;gap:8px;}
+  #ctrl button{flex:1;font-family:inherit;font-weight:700;font-size:14px;padding:12px 0;border-radius:10px;border:1px solid #5a4a86;background:#201a33;color:#e7e1f2;cursor:pointer;}
+  .ov{position:fixed;inset:0;background:rgba(10,8,18,.95);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:60;text-align:center;padding:22px;}
+  .ov.show{display:flex;}
+  .ov h1{font-size:26px;margin:0;}
+  .ov p{color:#c5bce0;max-width:330px;font-size:15px;}
+  .act{font-family:inherit;font-size:15px;font-weight:bold;padding:11px 20px;border-radius:10px;border:none;background:#b07ae0;color:#1a1024;box-shadow:0 4px 0 #6e3fa0;cursor:pointer;}
+  html.gn-easy #title{font-size:21px;}html.gn-easy .stat{font-size:18px;}
+</style>
+</head>
+<body>
+<div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">Gem Match</div><div id="who">1 player</div></div>
+<div id="wrap">
+  <div id="hud">
+    <div class="stat"><small>SCORE</small><span id="score">0</span></div>
+    <div class="stat"><small>MOVES</small><span id="moves">20</span></div>
+    <div class="stat"><small>BEST</small><span id="best">0</span></div>
+  </div>
+  <div id="board"></div>
+  <div id="msg">Swap two touching gems to line up three or more.</div>
+  <div id="ctrl"><button id="newg">&#128260; New game</button></div>
+</div>
+<div class="ov" id="overlay"><div style="font-size:46px;">&#128142;</div><h1 id="ovTitle">Out of moves!</h1><p id="ovText"></p>
+  <button class="act" id="ovBtn">Play again</button>
+  <a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #5a4a86;background:#201a33;color:#e7e1f2;text-decoration:none;">Back to shelf</a></div>
+<script src="gamenight.js?v=12"></script>
+<script src="sfx.js?v=5"></script>
+<script>
+const KEY="gemmatch_games", N=8, START_MOVES=20;
+const COLORS=[
+ {bg:"#e0573a",sym:"\u25CF"},{bg:"#3a86e0",sym:"\u25B2"},{bg:"#46b06a",sym:"\u25C6"},
+ {bg:"#f4c542",sym:"\u2605"},{bg:"#9b5ad6",sym:"\u25A0"},{bg:"#e88fb0",sym:"\u271A"}
+];
+function S(n){try{window.GNS&&GNS.play(n);}catch(e){}}
+const boardEl=document.getElementById("board"),msgEl=document.getElementById("msg");
+let gems=[], sel=-1, score=0, moves=START_MOVES, busy=false, over=false, best=0, who="";
+
+function readBest(){let b=0;const recs=(window.GN&&GN.readGames?GN.readGames(KEY):[])||[];for(const r of recs)if((r.score||0)>b)b=r.score;return b;}
+function rc(i){return [Math.floor(i/N),i%N];}
+function rnd(){return Math.floor(Math.random()*COLORS.length);}
+function matchesAt(arr){ // returns Set of matched indices
+  const set=new Set();
+  for(let r=0;r<N;r++)for(let c=0;c<N-2;c++){const i=r*N+c;const v=arr[i];if(v<0)continue;if(arr[i+1]===v&&arr[i+2]===v){let k=c;while(k<N&&arr[r*N+k]===v){set.add(r*N+k);k++;}}}
+  for(let c=0;c<N;c++)for(let r=0;r<N-2;r++){const i=r*N+c;const v=arr[i];if(v<0)continue;if(arr[i+N]===v&&arr[i+2*N]===v){let k=r;while(k<N&&arr[k*N+c]===v){set.add(k*N+c);k++;}}}
+  return set;
+}
+function newBoard(){
+  gems=new Array(N*N);
+  do{for(let i=0;i<N*N;i++)gems[i]=rnd();}while(matchesAt(gems).size>0||!hasMove());
+}
+function hasMove(){ // is any swap productive?
+  for(let i=0;i<N*N;i++){const [r,c]=rc(i);
+    if(c<N-1){swapArr(gems,i,i+1);if(matchesAt(gems).size>0){swapArr(gems,i,i+1);return true;}swapArr(gems,i,i+1);}
+    if(r<N-1){swapArr(gems,i,i+N);if(matchesAt(gems).size>0){swapArr(gems,i,i+N);return true;}swapArr(gems,i,i+N);}
+  }return false;
+}
+function swapArr(a,i,j){const t=a[i];a[i]=a[j];a[j]=t;}
+
+function newGame(){score=0;moves=START_MOVES;sel=-1;over=false;busy=false;best=readBest();newBoard();render();updateHud();msgEl.textContent="Swap two touching gems to line up three or more.";}
+function updateHud(){document.getElementById("score").textContent=score;document.getElementById("moves").textContent=moves;document.getElementById("best").textContent=best;}
+
+function render(){
+  const sz=Math.max(30,Math.min(40,Math.floor(330/N)));
+  boardEl.style.gridTemplateColumns="repeat("+N+","+sz+"px)";boardEl.innerHTML="";
+  for(let i=0;i<N*N;i++){
+    const g=document.createElement("div");g.className="gem";g.style.width=sz+"px";g.style.height=sz+"px";g.style.fontSize=Math.floor(sz*0.5)+"px";
+    const v=gems[i];if(v>=0){g.style.background=COLORS[v].bg;g.style.color="rgba(255,255,255,.92)";g.textContent=COLORS[v].sym;}
+    if(i===sel)g.classList.add("sel");
+    g.addEventListener("click",()=>tap(i));
+    boardEl.appendChild(g);
+  }
+}
+function adjacent(a,b){const [ra,ca]=rc(a),[rb,cb]=rc(b);return Math.abs(ra-rb)+Math.abs(ca-cb)===1;}
+function tap(i){
+  if(busy||over)return;
+  if(sel<0){sel=i;render();S("tap");return;}
+  if(i===sel){sel=-1;render();return;}
+  if(!adjacent(sel,i)){sel=i;render();S("tap");return;}
+  trySwap(sel,i);
+}
+function trySwap(a,b){
+  swapArr(gems,a,b);
+  if(matchesAt(gems).size===0){swapArr(gems,a,b);sel=-1;S("err");render();msgEl.textContent="No match there \u2014 try another swap.";return;}
+  sel=-1;moves--;S("place");resolve();
+}
+function resolve(){
+  busy=true;let chain=0;
+  function step(){
+    const m=matchesAt(gems);
+    if(m.size===0){busy=false;updateHud();afterResolve();return;}
+    chain++;score+=m.size*10*chain;
+    m.forEach(i=>gems[i]=-1);
+    // mark pops then drop
+    render();
+    // drop columns
+    for(let c=0;c<N;c++){let write=N-1;for(let r=N-1;r>=0;r--){const i=r*N+c;if(gems[i]>=0){gems[write*N+c]=gems[i];if(write!==r)gems[i]=-1;write--;}}for(let r=write;r>=0;r--)gems[r*N+c]=rnd();}
+    updateHud();render();
+    setTimeout(step,90);
+  }
+  step();
+}
+function afterResolve(){
+  render();
+  if(moves<=0){endGame();return;}
+  if(!hasMove()){newBoard();render();msgEl.textContent="No moves left \u2014 board reshuffled!";}
+}
+function endGame(){
+  over=true;const prevBest=best;
+  const rec={start:Date.now(),end:Date.now(),durationMs:0,score:score,solo:true,winner:null,draw:true};
+  try{if(window.GN&&GN.recordGame)GN.recordGame(KEY,rec);}catch(e){}
+  best=readBest();updateHud();
+  document.getElementById("ovText").textContent="You scored "+score+(score>=best&&score>prevBest?" \u2014 new best!":(". Best "+best+"."));
+  document.getElementById("overlay").classList.add("show");
+}
+
+document.getElementById("newg").addEventListener("click",()=>{document.getElementById("overlay").classList.remove("show");newGame();});
+document.getElementById("ovBtn").addEventListener("click",()=>{document.getElementById("overlay").classList.remove("show");newGame();});
+function pickPlayer(){if(window.GN&&GN.soloStart){GN.soloStart(function(name){who=name;if(GN.whoBadge)GN.whoBadge(document.getElementById("who"),name,pickPlayer);else document.getElementById("who").textContent=name;newGame();},{title:"Gem Match"});}else newGame();}
+document.getElementById("who").addEventListener("click",pickPlayer);
+
+window.__m3=function(){return{N:N,gems:gems.slice(),score:score,moves:moves,over:over};};
+window.__swap=trySwap;window.__setGems=function(a){gems=a.slice();sel=-1;render();};window.__newGame=newGame;
+pickPlayer();
+</script>
+</body>
+</html>
