@@ -47,6 +47,12 @@
   #lvGrid{display:grid;grid-template-columns:repeat(5,56px);gap:9px;}
   #lvGrid button{height:46px;border-radius:10px;border:1.5px solid #6e5f50;background:#2a241e;color:#e6ddd0;font-weight:800;font-size:16px;cursor:pointer;}
   #lvGrid button.cur{background:#d8b878;color:#241c12;border-color:#d8b878;}
+  #thinkWrap{margin-top:14px;max-width:296px;}
+  .thinkHd{font-size:13px;color:#cdbfa4;font-weight:800;margin-bottom:7px;letter-spacing:.3px;}
+  #thinkRow{display:flex;gap:8px;}
+  #thinkRow button{flex:1;padding:10px 6px;border-radius:9px;border:1.5px solid #6e5f50;background:#2a241e;color:#e6ddd0;font-weight:700;font-size:13.5px;cursor:pointer;}
+  #thinkRow button.cur{background:#d8b878;color:#241c12;border-color:#d8b878;}
+  .thinkNote{font-size:11.5px;color:#b3a48f;line-height:1.4;margin-top:9px;}
   #thGrid{display:flex;flex-direction:column;gap:14px;max-width:330px;}
   .thLabel{font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:#a89a86;text-align:left;}
   .swRow{display:flex;gap:9px;flex-wrap:wrap;justify-content:center;}
@@ -78,6 +84,8 @@
   #evalBar{width:min(92vw,452px);height:9px;border-radius:5px;margin:8px auto 0;overflow:hidden;display:none;position:relative;
     background:#2a2018;box-shadow:inset 0 1px 2px rgba(0,0,0,.55);}
   #evalBar.show{display:block;}
+  #evalCap{width:min(92vw,452px);margin:3px auto 0;display:none;justify-content:space-between;font-size:10.5px;color:#9a8f7e;letter-spacing:.2px;}
+  #evalCap.show{display:flex;}
   #evalFill{height:100%;background:linear-gradient(90deg,#f2ecdc,#d2c7ad);transition:width .45s ease;}
   #evalBar::after{content:"";position:absolute;left:50%;top:-1px;bottom:-1px;width:1px;background:rgba(255,255,255,.3);}
   #board{touch-action:none;}
@@ -88,6 +96,7 @@
 <div class="tray" id="trayTop"></div>
 <div id="frame"><div id="board"></div></div>
 <div id="evalBar"><div id="evalFill"></div></div>
+<div id="evalCap"><span>&#9664; Computer ahead</span><span>You ahead &#9654;</span></div>
 <div class="tray" id="trayBot"></div>
 <div id="msg"></div>
 <div id="moveList"></div>
@@ -101,7 +110,10 @@
 </div>
 <div class="ov" id="promoOv"><h1>Promote to&hellip;</h1><div class="pickRow" id="promoRow"></div></div>
 <div class="ov" id="lvOv"><h1>vs Computer</h1><p>The computer plays Black. Pick a level &mdash; 1 learns with you, 10 means business.</p>
-  <div id="lvGrid"></div><button class="act ghost" id="lvOff">Two players (off)</button></div>
+  <div id="lvGrid"></div>
+  <div id="thinkWrap"><div class="thinkHd">Thinking time</div><div id="thinkRow"></div>
+  <p class="thinkNote">How long the computer ponders each move &mdash; <b>at any level</b>. <b>Patient</b> lets it search deeper and play noticeably stronger; <b>Quick</b> is snappier and a touch weaker. Same personality, more (or less) thinking.</p></div>
+  <button class="act ghost" id="lvOff">Two players (off)</button></div>
 <div class="ov" id="thOv"><h1>Board &amp; pieces</h1><div id="thGrid">
   <div class="thLabel">Board material</div><div class="swRow" id="swB"></div>
   <div class="thLabel">Piece material</div><div class="swRow" id="swP"></div></div>
@@ -391,15 +403,17 @@ const LEVELS={
    random among moves within OPENING_SPREAD centipawns of the best, so it varies
    its openings without ever choosing a weak move. Tune these two by feel. */
 const OPENING_MOVES=5, OPENING_SPREAD=35;
-function analyze(st,lvl){ // iterative deepening at root; only completed iterations count
+function analyze(st,lvl,opts){ // iterative deepening at root; only completed iterations count
   const L=LEVELS[lvl]||LEVELS[10];
-  const budget={n:0,deadline:Date.now()+L.ms,up:false};
+  const msMult=(opts&&opts.msMult)||1, depthBonus=(opts&&opts.depthBonus)||0;
+  const effMs=Math.min(9000,Math.round(L.ms*msMult)), maxDepth=L.depth+depthBonus;
+  const budget={n:0,deadline:Date.now()+effMs,up:false};
   TT.clear();killers.length=0;history.fill(0);
   let roots=CH.legal(st);
   if(!roots.length)return[];
   roots.sort((a,b)=>mvv(st,b)-mvv(st,a));
   let committed=roots.map(m=>({m,score:0}));
-  for(let d=1;d<=L.depth;d++){
+  for(let d=1;d<=maxDepth;d++){
     const pass=[];let aborted=false;
     for(const e of committed){CH.make(st,e.m);
       const v=-search(st,d-1,-Infinity,Infinity,budget,L.q,1);
@@ -458,11 +472,11 @@ const BOOK=new Map();
 function bookMove(st){const arr=BOOK.get(CH.posKey(st));if(!arr||!arr.length)return null;
   const b=arr[Math.floor(Math.random()*arr.length)];
   return CH.legal(st).find(x=>x.from===b.from&&x.to===b.to)||null;}
-function pick(st,lvl){
+function pick(st,lvl,opts){
   const L=LEVELS[lvl]||LEVELS[10];
   const bm=bookMove(st);
   if(bm)return bm;
-  const a=analyze(st,lvl);
+  const a=analyze(st,lvl,opts);
   if(!a.length)return null;
   if(L.blunder&&Math.random()<L.blunder&&a.length>1){
     // a deliberately mediocre choice: random from the bottom-ish half
@@ -523,7 +537,10 @@ function applyTheme(){const b=BOARD_THEMES.find(t=>t.id===themeB)||BOARD_THEMES[
 let P={w:{name:"White"},b:{name:"Black"}};
 let st=null,sel=-1,legalNow=[],lastMv=null,phase="over",GS=null;
 let botLevel=+(localStorage.getItem("chess_bot_level")||0),botBusy=false,botKey="";
-let coach=false,hintShown=null,pendingPromo=null;
+let thinkPref=localStorage.getItem("chess_think")||"normal";
+const THINK={quick:{msMult:0.45,depthBonus:0,label:"Quick"},normal:{msMult:1,depthBonus:0,label:"Normal"},patient:{msMult:2.2,depthBonus:1,label:"Patient"}};
+function thinkOpts(){return THINK[thinkPref]||THINK.normal;}
+let coach=false,hintShown=null,pendingPromo=null,lastHintMove=null;
 const TVMODE=localStorage.getItem("gn_tv")==="on";
 const boardEl=document.getElementById("board");
 const RM=window.matchMedia&&window.matchMedia("(prefers-reduced-motion:reduce)").matches;
@@ -636,12 +653,12 @@ function render(){
   document.getElementById("backBtn").style.display=coach&&st.hist.length?"":"none";
   document.getElementById("hintBtn").style.display=coach?"":"none";
   renderMoves();updateEval();}
-function updateEval(){const bar=document.getElementById("evalBar"),fill=document.getElementById("evalFill");
+function updateEval(){const bar=document.getElementById("evalBar"),fill=document.getElementById("evalFill"),cap=document.getElementById("evalCap");
   if(!bar)return;
-  if(phase!=="play"||!botLevel){bar.classList.remove("show");return;}
+  if(phase!=="play"||!botLevel){bar.classList.remove("show");if(cap)cap.classList.remove("show");return;}
   const cp=CAI.evaluate(st);
   const pct=Math.max(3,Math.min(97,50+50*Math.tanh(cp/420)));
-  fill.style.width=pct+"%";bar.classList.add("show");}
+  fill.style.width=pct+"%";bar.classList.add("show");if(cap)cap.classList.add("show");}
 function setMsg(t){document.getElementById("msg").textContent=t;}
 /* ---------- algebraic notation (SAN) + move list ---------- */
 function sanBefore(stB,m){
@@ -699,19 +716,21 @@ function describe(m,stBefore){const p=stBefore.b[m.from],names={p:"pawn",n:"knig
   if(v)return "the "+names[p.toLowerCase()]+" takes the "+names[v.toLowerCase()];
   return "moves the "+names[p.toLowerCase()]+" to "+CH.alg(m.to);}
 function commit(m,silentCoach){
-  if(coach&&!silentCoach&&!(botLevel&&st.turn==="b")){
-    // blunder guard: compare against a quick honest analysis
-    const a=CAI.analyze(st,6);
+  const isHinted=lastHintMove&&lastHintMove.from===m.from&&lastHintMove.to===m.to&&lastHintMove.promo===m.promo;
+  if(coach&&!silentCoach&&!isHinted&&!(botLevel&&st.turn==="b")){
+    // blunder guard: honest, no-noise look that's deep enough to spot a forced mate
+    const a=CAI.analyze(st,9,{msMult:0.6});
     const mine=a.find(e=>e.m.from===m.from&&e.m.to===m.to&&e.m.promo===m.promo);
-    if(a.length>1&&mine&&a[0].score-mine.score>180){
-      const best=a[0];
-      GN.confirmEnd("Coach: that may lose material \u2014 stronger here is "+CH.alg(best.m.from)+"\u2192"+CH.alg(best.m.to)+" ("+describe(best.m,st)+"). Play your move anyway?",
-        ()=>doCommit(m));
-      // repurpose button labels for this question
-      const c=document.getElementById("gnConf");
-      if(c){c.querySelector("#gnKeep").textContent="Take another look";
-        c.querySelector("#gnEnd").textContent="Play it anyway";}
-      return;}}
+    if(a.length>1&&mine){
+      const best=a[0], drop=best.score-mine.score, walksIntoMate=mine.score<=-90000;
+      if(walksIntoMate||drop>180){
+        const why=walksIntoMate?"that move lets your opponent force checkmate":"that move may lose material";
+        GN.confirmEnd("\u{1F393} Coach: "+why+" \u2014 a stronger move is "+CH.alg(best.m.from)+"\u2192"+CH.alg(best.m.to)+" ("+describe(best.m,st)+"). Play your move anyway?",
+          ()=>doCommit(m));
+        const c=document.getElementById("gnConf");
+        if(c){c.querySelector("#gnKeep").textContent="Take another look";
+          c.querySelector("#gnEnd").textContent="Play it anyway";}
+        return;}}}
   doCommit(m);}
 function doCommit(m){
   const mover=st.turn, moveNo=st.full, desc=describe(m,st);
@@ -772,23 +791,35 @@ setInterval(()=>{
   botBusy=true;setMsg("Thinking\u2026");
   setTimeout(()=>{try{
     if(phase==="play"&&st.turn==="b"&&botLevel){
-      const m=CAI.pick(st,botLevel);
-      if(m)doCommit(m);}
+      const m=CAI.pick(st,botLevel,thinkOpts());
+      if(m){doCommit(m);
+        if(phase==="play"&&coach&&st.turn==="w")
+          setMsg((CH.inCheck(st,"w")?"Check! ":"")+"Your move \u2014 tap \u{1F4A1} Hint for the best move.");}}
   }finally{botBusy=false;}},120);
 },200);
 /* ---------- coach ---------- */
 document.getElementById("coachBtn").addEventListener("click",()=>{coach=!coach;
   document.getElementById("coachBtn").classList.toggle("on",coach);
-  setMsg(coach?"Coach on: hints, takebacks, and a nudge before blunders.":"Coach off.");
+  setMsg(coach?"\u{1F393} Coach is ON. Tap the \u{1F4A1} Hint button for the best move \u2014 I'll also warn you before a risky one. Tap Coach again to turn it off.":"Coach off.");
   render();});
 document.getElementById("hintBtn").addEventListener("click",()=>{
   if(phase!=="play")return;
   if(botLevel&&st.turn==="b")return;
-  const a=CAI.analyze(st,7);
-  if(!a.length)return;
-  hintShown={from:a[0].m.from,to:a[0].m.to};
-  setMsg("\u{1F4A1} "+CH.alg(a[0].m.from)+"\u2192"+CH.alg(a[0].m.to)+" \u2014 "+describe(a[0].m,st));
-  S("chime");render();});
+  setMsg("\u{1F4A1} Thinking about the best move\u2026");
+  setTimeout(()=>{
+    if(phase!=="play")return;
+    const a=CAI.analyze(st,10,{depthBonus:1,msMult:0.6});   // coaching hint: deep, no noise, ~3s
+    if(!a.length)return;
+    const best=a[0];
+    hintShown={from:best.m.from,to:best.m.to};
+    lastHintMove={from:best.m.from,to:best.m.to,promo:best.m.promo};
+    let note="";
+    if(best.score<=-90000)note=" \u2014 careful, this is already a losing spot";
+    else if(best.score>=90000)note=" \u2014 this leads to checkmate!";
+    setMsg("\u{1F4A1} Best move: "+CH.alg(best.m.from)+"\u2192"+CH.alg(best.m.to)+" \u2014 "+describe(best.m,st)+note);
+    S("chime");render();
+  },30);
+});
 document.getElementById("backBtn").addEventListener("click",()=>{
   if(!st||!st.hist.length||phase!=="play")return;
   CH.unmake(st);
@@ -798,15 +829,21 @@ document.getElementById("backBtn").addEventListener("click",()=>{
   sel=-1;legalNow=[];hintShown=null;botKey="";
   S("move");setMsg("Take it back \u2014 try again.");render();});
 /* ---------- level picker ---------- */
-function lvLabel(){document.getElementById("botBtn").textContent="vs Computer: "+(botLevel?("L"+botLevel):"Off");}
+function lvLabel(){document.getElementById("botBtn").textContent="vs Computer: "+(botLevel?("L"+botLevel+" \u00b7 "+(THINK[thinkPref]||THINK.normal).label):"Off");}
+function buildThinkRow(){const r=document.getElementById("thinkRow");r.innerHTML="";
+  for(const key of ["quick","normal","patient"]){const b=document.createElement("button");
+    b.textContent=THINK[key].label;if(key===thinkPref)b.classList.add("cur");
+    b.addEventListener("click",()=>{thinkPref=key;localStorage.setItem("chess_think",key);botKey="";buildThinkRow();lvLabel();});
+    r.appendChild(b);}}
 document.getElementById("botBtn").addEventListener("click",()=>{
   const g=document.getElementById("lvGrid");g.innerHTML="";
   for(let i=1;i<=10;i++){const b=document.createElement("button");
     b.textContent=i;if(i===botLevel)b.classList.add("cur");
     b.addEventListener("click",()=>{botLevel=i;localStorage.setItem("chess_bot_level",i);botKey="";
       lvLabel();document.getElementById("lvOv").classList.remove("show");
-      setMsg("Computer plays Black at level "+i+".");render();});
+      setMsg("Computer plays Black at level "+i+" ("+(THINK[thinkPref]||THINK.normal).label+" thinking time).");render();});
     g.appendChild(b);}
+  buildThinkRow();
   document.getElementById("lvOv").classList.add("show");});
 document.getElementById("lvOff").addEventListener("click",()=>{botLevel=0;localStorage.setItem("chess_bot_level",0);
   lvLabel();document.getElementById("lvOv").classList.remove("show");setMsg("Two players at the board.");render();});
@@ -850,7 +887,8 @@ GN.rulesButton(document.getElementById("foot"),{title:"Chess",sections:[
  {h:"Promotion",t:"A pawn reaching the far rank becomes any piece you like \u2014 almost always a queen, but the picker offers knight, rook, and bishop for the rare position that wants them."},
  {h:"Draws",t:"Stalemate (no legal moves, but not in check), threefold repetition, fifty quiet moves, or bare-bones material \u2014 the game calls these automatically."},
  {h:"vs Computer: levels 1\u201310",t:"Level 1 barely looks ahead and blunders generously \u2014 perfect while learning. Each level climbs in real strength: 5\u20136 gives a casual adult a fight, 8+ plays serious club-level chess. The shelf remembers your level."},
- {h:"\u{1F393} Coach",t:"Coach mode adds three helpers: HINT shows a strong move and says why in plain words, the BLUNDER NUDGE taps your shoulder before a move that loses material (you can still play it \u2014 your game!), and TAKEBACK undoes your last move so mistakes become lessons. Climb a level when the coach gets quiet."}]});
+ {h:"\u23f1 Thinking time",t:"Separate from level, you can set how long the computer thinks per move: Quick, Normal, or Patient. Patient lets it search deeper and play noticeably stronger at the same level (great for a tougher game without changing its style); Quick is snappier and slightly weaker. Normal is the level as designed."},
+ {h:"\u{1F393} Coach \u2014 how to use it",t:"Tap Coach to turn it on (it glows green). Then two buttons appear: tap \u{1F4A1} HINT any time and the Coach thinks for a moment, then shows the best move in words above the buttons (e.g. \u201cBest move: e2\u2192e4\u201d) and highlights it on the board. If you try a move that loses material or walks into checkmate, the Coach pops up a friendly warning first \u2014 you can still play it. \u21a9 TAKEBACK undoes your last move so mistakes become lessons. The thin bar under the board is separate: it shows who\u2019s ahead (filling toward \u201cYou\u201d means you\u2019re winning). Climb a level when the coach gets quiet."}]});
 GN.statsButton(document.getElementById("foot"),{title:"Chess",key:KEY,specials:[
  {label:"Checkmates",of:(r,n)=>r.filter(x=>x.winner===n&&x.method==="mate").length},
  {label:"Wins vs computer",of:(r,n)=>r.filter(x=>x.winner===n&&x.vsBot).length},
