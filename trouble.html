@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<title>Trouble — 2 Players</title>
+<title>Trouble — Mot vs Kathy</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   :root{--accent:#b0d235;--accentSh:#7e9a1f;--text:#e8f0e4;}
@@ -78,7 +78,7 @@
 <div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">Trouble</div><div id="turn"><div id="dot"></div><span id="turnName"></span></div></div>
 <div id="wrap"><canvas id="board"></canvas><div id="domeBase"></div><button id="dome" aria-label="Pop the die"><div id="dieWrap"><div id="die"><div class="df dfF"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="df dfT"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="df dfR"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div></div></button></div>
 <div id="msg"></div>
-<div id="foot"><button class="act" id="newBtn">New game</button><div id="score"></div></div>
+<div id="foot"><button class="act" id="newBtn">New game</button><button class="act" id="onlineBtn" style="background:#2f6fd0;box-shadow:0 4px 0 #194182;">&#127760; Online</button><div id="score"></div></div>
 <div class="ov" id="overlay"><div id="confetti"></div><div id="ovTrophy">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p><button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
 <script src="gamenight.js?v=12"></script>
 <script src="bot.js?v=1"></script>
@@ -87,13 +87,15 @@
 const TRACK=28,FIN=4;
 // Finish-lane radii as fraction of R. Innermost must clear the dome base rim (~0.52R). Tune by screenshot.
 const FIN_OUTER=0.84, FIN_INNER=0.62;
-let P={red:{name:"Player 1",main:"#d8312b",light:"#f06a60",dark:"#8d1d19",entry:0},
-         blue:{name:"Player 2",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182",entry:14}};
+let P={red:{name:"Mot",main:"#d8312b",light:"#f06a60",dark:"#8d1d19",entry:0},
+         blue:{name:"Kathy",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182",entry:14}};
 const canvas=document.getElementById("board"),ctx=canvas.getContext("2d");
 let SZ=320,R=130,pegs=[],turn="blue",die=0,phase="roll",movable=[],animFly=null,pulsing=false,GS=null,extra=false;
 const KEY="trouble_games";let _mem=[];
 function S(n,o){window.GNS&&GNS.play(n,0,o);}
 let botLevel=null,botKey="",sixStreak=0;
+let online=false,roomCode=null,mySeat=null,isHost=false,roomData=null,roomUnsub=null,lastSeq=0;
+function myTurn(){return !online||turn===mySeat;}
 const Store={load(){try{return JSON.parse(localStorage.getItem(KEY))||[];}catch(e){return _mem.slice();}},
   save(l){try{localStorage.setItem(KEY,JSON.stringify(l));}catch(e){_mem=l.slice();}}};
 const PULSE=()=>0.5+0.5*Math.sin(performance.now()/280);
@@ -137,7 +139,7 @@ function rr(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h
 function pegXY(p){if(p.loc.state==="home")return homeXY(p.color,p.hi);
   if(p.loc.state==="track")return holeXY(p.loc.idx);return finXY(p.color,p.loc.i);}
 function seatFrom(p,seat){return Object.assign({},seat,{name:p.name,main:p.color,light:p.light,dark:p.dark});}
-function newGame(){pegs=[];for(const c of["red","blue"])for(let i=0;i<4;i++)pegs.push({color:c,hi:i,t:0,loc:{state:"home"}});
+function newGame(){if(online)leaveOnline();pegs=[];for(const c of["red","blue"])for(let i=0;i<4;i++)pegs.push({color:c,hi:i,t:0,loc:{state:"home"}});
   die=0;phase="over";movable=[];animFly=null;extra=false;
   document.getElementById("overlay").classList.remove("show");document.getElementById("confetti").innerHTML="";render();
   GN.matchStart(function(m){P={red:seatFrom(m.a,P.red),blue:seatFrom(m.b,P.blue)};
@@ -152,7 +154,7 @@ function updateBar(){const pc=P[turn];document.getElementById("turnName").textCo
   d.style.background="radial-gradient(circle at 35% 30%,"+pc.light+","+pc.main+" 70%,"+pc.dark+")";
   d.style.boxShadow="0 0 0 3px rgba(255,255,255,.15),0 0 14px "+pc.main;
   const g=Store.load();let m=0,k=0;for(const r of g){if(r.winner===P.red.name)m++;else if(r.winner===P.blue.name)k++;}
-  document.getElementById("score").textContent=P.red.name+" "+m+" \u00b7 "+k+" "+P.blue.name;}
+  document.getElementById("score").textContent="Mot "+m+" \u00b7 "+k+" Kathy";}
 function occTrack(idx){return pegs.find(p=>p.loc.state==="track"&&p.loc.idx===idx)||null;}
 function moveOf(p,n){ // returns {to,bump}|null
   if(p.loc.state==="fin"){const j=p.loc.i+n;if(j>=FIN)return null;
@@ -211,11 +213,11 @@ function afterRoll(){extra=(die===6);
   if(die===6){sixStreak++;S("six",sixStreak-1);}
   movable=pegs.filter(p=>p.color===turn&&moveOf(p,die));
   if(!movable.length){setMessage(P[turn].name+" rolled "+die+" \u2014 no moves");S("womp");
-    setTimeout(()=>{if(extra){phase="roll";setMessage(P[turn].name+" rolled 6, pop again!");}else passTurn();},900);
-    phase="wait";render();return;}
-  phase="move";setMessage(P[turn].name+" rolled "+die+" \u2014 tap a glowing peg");render();ensurePulse();}
+    setTimeout(()=>{if(extra){phase="roll";setMessage(P[turn].name+" rolled 6, pop again!");if(online)pushRoom();}else passTurn();},900);
+    phase="wait";render();if(online)pushRoom();return;}
+  phase="move";setMessage(P[turn].name+" rolled "+die+" \u2014 tap a glowing peg");render();ensurePulse();if(online)pushRoom();}
 function passTurn(){turn=turn==="red"?"blue":"red";die=0;phase="roll";movable=[];sixStreak=0;
-  updateBar();setMessage(P[turn].name+" \u2014 pop the die");render();}
+  updateBar();setMessage(P[turn].name+" \u2014 pop the die");render();if(online)pushRoom();}
 function doMove(p){const mv=moveOf(p,die);if(!mv)return;S("move");
   phase="anim";const from=pegXY(p),to=(mv.to.state==="track")?holeXY(mv.to.idx):finXY(p.color,mv.to.i);
   animFly={p,from,to,k:0};const t0=performance.now();
@@ -225,7 +227,7 @@ function doMove(p){const mv=moveOf(p,die);if(!mv)return;S("move");
     if(mv.to.state==="fin")S("chime");
     p.loc=mv.to;p.t=mv.t;animFly=null;
     if(pegs.filter(q=>q.color===turn&&q.loc.state==="fin").length===4){gameOver(turn);return;}
-    if(extra){phase="roll";setMessage(P[turn].name+" rolled 6 \u2014 pop again!");render();return;}
+    if(extra){phase="roll";setMessage(P[turn].name+" rolled 6 \u2014 pop again!");render();if(online)pushRoom();return;}
     passTurn();})(t0);}
 function drawHole(x,y,r,fill){
   // surface AO halo
@@ -344,6 +346,7 @@ function render(){ctx.clearRect(0,0,SZ,SZ);
 function ensurePulse(){if(pulsing)return;pulsing=true;
   (function tick(){if(phase!=="move"){pulsing=false;render();return;}render();requestAnimationFrame(tick);})();}
 canvas.addEventListener("pointerup",e=>{if(phase!=="move")return;
+  if(online&&turn!==mySeat)return;
   if(botLevel&&turn==="blue")return;
   const rect=canvas.getBoundingClientRect(),f=canvas.width/rect.width;
   const x=(e.clientX-rect.left)*f,y=(e.clientY-rect.top)*f;
@@ -351,7 +354,7 @@ canvas.addEventListener("pointerup",e=>{if(phase!=="move")return;
   for(const p of movable){const xy=pegXY(p),d=Math.hypot(x-xy.x,y-xy.y);
     if(d<SZ*0.09&&d<bd){bd=d;best=p;}}
   if(best)doMove(best);});
-document.getElementById("dome").addEventListener("click",()=>{if(botLevel&&turn==="blue")return;rollDie();});
+document.getElementById("dome").addEventListener("click",()=>{if(online&&turn!==mySeat)return;if(botLevel&&turn==="blue")return;rollDie();});
 // ---------- computer opponent (drives the blue seat) ----------
 function botPick(){
   const opts=movable.map(p=>({p,mv:moveOf(p,die)})).filter(o=>o.mv);
@@ -373,7 +376,7 @@ function botPick(){
     if(s>bs){bs=s;best=o.p;}}
   return best;}
 setInterval(()=>{
-  if(!botLevel||turn!=="blue"||animFly||phase==="over"||phase==="anim"||phase==="wait")return;
+  if(online||!botLevel||turn!=="blue"||animFly||phase==="over"||phase==="anim"||phase==="wait")return;
   const k=phase+":"+die+":"+pegs.map(p=>p.t+p.loc.state+(p.loc.i||0)+(p.loc.idx||0)).join(",");
   if(k===botKey)return;botKey=k;
   if(phase==="roll")setTimeout(()=>{if(phase==="roll"&&turn==="blue"&&botLevel)rollDie();},700);
@@ -387,6 +390,7 @@ function gameOver(winColor){phase="over";S("fanfare");
   document.getElementById("ovTitle").style.color=P[winColor].main;
   document.getElementById("ovText").textContent="All four pegs home \u00b7 "+GS.bumps[P[winColor].name]+" bumps dealt";
   spawnConfetti(winColor);updateBar();
+  if(online)pushRoom();
   setTimeout(()=>document.getElementById("overlay").classList.add("show"),500);}
 function spawnConfetti(color){const box=document.getElementById("confetti");box.innerHTML="";const pc=P[color];
   const cols=[pc.main,pc.light,"#f4c542","#ffffff"];
@@ -394,6 +398,118 @@ function spawnConfetti(color){const box=document.getElementById("confetti");box.
     d.style.left=(Math.random()*100)+"%";d.style.background=cols[i%cols.length];
     d.style.animationDuration=(2.4+Math.random()*1.8)+"s";d.style.animationDelay=(Math.random()*0.9)+"s";
     d.style.transform="rotate("+Math.floor(Math.random()*360)+"deg)";box.appendChild(d);}}
+/* ---------- online multiplayer (Stage 1: 2 players via GN.room) ---------- */
+function ownerMe(){return (GN.profiles&&GN.profiles.owner)?GN.profiles.owner():null;}
+function meRec(){const o=ownerMe();return o?{name:o.name,main:o.color,light:o.light,dark:o.dark}:{name:"Player"};}
+function closeLobby(){const ov=document.getElementById("netOv");if(ov)ov.remove();}
+function netMsg(t){const m=document.querySelector("#netOv #netMsg");if(m)m.textContent=t;}
+function leaveOnline(){online=false;isHost=false;mySeat=null;roomCode=null;roomData=null;if(roomUnsub){roomUnsub();roomUnsub=null;}}
+function openLobby(){
+  let ov=document.getElementById("netOv");if(ov)ov.remove();
+  ov=document.createElement("div");ov.className="ov show";ov.id="netOv";ov.style.gap="14px";document.body.appendChild(ov);
+  const me=ownerMe();
+  if(!me){
+    ov.innerHTML='<h1>Who plays here?</h1><p>Pick this device\u2019s player for online games.</p><div id="netPick" style="display:flex;flex-wrap:wrap;justify-content:center;gap:8px;max-width:320px;"></div><a href="#" id="netCancel" style="font-size:14px;color:#9bb3a6;margin-top:8px;">Cancel</a>';
+    const pick=ov.querySelector("#netPick"),profs=GN.profiles?GN.profiles.list():[];
+    profs.forEach(p=>{const b=document.createElement("button");b.className="act";b.textContent=p.name;
+      b.onclick=()=>{GN.profiles.setOwner(p.id);openLobby();};pick.appendChild(b);});
+    if(!profs.length){const i=document.createElement("input");i.id="netNewName";i.placeholder="Your name";i.style.cssText="padding:8px;border-radius:10px;border:1px solid #3a5a47;background:#0e1a13;color:#fff;font-size:16px;";pick.appendChild(i);
+      const b=document.createElement("button");b.className="act";b.textContent="Set";b.onclick=()=>{const n=i.value.trim();if(!n)return;const p=GN.profiles.add(n);GN.profiles.setOwner(p.id);openLobby();};pick.appendChild(b);}
+    ov.querySelector("#netCancel").onclick=e=>{e.preventDefault();closeLobby();};return;
+  }
+  ov.innerHTML='<h1>Play Online</h1><p>Playing as <b>'+me.name+'</b></p>'+
+    '<button class="act" id="netCreate">Create a game</button>'+
+    '<div style="margin:4px 0;color:#9bb3a6;">\u2014 or join with a code \u2014</div>'+
+    '<div style="display:flex;gap:8px;align-items:center;"><input id="netCode" maxlength="4" placeholder="CODE" autocapitalize="characters" style="text-transform:uppercase;width:120px;font-size:22px;text-align:center;padding:8px;border-radius:10px;border:1px solid #3a5a47;background:#0e1a13;color:#fff;letter-spacing:5px;"><button class="act" id="netJoin">Join</button></div>'+
+    '<div id="netMsg" style="color:#cfe6d8;min-height:20px;"></div>'+
+    '<a href="#" id="netCancel" style="font-size:14px;color:#9bb3a6;">Cancel</a>';
+  ov.querySelector("#netCancel").onclick=e=>{e.preventDefault();closeLobby();};
+  ov.querySelector("#netCreate").onclick=doCreate;
+  ov.querySelector("#netJoin").onclick=()=>doJoin(ov.querySelector("#netCode").value);
+}
+async function doCreate(){
+  netMsg("Creating\u2026");
+  const r=await GN.room.create("trouble",meRec(),{slots:["red","blue"]});
+  if(!r||r.error){netMsg("Couldn\u2019t create"+(r&&r.error?" ("+r.error+")":"")+". Check your connection.");return;}
+  roomCode=r.code;mySeat=r.seat;isHost=true;watchRoom(roomCode);showHostWaiting();
+}
+async function doJoin(code){
+  code=(code||"").toUpperCase().trim();
+  if(code.length<4){netMsg("Enter the 4-letter code.");return;}
+  netMsg("Joining\u2026");
+  const r=await GN.room.join(code,meRec());
+  if(!r||r.error){netMsg(r&&r.error==="no-room"?"No game with that code.":r&&r.error==="full"?"That game is full.":"Couldn\u2019t join.");return;}
+  roomCode=code;mySeat=r.seat;isHost=false;watchRoom(roomCode);
+  netMsg("Joined! Waiting for the host to start\u2026");
+}
+function showHostWaiting(){
+  const ov=document.getElementById("netOv");if(!ov)return;
+  ov.innerHTML='<h1>Game code</h1><div style="font-size:46px;font-weight:800;letter-spacing:8px;color:#f4c542;">'+roomCode+'</div>'+
+    '<p>Share this code with the other player.</p><div id="netSeats" style="color:#cfe6d8;"></div>'+
+    '<button class="act" id="netStart" style="display:none;">Start game</button>'+
+    '<a href="#" id="netCancel" style="font-size:14px;color:#9bb3a6;">Cancel</a>';
+  ov.querySelector("#netCancel").onclick=e=>{e.preventDefault();leaveOnline();closeLobby();};
+  ov.querySelector("#netStart").onclick=hostStart;
+}
+function watchRoom(code){if(roomUnsub)roomUnsub();roomUnsub=GN.room.watch(code,onRoom);}
+function onRoom(data){
+  roomData=data;
+  if(data.status==="lobby"){
+    const ns=document.querySelector("#netOv #netSeats"),start=document.querySelector("#netOv #netStart"),s=data.seats||{};
+    if(ns)ns.textContent="Red: "+((s.red&&s.red.name)||"\u2026")+"    Blue: "+((s.blue&&s.blue.name)||"\u2026");
+    if(start)start.style.display=(s.red&&s.blue)?"":"none";
+    return;
+  }
+  applyRemote(data,!online);
+}
+function snapState(){return {pegs:pegs.map(p=>({color:p.color,hi:p.hi,t:p.t,loc:{state:p.loc.state,idx:p.loc.idx,i:p.loc.i}})),
+  turn:turn,die:die,phase:phase,extra:extra,sixStreak:sixStreak,GS:GS,names:{red:P.red.name,blue:P.blue.name}};}
+function pushRoom(){if(!online||!roomCode)return;lastSeq++;GN.room.pushState(roomCode,{state:snapState(),turn:turn,seq:lastSeq,status:(phase==="over"?"over":"playing")});}
+function applyRemote(data,force){
+  if(!data||!data.state)return;
+  if(!force&&(data.seq||0)<=lastSeq)return;
+  lastSeq=Math.max(lastSeq,data.seq||0);
+  online=true;botLevel=null;closeLobby();document.getElementById("overlay").classList.remove("show");
+  const s=data.state;
+  if(s.names){P.red=Object.assign({},P.red,{name:s.names.red});P.blue=Object.assign({},P.blue,{name:s.names.blue});}
+  pegs=s.pegs.map(p=>({color:p.color,hi:p.hi,t:p.t,loc:{state:p.loc.state,idx:p.loc.idx,i:p.loc.i}}));
+  turn=s.turn;die=s.die;phase=s.phase;extra=!!s.extra;sixStreak=s.sixStreak||0;if(s.GS)GS=s.GS;
+  animFly=null;showTurnState();
+  if(phase==="over")showRemoteWin();
+}
+function showTurnState(){
+  movable=(phase==="move")?pegs.filter(p=>p.color===turn&&moveOf(p,die)):[];
+  showDie(die||6);updateBar();
+  if(phase!=="over"){
+    if(myTurn())setMessage(phase==="move"?("Your roll: "+die+" \u2014 tap a glowing peg"):"Your turn \u2014 pop the die");
+    else setMessage(P[turn].name+(phase==="move"?(" rolled "+die+"\u2026"):"\u2019s turn\u2026"));
+  }
+  render();if(phase==="move")ensurePulse();
+}
+function showRemoteWin(){
+  const win=(pegs.filter(q=>q.color==="red"&&q.loc.state==="fin").length===4)?"red":"blue";
+  document.getElementById("ovTitle").textContent=P[win].name+" wins!";
+  document.getElementById("ovTitle").style.color=P[win].main;
+  document.getElementById("ovText").textContent="All four pegs home";
+  spawnConfetti(win);setTimeout(()=>document.getElementById("overlay").classList.add("show"),400);
+}
+function hostStart(){
+  const s=roomData.seats;
+  P.red=Object.assign({},P.red,{name:(s.red&&s.red.name)||"Red"});
+  P.blue=Object.assign({},P.blue,{name:(s.blue&&s.blue.name)||"Blue"});
+  pegs=[];for(const c of["red","blue"])for(let i=0;i<4;i++)pegs.push({color:c,hi:i,t:0,loc:{state:"home"}});
+  die=0;phase="roll";extra=false;sixStreak=0;movable=[];animFly=null;botLevel=null;
+  const first=Math.random()<0.5?"red":"blue";turn=first;
+  GS={start:Date.now(),flipWinner:P[first].name,pops:{},bumps:{}};
+  GS.pops[P.red.name]=0;GS.pops[P.blue.name]=0;GS.bumps[P.red.name]=0;GS.bumps[P.blue.name]=0;
+  online=true;lastSeq=1;closeLobby();document.getElementById("overlay").classList.remove("show");
+  GN.room.start(roomCode,first,snapState());showTurnState();
+}
+window.__net={openLobby:openLobby,snapState:snapState,applyRemote:applyRemote,hostStart:hostStart,
+  create:doCreate,join:doJoin,host:hostStart,watch:watchRoom,
+  setSeat:s=>{mySeat=s;},setRoom:(c,h)=>{roomCode=c;isHost=!!h;},simRoll:n=>{die=n;afterRoll();},
+  get:()=>({online:online,mySeat:mySeat,turn:turn,phase:phase,die:die,isHost:isHost,roomCode:roomCode,lastSeq:lastSeq,
+    myTurn:myTurn(),redName:P.red.name,blueName:P.blue.name,pegs:pegs.map(p=>({c:p.color,t:p.t,st:p.loc.state}))})};
 document.getElementById("newBtn").addEventListener("click",newGame);
 GN.rulesButton(document.getElementById("foot"),{title:"Trouble",sections:[
  {h:"Goal",t:"Race all four of your pegs from your home tray, once around the track, and up your finish lane. First player to get all four pegs into the finish wins."},
@@ -413,6 +529,7 @@ GN.statsButton(document.getElementById("foot"),{title:"Trouble",key:KEY,specials
 if(window.GNS)GNS.button(document.getElementById("foot"));
 document.getElementById("ovBtn").addEventListener("click",newGame);
 window.addEventListener("resize",fit);
+document.getElementById("onlineBtn").addEventListener("click",openLobby);
 fit();newGame();showDie(6);
 </script>
 </body>

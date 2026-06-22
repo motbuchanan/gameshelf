@@ -19,7 +19,7 @@
   #board{margin:0 auto;background:#241c3a;border:3px solid #5a4a86;border-radius:10px;
     box-shadow:0 6px 18px rgba(0,0,0,.5);position:relative;overflow:hidden;touch-action:manipulation;user-select:none;}
   .gem{position:absolute;left:0;top:0;display:flex;align-items:center;justify-content:center;border-radius:11px;cursor:pointer;font-weight:900;
-    transition:left .19s cubic-bezier(.34,1.15,.64,1), top .26s cubic-bezier(.30,1.25,.5,1), transform .14s ease, opacity .16s ease;
+    transition:left .2s cubic-bezier(.4,0,.2,1), top .36s cubic-bezier(.33,.7,.38,1), transform .16s ease, opacity .18s ease;
     box-shadow:0 3px 5px rgba(0,0,0,.45), inset 0 2px 3px rgba(255,255,255,.45), inset 0 -4px 6px rgba(0,0,0,.34);
     text-shadow:0 1px 1px rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.10);}
   .gem.sel{outline:3px solid #fff;outline-offset:-2px;transform:scale(.86);z-index:6;box-shadow:0 0 12px 3px rgba(255,255,255,.5),inset 0 2px 3px rgba(255,255,255,.5);}
@@ -76,7 +76,7 @@ const COLORS=[
  {bg:"#e0573a",sym:"\u25CF"},{bg:"#3a86e0",sym:"\u25B2"},{bg:"#46b06a",sym:"\u25C6"},
  {bg:"#f4c542",sym:"\u2605"},{bg:"#9b5ad6",sym:"\u25A0"},{bg:"#e88fb0",sym:"\u271A"}
 ];
-const BLAST_MS=340, FALL_MS=270;
+const BLAST_MS=320, FALL_MS=370;
 function S(n){try{window.GNS&&GNS.play(n);}catch(e){}}
 const boardEl=document.getElementById("board"),flashEl=document.getElementById("flash"),msgEl=document.getElementById("msg");
 let gems=[], els=[], sel=-1, score=0, moves=START_MOVES, busy=false, over=false, best=0, who="";
@@ -89,12 +89,16 @@ function rnd(){return Math.floor(Math.random()*COLORS.length);}
 function shade(hex,amt){let n=parseInt(hex.slice(1),16),r=(n>>16)&255,g=(n>>8)&255,b=n&255;
   const f=x=>Math.max(0,Math.min(255,Math.round(amt>0?x+(255-x)*amt/100:x+x*amt/100)));
   return "rgb("+f(r)+","+f(g)+","+f(b)+")";}
-function gemBG(hex){return [
-  "repeating-linear-gradient(135deg,rgba(255,255,255,.07) 0 2px,rgba(0,0,0,.05) 2px 5px)",
-  "radial-gradient(circle at 30% 24%,rgba(255,255,255,.62),rgba(255,255,255,0) 44%)",
-  "radial-gradient(circle at 74% 84%,rgba(0,0,0,.36),rgba(0,0,0,0) 52%)",
-  "linear-gradient(150deg,"+shade(hex,22)+","+hex+" 52%,"+shade(hex,-20)+")"
-].join(",");}
+// six distinct-but-cohesive jewel finishes (one per color) so tiles read apart at a glance
+function gemBG(ci){const h=COLORS[ci].bg,L=(a)=>shade(h,a),D=(a)=>shade(h,-a);
+  switch(ci){
+    case 0: return "radial-gradient(circle at 34% 28%,"+L(50)+","+h+" 50%,"+D(32)+")";                                  // smooth domed gloss
+    case 1: return "linear-gradient(180deg,"+L(40)+","+h+" 46%,"+D(34)+")";                                             // top-lit bevel
+    case 2: return "linear-gradient(125deg,"+L(44)+" 6%,"+h+" 36%,"+D(22)+" 56%,"+h+" 78%,"+D(32)+")";                  // diagonal facet
+    case 3: return "conic-gradient(from 210deg at 40% 34%,"+L(46)+","+h+" 27%,"+D(28)+" 52%,"+h+" 77%,"+L(40)+")";       // cut-gem cross shine
+    case 4: return "linear-gradient(98deg,"+D(28)+","+h+" 32%,"+L(46)+" 56%,"+h+" 76%,"+D(30)+")";                      // side-lit bevel
+    default:return "radial-gradient(circle at 30% 26%,"+L(54)+",rgba(0,0,0,0) 40%),radial-gradient(circle at 72% 76%,"+D(34)+",rgba(0,0,0,0) 46%),"+h; // soft pearl
+  }}
 function colorOf(g){return g?(g.p==="C"?-1:g.c):-2;}        // -2 empty, -1 colorbomb (matches nothing)
 function readBest(){let b=0;const recs=(window.GN&&GN.readGames?GN.readGames(KEY):[])||[];for(const r of recs)if((r.score||0)>b)b=r.score;return b;}
 
@@ -147,7 +151,7 @@ function styleGem(el,g){
   el.className="gem";el.style.width=sz+"px";el.style.height=sz+"px";el.style.fontSize=Math.floor(sz*0.5)+"px";
   if(!g){el.style.background="transparent";el.textContent="";return;}
   if(g.p==="C"){el.classList.add("pwC");el.textContent="\u2756";}
-  else{el.style.background=gemBG(COLORS[g.c].bg);
+  else{el.style.background=gemBG(g.c);
     if(g.p==="L"){el.classList.add("pwL");el.textContent="\u2726";}
     else if(g.p==="B"){el.classList.add("pwB");el.textContent="\u2738";}
     else el.textContent=COLORS[g.c].sym;}
@@ -219,7 +223,7 @@ function resolve(seed){
       setTimeout(step,FALL_MS);
     },BLAST_MS);
   }
-  step();
+  setTimeout(step,160);
 }
 function gravity(){
   for(let c=0;c<N;c++){
@@ -228,8 +232,7 @@ function gravity(){
       if(w!==i){gems[w]=gems[i];els[w]=els[i];gems[i]=null;els[i]=null;if(els[w])place(els[w],write,c);}write--;}}
     let sp=1;
     for(let r=write;r>=0;r--){const i=r*N+c;const g={c:rnd(),p:0};gems[i]=g;const el=makeEl(g);els[i]=el;
-      place(el,-sp,c);boardEl.appendChild(el);sp++;
-      (function(e,rr,cc){setTimeout(()=>place(e,rr,cc),18);})(el,r,c);}
+      place(el,-sp,c);boardEl.appendChild(el);void el.offsetHeight;place(el,r,c);sp++;}
   }
 }
 function afterResolve(){
