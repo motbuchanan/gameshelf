@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>The Orb</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,500;0,600;1,400;1,500&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --void:#160b1e; --velvet:#241036; --plum:#3a1c50; --plum2:#4a2663;
+  --candle:#e9b873; --candle-soft:#f2cd92; --gold-line:#b98a4e;
+  --moonstone:#d3e4ff; --opal-violet:#b69cff; --opal-cyan:#8fe6d6; --opal-rose:#ff9ecf;
+  --ink:#f4ebdd; --ash:#a892b8; --ash-dim:#7c6690;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;height:100%}
+body{
+  font-family:"Cormorant Garamond",Georgia,serif;
+  color:var(--ink);
+  min-height:100dvh; min-height:100vh;
+  background:
+    radial-gradient(120% 80% at 50% -10%, #4a2663 0%, var(--velvet) 38%, var(--void) 78%),
+    var(--void);
+  display:flex; flex-direction:column; align-items:center;
+  padding:18px 18px calc(18px + env(safe-area-inset-bottom)); 
+  position:relative; overflow-x:hidden;
+}
+/* faint candle haze + drifting motes */
+body::before{
+  content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
+  background:
+    radial-gradient(40% 30% at 50% 8%, rgba(233,184,115,.10), transparent 70%),
+    radial-gradient(60% 50% at 50% 120%, rgba(11,5,16,.6), transparent 60%);
+}
+.util{font-family:"Spline Sans Mono",ui-monospace,monospace;}
+header{width:100%; max-width:540px; display:flex; align-items:center;
+  justify-content:space-between; gap:12px; z-index:2; padding-top:4px;}
+.brand{display:flex; align-items:center; gap:9px;}
+.brand .star{color:var(--candle); font-size:14px; line-height:1;}
+.brand .name{font-family:"Spline Sans Mono",monospace; font-size:11px; letter-spacing:.34em;
+  text-transform:uppercase; color:var(--candle-soft); font-weight:500;}
+.reset{background:none; border:1px solid rgba(185,138,78,.35); color:var(--ash);
+  font-family:"Spline Sans Mono",monospace; font-size:10px; letter-spacing:.18em; text-transform:uppercase;
+  padding:7px 11px; border-radius:999px; cursor:pointer;}
+.reset:hover{color:var(--candle-soft); border-color:var(--gold-line);}
+main{width:100%; max-width:540px; flex:1; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:4px; z-index:2; padding:6px 0;}
+
+/* ---------- the crystal ball ---------- */
+.altar{display:flex; flex-direction:column; align-items:center; margin:6px 0 2px;}
+.orb-wrap{position:relative; width:248px; height:248px; display:flex; align-items:center; justify-content:center;}
+.orb{
+  position:relative; width:218px; height:218px; border-radius:50%;
+  background:
+    radial-gradient(circle at 34% 30%, rgba(255,255,255,.55) 0%, rgba(211,228,255,.18) 12%, transparent 30%),
+    radial-gradient(circle at 50% 52%, rgba(58,28,80,.30) 0%, rgba(22,11,30,.62) 70%, rgba(12,6,18,.9) 100%);
+  box-shadow:
+    inset 0 0 50px 6px rgba(90,40,120,.55),
+    inset -14px -18px 50px rgba(10,5,16,.8),
+    inset 14px 16px 40px rgba(214,156,255,.18),
+    0 18px 50px rgba(10,4,18,.7),
+    0 0 70px rgba(150,100,200,.28);
+  overflow:hidden; isolation:isolate;
+}
+/* swirling opal mist inside */
+.mist{position:absolute; inset:-30%; z-index:0; filter:blur(16px) saturate(1.15); opacity:.85;}
+.mist i{position:absolute; width:62%; height:62%; border-radius:50%; mix-blend-mode:screen;
+  animation:swirl 22s linear infinite;}
+.mist i:nth-child(1){background:radial-gradient(circle, var(--opal-violet), transparent 65%); top:8%; left:6%;  animation-duration:24s;}
+.mist i:nth-child(2){background:radial-gradient(circle, var(--opal-cyan), transparent 62%);   top:34%; left:40%; animation-duration:30s; animation-direction:reverse;}
+.mist i:nth-child(3){background:radial-gradient(circle, var(--opal-rose), transparent 60%);   top:46%; left:8%;  animation-duration:27s;}
+.mist i:nth-child(4){background:radial-gradient(circle, var(--moonstone), transparent 58%);   top:10%; left:42%; animation-duration:33s; animation-direction:reverse;}
+@keyframes swirl{
+  0%{transform:rotate(0deg) translate(0,0) scale(1);}
+  25%{transform:rotate(90deg) translate(8%,4%) scale(1.08);}
+  50%{transform:rotate(180deg) translate(0,8%) scale(.96);}
+  75%{transform:rotate(270deg) translate(-8%,4%) scale(1.06);}
+  100%{transform:rotate(360deg) translate(0,0) scale(1);}
+}
+/* core glow that breathes, and flares while divining */
+.core{position:absolute; inset:0; z-index:1; border-radius:50%;
+  background:radial-gradient(circle at 50% 54%, rgba(243,205,146,.42) 0%, rgba(214,156,255,.16) 24%, transparent 52%);
+  animation:breathe 6.5s ease-in-out infinite;}
+@keyframes breathe{0%,100%{opacity:.55; transform:scale(.94);} 50%{opacity:.9; transform:scale(1.04);}}
+/* glassy specular highlight */
+.sheen{position:absolute; z-index:2; top:13%; left:20%; width:42%; height:30%; border-radius:50%;
+  background:radial-gradient(circle at 35% 30%, rgba(255,255,255,.8), rgba(255,255,255,.05) 60%, transparent 72%);
+  filter:blur(2px); pointer-events:none;}
+.glyph{position:absolute; inset:0; z-index:2; display:flex; align-items:center; justify-content:center;
+  font-family:"Cormorant Garamond",serif; font-weight:300; font-size:74px; color:rgba(244,235,221,.5);
+  text-shadow:0 0 24px rgba(214,156,255,.6); pointer-events:none;}
+.orb.thinking .mist{animation:none;}
+.orb.thinking .mist i{animation-duration:6s !important;}
+.orb.thinking .core{animation:flare 1.1s ease-in-out;}
+@keyframes flare{0%,100%{opacity:.6; transform:scale(.95);} 50%{opacity:1; transform:scale(1.12);}}
+/* stand + cast light */
+.stand{position:relative; width:150px; height:30px; margin-top:-8px;}
+.stand .ring{position:absolute; left:50%; transform:translateX(-50%); border-radius:50%;
+  background:linear-gradient(180deg, #d8a85e, #8a5f2c 60%, #5e3f1d); box-shadow:0 2px 6px rgba(0,0,0,.5);}
+.stand .r1{top:0;   width:96px;  height:18px; background:linear-gradient(180deg,#e7c079,#9a6c34 55%,#5e3f1d);}
+.stand .r2{top:11px;width:74px;  height:13px;}
+.stand .r3{top:20px;width:120px; height:14px; background:linear-gradient(180deg,#d8a85e,#7a5226 60%,#4a3017);}
+.cast{width:200px; height:26px; margin-top:4px; border-radius:50%;
+  background:radial-gradient(ellipse, rgba(233,184,115,.22), rgba(214,156,255,.10) 45%, transparent 72%);
+  filter:blur(5px);}
+
+/* ---------- divined text + answers ---------- */
+.kicker{font-family:"Spline Sans Mono",monospace; font-size:10px; letter-spacing:.32em;
+  text-transform:uppercase; color:var(--ash-dim); min-height:14px; margin-top:8px;}
+.question{font-size:30px; line-height:1.18; font-weight:500; text-align:center; max-width:30ch;
+  margin:4px 0 2px; letter-spacing:.005em; animation:surface .7s ease both;}
+.question .accent{color:var(--candle-soft); font-style:italic; font-weight:600;}
+@keyframes surface{from{opacity:0; transform:translateY(8px); filter:blur(5px);} to{opacity:1; transform:none; filter:none;}}
+.sub{font-size:16.5px; color:var(--ash); text-align:center; max-width:42ch; line-height:1.4; font-style:italic; margin:2px 0 6px;}
+.answers{display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-top:12px; width:100%;}
+.ans{font-family:"Spline Sans Mono",monospace; font-size:12px; letter-spacing:.08em;
+  background:linear-gradient(180deg, rgba(74,38,99,.55), rgba(36,16,54,.55));
+  color:var(--ink); border:1px solid rgba(185,138,78,.30); border-radius:999px;
+  padding:11px 17px; cursor:pointer; transition:all .16s ease; backdrop-filter:blur(4px);}
+.ans:hover{border-color:var(--candle); color:var(--candle-soft); transform:translateY(-1px);
+  box-shadow:0 4px 18px rgba(214,156,255,.18);}
+.ans.affirm{border-color:rgba(143,230,214,.4);} .ans.deny{border-color:rgba(255,158,207,.32);}
+.row{display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:14px;}
+.btn{font-family:"Spline Sans Mono",monospace; font-size:12px; letter-spacing:.10em;
+  background:linear-gradient(180deg,#e9b873,#c08a3e);  color:#2a1538; border:none; font-weight:500;
+  padding:13px 22px; border-radius:999px; cursor:pointer; box-shadow:0 6px 20px rgba(214,156,255,.22);}
+.btn:hover{filter:brightness(1.06);}
+.btn.ghost{background:transparent; color:var(--ash); border:1px solid rgba(185,138,78,.3);}
+.btn.ghost:hover{color:var(--candle-soft); border-color:var(--gold-line);}
+.txt{font-family:"Cormorant Garamond",serif; font-size:21px; text-align:center; width:100%; max-width:340px;
+  background:rgba(12,6,18,.5); border:1px solid rgba(185,138,78,.35); border-radius:12px;
+  color:var(--ink); padding:11px 14px; margin:6px 0; outline:none;}
+.txt:focus{border-color:var(--candle);}
+.txt::placeholder{color:var(--ash-dim); font-style:italic;}
+.q{font-size:16px; color:var(--ash); text-align:center; max-width:40ch; margin:2px auto; line-height:1.4;}
+
+/* ---------- gaze into the mist (transparency) ---------- */
+.peekBtn{font-family:"Spline Sans Mono",monospace; font-size:10px; letter-spacing:.22em; text-transform:uppercase;
+  background:none; border:none; color:var(--ash-dim); cursor:pointer; margin-top:18px; padding:6px;}
+.peekBtn:hover{color:var(--candle-soft);}
+.peek{width:100%; max-width:420px; margin-top:8px; max-height:0; overflow:hidden; transition:max-height .4s ease;}
+.peek.open{max-height:420px;}
+.peek-inner{border:1px solid rgba(185,138,78,.22); border-radius:14px; padding:14px 15px;
+  background:rgba(12,6,20,.45); font-family:"Spline Sans Mono",monospace;}
+.peekStep{font-size:9.5px; letter-spacing:.22em; text-transform:uppercase; color:var(--ash-dim); margin-bottom:9px;}
+.why{font-size:11.5px; color:var(--ash); line-height:1.55; margin-bottom:12px;}
+.why b{color:var(--candle-soft); font-weight:500;}
+.cand{display:grid; grid-template-columns:1fr 52px; align-items:center; gap:8px; margin:6px 0 2px;}
+.cand .nm{font-size:12px; color:var(--ink); font-family:"Cormorant Garamond",serif; font-size:15px;}
+.cand .pct{font-size:10px; color:var(--candle-soft); text-align:right;}
+.bar{height:3px; background:rgba(168,146,184,.14); border-radius:2px; overflow:hidden; margin-bottom:6px;}
+.bar i{display:block; height:100%; background:linear-gradient(90deg,var(--opal-violet),var(--candle));}
+
+footer{width:100%; max-width:540px; display:flex; justify-content:space-between; align-items:center;
+  font-family:"Spline Sans Mono",monospace; font-size:9.5px; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--ash-dim); padding:14px 2px 4px; z-index:2;}
+.note{font-size:9px; color:var(--ash-dim); opacity:.7;}
+
+@media (prefers-reduced-motion:reduce){
+  .mist i,.core{animation:none !important;}
+  .question{animation:none;}
+}
+@media (max-width:380px){ .orb{width:190px;height:190px;} .orb-wrap{width:220px;height:220px;} .question{font-size:26px;} }
+</style>
+</head>
+<body><a href="index.html" style="position:fixed;top:9px;left:9px;z-index:99999;background:rgba(0,0,0,.5);color:#fff;font:600 13px system-ui;text-decoration:none;padding:6px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.22)">⌂ Shelf</a>
+<header>
+  <div class="brand"><span class="star">✦</span><span class="name">The Orb</span></div>
+  <button class="reset" id="reset">clear the glass</button>
+</header>
+<main>
+  <div class="altar">
+    <div class="orb-wrap">
+      <div class="orb idle" id="orb">
+        <div class="mist"><i></i><i></i><i></i><i></i></div>
+        <div class="core"></div>
+        <div class="glyph" id="glyph">✦</div>
+        <div class="sheen"></div>
+      </div>
+    </div>
+    <div class="stand"><div class="ring r1"></div><div class="ring r2"></div><div class="ring r3"></div></div>
+    <div class="cast"></div>
+  </div>
+  <div class="kicker" id="kicker"></div>
+  <div id="stage" style="display:flex;flex-direction:column;align-items:center;width:100%"></div>
+  <button class="peekBtn" id="peekBtn" hidden>◇ gaze into the mist</button>
+  <div class="peek" id="peek"><div class="peek-inner">
+    <div class="peekStep util" id="peekStep"></div>
+    <div class="why" id="why"></div>
+    <div id="cands"></div>
+  </div></div>
+</main>
+<footer>
+  <span id="status">the glass is still</span>
+  <span id="brainsize">— things divined</span>
+</footer>
+<script>
+/* ============================================================
+   THE ORB — a crystal-ball divination guessing game.
+   Self-contained: a Bayesian engine reads a built-in base of
+   things and the questions that split them most evenly.
+   Learns into local storage. No network, no AI service.
+   ============================================================ */
+
+/* ---------- knowledge base (prototype inheritance) ---------- */
+const ATTRS=[
+ ["living","Is it a living thing?"],["physical","Is it a physical object you could touch?"],
+ ["animal","Is it an animal?"],["plant","Is it a plant?"],
+ ["mammal","Is it a mammal?"],["bird","Is it a bird?"],["fish","Is it a fish?"],
+ ["insect","Is it an insect or bug?"],["reptile","Is it a reptile or amphibian?"],
+ ["fur","Does it have fur or hair?"],["wings","Does it have wings?"],["legs","Does it have legs?"],
+ ["tail","Does it have a tail?"],["layEggs","Does it lay eggs?"],["canFly","Can it fly?"],
+ ["livesWater","Does it live in or travel on water?"],["canSwim","Can it swim?"],
+ ["carnivore","Does it eat meat or hunt?"],["horns","Does it have horns or antlers?"],
+ ["hooves","Does it have hooves?"],["stripes","Does it have stripes?"],
+ ["pet","Is it commonly kept as a pet?"],["farm","Is it found on a farm?"],["wild","Is it found in the wild?"],
+ ["dangerous","Can it be dangerous to people?"],["sound","Can it make a sound?"],
+ ["biggerHuman","Is it bigger than an adult person?"],["biggerCar","Is it bigger than a car?"],
+ ["tall","Is it very tall?"],
+ ["manmade","Is it made by people?"],["oneHand","Can you hold it in one hand?"],
+ ["inHome","Is it found in most homes?"],["kitchen","Is it found in a kitchen?"],
+ ["bathroom","Is it found in a bathroom?"],["bedroom","Is it found in a bedroom?"],
+ ["electricity","Does it use electricity or a battery?"],["screen","Does it have a screen?"],
+ ["electronic","Is it an electronic device?"],["metal","Is it mostly made of metal?"],
+ ["wood","Is it mostly made of wood?"],["fabric","Is it made of fabric or cloth?"],
+ ["wear","Do you wear it?"],["wornHead","Is it worn on the head?"],["wornUpper","Is it worn on the upper body?"],
+ ["wornLower","Is it worn on the legs?"],["wornFeet","Is it worn on the feet?"],["wornHands","Is it worn on the hands?"],
+ ["vehicle","Is it used to carry people or things?"],["tool","Is it a tool used for a task?"],
+ ["fun","Is it used for fun or play?"],["instrument","Is it a musical instrument?"],
+ ["furniture","Is it furniture?"],["sitOn","Do you sit on it?"],["sleepOn","Do you sleep on or under it?"],
+ ["handle","Does it have a handle?"],["clean","Is it used for cleaning?"],["writeWith","Do you write or draw with it?"],
+ ["expensive","Does it usually cost over $100?"],["everyday","Do most people use or see it every day?"],
+ ["food","Is it something you eat or drink?"],["fruit","Is it a fruit?"],["vegetable","Is it a vegetable?"],
+ ["sweet","Is it sweet?"],["drink","Is it a drink?"],["hot","Is it usually served or felt hot?"],
+ ["cold","Is it usually cold?"],["baked","Is it baked?"],["alcoholic","Does it contain alcohol?"],
+ ["fizzy","Is it fizzy or carbonated?"],["utensil","Do you eat with it?"],["holdsLiquid","Does it hold liquid?"],
+ ["round","Is it round or spherical?"],["citrus","Is it a citrus fruit?"],["tiny","Is it smaller than a golf ball?"],["leafy","Is it leafy?"],["bigCat","Is it a big cat?"],["eightLegs","Does it have eight legs?"],["stings","Can it sting?"],["nocturnal","Is it active at night?"],["isMeat","Is it made of meat?"],["outdoors","Is it usually found outdoors?"],
+ ["place","Is it a place you can go?"],["nature","Does it occur in nature?"],
+ ["hasWater","Is there water there?"],["sandy","Is it sandy?"],["hasTrees","Are there trees there?"],
+ ["peopleLive","Do people live there?"],["learnThere","Do you go there to learn?"],
+ ["colorful","Is it brightly colored?"],["soft","Is it soft to the touch?"],
+ ["old","Has it existed for hundreds of years?"],
+ ["onFace","Is it on the face or head?"],["insideBody","Is it inside the body?"],
+ ["person","Is it a person or a job?"],["uniform","Do they wear a uniform?"],
+ ["jobHelpsHurt","Does this job help sick or hurt people?"],["jobCooks","Does this job involve cooking?"],
+ ["jobOutside","Does this job work outdoors?"],["jobFlies","Does this job involve flying?"]
+];
+const ATTR_IDS=ATTRS.map(a=>a[0]);
+const BASE_N=["animal","plant","mammal","bird","fish","insect","reptile","fur","wings","tail",
+ "layEggs","canFly","livesWater","carnivore","horns","hooves","stripes","pet","farm","wild",
+ "vehicle","instrument","furniture","sitOn","sleepOn","fruit","vegetable","drink","person",
+ "place","screen","wear","wornHead","wornUpper","wornLower","wornFeet","wornHands","tall",
+ "utensil","holdsLiquid","clean","writeWith","alcoholic","fizzy","baked","hasWater","sandy",
+ "hasTrees","peopleLive","learnThere","onFace","insideBody","uniform","jobHelpsHurt","jobCooks",
+ "jobOutside","jobFlies","bedroom","citrus","tiny","leafy","bigCat","eightLegs","stings","nocturnal","isMeat"];
+function base(){const o={physical:"y"};BASE_N.forEach(k=>o[k]="n");return o;}
+const PROTOS={
+ landMammal:{living:"y",animal:"y",mammal:"y",fur:"y",legs:"y",tail:"y",sound:"y",wild:"y",canSwim:"s",dangerous:"s",outdoors:"y",nature:"y",old:"y",biggerHuman:"n"},
+ marineMammal:{living:"y",animal:"y",mammal:"y",livesWater:"y",canSwim:"y",sound:"y",wild:"y",nature:"y",old:"y",biggerHuman:"y",tail:"y",outdoors:"y",carnivore:"y"},
+ bird:{living:"y",animal:"y",bird:"y",wings:"y",legs:"y",tail:"y",layEggs:"y",canFly:"y",sound:"y",wild:"y",nature:"y",old:"y",outdoors:"y",biggerHuman:"n"},
+ fish:{living:"y",animal:"y",fish:"y",livesWater:"y",canSwim:"y",layEggs:"y",wild:"y",nature:"y",old:"y",tail:"y",outdoors:"y",biggerHuman:"n",carnivore:"s"},
+ insect:{living:"y",animal:"y",insect:"y",legs:"y",wild:"y",nature:"y",old:"y",outdoors:"y",oneHand:"y",biggerHuman:"n"},
+ reptile:{living:"y",animal:"y",reptile:"y",legs:"s",tail:"y",layEggs:"y",wild:"y",nature:"y",old:"y",dangerous:"s",canSwim:"s",outdoors:"y",biggerHuman:"n",carnivore:"s"},
+ seaInvert:{living:"y",animal:"y",livesWater:"y",canSwim:"y",wild:"y",nature:"y",old:"y",outdoors:"y",biggerHuman:"n"},
+ fruit:{living:"y",plant:"s",food:"y",fruit:"y",sweet:"y",oneHand:"y",kitchen:"y",nature:"y",colorful:"s",round:"s",everyday:"s",biggerHuman:"n"},
+ vegetable:{living:"y",plant:"y",food:"y",vegetable:"y",oneHand:"y",kitchen:"y",nature:"y",everyday:"s",biggerHuman:"n"},
+ dish:{manmade:"y",food:"y",kitchen:"y",oneHand:"s",everyday:"s",living:"n",physical:"y"},
+ drink:{manmade:"s",food:"y",drink:"y",kitchen:"y",oneHand:"y",holdsLiquid:"n",everyday:"s",living:"n"},
+ appliance:{manmade:"y",inHome:"y",kitchen:"s",electricity:"y",electronic:"s",metal:"s",everyday:"s",handle:"s",living:"n"},
+ device:{manmade:"y",inHome:"y",electricity:"y",electronic:"y",screen:"s",fun:"s",oneHand:"s",everyday:"s",living:"n"},
+ handTool:{manmade:"y",tool:"y",oneHand:"y",metal:"s",handle:"y",inHome:"s",living:"n"},
+ furniture:{manmade:"y",furniture:"y",inHome:"y",wood:"s",biggerHuman:"s",everyday:"s",living:"n"},
+ clothing:{manmade:"y",wear:"y",fabric:"y",inHome:"s",oneHand:"y",everyday:"s",colorful:"s",living:"n"},
+ kitchenware:{manmade:"y",kitchen:"y",inHome:"y",oneHand:"y",everyday:"s",living:"n"},
+ household:{manmade:"y",inHome:"y",oneHand:"y",everyday:"s",living:"n"},
+ instrument:{manmade:"y",instrument:"y",fun:"y",sound:"y",inHome:"s",wood:"s",living:"n"},
+ toy:{manmade:"y",fun:"y",outdoors:"s",colorful:"s",oneHand:"s",living:"n"},
+ landVeh:{manmade:"y",vehicle:"y",metal:"y",biggerHuman:"y",outdoors:"y",dangerous:"s",expensive:"s",living:"n"},
+ airVeh:{manmade:"y",vehicle:"y",canFly:"y",metal:"y",biggerHuman:"y",outdoors:"y",expensive:"y",dangerous:"s",biggerCar:"y",living:"n"},
+ waterVeh:{manmade:"y",vehicle:"y",livesWater:"y",biggerHuman:"y",outdoors:"y",expensive:"s",living:"n"},
+ greenery:{living:"y",plant:"y",nature:"y",outdoors:"y",old:"y"},
+ landform:{place:"y",nature:"y",outdoors:"y",biggerHuman:"y",biggerCar:"y",old:"y",living:"n"},
+ building:{manmade:"y",place:"y",biggerHuman:"y",biggerCar:"y",outdoors:"s",living:"n"},
+ celestial:{nature:"y",outdoors:"y",biggerCar:"y",old:"y",living:"n"},
+ bodyPart:{living:"y",nature:"y",old:"y",animal:"s",oneHand:"y"},
+ natObject:{manmade:"n",nature:"y",outdoors:"y",old:"y",living:"n"},
+ occupation:{living:"y",person:"y",physical:"y",animal:"n",mammal:"n",nature:"n",old:"s",uniform:"s"}
+};
+function parseOv(s){const o={};if(s)s.trim().split(/\s+/).forEach(p=>{if(!p)return;const[k,v]=p.split(":");o[k]=v;});return o;}
+function it(name,pk,ov){return {name,pk,ov:parseOv(ov)};}
+const RAW=[
+ it("Dog","landMammal","pet:y farm:s dangerous:r inHome:s everyday:s carnivore:s"),
+ it("Cat","landMammal","pet:y wild:n inHome:s everyday:s dangerous:r carnivore:y"),
+ it("Horse","landMammal","farm:y pet:s wild:n biggerHuman:y hooves:y carnivore:n"),
+ it("Cow","landMammal","farm:y wild:n biggerHuman:y food:s hooves:y horns:s carnivore:n"),
+ it("Pig","landMammal","farm:y wild:n biggerHuman:s food:s hooves:s carnivore:s"),
+ it("Sheep","landMammal","farm:y wild:n hooves:y horns:s carnivore:n"),
+ it("Lion","landMammal","dangerous:y biggerHuman:s carnivore:y bigCat:y"),
+ it("Tiger","landMammal","dangerous:y biggerHuman:s carnivore:y stripes:y bigCat:y"),
+ it("Bear","landMammal","dangerous:y biggerHuman:y carnivore:y"),
+ it("Elephant","landMammal","biggerHuman:y dangerous:s tall:y carnivore:n"),
+ it("Giraffe","landMammal","biggerHuman:y tall:y carnivore:n hooves:y"),
+ it("Zebra","landMammal","biggerHuman:s stripes:y hooves:y carnivore:n"),
+ it("Monkey","landMammal","carnivore:n"),
+ it("Gorilla","landMammal","biggerHuman:y dangerous:s tail:n carnivore:n"),
+ it("Rabbit","landMammal","pet:s oneHand:s tail:s carnivore:n"),
+ it("Mouse","landMammal","oneHand:y pet:s carnivore:n"),
+ it("Deer","landMammal","wild:y biggerHuman:s horns:y hooves:y carnivore:n"),
+ it("Fox","landMammal","wild:y carnivore:y dangerous:r"),
+ it("Hippopotamus","landMammal","biggerHuman:y dangerous:s livesWater:s carnivore:n"),
+ it("Rhinoceros","landMammal","biggerHuman:y dangerous:s horns:y carnivore:n"),
+ it("Camel","landMammal","biggerHuman:y hooves:y carnivore:n"),
+ it("Panda","landMammal","biggerHuman:s carnivore:r"),
+ it("Bat","landMammal","canFly:y wings:y oneHand:y carnivore:s nocturnal:y"),
+ it("Dolphin","marineMammal","fur:n"),
+ it("Seal","marineMammal","biggerHuman:s fur:s"),
+ it("Otter","marineMammal","biggerHuman:n oneHand:n fur:y"),
+ it("Goldfish","fish","pet:y oneHand:y inHome:s colorful:y carnivore:n"),
+ it("Shark","fish","dangerous:y biggerHuman:y carnivore:y"),
+ it("Salmon","fish","food:s"),
+ it("Clownfish","fish","oneHand:y colorful:y"),
+ it("Octopus","seaInvert","biggerHuman:s legs:y dangerous:r eightLegs:y"),
+ it("Crab","seaInvert","legs:y oneHand:s food:s"),
+ it("Jellyfish","seaInvert","dangerous:s legs:n stings:y"),
+ it("Shrimp","seaInvert","food:y oneHand:y legs:y"),
+ it("Starfish","seaInvert","legs:s oneHand:y colorful:s"),
+ it("Eagle","bird","dangerous:s biggerHuman:n carnivore:y"),
+ it("Owl","bird","carnivore:y nocturnal:y"),
+ it("Penguin","bird","canFly:n livesWater:s canSwim:y cold:y"),
+ it("Parrot","bird","pet:y colorful:y oneHand:y"),
+ it("Chicken","bird","farm:y wild:n canFly:r food:s"),
+ it("Duck","bird","farm:s livesWater:y canSwim:y"),
+ it("Ostrich","bird","canFly:n biggerHuman:y tall:y"),
+ it("Flamingo","bird","colorful:y tall:s"),
+ it("Pigeon","bird","oneHand:s inHome:n"),
+ it("Turkey","bird","farm:s food:s canFly:r"),
+ it("Snake","reptile","legs:n dangerous:s"),
+ it("Crocodile","reptile","dangerous:y biggerHuman:y livesWater:s canSwim:y carnivore:y"),
+ it("Turtle","reptile","canSwim:y livesWater:s carnivore:n"),
+ it("Frog","reptile","legs:y canSwim:y livesWater:s oneHand:y colorful:s"),
+ it("Bee","insect","canFly:y wings:y dangerous:s colorful:y sound:y stings:y"),
+ it("Ant","insect",""),
+ it("Butterfly","insect","canFly:y wings:y colorful:y"),
+ it("Spider","insect","legs:y dangerous:s eightLegs:y"),
+ it("Ladybug","insect","canFly:y colorful:y"),
+ it("Apple","fruit","round:y colorful:y"),
+ it("Banana","fruit","colorful:y round:n"),
+ it("Orange","fruit","round:y colorful:y citrus:y"),
+ it("Grape","fruit","round:y tiny:y"),
+ it("Watermelon","fruit","round:y oneHand:n biggerHuman:n"),
+ it("Pineapple","fruit","round:n oneHand:s"),
+ it("Lemon","fruit","round:y colorful:y sweet:r citrus:y"),
+ it("Carrot","vegetable","colorful:y"),
+ it("Tomato","vegetable","fruit:s round:y colorful:y"),
+ it("Onion","vegetable","round:y"),
+ it("Lettuce","vegetable","leafy:y"),
+ it("Mushroom","vegetable","plant:s round:s"),
+ it("Pumpkin","vegetable","round:y colorful:y oneHand:s biggerHuman:n"),
+ it("Pizza","dish","round:y hot:s baked:y"),
+ it("Cheese","dish","everyday:s"),
+ it("Egg","dish","manmade:n animal:n round:y oneHand:y nature:s"),
+ it("Hamburger","dish","round:s hot:s oneHand:y isMeat:y"),
+ it("Cake","dish","sweet:y baked:y"),
+ it("Cookie","dish","sweet:y round:y oneHand:y baked:y"),
+ it("Ice cream","dish","sweet:y cold:y oneHand:y"),
+ it("Soup","dish","hot:y drink:s holdsLiquid:n"),
+ it("French fries","dish","hot:y oneHand:y"),
+ it("Water","drink","manmade:n nature:y everyday:y"),
+ it("Coffee","drink","hot:y everyday:s"),
+ it("Juice","drink","sweet:y colorful:s"),
+ it("Soda","drink","sweet:y fizzy:y cold:s"),
+ it("Wine","drink","alcoholic:y expensive:s"),
+ it("Refrigerator","appliance","biggerHuman:y cold:y metal:y kitchen:y expensive:s oneHand:n"),
+ it("Microwave","appliance","kitchen:y metal:y oneHand:n sound:y"),
+ it("Toaster","appliance","kitchen:y oneHand:s metal:y"),
+ it("Blender","appliance","kitchen:y oneHand:s sound:y"),
+ it("Vacuum cleaner","appliance","kitchen:n handle:y biggerHuman:n sound:y clean:y"),
+ it("Hair dryer","appliance","bathroom:y oneHand:y kitchen:n sound:y handle:y"),
+ it("Washing machine","appliance","kitchen:n biggerHuman:s metal:y oneHand:n clean:y"),
+ it("Smartphone","device","oneHand:y screen:y expensive:s everyday:y metal:s sound:y"),
+ it("Laptop","device","screen:y expensive:y oneHand:s everyday:s metal:s"),
+ it("Television","device","screen:y biggerHuman:s expensive:s fun:y oneHand:n"),
+ it("Tablet","device","screen:y oneHand:y expensive:s"),
+ it("Headphones","device","oneHand:y wear:s sound:y wornHead:s"),
+ it("Speaker","device","oneHand:s sound:y"),
+ it("Game console","device","fun:y oneHand:s"),
+ it("Clock","device","round:s oneHand:y inHome:y everyday:y electricity:s sound:s"),
+ it("Flashlight","device","oneHand:y handle:y"),
+ it("Hammer","handTool","metal:y dangerous:s"),
+ it("Drill","handTool","electricity:y metal:y electronic:s sound:y"),
+ it("Axe","handTool","metal:y dangerous:y biggerHuman:n"),
+ it("Shovel","handTool","metal:s outdoors:y biggerHuman:n"),
+ it("Knife","handTool","kitchen:y metal:y dangerous:s utensil:s"),
+ it("Paintbrush","handTool","oneHand:y metal:n writeWith:s"),
+ it("Chair","furniture","legs:y sitOn:y"),
+ it("Table","furniture","legs:y biggerHuman:s"),
+ it("Bed","furniture","biggerHuman:y fabric:s sleepOn:y bedroom:y soft:s"),
+ it("Sofa","furniture","biggerHuman:y fabric:y sitOn:y soft:s"),
+ it("Bookshelf","furniture","wood:y biggerHuman:s"),
+ it("Mirror","furniture","wood:n bathroom:s furniture:s inHome:y bedroom:s"),
+ it("Lamp","furniture","electricity:y wood:n metal:s furniture:s"),
+ it("Shirt","clothing","wornUpper:y"),
+ it("Pants","clothing","wornLower:y"),
+ it("Shoe","clothing","wornFeet:y fabric:s"),
+ it("Hat","clothing","wornHead:y round:s"),
+ it("Glove","clothing","wornHands:y"),
+ it("Dress","clothing","wornUpper:y wornLower:y colorful:s"),
+ it("Scarf","clothing","wornHead:s wornUpper:s"),
+ it("Sunglasses","clothing","wornHead:y oneHand:y fabric:n metal:s outdoors:s"),
+ it("Watch","clothing","wornHands:y electronic:s oneHand:y metal:s round:s expensive:s fabric:n"),
+ it("Fork","kitchenware","metal:y utensil:y"),
+ it("Plate","kitchenware","round:y"),
+ it("Cup","kitchenware","round:y handle:s holdsLiquid:y"),
+ it("Pot","kitchenware","metal:y handle:y holdsLiquid:y"),
+ it("Pan","kitchenware","metal:y handle:y"),
+ it("Pillow","household","fabric:y soft:y sleepOn:y bedroom:y"),
+ it("Towel","household","fabric:y bathroom:y clean:y"),
+ it("Toothbrush","household","bathroom:y colorful:s everyday:y clean:y"),
+ it("Candle","household","colorful:s"),
+ it("Key","household","metal:y everyday:y"),
+ it("Umbrella","household","handle:y outdoors:y colorful:s inHome:s"),
+ it("Broom","household","handle:y wood:s biggerHuman:n oneHand:n clean:y"),
+ it("Pen","household","metal:s everyday:y writeWith:y"),
+ it("Pencil","household","wood:y everyday:s writeWith:y"),
+ it("Backpack","household","fabric:y wear:s handle:y oneHand:s"),
+ it("Toilet","household","bathroom:y biggerHuman:n oneHand:n clean:s"),
+ it("Guitar","instrument","wood:y oneHand:n"),
+ it("Piano","instrument","biggerHuman:y wood:y expensive:y oneHand:n"),
+ it("Flute","instrument","metal:s oneHand:y"),
+ it("Trumpet","instrument","metal:y oneHand:s"),
+ it("Soccer ball","toy","round:y outdoors:y colorful:y oneHand:y"),
+ it("Basketball","toy","round:y oneHand:s colorful:s outdoors:s"),
+ it("Skateboard","toy","wood:s outdoors:y oneHand:n"),
+ it("Kite","toy","outdoors:y canFly:s colorful:y fabric:s"),
+ it("Balloon","toy","round:y colorful:y soft:y oneHand:y"),
+ it("Dice","toy","oneHand:y"),
+ it("Teddy bear","toy","fabric:y soft:y oneHand:s bedroom:s"),
+ it("Car","landVeh","biggerHuman:y everyday:s expensive:y sound:y"),
+ it("Bus","landVeh","biggerCar:y biggerHuman:y expensive:y"),
+ it("Bicycle","landVeh","metal:s expensive:n dangerous:r oneHand:n biggerHuman:s"),
+ it("Motorcycle","landVeh","dangerous:y biggerHuman:s expensive:s sound:y"),
+ it("Tractor","landVeh","farm:y biggerHuman:y expensive:y"),
+ it("Airplane","airVeh",""),
+ it("Rocket","airVeh","expensive:y biggerCar:y tall:y"),
+ it("Boat","waterVeh","canSwim:n"),
+ it("Ship","waterVeh","biggerCar:y expensive:y"),
+ it("Tree","greenery","biggerHuman:y biggerCar:s tall:y"),
+ it("Flower","greenery","oneHand:y colorful:y biggerHuman:n"),
+ it("Grass","greenery","outdoors:y biggerHuman:n"),
+ it("Sunflower","greenery","colorful:y biggerHuman:s oneHand:s tall:s"),
+ it("Mountain","landform","tall:y"),
+ it("Ocean","landform","livesWater:y canSwim:y hasWater:y"),
+ it("Beach","landform","sandy:y hasWater:s"),
+ it("Forest","landform","hasTrees:y"),
+ it("Island","landform","hasWater:s hasTrees:s"),
+ it("Waterfall","landform","hasWater:y tall:s"),
+ it("House","building","inHome:s everyday:s peopleLive:y"),
+ it("School","building","learnThere:y"),
+ it("Hospital","building","jobHelpsHurt:s biggerCar:y"),
+ it("Castle","building","old:y tall:s peopleLive:s"),
+ it("Bridge","building","metal:s hasWater:s peopleLive:n"),
+ it("Lighthouse","building","tall:y outdoors:y hasWater:s peopleLive:n"),
+ it("Skyscraper","building","tall:y biggerCar:y"),
+ it("Sun","celestial","round:y hot:y dangerous:s colorful:y"),
+ it("Moon","celestial","round:y cold:s"),
+ it("Rainbow","celestial","colorful:y physical:s biggerCar:y"),
+ it("Earth","celestial","round:y place:y"),
+ it("Hand","bodyPart","oneHand:s physical:y"),
+ it("Eye","bodyPart","round:s onFace:y"),
+ it("Heart","bodyPart","insideBody:y colorful:s sound:s"),
+ it("Rock","natObject","oneHand:s outdoors:y physical:y"),
+ it("Fire","natObject","hot:y dangerous:y colorful:y physical:s manmade:s"),
+ it("Diamond","natObject","expensive:y oneHand:y nature:y physical:y"),
+ it("Gold","natObject","metal:y expensive:y nature:y physical:y"),
+ it("Doctor","occupation","jobHelpsHurt:y uniform:y"),
+ it("Teacher","occupation","learnThere:y uniform:n"),
+ it("Chef","occupation","jobCooks:y uniform:y kitchen:y"),
+ it("Astronaut","occupation","jobFlies:y uniform:y expensive:s"),
+ it("Farmer","occupation","jobOutside:y farm:y uniform:n"),
+ it("Buffalo","landMammal","farm:s biggerHuman:y horns:y hooves:y carnivore:n"),
+ it("Donkey","landMammal","farm:y biggerHuman:s hooves:y carnivore:n"),
+ it("Llama","landMammal","farm:y biggerHuman:s carnivore:n"),
+ it("Raccoon","landMammal","oneHand:n wild:y carnivore:s nocturnal:y"),
+ it("Skunk","landMammal","oneHand:n wild:y carnivore:s dangerous:r"),
+ it("Beaver","landMammal","oneHand:n wild:y carnivore:n canSwim:y"),
+ it("Hedgehog","landMammal","oneHand:y wild:y carnivore:s"),
+ it("Chimpanzee","landMammal","biggerHuman:s carnivore:s tail:n"),
+ it("Guinea pig","landMammal","pet:y oneHand:y carnivore:n wild:n"),
+ it("Walrus","marineMammal","biggerHuman:y fur:s horns:s"),
+ it("Swordfish","fish","biggerHuman:y dangerous:r"),
+ it("Piranha","fish","dangerous:s carnivore:y oneHand:y"),
+ it("Seahorse","fish","oneHand:y tiny:s"),
+ it("Snail","seaInvert","oneHand:y legs:n livesWater:n nature:y outdoors:y"),
+ it("Coral","seaInvert","canSwim:n colorful:s"),
+ it("Robin","bird","oneHand:y"),
+ it("Seagull","bird","livesWater:s"),
+ it("Hummingbird","bird","oneHand:y colorful:y tiny:y"),
+ it("Iguana","reptile","oneHand:s pet:s"),
+ it("Chameleon","reptile","oneHand:y colorful:y"),
+ it("Tortoise","reptile","biggerHuman:n canSwim:n carnivore:n"),
+ it("Python","reptile","legs:n dangerous:s biggerHuman:s carnivore:y"),
+ it("Cricket","insect","canFly:s sound:y"),
+ it("Wasp","insect","canFly:y wings:y dangerous:s stings:y"),
+ it("Scorpion","insect","dangerous:y legs:y tail:y eightLegs:y stings:y"),
+ it("Mango","fruit","round:s"),
+ it("Raspberry","fruit","round:s tiny:y colorful:y"),
+ it("Avocado","fruit","round:s sweet:n"),
+ it("Pea","vegetable","round:y tiny:y"),
+ it("Garlic","vegetable","round:s tiny:s"),
+ it("Radish","vegetable","round:y tiny:s colorful:y"),
+ it("Pancake","dish","round:y baked:s sweet:s oneHand:y"),
+ it("Waffle","dish","round:s baked:y sweet:s oneHand:y"),
+ it("Steak","dish","hot:y isMeat:y"),
+ it("Champagne","drink","alcoholic:y fizzy:y expensive:s"),
+ it("Dishwasher","appliance","kitchen:y biggerHuman:n metal:y oneHand:n clean:y"),
+ it("Kettle","appliance","kitchen:y oneHand:y handle:y hot:s"),
+ it("Iron","appliance","oneHand:y hot:s handle:y kitchen:n"),
+ it("Fan","appliance","oneHand:s sound:y kitchen:n"),
+ it("Air conditioner","appliance","biggerHuman:n cold:s metal:y oneHand:n kitchen:n"),
+ it("Lawn mower","appliance","outdoors:y handle:y sound:y biggerHuman:n kitchen:n inHome:n"),
+ it("Printer","device","oneHand:n"),
+ it("Drone","device","canFly:y outdoors:s fun:s"),
+ it("Nail","handTool","metal:y tiny:y handle:n"),
+ it("Rake","handTool","handle:y outdoors:y metal:s oneHand:n biggerHuman:n"),
+ it("Pickaxe","handTool","metal:y handle:y dangerous:s biggerHuman:n oneHand:n"),
+ it("Wardrobe","furniture","wood:y biggerHuman:y bedroom:y"),
+ it("Nightstand","furniture","legs:s bedroom:y"),
+ it("Pajamas","clothing","wornUpper:y wornLower:y bedroom:y"),
+ it("Spatula","kitchenware","handle:y utensil:s"),
+ it("Tissue","household","bathroom:s soft:y clean:s"),
+ it("Rug","household","fabric:y soft:s oneHand:n"),
+ it("Battery","household","metal:y electricity:y tiny:y"),
+ it("Eyeglasses","household","wornHead:y wear:y"),
+ it("Tennis ball","toy","round:y oneHand:y tiny:s colorful:y"),
+ it("Golf ball","toy","round:y oneHand:y tiny:y"),
+ it("Van","landVeh","biggerHuman:y"),
+ it("Tricycle","landVeh","biggerHuman:n expensive:n dangerous:r metal:s"),
+ it("Hot air balloon","airVeh","round:s colorful:y dangerous:r"),
+ it("Canoe","waterVeh","biggerHuman:s expensive:n oneHand:n"),
+ it("Jet ski","waterVeh","biggerHuman:n dangerous:s"),
+ it("Seaweed","greenery","livesWater:y"),
+ it("Cave","landform",""),
+ it("Lake","landform","hasWater:y canSwim:y"),
+ it("Glacier","landform","cold:y hasWater:s"),
+ it("Barn","building","farm:y"),
+ it("Stadium","building","biggerCar:y fun:y"),
+ it("Tent","building","fabric:y outdoors:y biggerHuman:s peopleLive:s biggerCar:n"),
+ it("Fountain","building","hasWater:y peopleLive:n biggerCar:n"),
+ it("Tornado","celestial","dangerous:y physical:s nature:y biggerCar:y"),
+ it("Snowflake","natObject","cold:y tiny:y oneHand:y physical:y"),
+ it("Leg","bodyPart","oneHand:n biggerHuman:n"),
+ it("Hair","bodyPart","fur:y onFace:s"),
+ it("Sand","natObject","oneHand:s sandy:y tiny:s"),
+ it("Pearl","natObject","round:y oneHand:y tiny:y expensive:s"),
+ it("Salt","natObject","tiny:y oneHand:y manmade:s"),
+ it("Leaf","natObject","oneHand:y plant:s"),
+ it("Stick","natObject","oneHand:y wood:y"),
+ it("Feather","natObject","oneHand:y soft:y"),
+ it("Lawyer","occupation","uniform:n"),
+ it("Scientist","occupation","learnThere:s uniform:s"),
+ it("Soldier","occupation","uniform:y dangerous:s jobOutside:s"),
+ it("Sailor","occupation","uniform:y livesWater:s"),
+ it("Clown","occupation","colorful:y uniform:s"),
+ it("Knight","occupation","old:y dangerous:s uniform:y")
+
+];
+function expand(){const items=RAW.map(r=>({name:r.name,cat:r.pk,traits:Object.assign({},base(),PROTOS[r.pk]||{},r.ov),weight:1}));return{questions:ATTRS.map(a=>[...a]),items};}
+
+const _KB0 = expand();
+const QUESTIONS_SEED = _KB0.questions;
+const ITEMS_SEED = _KB0.items;
+
+/* ---------- engine ---------- */
+const TRAIT_P={y:.95,u:.85,s:.5,r:.15,n:.05}, FLOOR=.08;
+const T_TO_CODE=[[.9,"y"],[.6,"u"],[.4,"s"],[.1,"r"],[-1,"n"]];
+function codeFromT(t){for(const[th,c]of T_TO_CODE)if(t>th)return c;return"n";}
+function pOf(it,q){const v=it.traits[q];return v===undefined?.5:TRAIT_P[v];}
+function likely(p,t){return FLOOR+(1-FLOOR)*(1-Math.abs(t-p));}
+function entropy(a){let h=0;for(const p of a)if(p>0)h-=p*Math.log2(p);return h;}
+function score(items,answers,rejected){
+  const raw=items.map(it=>{
+    let s=it.weight;
+    for(const q in answers){const a=answers[q];if(a.skip)continue;s*=likely(pOf(it,q),a.t);}
+    if(rejected&&rejected.has(it.name))s*=.0008;
+    return s;
+  });
+  const sum=raw.reduce((a,b)=>a+b,0)||1;
+  return raw.map(x=>x/sum);
+}
+function pickQuestion(items,answers,post,questions){
+  const Hc=entropy(post);let best=null,bg=-Infinity,bsplit=0;
+  for(const[q]of questions){
+    if(answers[q])continue;
+    let pY=0;const yes=[],no=[];
+    for(let i=0;i<items.length;i++){
+      const p=pOf(items[i],q);pY+=post[i]*p;
+      yes.push(post[i]*likely(p,1));no.push(post[i]*likely(p,0));
+    }
+    const ny=yes.reduce((a,b)=>a+b,0)||1,nn=no.reduce((a,b)=>a+b,0)||1;
+    const expH=pY*entropy(yes.map(x=>x/ny))+(1-pY)*entropy(no.map(x=>x/nn));
+    const gain=Hc-expH+Math.random()*1e-4;
+    if(gain>bg){bg=gain;best=q;bsplit=pY;}
+  }
+  return{q:best,gain:bg,split:bsplit};
+}
+
+/* ---------- persistence: built-in base + learned layer ---------- */
+const BASE_VERSION="crystal-273";
+const KEY="orbacle_crystal_v2";
+function freshBase(){return{questions:QUESTIONS_SEED.map(q=>[...q]),items:ITEMS_SEED.map(i=>({...i,traits:{...i.traits}}))};}
+function loadLearned(){
+  try{const raw=localStorage.getItem(KEY);if(raw){const o=JSON.parse(raw);
+    if(o&&o.items&&o.deltas&&o.questions)return o;}}catch(e){}
+  return{base:BASE_VERSION,items:[],questions:[],deltas:{}};
+}
+let LEARNED=loadLearned();
+function buildKB(){
+  const kb=freshBase();
+  LEARNED.questions.forEach(q=>{if(!kb.questions.find(x=>x[0]===q[0]))kb.questions.push([...q]);});
+  LEARNED.items.forEach(it=>{if(!kb.items.find(i=>i.name.toLowerCase()===it.name.toLowerCase()))
+    kb.items.push({...it,traits:{...it.traits}});});
+  for(const name in LEARNED.deltas){
+    const d=LEARNED.deltas[name];
+    const it=kb.items.find(i=>i.name.toLowerCase()===name.toLowerCase());
+    if(!it)continue;
+    it.weight=(it.weight||1)+(d.weightBump||0);
+    for(const q in (d.traits||{})){if(it.traits[q]===undefined)it.traits[q]=d.traits[q];}
+  }
+  return kb;
+}
+let KB=buildKB();
+function save(){try{LEARNED.base=BASE_VERSION;localStorage.setItem(KEY,JSON.stringify(LEARNED));}catch(e){}}
+function recordDelta(name,patch){
+  const d=LEARNED.deltas[name]||(LEARNED.deltas[name]={weightBump:0,traits:{}});
+  if(patch.weightBump)d.weightBump=(d.weightBump||0)+patch.weightBump;
+  if(patch.traits)Object.assign(d.traits,patch.traits);
+}
+function qText(q){const f=KB.questions.find(x=>x[0]===q);return f?f[1]:q;}
+
+/* ---------- state ---------- */
+let answers={},asked=0,rejected=new Set(),lastPick=null,gameAnswerLog={};
+const MAX=20,EXTRA=25,GUESS_AT=0.80,MIN_Q=4;
+const $=id=>document.getElementById(id);
+const orb=$("orb"),glyph=$("glyph"),stage=$("stage"),kicker=$("kicker"),
+  peek=$("peek"),peekBtn=$("peekBtn"),cands=$("cands"),why=$("why"),peekStep=$("peekStep");
+
+$("brainsize").textContent=KB.items.length+" things divined";
+updateStatus();
+function updateStatus(){
+  const learned=KB.items.length-ITEMS_SEED.length;
+  $("status").textContent=learned>0?(learned+" learned from you"):"the glass is still";
+}
+function thinkPulse(){orb.classList.remove("idle");orb.classList.add("thinking");
+  setTimeout(()=>{orb.classList.remove("thinking");orb.classList.add("idle");},1100);}
+peekBtn.onclick=()=>{peek.classList.toggle("open");
+  peekBtn.textContent=(peek.classList.contains("open")?"◆ close the mist":"◇ gaze into the mist");};
+$("reset").onclick=()=>{LEARNED={base:BASE_VERSION,items:[],questions:[],deltas:{}};KB=buildKB();save();
+  $("brainsize").textContent=KB.items.length+" things divined";updateStatus();start();};
+
+/* ---------- screens ---------- */
+function start(){
+  answers={};asked=0;rejected=new Set();gameAnswerLog={};lastPick=null;
+  glyph.textContent="✦";kicker.textContent="";
+  peekBtn.hidden=true;peek.classList.remove("open");peekBtn.textContent="◇ gaze into the mist";
+  stage.innerHTML=
+    '<div class="question">Picture <span class="accent">something</span>.</div>'+
+    '<div class="sub">A creature, an object, a place — anything. Hold it behind your eyes. The orb will ask, and divine what you are hiding.</div>'+
+    '<div class="row"><button class="btn" id="begin">Begin the reading</button></div>';
+  $("begin").onclick=()=>{thinkPulse();setTimeout(nextQuestion,420);};
+}
+function nextQuestion(){
+  const post=score(KB.items,answers,rejected);
+  const ranked=KB.items.map((it,i)=>[it,post[i]]).sort((a,b)=>b[1]-a[1]);
+  const top=ranked[0];
+  const limit=rejected.size?EXTRA:MAX;
+  if((top[1]>=GUESS_AT&&asked>=MIN_Q)||asked>=limit){return showGuess(top[0],top[1],ranked);}
+  const pick=pickQuestion(KB.items,answers,post,KB.questions);
+  if(!pick.q){return showGuess(top[0],top[1],ranked);}
+  lastPick=pick;asked++;
+  peekBtn.hidden=false;
+  glyph.textContent="?";
+  const text=qText(pick.q);
+  stage.innerHTML=
+    '<div class="question">'+text+'</div>'+
+    '<div class="answers">'+
+      '<button class="ans affirm" data-t="1">Yes</button>'+
+      '<button class="ans" data-t="0.75">Probably</button>'+
+      '<button class="ans" data-t="0.5" data-skip="1">Unsure</button>'+
+      '<button class="ans" data-t="0.25">Probably not</button>'+
+      '<button class="ans deny" data-t="0">No</button>'+
+    '</div>';
+  stage.querySelectorAll(".ans").forEach(b=>b.onclick=()=>{
+    const t=parseFloat(b.dataset.t), skip=b.dataset.skip==="1";
+    answers[pick.q]={t,skip};
+    if(!skip)gameAnswerLog[pick.q]=t;
+    thinkPulse();setTimeout(nextQuestion,360);
+  });
+  renderPeek(ranked,pick);
+}
+function showGuess(item,conf,ranked){
+  thinkPulse();glyph.textContent="✦";kicker.textContent="the mist clears";
+  stage.innerHTML=
+    '<div class="question">I see&hellip;<br><span class="accent">'+item.name+'</span></div>'+
+    '<div class="sub">'+asked+' questions in &middot; '+(conf*100).toFixed(0)+'% certain</div>'+
+    '<div class="row"><button class="btn" id="yes">Yes — you saw it</button>'+
+    '<button class="btn ghost" id="no">No, look again</button></div>';
+  $("yes").onclick=()=>win(item);
+  $("no").onclick=()=>{rejected.add(item.name);if(asked>=EXTRA)return giveUp(ranked);nextQuestion();};
+  renderPeek(ranked,null);
+}
+function win(item){
+  item.weight=(item.weight||1)+1;
+  const added=mergeTraits(item);
+  recordDelta(item.name,{weightBump:1,traits:added});
+  save();updateStatus();
+  thinkPulse();kicker.textContent="";glyph.textContent="✦";
+  stage.innerHTML=
+    '<div class="question">Of course.</div>'+
+    '<div class="sub">It only looks like sorcery. The orb simply asked the questions that split everything it knows most evenly, and updated every thing\u2019s odds after each answer.</div>'+
+    '<div class="row"><button class="btn" id="again">Read again</button></div>';
+  $("again").onclick=start;
+}
+function giveUp(ranked){
+  kicker.textContent="the mist won\u2019t settle";glyph.textContent="✦";
+  stage.innerHTML=
+    '<div class="question">You\u2019ve hidden it well.</div>'+
+    '<div class="sub">Tell the orb what you were holding, and it will remember.</div>'+
+    '<input class="txt" id="nm" placeholder="name the thing&hellip;" autocomplete="off">'+
+    '<div class="row"><button class="btn" id="learn">Reveal it</button>'+
+    '<button class="btn ghost" id="skip">Keep it secret</button></div>';
+  const guess=ranked[0][0];
+  $("skip").onclick=start;
+  $("learn").onclick=()=>{const name=$("nm").value.trim();if(!name){$("nm").focus();return;}learnItem(name,guess);};
+  $("nm").addEventListener("keydown",e=>{if(e.key==="Enter")$("learn").click();});
+}
+function mergeTraits(item){
+  const added={};
+  for(const q in gameAnswerLog){if(item.traits[q]===undefined){const c=codeFromT(gameAnswerLog[q]);item.traits[q]=c;added[q]=c;}}
+  return added;
+}
+function learnItem(name,guess){
+  let item=KB.items.find(i=>i.name.toLowerCase()===name.toLowerCase());
+  if(item){const added=mergeTraits(item);item.weight=(item.weight||1)+1;recordDelta(item.name,{weightBump:1,traits:added});}
+  else{
+    const traits={};for(const q in gameAnswerLog)traits[q]=codeFromT(gameAnswerLog[q]);
+    item={name,cat:"learned",traits,weight:1};KB.items.push(item);
+    LEARNED.items.push({name,cat:"learned",traits:{...traits},weight:1});
+  }
+  $("brainsize").textContent=KB.items.length+" things divined";
+  glyph.textContent="✦";kicker.textContent="";
+  stage.innerHTML=
+    '<div class="question">'+item.name+' &mdash; <span class="accent">remembered</span>.</div>'+
+    '<label class="q">Name one yes/no question that is TRUE for '+item.name+' but FALSE for '+guess.name+'. The orb will never confuse them again. (optional)</label>'+
+    '<input class="txt" id="nq" placeholder="e.g. Does it have eight legs?" autocomplete="off">'+
+    '<div class="row"><button class="btn" id="addq">Add the question</button>'+
+    '<button class="btn ghost" id="done">Done</button></div>';
+  const finish=()=>{save();updateStatus();start();};
+  $("done").onclick=finish;
+  $("addq").onclick=()=>{
+    const txt=$("nq").value.trim();
+    if(txt){
+      const id="u"+Date.now().toString(36);
+      const qpair=[id,txt.endsWith("?")?txt:txt+"?"];
+      KB.questions.push(qpair);LEARNED.questions.push([...qpair]);
+      item.traits[id]="y";guess.traits[id]="n";
+      recordDelta(item.name,{traits:{[id]:"y"}});
+      recordDelta(guess.name,{traits:{[id]:"n"}});
+    }
+    finish();
+  };
+  $("nq").addEventListener("keydown",e=>{if(e.key==="Enter")$("addq").click();});
+}
+function renderPeek(ranked,pick){
+  peekStep.textContent="reading "+asked+" of "+(rejected.size?EXTRA:MAX);
+  if(pick){
+    const splitPct=(pick.split*100).toFixed(0);
+    why.innerHTML='why this question \u2192 of everything still in the glass, about <b>'+splitPct+'%</b> would answer \u201cyes.\u201d A near-even split reveals the most \u2014 it carries roughly <b>'+pick.gain.toFixed(2)+' bits</b>.';
+  }else{ why.innerHTML='the mist has settled on its strongest vision.'; }
+  cands.innerHTML="";
+  ranked.slice(0,6).forEach(([it,p])=>{
+    const row=document.createElement("div");
+    row.innerHTML='<div class="cand"><span class="nm">'+it.name+'</span><span class="pct">'+(p*100).toFixed(1)+'%</span></div>'+
+      '<div class="bar"><i style="width:'+Math.max(2,p*100).toFixed(1)+'%"></i></div>';
+    cands.appendChild(row);
+  });
+}
+start();
+</script>
+</body>
+</html>

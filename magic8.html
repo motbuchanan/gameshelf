@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Magic 8 Ball</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{font-family:system-ui,sans-serif;color:#eee;overflow:hidden;
+    background:radial-gradient(120% 90% at 50% 12%,#2a3550 0%,#161c2c 45%,#0b0e16 100%);
+    display:flex;flex-direction:column;align-items:center;justify-content:flex-start;}
+  a.back{position:fixed;top:9px;left:9px;z-index:50;background:rgba(0,0,0,.5);color:#fff;
+    font:600 13px system-ui;text-decoration:none;padding:6px 12px;border-radius:999px;
+    border:1px solid rgba(255,255,255,.22);}
+  #hint{margin-top:64px;text-align:center;font-size:15px;color:#aeb6c8;padding:0 26px;line-height:1.5;max-width:440px;min-height:46px;}
+  #stage{flex:1;display:flex;align-items:center;justify-content:center;width:100%;}
+  #ball{position:relative;width:min(78vw,330px);height:min(78vw,330px);border-radius:50%;cursor:pointer;
+    background:radial-gradient(38% 32% at 34% 26%,#6b6b6b 0%,#2a2a2a 26%,#0c0c0c 60%,#000 100%);
+    box-shadow:0 26px 48px rgba(0,0,0,.6),inset 0 -22px 44px rgba(0,0,0,.75),inset 0 10px 26px rgba(255,255,255,.06);
+    transition:transform .12s ease;}
+  #ball::after{content:"";position:absolute;top:11%;left:20%;width:34%;height:24%;border-radius:50%;
+    background:radial-gradient(closest-side,rgba(255,255,255,.5),rgba(255,255,255,0));filter:blur(2px);}
+  #ball.shake{animation:shake .6s ease;}
+  @keyframes shake{
+    0%{transform:translate(0,0) rotate(0)}
+    12%{transform:translate(-9px,5px) rotate(-4deg)}
+    28%{transform:translate(8px,-6px) rotate(4deg)}
+    44%{transform:translate(-7px,4px) rotate(-3deg)}
+    60%{transform:translate(6px,-3px) rotate(2deg)}
+    76%{transform:translate(-4px,2px) rotate(-1deg)}
+    100%{transform:translate(0,0) rotate(0)}}
+  #win{position:absolute;left:50%;top:54%;transform:translate(-50%,-50%);width:54%;height:54%;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    background:radial-gradient(circle at 50% 38%,#0d2a6b,#071637 70%,#02040c 100%);
+    box-shadow:inset 0 0 30px rgba(0,0,0,.85),inset 0 6px 14px rgba(80,130,255,.18);overflow:hidden;}
+  /* the blue triangle that floats up to the window */
+  #tri{position:absolute;width:74%;height:64%;clip-path:polygon(50% 8%,96% 92%,4% 92%);
+    background:linear-gradient(180deg,#3a6bdc,#1b3aa0);display:flex;align-items:center;justify-content:center;
+    opacity:0;transform:translateY(26%) scale(.8);transition:opacity .5s ease,transform .5s ease;}
+  #tri.show{opacity:1;transform:translateY(8%) scale(1);}
+  #ans{color:#dfe8ff;font-weight:700;font-size:12.5px;line-height:1.15;text-align:center;padding:0 6px 8px;
+    text-shadow:0 1px 2px rgba(0,0,0,.6);transform:translateY(12%);}
+  #big8{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    color:#111;font-weight:900;font-size:42px;transition:opacity .25s;}
+  #win.asking #big8{opacity:0;}
+  #enable{margin:14px auto 0;padding:11px 20px;border-radius:999px;border:1px solid rgba(255,255,255,.3);
+    background:#2b3a64;color:#fff;font:700 14px system-ui;cursor:pointer;display:none;}
+</style></head>
+<body>
+<a class="back" href="index.html">&#8962; Shelf</a>
+<div id="hint">Ask a yes-or-no question, then <b>shake the phone</b> &mdash; or tap the ball.</div>
+<div id="stage">
+  <div id="ball">
+    <div id="win">
+      <div id="big8">8</div>
+      <div id="tri"><div id="ans"></div></div>
+    </div>
+  </div>
+</div>
+<button id="enable">Tap to enable shake</button>
+
+<script>
+(function(){
+  var ANSWERS=["It is certain.","It is decidedly so.","Without a doubt.","Yes \u2014 definitely.",
+  "You may rely on it.","As I see it, yes.","Most likely.","Outlook good.","Yes.","Signs point to yes.",
+  "Reply hazy, try again.","Ask again later.","Better not tell you now.","Cannot predict now.",
+  "Concentrate and ask again.","Don't count on it.","My reply is no.","My sources say no.",
+  "Outlook not so good.","Very doubtful."];
+  var ball=document.getElementById("ball"), win=document.getElementById("win"),
+      tri=document.getElementById("tri"), ans=document.getElementById("ans"),
+      hint=document.getElementById("hint"), enable=document.getElementById("enable");
+  var busy=false, ac=null, asked=false;
+
+  function blip(rev){
+    try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();
+      var o=ac.createOscillator(),g=ac.createGain(),t=ac.currentTime;
+      o.type="sine";o.frequency.setValueAtTime(rev?220:140,t);
+      o.frequency.exponentialRampToValueAtTime(rev?330:90,t+.18);
+      g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.12,t+.02);
+      g.gain.exponentialRampToValueAtTime(.0001,t+.3);
+      o.connect(g);g.connect(ac.destination);o.start(t);o.stop(t+.32);
+    }catch(e){}
+  }
+
+  function reveal(){
+    if(busy)return; busy=true; asked=true;
+    if(hint)hint.textContent="";
+    ball.classList.remove("shake"); void ball.offsetWidth; ball.classList.add("shake");
+    win.classList.add("asking"); tri.classList.remove("show");
+    blip(false);
+    setTimeout(function(){
+      ans.textContent=ANSWERS[Math.floor(Math.random()*ANSWERS.length)];
+      tri.classList.add("show"); blip(true);
+    },560);
+    setTimeout(function(){ busy=false; },820);
+  }
+
+  ball.addEventListener("click",reveal);
+
+  // --- shake detection via accelerometer ---
+  var last={x:0,y:0,z:0}, lastT=0, primed=false;
+  function onMotion(e){
+    var a=e.accelerationIncludingGravity||e.acceleration; if(!a)return;
+    var now=Date.now(); if(now-lastT<90)return; lastT=now;
+    if(!primed){last={x:a.x||0,y:a.y||0,z:a.z||0}; primed=true; return;}
+    var dx=Math.abs((a.x||0)-last.x), dy=Math.abs((a.y||0)-last.y), dz=Math.abs((a.z||0)-last.z);
+    last={x:a.x||0,y:a.y||0,z:a.z||0};
+    if(dx+dy+dz>26) reveal();
+  }
+  function listen(){ window.addEventListener("devicemotion",onMotion); }
+
+  // iOS 13+ needs a permission gesture; Android grants automatically.
+  if(typeof DeviceMotionEvent!=="undefined" && typeof DeviceMotionEvent.requestPermission==="function"){
+    enable.style.display="block";
+    enable.addEventListener("click",function(){
+      DeviceMotionEvent.requestPermission().then(function(res){
+        if(res==="granted"){ listen(); enable.style.display="none";
+          hint.textContent="Shake the phone for an answer \u2014 or tap the ball."; }
+        else { enable.style.display="none";
+          hint.textContent="Tap the ball for an answer."; }
+      }).catch(function(){ enable.style.display="none"; });
+      try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();}catch(e){}
+    });
+  } else if(typeof DeviceMotionEvent!=="undefined"){
+    listen(); // Android / motion-capable
+  } else {
+    hint.textContent="Tap the ball for an answer.";
+  }
+})();
+if("serviceWorker" in navigator){try{navigator.serviceWorker.register("sw.js");}catch(e){}}
+</script>
+</body></html>
