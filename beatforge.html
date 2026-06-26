@@ -29,6 +29,7 @@
   /* ---- header ---- */
   header{display:flex;align-items:center;gap:10px;padding:12px 16px 8px;}
   .brand{display:flex;align-items:baseline;gap:0;font-weight:800;font-size:20px;letter-spacing:-.3px;flex:1;}
+  .ver{font-size:10px;font-weight:700;color:#5a6472;margin-left:7px;letter-spacing:.2px;}
   .brand .b{color:var(--txt);} .brand .f{color:var(--accent);}
   .kitwrap{position:relative;}
   .kitsel{appearance:none;background:linear-gradient(180deg,#1c1c24,#141419);
@@ -450,7 +451,7 @@
 <body>
 
 <header>
-  <div class="brand"><span class="b">Beat</span><span class="f">Forge</span></div>
+  <div class="brand"><span class="b">Beat</span><span class="f">Forge</span><span class="ver" id="buildtag"></span></div>
   <div class="kitwrap"><select class="kitsel" id="kitsel"></select></div>
   <button class="icobtn rec" id="recbtn" title="Record">●</button>
   <button class="icobtn" id="syncbtn" title="Headphone sync">🎧</button>
@@ -770,6 +771,7 @@ const FAM = {
   Lead:'#f0a830', Arp:'#46c98b', Keys:'#f4894f', Synth:'#38d6e0',
   Vox:'#c084fc', FX:'#b0d235', Sample:'#94a3b8'
 };
+const BUILD='v9 · Jun 26';
 const CATS = ['Beat','Bass','Chord','Pad','Lead','Arp','Keys','Synth','Vox','FX','Sample'];
 const CATICON = {Beat:'beat',Bass:'bass',Chord:'chord',Pad:'pad',Lead:'lead',Arp:'arp',
   Keys:'keys',Synth:'synth',Vox:'vox',FX:'fx',Sample:'sample'};
@@ -1455,13 +1457,16 @@ function _loadLoopDemo(){ startAudio();
   idx.forEach(i=>{ const p=pads[i]; if(p){ ensureNodes(p); p.on=true; if(p.el)p.el.classList.add('live'); if(p.mixDot)p.mixDot.style.opacity=1; } });
   padsPaused=false; startClock(); updateLoopTransport(); toast('Demo loaded — tap pads to remix it'); }
 function stopAll(){
-  if(SONG.running){ SONG.running=false; setSongBtn(); songHighlight(); }
-  pads.forEach(p=>{ if(p.on){ p.on=false; if(p.el)p.el.classList.remove('live'); if(p.mixDot)p.mixDot.style.opacity=.35; } });
-  padsPaused=false;
-  if(R8.running){ R8.running=false; setR8PlayBtn(); }
-  if(COMP.running){ COMP.running=false; setCompPlayBtn(); compPlayhead(-1); }
-  trimStop(); stopSyncTest();   // kill the independent loops too (trim preview, sync metronome)
-  stopClock(); updateLoopTransport(); }
+  // 1) Kill ALL audio first, unconditionally — no UI update can block the silence.
+  COMP.running=false; R8.running=false; SONG.running=false; padsPaused=false;
+  pads.forEach(p=>{ p.on=false; });
+  trimStop(); stopSyncTest(); stopClock();
+  // 2) Then refresh the UI, each guarded so one failure can't abort the rest.
+  try{ pads.forEach(p=>{ if(p.el)p.el.classList.remove('live'); if(p.mixDot)p.mixDot.style.opacity=.35; }); }catch(e){}
+  try{ setR8PlayBtn(); }catch(e){}
+  try{ setCompPlayBtn(); compPlayhead(-1); }catch(e){}
+  try{ setSongBtn(); songHighlight(); }catch(e){}
+  try{ updateLoopTransport(); }catch(e){} }
 
 // ---------- Samples (IndexedDB) ----------
 let samples=[], DB=null, pendingFiles=[];
@@ -2606,6 +2611,7 @@ function boot(){
   document.getElementById('nav-grid').innerHTML=SVG.loop+'<span>Loop</span>';
   document.getElementById('nav-comp').innerHTML=SVG.comp+'<span>Write</span>';
   document.getElementById('nav-r8').innerHTML=SVG.r8+'<span>808</span>';
+  { const bt=document.getElementById('buildtag'); if(bt){ bt.textContent=BUILD; bt.addEventListener('click',()=>toast('BeatForge build '+BUILD)); } }
   document.getElementById('nav-jam').innerHTML='<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg><span>Jam</span>';
   document.getElementById('nav-mix').innerHTML=SVG.mix+'<span>Mix</span>';
   document.getElementById('nav-fx').innerHTML=SVG.wave+'<span>FX</span>';
