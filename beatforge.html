@@ -116,6 +116,21 @@
   .wizchip{flex:none;font-size:11px;font-weight:600;padding:6px 11px;border-radius:14px;
     background:#17171e;border:1px solid var(--line);color:var(--dim);white-space:nowrap;}
   .wizchip.sel{background:var(--accent);color:#10130a;border-color:var(--accent);}
+  .savebar{display:flex;gap:8px;margin-bottom:14px;}
+  .savebar input{flex:1;background:#0f0f13;border:1px solid var(--line);color:#fff;
+    font-size:14px;border-radius:10px;padding:11px 12px;}
+  .savebar .act{flex:none;padding:11px 18px;}
+  .projlist{display:flex;flex-direction:column;gap:8px;max-height:48vh;overflow-y:auto;margin-bottom:8px;}
+  .projrow{display:flex;align-items:center;gap:10px;background:#15151b;border:1px solid var(--line);
+    border-radius:11px;padding:10px 12px;}
+  .projrow .pj{flex:1;min-width:0;}
+  .projrow .pj b{font-size:14px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .projrow .pj small{font-size:11px;color:var(--dim);}
+  .projrow .pjload{font-size:12px;font-weight:700;padding:8px 14px;border-radius:9px;
+    background:var(--accent);color:#10130a;border:none;flex:none;}
+  .projrow .pjdel{font-size:13px;width:32px;height:32px;border-radius:9px;flex:none;
+    background:#1d1d24;border:1px solid var(--line);color:var(--dim);}
+  .projempty{text-align:center;color:var(--dim);font-size:13px;line-height:1.6;padding:24px 12px;}
   .pad .eq{position:absolute;top:13px;right:11px;display:flex;gap:2.5px;align-items:flex-end;
     height:16px;opacity:0;transition:opacity .2s;}
   .pad .eq i{width:3px;height:100%;background:currentColor;border-radius:2px;transform-origin:bottom;
@@ -202,6 +217,23 @@
   .r8cell.ph{filter:brightness(1.7);box-shadow:inset 0 0 0 2px #fff;}
   .r8grid .r8row:not(:last-child){border-bottom:1px solid rgba(255,255,255,.03);padding-bottom:3px;}
 
+  /* ---- Compose ---- */
+  .comp{display:none;flex-direction:column;gap:10px;}
+  .compctrl{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+  .compsel{appearance:none;background:linear-gradient(180deg,#1c1c24,#141419);border:1px solid var(--line);
+    color:#fff;border-radius:9px;padding:8px 10px;font-size:12px;font-weight:600;}
+  .compoct{font-size:12px;font-weight:700;color:#8aa0b8;min-width:26px;text-align:center;}
+  .compgrid{display:flex;flex-direction:column;gap:2px;background:#0f131b;border:1px solid #232c3a;border-radius:12px;padding:7px;}
+  .comprow{display:grid;grid-template-columns:30px repeat(16,1fr);gap:2px;align-items:center;}
+  .complbl{font-size:8.5px;font-weight:700;color:#7e93ab;font-family:ui-monospace,monospace;text-align:right;padding-right:2px;}
+  .comprow.root .complbl{color:var(--accent);}
+  .compcell{aspect-ratio:1/1;border:none;border-radius:3px;background:#1a2230;min-height:14px;
+    box-shadow:inset 0 0 0 1px rgba(0,0,0,.25);transition:filter .05s;}
+  .compcell.g1,.compcell.g3{background:#202a3a;}
+  .comprow.root .compcell{box-shadow:inset 0 0 0 1px rgba(176,210,53,.12);}
+  .compcell.on{background:linear-gradient(180deg,#4fd1c5,#2f9d8f);box-shadow:0 0 8px -1px #4fd1c5;}
+  .compcell.ph{filter:brightness(1.7);box-shadow:inset 0 0 0 2px #fff;}
+
   /* ---- overlays ---- */
   .scrim{position:fixed;inset:0;background:rgba(0,0,0,.74);display:none;z-index:60;
     align-items:flex-end;justify-content:center;padding:0;}
@@ -263,6 +295,7 @@
 <div class="demobar">
   <button class="pill" id="demobtn"><span id="demoico"></span><span id="demolbl">Load demo</span></button>
   <button class="pill" id="stopbtn">Stop all</button>
+  <button class="pill" id="projbtn"><span id="projico"></span>Beats</button>
 </div>
 
 <main>
@@ -283,10 +316,12 @@
       <div class="toggle" data-toggle="crush"></div></div>
   </div>
   <div class="r8" id="r8"></div>
+  <div class="comp" id="comp"></div>
 </main>
 
 <nav>
   <button data-view="grid" class="active" id="nav-grid"></button>
+  <button data-view="comp" id="nav-comp"></button>
   <button data-view="r8" id="nav-r8"></button>
   <button data-view="mix" id="nav-mix"></button>
   <button data-view="fx" id="nav-fx"></button>
@@ -345,6 +380,19 @@
       <button class="act" id="pad-board"></button>
       <button class="act primary" id="pad-done">Done</button>
     </div>
+  </div>
+</div>
+
+<div class="scrim" id="projscrim">
+  <div class="sheet">
+    <h2>Your beats</h2>
+    <p style="margin-bottom:12px">Save the whole arrangement — kit, tempo, which pads are on, every instrument and FX, and the 808 grid — then reopen it any time.</p>
+    <div class="savebar">
+      <input id="proj-name" placeholder="Name this beat…" maxlength="24" autocomplete="off">
+      <button class="act primary" id="proj-save">Save</button>
+    </div>
+    <div class="projlist" id="proj-list"></div>
+    <button class="skip" id="proj-close">Close</button>
   </div>
 </div>
 
@@ -408,7 +456,9 @@ const SVG = {
   wave:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12q3-7 6 0t6 0 6 0"/></svg>',
   plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
   play:'<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M7 5l12 7-12 7z"/></svg>',
-  r8:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="7" cy="10" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="10" r="1.4" fill="currentColor" stroke="none"/><circle cx="17" cy="10" r="1.4" fill="currentColor" stroke="none"/><path d="M6 15h12" stroke-linecap="round"/></svg>'
+  r8:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="7" cy="10" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="10" r="1.4" fill="currentColor" stroke="none"/><circle cx="17" cy="10" r="1.4" fill="currentColor" stroke="none"/><path d="M6 15h12" stroke-linecap="round"/></svg>',
+  save:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M5 3h11l3 3v15H5z"/><path d="M8 3v6h7V3"/><rect x="8" y="13" width="8" height="6"/></svg>',
+  comp:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="7" cy="15" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="11" r="1.5" fill="currentColor" stroke="none"/><circle cx="17" cy="8" r="1.5" fill="currentColor" stroke="none"/></svg>'
 };
 function ico(t){ return SVG[t]||SVG.sample; }
 
@@ -880,6 +930,9 @@ function sched(){ const sd=stepDur();
     if(R8.running){ const acc=R8.tracks[0].steps[step];
       for(let i=1;i<R8.tracks.length;i++){ const tr=R8.tracks[i];
         if(tr.steps[step]&&tr.fire){ try{ tr.fire(t,acc);}catch(e){} } } }
+    if(COMP.running&&COMP.grid){ ensureCompNode(); const rows=COMP.rows;
+      for(let r=0;r<rows.length;r++){ const ln=COMP.grid[r]; if(ln&&ln[step]){ _bus=COMP.gain;
+        try{ (INSTR[COMP.inst]||vLead)(t,rows[r],beat()*0.9); }catch(e){} } } }
     S.q.push({step,t}); S.next+=sd; S.step=(S.step+1)%16;
   }
 }
@@ -887,7 +940,7 @@ function drawLoop(){
   if(A.ctx){ const now=A.ctx.currentTime;
     while(S.q.length && S.q[0].t<now){ const cur=S.q.shift().step;
       pads.forEach(p=>{ if(p.on&&p.barEl){ p.barEl.style.width=((cur%p.len)/(p.len-1)*100)+'%'; }});
-      r8Playhead(cur); }
+      r8Playhead(cur); compPlayhead(cur); }
   }
   requestAnimationFrame(drawLoop);
 }
@@ -1156,6 +1209,7 @@ function setView(v){
   document.getElementById('mix').style.display=v==='mix'?'flex':'none';
   document.getElementById('fx').style.display=v==='fx'?'flex':'none';
   document.getElementById('r8').style.display=v==='r8'?'flex':'none';
+  document.getElementById('comp').style.display=v==='comp'?'flex':'none';
   document.querySelectorAll('nav button[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===v));
 }
 function startAudio(){ initAudio(); if(A.ctx.state==='suspended')A.ctx.resume();
@@ -1170,12 +1224,14 @@ const TOUR=[
   {sel:'.grid',title:'Pads are loops',body:'Every pad is a looping slice of a song — drums, bass, chords, a melody. The icon and color tell you the instrument. Tap a pad to start its loop; tap again to stop.'},
   {sel:'#demobtn',title:'Start with a demo',body:'Tap Load demo to drop in a finished beat — a few pads switched on together. Now turn pads on and off to remix it. That’s the whole app: layer loops that already fit.'},
   {sel:'#kitsel',title:'Six sound kits',body:'Switch kits here: SynthWave, Hip-Hop, Techno, Lo-Fi, Trap, Ambient. Every pad in a kit is tuned to the same key and tempo, so anything you stack stays in time.'},
+  {sel:'#nav-comp',title:'Write your own melody',body:'The Write tab is a note grid locked to a musical scale — so every note you tap sounds right. Pick an instrument, a key and scale (Pentatonic means no wrong notes), and tap to place notes. Hit ✨ Surprise for a starter melody to tweak. It plays in time with your drums and 808.'},
   {sel:'#nav-r8',title:'808 drum machine',body:'The 808 tab is a step sequencer — a grid of 16 steps. Tap cells to place drum hits, hit Play, and program your own beat. The kick’s tune and decay are adjustable for that classic 808 boom. It runs on the same tempo and through the same FX and recorder.'},
   {sel:'.transport',title:'Tempo',body:'Drag BPM to speed up or slow down everything at once. Each kit starts at a fitting tempo.'},
   {sel:'.grid',title:'Swap instruments & build a board',body:'Long-press any pad to change its instrument — drum pads get alternate kits, melodic pads can become piano, strings, brass, sax and more. The same menu has “Add to My Board,” which collects your favorite pads from any style into your own custom kit (pick ★ My Board in the kit list). Two new kits, Live Band and Orchestra, come pre-voiced with real instruments.'},
   {sel:'#nav-mix',title:'Mix & per-track FX',body:'The Mix tab gives every pad a volume slider and a mute (M) button. The ∿ button next to each opens FX for that track alone — its own Filter, Drive, Reverb and Delay. The FX tab stays as the whole-mix layer on top.'},
   {sel:'#nav-fx',title:'FX',body:'Flip on Filter, Delay, Reverb, or Drive and drag to taste. They shape the whole mix live.'},
   {sel:'#recbtn',title:'Record',body:'Hit the red dot to capture your jam, tap again to stop. The audio file saves to your phone’s downloads.'},
+  {sel:'#projbtn',title:'Save your beat',body:'Record makes an audio file — but Beats saves the whole project: kit, tempo, every pad, instrument, FX and the 808 grid. Name it, save it, and reopen it later to keep building. This is how tracks actually get finished.'},
   {sel:'#addbtn',title:'Add your own sounds',body:'Tap Add for two options: record your voice with a guided wizard (ad-libs, beatbox, sound effects — it even suggests ideas), or import audio files from your phone. You pick a type for each so it sorts into your library, and it’s saved for next time. The Add screen explains the whole thing.'},
 ];
 let ti=0;
@@ -1403,6 +1459,140 @@ function wizSkip(){ if(wizState==='recording')return; wizIdx=(wizIdx+1)%WIZ_PROM
 function wizDone(){ if(wizRec&&wizRec.state==='recording')wizRec.stop(); document.getElementById('wizscrim').classList.remove('show');
   if(micStream){ micStream.getTracks().forEach(t=>t.stop()); micStream=null; } if(wizSaved)toast(wizSaved+' new sound'+(wizSaved>1?'s':'')+' added'); }
 
+// ---------- Saved beats (full project state) ----------
+let projects=[]; try{ projects=JSON.parse(localStorage.getItem('bf_projects')||'[]'); }catch(e){ projects=[]; }
+function saveProjects(){ try{ localStorage.setItem('bf_projects',JSON.stringify(projects)); }catch(e){ toast('Storage full — delete a beat'); } }
+function esc(s){ return (s+'').replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])); }
+function snapshotState(){
+  const tg=k=>document.querySelector('.toggle[data-toggle="'+k+'"]').classList.contains('on');
+  const fv=k=>+document.getElementById('fx-'+k).value;
+  return { v:1, kit:curKit, bpm,
+    pads: pads.map(p=>({on:!!p.on,vol:p.vol,muted:!!p.muted,voiceKey:p.voiceKey||null,drumKit:p.drumKit||null,fx:{...(p.fx||{})}})),
+    fx: { filter:{on:tg('filter'),val:fv('filter')}, delay:{on:tg('delay'),val:fv('delay')},
+          reverb:{on:tg('reverb'),val:fv('reverb')}, crush:{on:tg('crush'),val:fv('crush')} },
+    r8: { running:R8.running, bdTune:R8.bdTune, bdDecay:R8.bdDecay, steps:R8.tracks.map(t=>t.steps.slice()) },
+    comp: { inst:COMP.inst, key:COMP.key, scale:COMP.scale, octave:COMP.octave, octaves:COMP.octaves,
+            running:COMP.running, grid:(COMP.grid||[]).map(r=>r.slice()) } };
+}
+function applyState(s){ if(!s)return; startAudio();
+  const kit=(s.kit&&KITS[s.kit])?s.kit:curKit; loadKit(kit);
+  document.getElementById('kitsel').value=curKit;
+  if(s.bpm){ bpm=s.bpm; document.getElementById('bpm').value=bpm; document.getElementById('bpmval').textContent=bpm; }
+  (s.pads||[]).forEach((d,i)=>{ const p=pads[i]; if(!p)return;
+    if(d.vol!=null)p.vol=d.vol; p.muted=!!d.muted; p.voiceKey=d.voiceKey||undefined; p.drumKit=d.drumKit||undefined;
+    if(d.fx)p.fx={filter:14000,drive:0,reverb:0,delay:0,...d.fx};
+    ensureNodes(p); p.gain.gain.value=p.vol;
+    p.filt.frequency.value=p.fx.filter; p.drv.curve=p.fx.drive>0?makeCurve(p.fx.drive/100):null;
+    p.rs.gain.value=sendScale('reverb',p.fx.reverb); p.ds.gain.value=sendScale('delay',p.fx.delay);
+    p.on=!!d.on; });
+  if(s.r8){ if(s.r8.bdTune!=null)R8.bdTune=s.r8.bdTune; if(s.r8.bdDecay!=null)R8.bdDecay=s.r8.bdDecay;
+    if(s.r8.steps)s.r8.steps.forEach((arr,i)=>{ if(R8.tracks[i]&&Array.isArray(arr))R8.tracks[i].steps=arr.slice(); });
+    R8.running=!!s.r8.running; }
+  build808();
+  if(s.comp){ const cp=s.comp; if(cp.inst)COMP.inst=cp.inst; if(cp.key!=null)COMP.key=cp.key;
+    if(cp.scale&&SCALES[cp.scale])COMP.scale=cp.scale; if(cp.octave)COMP.octave=cp.octave; if(cp.octaves)COMP.octaves=cp.octaves;
+    compRebuild(false);
+    if(cp.grid)cp.grid.forEach((ln,r)=>{ if(COMP.grid[r])ln.forEach((v,c)=>{ if(c<COMP.steps)COMP.grid[r][c]=!!v; }); });
+    COMP.running=!!cp.running; buildCompose(); }
+  if(s.fx){ ['filter','delay','reverb','crush'].forEach(k=>{ const f=s.fx[k]; if(!f)return;
+    const el=document.getElementById('fx-'+k); if(el)el.value=f.val;
+    const tgl=document.querySelector('.toggle[data-toggle="'+k+'"]'); if(tgl)tgl.classList.toggle('on',!!f.on); }); applyFX(); }
+  buildGrid(); buildMix();
+  const b=document.getElementById('r8play'); if(b){ b.textContent=R8.running?'■ Stop':'▶ Play'; b.classList.toggle('on',R8.running); }
+  demoActive=false; updateDemoBtn();
+  if(pads.some(p=>p.on)||R8.running||COMP.running) startClock();
+}
+function openProjects(){ renderProjects(); document.getElementById('projscrim').classList.add('show'); }
+function renderProjects(){ const l=document.getElementById('proj-list'); l.innerHTML='';
+  if(!projects.length){ l.innerHTML='<div class="projempty">No saved beats yet. Build something, name it above, and tap Save.</div>'; return; }
+  projects.slice().reverse().forEach(pr=>{ const row=document.createElement('div'); row.className='projrow';
+    const d=new Date(pr.ts);
+    row.innerHTML='<div class="pj"><b>'+esc(pr.name)+'</b><small>'+d.toLocaleDateString()+' · '+esc(pr.state.kit||'')+' · '+(pr.state.bpm||'')+' BPM</small></div>'+
+      '<button class="pjload">Load</button><button class="pjdel">✕</button>';
+    row.querySelector('.pjload').addEventListener('click',()=>{ applyState(pr.state); document.getElementById('projscrim').classList.remove('show'); toast('Loaded “'+pr.name+'”'); });
+    row.querySelector('.pjdel').addEventListener('click',()=>{ if(confirm('Delete “'+pr.name+'”?')){ projects=projects.filter(x=>x.id!==pr.id); saveProjects(); renderProjects(); } });
+    l.appendChild(row); });
+}
+function saveCurrentProject(){ startAudio();
+  const inp=document.getElementById('proj-name'); const name=((inp.value||'Untitled').trim()||'Untitled').slice(0,24);
+  projects.push({id:'p'+Date.now(),name,ts:Date.now(),state:snapshotState()}); saveProjects();
+  inp.value=''; renderProjects(); toast('Saved “'+name+'”'); }
+
+// ---------- Compose: scale-locked melodic note grid ----------
+const SCALES = {
+  penta:   {name:'Major Pentatonic', deg:[0,2,4,7,9]},
+  pentaMin:{name:'Minor Pentatonic', deg:[0,3,5,7,10]},
+  major:   {name:'Major',            deg:[0,2,4,5,7,9,11]},
+  minor:   {name:'Minor',            deg:[0,2,3,5,7,8,10]},
+  dorian:  {name:'Dorian',           deg:[0,2,3,5,7,9,10]},
+  blues:   {name:'Blues',            deg:[0,3,5,6,7,10]},
+  chroma:  {name:'Chromatic',        deg:[0,1,2,3,4,5,6,7,8,9,10,11]},
+};
+const NOTE_NAMES=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+function noteName(m){ return NOTE_NAMES[((m%12)+12)%12]+(Math.floor(m/12)-1); }
+const COMP = { inst:'Piano', key:0, scale:'penta', octave:4, octaves:2, steps:16,
+  running:false, built:false, phCol:-1, grid:null, rows:null, cellEls:null, gain:null };
+function ensureCompNode(){ if(COMP.gain||!A.ctx)return; const g=A.ctx.createGain(); g.gain.value=.9; g.connect(A.dryBus); COMP.gain=g; }
+function compRebuild(keep){ const deg=SCALES[COMP.scale].deg, rows=[], base=12*(COMP.octave+1)+COMP.key;
+  for(let o=0;o<COMP.octaves;o++) deg.forEach(d=>rows.push(base+o*12+d)); rows.push(base+COMP.octaves*12);
+  const old=COMP.grid; COMP.rows=rows; const g=[];
+  for(let r=0;r<rows.length;r++){ g[r]=new Array(COMP.steps).fill(false);
+    if(keep&&old&&old[r]) for(let c=0;c<COMP.steps;c++) g[r][c]=!!old[r][c]; }
+  COMP.grid=g; }
+function buildCompose(){ const root=document.getElementById('comp'); root.innerHTML='';
+  const c1=document.createElement('div'); c1.className='compctrl';
+  c1.innerHTML='<button class="r8btn play" id="comp-play">▶ Play</button>'+
+    '<button class="r8btn" id="comp-clear">Clear</button>'+
+    '<button class="r8btn" id="comp-surprise">✨ Surprise</button>'+
+    '<select class="compsel" id="comp-inst"></select>';
+  root.appendChild(c1);
+  const c2=document.createElement('div'); c2.className='compctrl';
+  c2.innerHTML='<select class="compsel" id="comp-key"></select><select class="compsel" id="comp-scale"></select>'+
+    '<button class="r8btn" id="comp-octdn">Oct −</button><span class="compoct" id="comp-octval"></span><button class="r8btn" id="comp-octup">Oct +</button>';
+  root.appendChild(c2);
+  // populate selects
+  const si=c1.querySelector('#comp-inst'); ['Square','Pluck','Bell'].concat(Object.keys(INSTR).filter(k=>!['Square','Pluck','Bell'].includes(k))).forEach(k=>{ const o=document.createElement('option'); o.value=k; o.textContent=k; if(k===COMP.inst)o.selected=true; si.appendChild(o); });
+  const sk=c2.querySelector('#comp-key'); NOTE_NAMES.forEach((n,i)=>{ const o=document.createElement('option'); o.value=i; o.textContent='Key '+n; if(i===COMP.key)o.selected=true; sk.appendChild(o); });
+  const ss=c2.querySelector('#comp-scale'); Object.keys(SCALES).forEach(k=>{ const o=document.createElement('option'); o.value=k; o.textContent=SCALES[k].name; if(k===COMP.scale)o.selected=true; ss.appendChild(o); });
+  document.getElementById('comp-octval').textContent='C'+COMP.octave;
+  // grid
+  const grid=document.createElement('div'); grid.className='compgrid'; COMP.cellEls=[];
+  for(let dr=0;dr<COMP.rows.length;dr++){ const r=COMP.rows.length-1-dr, midi=COMP.rows[r];
+    const isRoot=(((midi-COMP.key)%12)+12)%12===0;
+    const row=document.createElement('div'); row.className='comprow'+(isRoot?' root':'');
+    const lbl=document.createElement('div'); lbl.className='complbl'; lbl.textContent=noteName(midi); row.appendChild(lbl);
+    const rc=[];
+    for(let col=0;col<COMP.steps;col++){ const cell=document.createElement('button'); cell.className='compcell g'+Math.floor(col/4);
+      if(COMP.grid[r][col])cell.classList.add('on');
+      cell.addEventListener('click',()=>{ startAudio(); ensureCompNode(); COMP.grid[r][col]=!COMP.grid[r][col]; cell.classList.toggle('on',COMP.grid[r][col]);
+        if(COMP.grid[r][col]&&!COMP.running){ _bus=COMP.gain; try{(INSTR[COMP.inst]||vLead)(A.ctx.currentTime+.01,midi,beat()*0.9);}catch(e){} } });
+      rc.push(cell); row.appendChild(cell); }
+    COMP.cellEls[r]=rc; grid.appendChild(row); }
+  root.appendChild(grid);
+  COMP.built=true; COMP.phCol=-1;
+  document.getElementById('comp-play').addEventListener('click',compToggle);
+  document.getElementById('comp-clear').addEventListener('click',compClear);
+  document.getElementById('comp-surprise').addEventListener('click',compSurprise);
+  si.addEventListener('change',()=>{ COMP.inst=si.value; });
+  sk.addEventListener('change',()=>{ COMP.key=+sk.value; compRebuild(true); buildCompose(); });
+  ss.addEventListener('change',()=>{ COMP.scale=ss.value; compRebuild(true); buildCompose(); });
+  document.getElementById('comp-octup').addEventListener('click',()=>{ COMP.octave=Math.min(6,COMP.octave+1); compRebuild(true); buildCompose(); });
+  document.getElementById('comp-octdn').addEventListener('click',()=>{ COMP.octave=Math.max(2,COMP.octave-1); compRebuild(true); buildCompose(); });
+  if(COMP.running){ const b=document.getElementById('comp-play'); b.textContent='■ Stop'; b.classList.add('on'); }
+}
+function compToggle(){ startAudio(); ensureCompNode(); COMP.running=!COMP.running;
+  const b=document.getElementById('comp-play'); if(b){ b.textContent=COMP.running?'■ Stop':'▶ Play'; b.classList.toggle('on',COMP.running); }
+  if(COMP.running)startClock(); else compPlayhead(-1); }
+function compClear(){ for(let r=0;r<COMP.rows.length;r++){ for(let c=0;c<COMP.steps;c++){ COMP.grid[r][c]=false; if(COMP.cellEls[r]&&COMP.cellEls[r][c])COMP.cellEls[r][c].classList.remove('on'); } } }
+function compSurprise(){ compClear(); const R=COMP.rows.length;
+  for(let c=0;c<COMP.steps;c++){ if(Math.random()<0.5){ const r=Math.floor(Math.random()*R); COMP.grid[r][c]=true; if(COMP.cellEls[r]&&COMP.cellEls[r][c])COMP.cellEls[r][c].classList.add('on'); } }
+  toast('Surprise melody — tap notes to make it yours'); }
+function compPlayhead(cur){ if(!COMP.built)return;
+  const setc=(col,on)=>{ if(col<0)return; for(let r=0;r<COMP.rows.length;r++){ const el=COMP.cellEls[r]&&COMP.cellEls[r][col]; if(el)el.classList.toggle('ph',on); } };
+  if(!COMP.running){ if(COMP.phCol>=0){ setc(COMP.phCol,false); COMP.phCol=-1; } return; }
+  if(cur!==COMP.phCol){ setc(COMP.phCol,false); setc(cur,true); COMP.phCol=cur; } }
+compRebuild(false);
+
 // ---------- Boot ----------
 function boot(){
   // manifest (inline, with embedded PNG icons)
@@ -1417,11 +1607,16 @@ function boot(){
 
   // nav icons
   document.getElementById('nav-grid').innerHTML=SVG.loop+'<span>Loop</span>';
+  document.getElementById('nav-comp').innerHTML=SVG.comp+'<span>Write</span>';
   document.getElementById('nav-r8').innerHTML=SVG.r8+'<span>808</span>';
   document.getElementById('nav-mix').innerHTML=SVG.mix+'<span>Mix</span>';
   document.getElementById('nav-fx').innerHTML=SVG.wave+'<span>FX</span>';
   document.getElementById('addbtn').innerHTML=SVG.plus+'<span>Add</span>';
   document.getElementById('demoico').innerHTML=SVG.play;
+  document.getElementById('projico').innerHTML=SVG.save;
+  document.getElementById('projbtn').addEventListener('click',openProjects);
+  document.getElementById('proj-save').addEventListener('click',saveCurrentProject);
+  document.getElementById('proj-close').addEventListener('click',()=>document.getElementById('projscrim').classList.remove('show'));
 
   const ks=document.getElementById('kitsel');
   Object.keys(KITS).forEach(n=>{ const o=document.createElement('option'); o.value=n;o.textContent=n; ks.appendChild(o); });
@@ -1466,6 +1661,7 @@ function boot(){
 
   loadKit('SynthWave');
   build808(); applyR8Preset('Classic');
+  buildCompose();
   openDB();
   let seen=null; try{seen=localStorage.getItem('bf_seen3');}catch(e){}
   if(!seen) setTimeout(()=>showTour(0),450);
