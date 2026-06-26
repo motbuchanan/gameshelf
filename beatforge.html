@@ -114,6 +114,8 @@
   .wizbig:active{transform:scale(.93);}
   .wizbig.on{background:#7a1f1f;animation:pulse 1s infinite;}
   .wizstatus{font-size:12.5px;color:var(--dim);text-align:center;min-height:16px;}
+  .exprec{display:flex;flex-direction:column;align-items:center;gap:12px;padding:8px 0 4px;}
+  .exptime{font-size:30px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--txt);letter-spacing:1px;}
   .wizafter{display:flex;gap:9px;margin-bottom:14px;}
   .wizcats{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:10px;scrollbar-width:none;}
   .wizcats::-webkit-scrollbar{display:none;}
@@ -227,6 +229,10 @@
   .r8row.acc .r8cell.on{background:#f2ead6;}
   .r8cell.ph{filter:brightness(1.7);box-shadow:inset 0 0 0 2px #fff;}
   .r8grid .r8row:not(:last-child){border-bottom:1px solid rgba(255,255,255,.03);padding-bottom:3px;}
+  .r8grid.ess{gap:5px;padding:11px 9px 12px;}
+  .r8grid.ess .r8row{gap:3px;}
+  .r8grid.ess .r8cell{aspect-ratio:auto;height:34px;min-height:34px;border-radius:5px;}
+  .r8grid.ess .r8lbl{font-size:12.5px;}
 
   /* ---- Compose ---- */
   .comp{display:none;flex-direction:column;gap:10px;}
@@ -282,6 +288,7 @@
   .sheet button.act{flex:1;padding:12px;border-radius:12px;border:1px solid var(--line);
     background:#1d1d24;color:var(--txt);font-size:14px;font-weight:700;}
   .sheet button.act.primary{background:var(--accent);color:#10130a;border-color:var(--accent);}
+  .sheet button.act.danger{background:#2a1414;color:#ff9a9a;border-color:#6a2a2a;}
   .sheet .skip{background:none;border:none;color:var(--dim);font-size:12px;margin-top:14px;width:100%;}
 
   /* import sorter */
@@ -415,8 +422,25 @@
     <p id="pad-hint" style="margin-bottom:14px"></p>
     <div class="instgrid" id="pad-opts"></div>
     <div class="row" style="margin-top:4px">
+      <button class="act danger" id="pad-delete" style="display:none">🗑 Delete sound</button>
       <button class="act" id="pad-board"></button>
       <button class="act primary" id="pad-done">Done</button>
+    </div>
+  </div>
+</div>
+
+<div class="scrim" id="exportscrim">
+  <div class="sheet">
+    <div class="step" style="color:var(--accent)">EXPORT</div>
+    <h2>Save your song</h2>
+    <p style="margin-bottom:16px">This records <b>everything you hear</b> — your loops, 808 beat, and melody together — into one audio file you can share or keep. Press ●, let your song play through once, then ■ to save it to your phone.</p>
+    <div class="exprec">
+      <button class="wizbig" id="export-recbtn">●</button>
+      <div class="exptime" id="export-time">0:00</div>
+      <div class="micro" id="export-status" style="padding:0;text-align:center;"></div>
+    </div>
+    <div class="row" style="margin-top:18px">
+      <button class="act primary" id="export-close">Close</button>
     </div>
   </div>
 </div>
@@ -1113,22 +1137,38 @@ function removeFromBoard(p){ if(typeof p._boardIdx==='number'){ myBoard.splice(p
 
 let padTarget=null;
 function openPadSheet(p){ startAudio(); ensureNodes(p); padTarget=p;
-  const col=FAM[p.family]||'#888';
-  document.getElementById('pad-fam').textContent=p.family; document.getElementById('pad-fam').style.color=col;
+  const isSample=!!p.sampleId;
+  let col=FAM[p.family]||'#888';
+  const famEl=document.getElementById('pad-fam'); famEl.textContent=p.family; famEl.style.color=col;
   document.getElementById('pad-name').textContent=p.label;
-  const isDrum=p.family==='Beat';
-  document.getElementById('pad-hint').textContent=isDrum?'Choose a drum kit for this pad.':'Choose the instrument this pad plays — its rhythm stays the same.';
   const opts=document.getElementById('pad-opts'); opts.innerHTML='';
-  const list=isDrum?['Synth','808','Acoustic','Lo-Fi']:['Default'].concat(Object.keys(INSTR));
-  const cur=isDrum?(p.drumKit||'Synth'):(p.voiceKey||'Default');
-  list.forEach(name=>{ const b=document.createElement('button'); b.className='instbtn'+(name===cur?' sel':''); b.textContent=name; b.style.borderColor=name===cur?col:'';
-    b.addEventListener('click',()=>{ if(isDrum)p.drumKit=name; else p.voiceKey=(name==='Default'?null:name);
-      opts.querySelectorAll('.instbtn').forEach(x=>{x.classList.remove('sel');x.style.borderColor='';}); b.classList.add('sel'); b.style.borderColor=col;
-      auditionPad(p,isDrum); });
-    opts.appendChild(b); });
-  const bb=document.getElementById('pad-board');
-  if(curKit==='★ My Board'){ bb.textContent='Remove from board'; bb.onclick=()=>{ removeFromBoard(p); closePadSheet(); }; }
-  else { bb.textContent='Add to My Board ★'; bb.onclick=()=>addToBoard(p); }
+  const board=document.getElementById('pad-board'), del=document.getElementById('pad-delete');
+  if(isSample){
+    document.getElementById('pad-hint').textContent='This is a sound you added. Re-tag it to sort your library (changes its color), or delete it for good.';
+    CATS.forEach(cat=>{ const b=document.createElement('button'); b.className='instbtn'+(cat===p.family?' sel':''); b.textContent=cat; b.style.borderColor=cat===p.family?(FAM[cat]||col):'';
+      b.addEventListener('click',()=>{ p.family=cat; p.icon=CATICON[cat]||'sample'; col=FAM[cat]||'#888'; setSampleCat(p.sampleId,cat);
+        famEl.textContent=cat; famEl.style.color=col;
+        opts.querySelectorAll('.instbtn').forEach(x=>{x.classList.remove('sel');x.style.borderColor='';}); b.classList.add('sel'); b.style.borderColor=col; });
+      opts.appendChild(b); });
+    board.style.display='none'; del.style.display='';
+    let armed=false;
+    del.textContent='🗑 Delete sound';
+    del.onclick=()=>{ if(!armed){ armed=true; del.textContent='Tap again to delete'; setTimeout(()=>{armed=false;del.textContent='🗑 Delete sound';},2500); return; }
+      deleteSample(p.sampleId); closePadSheet(); };
+  } else {
+    const isDrum=p.family==='Beat';
+    document.getElementById('pad-hint').textContent=isDrum?'Choose a drum kit for this pad.':'Choose the instrument this pad plays — its rhythm stays the same.';
+    const list=isDrum?['Synth','808','Acoustic','Lo-Fi']:['Default'].concat(Object.keys(INSTR));
+    const cur=isDrum?(p.drumKit||'Synth'):(p.voiceKey||'Default');
+    list.forEach(name=>{ const b=document.createElement('button'); b.className='instbtn'+(name===cur?' sel':''); b.textContent=name; b.style.borderColor=name===cur?col:'';
+      b.addEventListener('click',()=>{ if(isDrum)p.drumKit=name; else p.voiceKey=(name==='Default'?null:name);
+        opts.querySelectorAll('.instbtn').forEach(x=>{x.classList.remove('sel');x.style.borderColor='';}); b.classList.add('sel'); b.style.borderColor=col;
+        auditionPad(p,isDrum); });
+      opts.appendChild(b); });
+    del.style.display='none'; board.style.display='';
+    if(curKit==='★ My Board'){ board.textContent='Remove from board'; board.onclick=()=>{ removeFromBoard(p); closePadSheet(); }; }
+    else { board.textContent='Add to My Board ★'; board.onclick=()=>addToBoard(p); }
+  }
   document.getElementById('padscrim').classList.add('show');
 }
 function auditionPad(p,isDrum){ ensureNodes(p); _bus=p.gain; _curPad=p; const t=A.ctx.currentTime+0.02;
@@ -1182,8 +1222,14 @@ function makeSamplePad(s){
   const fam=s.cat||'Sample';
   return {...P(s.name.slice(0,9),fam,CATICON[fam]||'sample',16,(step,t)=>{
     if(step%16===0){ const src=A.ctx.createBufferSource(); src.buffer=s.buffer; src.connect(bus()); src.start(t); }
-  }),on:false,muted:false,vol:0.85,fx:{filter:14000,drive:0,reverb:0,delay:0}};
+  }),on:false,muted:false,vol:0.85,fx:{filter:14000,drive:0,reverb:0,delay:0},sampleId:s.id};
 }
+function deleteSample(id){ samples=samples.filter(s=>s.id!==id);
+  if(DB){ try{ DB.transaction('samples','readwrite').objectStore('samples').delete(id); }catch(e){} }
+  loadKit(curKit); toast('Sound deleted'); }
+function setSampleCat(id,cat){ const s=samples.find(x=>x.id===id); if(s)s.cat=cat;
+  if(DB){ try{ const st=DB.transaction('samples','readwrite').objectStore('samples'); const g=st.get(id);
+    g.onsuccess=()=>{ const rec=g.result; if(rec){ rec.cat=cat; st.put(rec); } }; }catch(e){} } }
 function openDB(){ return new Promise(res=>{ const r=indexedDB.open('beatforge',2);
   r.onupgradeneeded=()=>{ if(!r.result.objectStoreNames.contains('samples')) r.result.createObjectStore('samples',{keyPath:'id'}); };
   r.onsuccess=()=>{ DB=r.result; res(); }; r.onerror=()=>res(); }); }
@@ -1254,18 +1300,41 @@ function applyFX(){ if(!A.ctx)return;
 }
 
 // ---------- Recording ----------
-let recorder=null,chunks=[];
-function toggleRec(){ startAudio(); const btn=document.getElementById('recbtn');
-  if(recorder&&recorder.state==='recording'){ recorder.stop(); btn.classList.remove('on'); return; }
-  chunks=[]; const mime=MediaRecorder.isTypeSupported('audio/webm')?'audio/webm':'audio/mp4';
-  recorder=new MediaRecorder(A.recDest.stream,{mimeType:mime});
+let recorder=null,chunks=[],exportTimer=null,exportStart=0,exportMime='';
+function playEverything(){ startAudio();
+  if(loopAnyOn())padsPaused=false;
+  if(R8.tracks.some(t=>t.steps&&t.steps.some(Boolean))){ R8.running=true; setR8PlayBtn(); }
+  if(COMP.lanes.some(l=>l.grid&&l.grid.some(r=>r&&r.some(Boolean)))){ COMP.running=true; setCompPlayBtn(); }
+  if(anyPlaying())startClock(); updateLoopTransport(); }
+function openExport(){ startAudio();
+  document.getElementById('export-time').textContent='0:00';
+  document.getElementById('export-status').textContent='Press ● and your whole song records — every layer you can hear.';
+  const b=document.getElementById('export-recbtn'); b.textContent='●'; b.classList.remove('on');
+  document.getElementById('exportscrim').classList.add('show'); }
+function closeExport(){ if(recorder&&recorder.state==='recording')recorder.stop(); document.getElementById('exportscrim').classList.remove('show'); }
+function exportTick(){ const s=Math.floor((Date.now()-exportStart)/1000);
+  document.getElementById('export-time').textContent=Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); }
+function exportToggle(){ startAudio(); const b=document.getElementById('export-recbtn');
+  if(recorder&&recorder.state==='recording'){ recorder.stop(); return; }
+  playEverything();
+  if(!anyPlaying()){ document.getElementById('export-status').textContent='Nothing is playing yet — start a beat, 808, or melody first, then record.'; return; }
+  chunks=[]; exportMime=MediaRecorder.isTypeSupported('audio/mp4')?'audio/mp4':(MediaRecorder.isTypeSupported('audio/webm')?'audio/webm':'');
+  try{ recorder=new MediaRecorder(A.recDest.stream, exportMime?{mimeType:exportMime}:undefined); }
+  catch(e){ document.getElementById('export-status').textContent='Recording is not supported in this browser.'; return; }
   recorder.ondataavailable=e=>{ if(e.data.size)chunks.push(e.data); };
-  recorder.onstop=()=>{ const blob=new Blob(chunks,{type:mime}); const url=URL.createObjectURL(blob);
-    const a=document.createElement('a'); a.href=url;
-    a.download='beatforge-'+Date.now()+(mime.includes('webm')?'.webm':'.m4a'); a.click();
-    setTimeout(()=>URL.revokeObjectURL(url),4000); toast('Recording saved to downloads'); };
-  recorder.start(); btn.classList.add('on'); toast('Recording…');
-}
+  recorder.onstop=()=>{ clearInterval(exportTimer); exportTimer=null;
+    const type=exportMime||'audio/webm', blob=new Blob(chunks,{type});
+    const ext=type.includes('mp4')?'.m4a':(type.includes('webm')?'.webm':'.audio');
+    const fname='beatforge-'+(curKit||'song').replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'-'+Date.now()+ext;
+    const url=URL.createObjectURL(blob), a=document.createElement('a'); a.href=url; a.download=fname; a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),5000);
+    b.textContent='●'; b.classList.remove('on');
+    document.getElementById('export-status').textContent='✓ Saved to your downloads as '+fname;
+    toast('Song exported to downloads'); };
+  recorder.start(); exportStart=Date.now(); exportTimer=setInterval(exportTick,250); exportTick();
+  b.textContent='■'; b.classList.add('on');
+  document.getElementById('export-status').textContent='Recording… let your song loop once, then press ■ to save.';
+  setTimeout(()=>{ if(recorder&&recorder.state==='recording')recorder.stop(); },120000); }
 
 // ---------- Views ----------
 function setView(v){
@@ -1295,7 +1364,7 @@ const TOUR=[
   {sel:'.grid',title:'Swap instruments & build a board',body:'Long-press any pad to change its instrument — drum pads get alternate kits, melodic pads can become piano, strings, brass, sax and more. The same menu has “Add to My Board,” which collects your favorite pads from any style into your own custom kit (pick ★ My Board in the kit list). Two new kits, Live Band and Orchestra, come pre-voiced with real instruments.'},
   {sel:'#nav-mix',title:'Mix & per-track FX',body:'The Mix tab gives every pad a volume slider and a mute (M) button. The ∿ button next to each opens FX for that track alone — its own Filter, Drive, Reverb and Delay. The FX tab stays as the whole-mix layer on top.'},
   {sel:'#nav-fx',title:'FX',body:'Flip on Filter, Delay, Reverb, or Drive and drag to taste. They shape the whole mix live.'},
-  {sel:'#recbtn',title:'Record',body:'Hit the red dot to capture your jam, tap again to stop. The audio file saves to your phone’s downloads.'},
+  {sel:'#recbtn',title:'Save your song',body:'The dot up top is Export. It records everything you hear — loops, 808, and melody together — into one audio file. It auto-starts your layers so you never record silence; let it loop once and press stop to save it to your downloads.'},
   {sel:'#projbtn',title:'Save your beat',body:'Record makes an audio file — but Beats saves the whole project: kit, tempo, every pad, instrument, FX and the 808 grid. Name it, save it, and reopen it later to keep building. This is how tracks actually get finished.'},
   {sel:'#addbtn',title:'Add your own sounds',body:'Tap Add for two options: record your voice with a guided wizard (ad-libs, beatbox, sound effects — it even suggests ideas), or import audio files from your phone. You pick a type for each so it sorts into your library, and it’s saved for next time. The Add screen explains the whole thing.'},
 ];
@@ -1361,7 +1430,7 @@ function metal808(t,dur,hpFreq,lvl){ const c=A.ctx,g=c.createGain();
 function chat808(t,acc){ metal808(t,0.05,7000,acc?0.5:0.36); }
 function ohat808(t,acc){ metal808(t,R8.ohDecay,6000,acc?0.5:0.36); }
 
-const R8 = { running:false, built:false, phCol:-1, bdTune:55, bdDecay:0.5, sdSnap:1800, ohDecay:0.35,
+const R8 = { running:false, built:false, phCol:-1, bdTune:55, bdDecay:0.5, sdSnap:1800, ohDecay:0.35, essentials:true,
   tracks:[
     {id:'AC', accent:true, steps:Array(16).fill(false)},
     {id:'BD', fire:(t,a)=>bd808(t,a), steps:Array(16).fill(false)},
@@ -1379,6 +1448,7 @@ const R8 = { running:false, built:false, phCol:-1, bdTune:55, bdDecay:0.5, sdSna
     {id:'CH', fire:(t,a)=>chat808(t,a), steps:Array(16).fill(false)},
   ]};
 const NAMES808={AC:'Accent',BD:'Kick',SD:'Snare',LT:'Tom Lo',MT:'Tom Mid',HT:'Tom Hi',RS:'Rim',CP:'Clap',CB:'Cowbell',CL:'Claves',MA:'Maraca',CY:'Crash',OH:'Open Hat',CH:'Hi-Hat'};
+const CORE808=['BD','SD','CH','OH','CP','CB']; // Kick, Snare, Hi-Hat, Open Hat, Clap, Cowbell
 const R8PRESETS = {
   Classic:{BD:[0,6,10],SD:[4,12],CH:[0,2,4,6,8,10,12,14],OH:[14],AC:[0,8]},
   House:{BD:[0,4,8,12],CP:[4,12],OH:[2,6,10,14],CH:[0,2,4,6,8,10,12,14],AC:[0,4,8,12]},
@@ -1405,8 +1475,16 @@ function build808(){
   const hint=document.createElement('div'); hint.className='hint';
   hint.textContent='Tap squares to build a drum beat, then press Play. Each row is a different drum. New here? Tap Load demo.';
   root.appendChild(hint);
-  const grid=document.createElement('div'); grid.className='r8grid';
-  R8.tracks.forEach(tr=>{
+  const mw=document.createElement('div'); mw.className='compctrl';
+  mw.innerHTML='<button class="r8btn" id="r8more">'+(R8.essentials?'＋ More drums':'− Fewer drums')+'</button>'+
+    '<span class="micro" style="padding:0;align-self:center;">'+(R8.essentials?'Showing the 6 main drums.':'Showing all 14 drums.')+'</span>';
+  root.appendChild(mw);
+  const grid=document.createElement('div'); grid.className='r8grid'+(R8.essentials?' ess':'');
+  R8.tracks.forEach(t=>t.cellEls=null);
+  const visTracks = R8.essentials
+    ? CORE808.map(id=>R8.tracks.find(t=>t.id===id)).filter(Boolean)
+    : R8.tracks;
+  visTracks.forEach(tr=>{
     const row=document.createElement('div'); row.className='r8row'+(tr.accent?' acc':'');
     const lbl=document.createElement('div'); lbl.className='r8lbl'; lbl.textContent=NAMES808[tr.id]||tr.id; row.appendChild(lbl);
     tr.cellEls=[];
@@ -1423,9 +1501,11 @@ function build808(){
   document.getElementById('r8stop').addEventListener('click',r8Stop);
   document.getElementById('r8demo').addEventListener('click',loadR8Demo);
   document.getElementById('r8clear').addEventListener('click',r8Clear);
+  document.getElementById('r8more').addEventListener('click',()=>{ R8.essentials=!R8.essentials; build808(); });
   ctr2.querySelectorAll('.pre').forEach(b=>b.addEventListener('click',()=>applyR8Preset(b.dataset.pre)));
   document.getElementById('r8tune').addEventListener('input',e=>R8.bdTune=+e.target.value);
   document.getElementById('r8dec').addEventListener('input',e=>R8.bdDecay=+e.target.value/100);
+  setR8PlayBtn();
 }
 function setR8PlayBtn(){ const b=document.getElementById('r8play'); if(b){ b.textContent=R8.running?'⏸ Pause':'▶ Play'; b.classList.toggle('playing',R8.running); } if(!R8.running)r8Playhead(-1); }
 function toggleR8Play(){ startAudio(); R8.running=!R8.running; setR8PlayBtn();
@@ -1831,7 +1911,9 @@ function boot(){
   document.getElementById('stopbtn').addEventListener('click',()=>stopAll());
   buildLoopTransport();
   document.getElementById('pad-done').addEventListener('click',closePadSheet);
-  document.getElementById('recbtn').addEventListener('click',toggleRec);
+  document.getElementById('recbtn').addEventListener('click',openExport);
+  document.getElementById('export-recbtn').addEventListener('click',exportToggle);
+  document.getElementById('export-close').addEventListener('click',closeExport);
   document.getElementById('helpbtn').addEventListener('click',()=>showTour(0));
 
   document.querySelectorAll('.toggle').forEach(tg=>tg.addEventListener('click',()=>{ startAudio(); tg.classList.toggle('on'); applyFX(); }));
