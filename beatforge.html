@@ -233,6 +233,18 @@
   .comprow.root .compcell{box-shadow:inset 0 0 0 1px rgba(176,210,53,.12);}
   .compcell.on{background:linear-gradient(180deg,#4fd1c5,#2f9d8f);box-shadow:0 0 8px -1px #4fd1c5;}
   .compcell.ph{filter:brightness(1.7);box-shadow:inset 0 0 0 2px #fff;}
+  .lanetabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;}
+  .lanetabs::-webkit-scrollbar{display:none;}
+  .lanetab{flex:none;font-size:12px;font-weight:700;padding:7px 13px;border-radius:16px;
+    background:#17171e;border:1px solid var(--line);color:var(--dim);white-space:nowrap;}
+  .lanetab.sel{background:#4fd1c5;color:#06201d;border-color:#4fd1c5;}
+  .lanetab.muted{opacity:.5;text-decoration:line-through;}
+  .lanetab.add{color:#4fd1c5;font-size:16px;padding:6px 13px;}
+  .compgrid.scroll{overflow-x:auto;scrollbar-width:thin;}
+  .compgrid.scroll::-webkit-scrollbar{height:5px;}
+  .compgrid.scroll::-webkit-scrollbar-thumb{background:#2a3340;border-radius:3px;}
+  .compgrid .complbl{position:sticky;left:0;z-index:2;background:#0f131b;}
+  .compcell.barline{margin-left:3px;}
 
   /* ---- overlays ---- */
   .scrim{position:fixed;inset:0;background:rgba(0,0,0,.74);display:none;z-index:60;
@@ -920,27 +932,28 @@ const KITS = {
 let pads=[], curKit='SynthWave', demoActive=false;
 
 // ---------- Scheduler ----------
-const S={next:0,step:0,timer:null,look:0.1,iv:25,q:[]};
-function startClock(){ if(S.timer)return; S.next=A.ctx.currentTime+0.06; S.step=0; S.timer=setInterval(sched,S.iv); }
+const S={next:0,step:0,bar:0,timer:null,look:0.1,iv:25,q:[]};
+function startClock(){ if(S.timer)return; S.next=A.ctx.currentTime+0.06; S.step=0; S.bar=0; S.timer=setInterval(sched,S.iv); }
 function stopClock(){ clearInterval(S.timer); S.timer=null; }
 function sched(){ const sd=stepDur();
   while(S.next < A.ctx.currentTime+S.look){
-    const t=S.next, step=S.step;
+    const t=S.next, step=S.step, bar=S.bar;
     pads.forEach(p=>{ if(!p.on||p.muted)return; _bus=p.gain; _curPad=p; try{ p.fn(step%p.len,t);}catch(e){} });
     if(R8.running){ const acc=R8.tracks[0].steps[step];
       for(let i=1;i<R8.tracks.length;i++){ const tr=R8.tracks[i];
         if(tr.steps[step]&&tr.fire){ try{ tr.fire(t,acc);}catch(e){} } } }
-    if(COMP.running&&COMP.grid){ ensureCompNode(); const rows=COMP.rows;
-      for(let r=0;r<rows.length;r++){ const ln=COMP.grid[r]; if(ln&&ln[step]){ _bus=COMP.gain;
-        try{ (INSTR[COMP.inst]||vLead)(t,rows[r],beat()*0.9); }catch(e){} } } }
-    S.q.push({step,t}); S.next+=sd; S.step=(S.step+1)%16;
+    if(COMP.running&&COMP.lanes.length){ ensureCompNode(); const cstep=bar*16+step;
+      COMP.lanes.forEach(lane=>{ if(lane.mute||!lane.grid)return; const rows=lane.rows;
+        for(let r=0;r<rows.length;r++){ const ln=lane.grid[r]; if(ln&&ln[cstep]){ _bus=COMP.gain;
+          try{ (INSTR[lane.inst]||vLead)(t,rows[r],beat()*0.9); }catch(e){} } } }); }
+    S.q.push({step,t,bar}); S.next+=sd; S.step=(S.step+1)%16; if(S.step===0)S.bar=(S.bar+1)%(COMP.bars||1);
   }
 }
 function drawLoop(){
   if(A.ctx){ const now=A.ctx.currentTime;
-    while(S.q.length && S.q[0].t<now){ const cur=S.q.shift().step;
+    while(S.q.length && S.q[0].t<now){ const it=S.q.shift(), cur=it.step;
       pads.forEach(p=>{ if(p.on&&p.barEl){ p.barEl.style.width=((cur%p.len)/(p.len-1)*100)+'%'; }});
-      r8Playhead(cur); compPlayhead(cur); }
+      r8Playhead(cur); compPlayhead((it.bar||0)*16+cur); }
   }
   requestAnimationFrame(drawLoop);
 }
@@ -1471,8 +1484,8 @@ function snapshotState(){
     fx: { filter:{on:tg('filter'),val:fv('filter')}, delay:{on:tg('delay'),val:fv('delay')},
           reverb:{on:tg('reverb'),val:fv('reverb')}, crush:{on:tg('crush'),val:fv('crush')} },
     r8: { running:R8.running, bdTune:R8.bdTune, bdDecay:R8.bdDecay, steps:R8.tracks.map(t=>t.steps.slice()) },
-    comp: { inst:COMP.inst, key:COMP.key, scale:COMP.scale, octave:COMP.octave, octaves:COMP.octaves,
-            running:COMP.running, grid:(COMP.grid||[]).map(r=>r.slice()) } };
+    comp: { key:COMP.key, scale:COMP.scale, bars:COMP.bars, running:COMP.running, activeLane:COMP.activeLane,
+            lanes:COMP.lanes.map(l=>({inst:l.inst,octave:l.octave,octaves:l.octaves,mute:!!l.mute,grid:(l.grid||[]).map(r=>r.slice())})) } };
 }
 function applyState(s){ if(!s)return; startAudio();
   const kit=(s.kit&&KITS[s.kit])?s.kit:curKit; loadKit(kit);
@@ -1489,10 +1502,14 @@ function applyState(s){ if(!s)return; startAudio();
     if(s.r8.steps)s.r8.steps.forEach((arr,i)=>{ if(R8.tracks[i]&&Array.isArray(arr))R8.tracks[i].steps=arr.slice(); });
     R8.running=!!s.r8.running; }
   build808();
-  if(s.comp){ const cp=s.comp; if(cp.inst)COMP.inst=cp.inst; if(cp.key!=null)COMP.key=cp.key;
-    if(cp.scale&&SCALES[cp.scale])COMP.scale=cp.scale; if(cp.octave)COMP.octave=cp.octave; if(cp.octaves)COMP.octaves=cp.octaves;
-    compRebuild(false);
-    if(cp.grid)cp.grid.forEach((ln,r)=>{ if(COMP.grid[r])ln.forEach((v,c)=>{ if(c<COMP.steps)COMP.grid[r][c]=!!v; }); });
+  if(s.comp){ const cp=s.comp;
+    if(cp.key!=null)COMP.key=cp.key; if(cp.scale&&SCALES[cp.scale])COMP.scale=cp.scale; if(cp.bars)COMP.bars=cp.bars;
+    let lanes;
+    if(cp.lanes&&cp.lanes.length) lanes=cp.lanes.map(l=>({inst:l.inst||'Square',octave:l.octave||4,octaves:l.octaves||2,mute:!!l.mute,grid:null,rows:null,_g:l.grid}));
+    else if(cp.grid) lanes=[{inst:cp.inst||'Piano',octave:cp.octave||4,octaves:cp.octaves||2,mute:false,grid:null,rows:null,_g:cp.grid}];
+    if(lanes){ COMP.lanes=lanes; COMP.activeLane=Math.min(cp.activeLane||0,COMP.lanes.length-1);
+      compRebuild(false);
+      COMP.lanes.forEach(l=>{ if(l._g){ l._g.forEach((ln,r)=>{ if(l.grid[r])ln.forEach((v,c)=>{ if(c<COMP.steps)l.grid[r][c]=!!v; }); }); delete l._g; } }); }
     COMP.running=!!cp.running; buildCompose(); }
   if(s.fx){ ['filter','delay','reverb','crush'].forEach(k=>{ const f=s.fx[k]; if(!f)return;
     const el=document.getElementById('fx-'+k); if(el)el.value=f.val;
@@ -1518,7 +1535,7 @@ function saveCurrentProject(){ startAudio();
   projects.push({id:'p'+Date.now(),name,ts:Date.now(),state:snapshotState()}); saveProjects();
   inp.value=''; renderProjects(); toast('Saved “'+name+'”'); }
 
-// ---------- Compose: scale-locked melodic note grid ----------
+// ---------- Compose: multi-track, scale-locked melodic grids ----------
 const SCALES = {
   penta:   {name:'Major Pentatonic', deg:[0,2,4,7,9]},
   pentaMin:{name:'Minor Pentatonic', deg:[0,3,5,7,10]},
@@ -1530,42 +1547,63 @@ const SCALES = {
 };
 const NOTE_NAMES=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
 function noteName(m){ return NOTE_NAMES[((m%12)+12)%12]+(Math.floor(m/12)-1); }
-const COMP = { inst:'Piano', key:0, scale:'penta', octave:4, octaves:2, steps:16,
-  running:false, built:false, phCol:-1, grid:null, rows:null, cellEls:null, gain:null };
+const ADD_INST=['Square','Pluck','Strings','Bell','Guitar','Brass'];
+const COMP = { key:0, scale:'penta', bars:1, steps:16, running:false, built:false, phCol:-1,
+  activeLane:0, lanes:[], gain:null, cellEls:null, gridEl:null, cellW:0 };
+function newLane(inst,octave){ return {inst:inst||'Square',octave:octave||4,octaves:2,mute:false,grid:null,rows:null}; }
+COMP.lanes=[ newLane('Piano',4), newLane('Synth Bass',2) ];
 function ensureCompNode(){ if(COMP.gain||!A.ctx)return; const g=A.ctx.createGain(); g.gain.value=.9; g.connect(A.dryBus); COMP.gain=g; }
-function compRebuild(keep){ const deg=SCALES[COMP.scale].deg, rows=[], base=12*(COMP.octave+1)+COMP.key;
-  for(let o=0;o<COMP.octaves;o++) deg.forEach(d=>rows.push(base+o*12+d)); rows.push(base+COMP.octaves*12);
-  const old=COMP.grid; COMP.rows=rows; const g=[];
-  for(let r=0;r<rows.length;r++){ g[r]=new Array(COMP.steps).fill(false);
-    if(keep&&old&&old[r]) for(let c=0;c<COMP.steps;c++) g[r][c]=!!old[r][c]; }
-  COMP.grid=g; }
+function laneRows(lane){ const deg=SCALES[COMP.scale].deg, rows=[], base=12*(lane.octave+1)+COMP.key;
+  for(let o=0;o<lane.octaves;o++) deg.forEach(d=>rows.push(base+o*12+d)); rows.push(base+lane.octaves*12); return rows; }
+function compRebuild(keep){ COMP.steps=COMP.bars*16;
+  COMP.lanes.forEach(lane=>{ const rows=laneRows(lane), old=lane.grid, g=[];
+    for(let r=0;r<rows.length;r++){ g[r]=new Array(COMP.steps).fill(false);
+      if(keep&&old&&old[r]) for(let c=0;c<COMP.steps&&c<old[r].length;c++) g[r][c]=!!old[r][c]; }
+    lane.rows=rows; lane.grid=g; }); }
+function compLane(){ return COMP.lanes[COMP.activeLane]; }
 function buildCompose(){ const root=document.getElementById('comp'); root.innerHTML='';
+  const lane=compLane();
+  // transport
   const c1=document.createElement('div'); c1.className='compctrl';
   c1.innerHTML='<button class="r8btn play" id="comp-play">▶ Play</button>'+
-    '<button class="r8btn" id="comp-clear">Clear</button>'+
-    '<button class="r8btn" id="comp-surprise">✨ Surprise</button>'+
-    '<select class="compsel" id="comp-inst"></select>';
+    '<button class="r8btn" id="comp-clear">Clear track</button>'+
+    '<button class="r8btn" id="comp-surprise">✨ Surprise</button>';
   root.appendChild(c1);
+  // lane tabs
+  const lt=document.createElement('div'); lt.className='lanetabs';
+  COMP.lanes.forEach((l,i)=>{ const b=document.createElement('button'); b.className='lanetab'+(i===COMP.activeLane?' sel':'')+(l.mute?' muted':'');
+    b.textContent=l.inst; b.addEventListener('click',()=>{ COMP.activeLane=i; buildCompose(); }); lt.appendChild(b); });
+  const add=document.createElement('button'); add.className='lanetab add'; add.textContent='+';
+  add.addEventListener('click',()=>{ COMP.lanes.push(newLane(ADD_INST[COMP.lanes.length%ADD_INST.length],3)); COMP.activeLane=COMP.lanes.length-1; compRebuild(true); buildCompose(); });
+  lt.appendChild(add); root.appendChild(lt);
+  // lane settings
+  const c3=document.createElement('div'); c3.className='compctrl';
+  c3.innerHTML='<select class="compsel" id="comp-inst"></select>'+
+    '<button class="r8btn" id="comp-octdn">Oct −</button><span class="compoct" id="comp-octval"></span><button class="r8btn" id="comp-octup">Oct +</button>'+
+    '<button class="r8btn" id="comp-mute">'+(lane.mute?'Muted':'Mute')+'</button>'+
+    (COMP.lanes.length>1?'<button class="r8btn" id="comp-del">🗑</button>':'');
+  root.appendChild(c3);
+  // musical
   const c2=document.createElement('div'); c2.className='compctrl';
-  c2.innerHTML='<select class="compsel" id="comp-key"></select><select class="compsel" id="comp-scale"></select>'+
-    '<button class="r8btn" id="comp-octdn">Oct −</button><span class="compoct" id="comp-octval"></span><button class="r8btn" id="comp-octup">Oct +</button>';
+  c2.innerHTML='<select class="compsel" id="comp-key"></select><select class="compsel" id="comp-scale"></select><select class="compsel" id="comp-bars"></select>';
   root.appendChild(c2);
-  // populate selects
-  const si=c1.querySelector('#comp-inst'); ['Square','Pluck','Bell'].concat(Object.keys(INSTR).filter(k=>!['Square','Pluck','Bell'].includes(k))).forEach(k=>{ const o=document.createElement('option'); o.value=k; o.textContent=k; if(k===COMP.inst)o.selected=true; si.appendChild(o); });
+  const si=c3.querySelector('#comp-inst'); ['Square','Pluck','Bell'].concat(Object.keys(INSTR).filter(k=>!['Square','Pluck','Bell'].includes(k))).forEach(k=>{ const o=document.createElement('option'); o.value=k; o.textContent=k; if(k===lane.inst)o.selected=true; si.appendChild(o); });
   const sk=c2.querySelector('#comp-key'); NOTE_NAMES.forEach((n,i)=>{ const o=document.createElement('option'); o.value=i; o.textContent='Key '+n; if(i===COMP.key)o.selected=true; sk.appendChild(o); });
   const ss=c2.querySelector('#comp-scale'); Object.keys(SCALES).forEach(k=>{ const o=document.createElement('option'); o.value=k; o.textContent=SCALES[k].name; if(k===COMP.scale)o.selected=true; ss.appendChild(o); });
-  document.getElementById('comp-octval').textContent='C'+COMP.octave;
+  const sb=c2.querySelector('#comp-bars'); [1,2,4].forEach(n=>{ const o=document.createElement('option'); o.value=n; o.textContent=n+(n>1?' bars':' bar'); if(n===COMP.bars)o.selected=true; sb.appendChild(o); });
+  document.getElementById('comp-octval').textContent='C'+lane.octave;
   // grid
-  const grid=document.createElement('div'); grid.className='compgrid'; COMP.cellEls=[];
-  for(let dr=0;dr<COMP.rows.length;dr++){ const r=COMP.rows.length-1-dr, midi=COMP.rows[r];
+  const grid=document.createElement('div'); grid.className='compgrid'+(COMP.bars>1?' scroll':''); COMP.cellEls=[]; COMP.gridEl=grid;
+  const tmpl=COMP.bars>1?'30px repeat('+COMP.steps+',26px)':'30px repeat(16,1fr)'; COMP.cellW=28;
+  for(let dr=0;dr<lane.rows.length;dr++){ const r=lane.rows.length-1-dr, midi=lane.rows[r];
     const isRoot=(((midi-COMP.key)%12)+12)%12===0;
-    const row=document.createElement('div'); row.className='comprow'+(isRoot?' root':'');
+    const row=document.createElement('div'); row.className='comprow'+(isRoot?' root':''); row.style.gridTemplateColumns=tmpl;
     const lbl=document.createElement('div'); lbl.className='complbl'; lbl.textContent=noteName(midi); row.appendChild(lbl);
     const rc=[];
-    for(let col=0;col<COMP.steps;col++){ const cell=document.createElement('button'); cell.className='compcell g'+Math.floor(col/4);
-      if(COMP.grid[r][col])cell.classList.add('on');
-      cell.addEventListener('click',()=>{ startAudio(); ensureCompNode(); COMP.grid[r][col]=!COMP.grid[r][col]; cell.classList.toggle('on',COMP.grid[r][col]);
-        if(COMP.grid[r][col]&&!COMP.running){ _bus=COMP.gain; try{(INSTR[COMP.inst]||vLead)(A.ctx.currentTime+.01,midi,beat()*0.9);}catch(e){} } });
+    for(let col=0;col<COMP.steps;col++){ const cell=document.createElement('button'); cell.className='compcell g'+(Math.floor(col/4)%2)+(col%16===0&&col>0?' barline':'');
+      if(lane.grid[r][col])cell.classList.add('on');
+      cell.addEventListener('click',()=>{ startAudio(); ensureCompNode(); lane.grid[r][col]=!lane.grid[r][col]; cell.classList.toggle('on',lane.grid[r][col]);
+        if(lane.grid[r][col]&&!COMP.running){ _bus=COMP.gain; try{(INSTR[lane.inst]||vLead)(A.ctx.currentTime+.01,midi,beat()*0.9);}catch(e){} } });
       rc.push(cell); row.appendChild(cell); }
     COMP.cellEls[r]=rc; grid.appendChild(row); }
   root.appendChild(grid);
@@ -1573,24 +1611,28 @@ function buildCompose(){ const root=document.getElementById('comp'); root.innerH
   document.getElementById('comp-play').addEventListener('click',compToggle);
   document.getElementById('comp-clear').addEventListener('click',compClear);
   document.getElementById('comp-surprise').addEventListener('click',compSurprise);
-  si.addEventListener('change',()=>{ COMP.inst=si.value; });
+  document.getElementById('comp-mute').addEventListener('click',()=>{ lane.mute=!lane.mute; buildCompose(); });
+  const del=document.getElementById('comp-del'); if(del)del.addEventListener('click',()=>{ if(COMP.lanes.length>1){ COMP.lanes.splice(COMP.activeLane,1); COMP.activeLane=Math.max(0,COMP.activeLane-1); buildCompose(); } });
+  si.addEventListener('change',()=>{ lane.inst=si.value; buildCompose(); });
   sk.addEventListener('change',()=>{ COMP.key=+sk.value; compRebuild(true); buildCompose(); });
   ss.addEventListener('change',()=>{ COMP.scale=ss.value; compRebuild(true); buildCompose(); });
-  document.getElementById('comp-octup').addEventListener('click',()=>{ COMP.octave=Math.min(6,COMP.octave+1); compRebuild(true); buildCompose(); });
-  document.getElementById('comp-octdn').addEventListener('click',()=>{ COMP.octave=Math.max(2,COMP.octave-1); compRebuild(true); buildCompose(); });
+  sb.addEventListener('change',()=>{ COMP.bars=+sb.value; compRebuild(true); buildCompose(); });
+  document.getElementById('comp-octup').addEventListener('click',()=>{ lane.octave=Math.min(6,lane.octave+1); compRebuild(true); buildCompose(); });
+  document.getElementById('comp-octdn').addEventListener('click',()=>{ lane.octave=Math.max(1,lane.octave-1); compRebuild(true); buildCompose(); });
   if(COMP.running){ const b=document.getElementById('comp-play'); b.textContent='■ Stop'; b.classList.add('on'); }
 }
 function compToggle(){ startAudio(); ensureCompNode(); COMP.running=!COMP.running;
   const b=document.getElementById('comp-play'); if(b){ b.textContent=COMP.running?'■ Stop':'▶ Play'; b.classList.toggle('on',COMP.running); }
   if(COMP.running)startClock(); else compPlayhead(-1); }
-function compClear(){ for(let r=0;r<COMP.rows.length;r++){ for(let c=0;c<COMP.steps;c++){ COMP.grid[r][c]=false; if(COMP.cellEls[r]&&COMP.cellEls[r][c])COMP.cellEls[r][c].classList.remove('on'); } } }
-function compSurprise(){ compClear(); const R=COMP.rows.length;
-  for(let c=0;c<COMP.steps;c++){ if(Math.random()<0.5){ const r=Math.floor(Math.random()*R); COMP.grid[r][c]=true; if(COMP.cellEls[r]&&COMP.cellEls[r][c])COMP.cellEls[r][c].classList.add('on'); } }
-  toast('Surprise melody — tap notes to make it yours'); }
-function compPlayhead(cur){ if(!COMP.built)return;
-  const setc=(col,on)=>{ if(col<0)return; for(let r=0;r<COMP.rows.length;r++){ const el=COMP.cellEls[r]&&COMP.cellEls[r][col]; if(el)el.classList.toggle('ph',on); } };
+function compClear(){ const lane=compLane(); for(let r=0;r<lane.rows.length;r++)for(let c=0;c<COMP.steps;c++)lane.grid[r][c]=false; buildCompose(); }
+function compSurprise(){ const lane=compLane(); for(let r=0;r<lane.rows.length;r++)for(let c=0;c<COMP.steps;c++)lane.grid[r][c]=false;
+  const R=lane.rows.length; for(let c=0;c<COMP.steps;c++){ if(Math.random()<0.5){ const r=Math.floor(Math.random()*R); lane.grid[r][c]=true; } }
+  buildCompose(); toast('Surprise melody — tweak it'); }
+function compPlayhead(col){ if(!COMP.built)return;
+  const setc=(c,on)=>{ if(c<0)return; const els=COMP.cellEls; for(let r=0;r<els.length;r++){ const el=els[r]&&els[r][c]; if(el)el.classList.toggle('ph',on); } };
   if(!COMP.running){ if(COMP.phCol>=0){ setc(COMP.phCol,false); COMP.phCol=-1; } return; }
-  if(cur!==COMP.phCol){ setc(COMP.phCol,false); setc(cur,true); COMP.phCol=cur; } }
+  if(col!==COMP.phCol){ setc(COMP.phCol,false); setc(col,true); COMP.phCol=col;
+    if(COMP.bars>1&&COMP.gridEl){ const x=col*COMP.cellW-COMP.gridEl.clientWidth/2+40; COMP.gridEl.scrollLeft=Math.max(0,x); } } }
 compRebuild(false);
 
 // ---------- Boot ----------
