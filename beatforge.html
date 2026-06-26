@@ -143,6 +143,31 @@
     background:var(--accent);color:#10130a;border:none;flex:none;}
   .projrow .pjdel{font-size:13px;width:32px;height:32px;border-radius:9px;flex:none;
     background:#1d1d24;border:1px solid var(--line);color:var(--dim);}
+  .projrow .pjfile{font-size:15px;width:32px;height:32px;border-radius:9px;flex:none;
+    background:#15201a;border:1px solid #2f5d44;color:#9fe3bd;}
+  .savehelp{font-size:12px;line-height:1.55;color:#9aa5b4;background:#0f1115;border:1px solid var(--line);
+    border-radius:12px;padding:10px 12px;margin:0 0 14px;}
+  .savehelp b{color:#cdd6e6;font-weight:700;} .savehelp .ft{color:var(--accent);}
+  .impbtn{width:100%;margin:8px 0 0;}
+
+  /* ---- Jam tab (live tap-to-play pads) ---- */
+  .jam{display:none;flex-direction:column;gap:12px;}
+  .jamhead{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  .jamseg{display:flex;background:#0e0e13;border:1px solid var(--line);border-radius:11px;padding:4px;gap:4px;}
+  .jamseg button{background:none;border:none;color:var(--dim);font-weight:700;font-size:13px;padding:8px 15px;border-radius:8px;}
+  .jamseg button.sel{background:var(--accent);color:#10130a;}
+  .jamsnap{margin-left:auto;font-size:13px;font-weight:700;padding:9px 14px;border-radius:10px;
+    background:#15201a;border:1px solid #2f5d44;color:#9fe3bd;}
+  .jamsnap.off{background:#1d1d24;border-color:var(--line);color:var(--dim);}
+  .jamhint{font-size:12.5px;line-height:1.45;color:#8895a6;background:#13161d;border:1px solid var(--line);border-radius:12px;padding:10px 12px;}
+  .jamgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+  .jampad{aspect-ratio:1/1;border-radius:18px;border:1px solid var(--line);background:#17171e;color:#fff;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+    font-weight:800;font-size:16px;position:relative;overflow:hidden;-webkit-user-select:none;user-select:none;touch-action:manipulation;}
+  .jampad .sub{font-size:10px;font-weight:600;opacity:.7;}
+  .jampad:active{transform:scale(.96);}
+  .jampad.lit{box-shadow:inset 0 0 0 2px currentColor,0 0 18px currentColor;background:#20202a;}
+  body.simple .jamgrid{gap:14px;} body.simple .jampad{border-radius:22px;}
   .projempty{text-align:center;color:var(--dim);font-size:13px;line-height:1.6;padding:24px 12px;}
   .pad .eq{position:absolute;top:13px;right:11px;display:flex;gap:2.5px;align-items:flex-end;
     height:16px;opacity:0;transition:opacity .2s;}
@@ -451,17 +476,20 @@
   </div>
   <div class="r8" id="r8"></div>
   <div class="comp" id="comp"></div>
+  <div class="jam" id="jam"></div>
 </main>
 
 <nav>
   <button data-view="grid" class="active" id="nav-grid"></button>
   <button data-view="comp" id="nav-comp"></button>
   <button data-view="r8" id="nav-r8"></button>
+  <button data-view="jam" id="nav-jam"></button>
   <button data-view="mix" id="nav-mix" class="adv"></button>
   <button data-view="fx" id="nav-fx" class="adv"></button>
   <button id="addbtn"></button>
 </nav>
 <input type="file" id="fileinput" accept="audio/*,.m4a,.mp4,.aac,.wav,.caf,.mp3,.ogg,.oga,.opus,.weba,.webm,.aiff,.aif,.flac,.3gp" multiple style="display:none">
+<input type="file" id="projfile" accept=".json,application/json,text/json,text/plain,.txt" style="display:none">
 
 <div class="hl" id="hl"></div>
 
@@ -543,12 +571,13 @@
 
     <div id="beatspane">
       <h2>Your beats</h2>
-      <p style="margin-bottom:12px">Save the whole arrangement — kit, tempo, which pads are on, every instrument and FX, and the 808 grid — then reopen it any time.</p>
+      <div class="savehelp"><b>Save</b> keeps this beat on this device. <b class="ft">⤓ File</b> makes a portable <b>.json</b> project file you can back up or move to another device — then <b>Import</b> it anywhere to get the full editable beat back. (The <b>● Record</b> button up top makes an <b>audio</b> file instead — for playing or sharing, not editing.)</div>
       <div class="savebar">
         <input id="proj-name" placeholder="Name this beat…" maxlength="24" autocomplete="off">
         <button class="act primary" id="proj-save">Save</button>
       </div>
       <div class="projlist" id="proj-list"></div>
+      <button class="act impbtn" id="beat-import">⤴ Import a beat file (.json)</button>
       <button class="act" id="newbeat">✦ New beat — clear the canvas</button>
     </div>
 
@@ -574,13 +603,14 @@
         <button class="tbtn demo" id="song-bounce">⤓ Export song</button>
       </div>
       <div class="songsec" style="margin-top:18px">
-        <div class="songlbl">Step 3 · Save &amp; switch songs</div>
-        <div class="songhint">Save this song to your device, start a new one, or reopen one you saved before. Each saved song keeps its own kit, key and patterns — so you can work on several.</div>
+        <div class="songlbl">Step 3 · Save, switch &amp; move songs</div>
+        <div class="songhint"><b>Save</b> keeps a song on this device. <b style="color:var(--accent)">⤓ File</b> makes a portable <b>.json</b> you can move to another device and <b>Import</b> back. Each saved song keeps its own kit, key and patterns.</div>
         <div class="savebar">
           <input id="song-name" placeholder="Name this song…" maxlength="24" autocomplete="off">
           <button class="act primary" id="song-save">Save</button>
         </div>
         <div class="projlist" id="song-list"></div>
+        <button class="act impbtn" id="song-import">⤴ Import a song file (.json)</button>
         <button class="act" id="song-new">✦ New song</button>
       </div>
     </div>
@@ -1511,6 +1541,8 @@ function setView(v){
   document.getElementById('fx').style.display=v==='fx'?'flex':'none';
   document.getElementById('r8').style.display=v==='r8'?'flex':'none';
   document.getElementById('comp').style.display=v==='comp'?'flex':'none';
+  document.getElementById('jam').style.display=v==='jam'?'flex':'none';
+  if(v==='jam') buildJam();
   document.querySelectorAll('nav button[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===v));
 }
 function startAudio(){ userTouched=true; initAudio(); if(A.ctx.state==='suspended')A.ctx.resume();
@@ -1528,6 +1560,7 @@ const TOUR=[
   {sel:'#kitsel',title:'Six sound kits',body:'Switch kits here: SynthWave, Hip-Hop, Techno, Lo-Fi, Trap, Ambient. Every pad in a kit is tuned to the same key and tempo, so anything you stack stays in time.'},
   {sel:'#nav-comp',title:'Write your own melody',body:'The Write tab is a note grid locked to a musical scale — so every note you tap sounds right. Pick an instrument, a key and scale (Pentatonic means no wrong notes), and tap to place notes. Hit ✨ Surprise for a starter melody to tweak. It plays in time with your drums and 808.'},
   {sel:'#nav-r8',title:'808 drum machine',body:'The 808 tab is a step sequencer — a grid of 16 steps. Tap cells to place drum hits, hit Play, and program your own beat. The kick’s tune and decay are adjustable for that classic 808 boom. It runs on the same tempo and through the same FX and recorder.'},
+  {sel:'#nav-jam',title:'Jam — play it live',body:'The Jam tab is a live pad you tap to play — flip the Drums / Notes switch up top. Notes always fit the key, so there are no wrong ones. With “In time” on and a beat already playing, your taps snap to the groove so you stay on rhythm. Nothing plays until you tap.'},
   {sel:'.transport',title:'Tempo & Swing',body:'Drag BPM to speed up or slow down everything at once. Swing adds groove — it nudges the off-beats a little late so the rhythm feels human instead of robotic. Try it around 30–40% on a beat.'},
   {sel:'.grid',title:'Swap instruments & build a board',body:'Long-press any pad to change its instrument — drum pads get alternate kits, melodic pads can become piano, strings, brass, sax and more. The same menu has “Add to My Board,” which collects your favorite pads from any style into your own custom kit (pick ★ My Board in the kit list). Two new kits, Live Band and Orchestra, come pre-voiced with real instruments.'},
   {sel:'#nav-mix',adv:true,title:'Mix & per-track FX',body:'The Mix tab gives every pad a volume slider and a mute (M) button. The ∿ button next to each opens FX for that track alone — its own Filter, Drive, Reverb and Delay. The FX tab stays as the whole-mix layer on top.'},
@@ -1844,8 +1877,9 @@ function renderProjects(){ const l=document.getElementById('proj-list'); l.inner
   projects.slice().reverse().forEach(pr=>{ const row=document.createElement('div'); row.className='projrow';
     const d=new Date(pr.ts);
     row.innerHTML='<div class="pj"><b>'+esc(pr.name)+'</b><small>'+d.toLocaleDateString()+' · '+esc(pr.state.kit||'')+' · '+(pr.state.bpm||'')+' BPM</small></div>'+
-      '<button class="pjload">Load</button><button class="pjdel">✕</button>';
+      '<button class="pjload">Load</button><button class="pjfile" title="Save to file">⤓</button><button class="pjdel">✕</button>';
     row.querySelector('.pjload').addEventListener('click',()=>{ applyState(pr.state); document.getElementById('projscrim').classList.remove('show'); toast('Loaded “'+pr.name+'”'); });
+    row.querySelector('.pjfile').addEventListener('click',()=>exportBeatFile(pr));
     row.querySelector('.pjdel').addEventListener('click',()=>{ askConfirm('Delete “'+pr.name+'”?','This permanently removes this saved beat from your device. This can’t be undone.','Delete',()=>{ projects=projects.filter(x=>x.id!==pr.id); saveProjects(); renderProjects(); },true); });
     l.appendChild(row); });
 }
@@ -2079,8 +2113,9 @@ function renderSongLib(){ const l=document.getElementById('song-list'); if(!l)re
   songs.slice().reverse().forEach(e=>{ const row=document.createElement('div'); row.className='projrow'+(e.id===SONG.curId?' cur':'');
     const d=new Date(e.ts);
     row.innerHTML='<div class="pj"><b>'+esc(e.name)+(e.id===SONG.curId?' • open':'')+'</b><small>'+d.toLocaleDateString()+' · '+esc(songStats(e))+'</small></div>'+
-      '<button class="pjload">Load</button><button class="pjdel">✕</button>';
+      '<button class="pjload">Load</button><button class="pjfile" title="Save to file">⤓</button><button class="pjdel">✕</button>';
     row.querySelector('.pjload').addEventListener('click',()=>loadSavedSong(e.id));
+    row.querySelector('.pjfile').addEventListener('click',()=>exportSongFile(e));
     row.querySelector('.pjdel').addEventListener('click',()=>deleteSong(e.id));
     l.appendChild(row); }); }
 
@@ -2374,6 +2409,69 @@ function toggleLevel(){ level=(level==='simple'?'advanced':'simple');
   applyLevel();
   toast(level==='simple'?'Simple mode — just the essentials. Tap again for all tools.':'Advanced mode — Mix, FX and every control unlocked.'); }
 
+// ---------- Portable project files (.json — move beats/songs between devices) ----------
+function safeName(s){ return (s||'untitled').replace(/[^a-z0-9_-]+/gi,'-').replace(/^-+|-+$/g,'').slice(0,32)||'untitled'; }
+function downloadJSON(obj,fname){ try{ const blob=new Blob([JSON.stringify(obj)],{type:'application/json'});
+  const url=URL.createObjectURL(blob),a=document.createElement('a'); a.href=url; a.download=fname; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),4000); }catch(e){ toast('Could not make the file'); } }
+function exportBeatFile(pr){ downloadJSON({app:'BeatForge',kind:'beat',v:1,name:pr.name,ts:pr.ts,data:pr.state},
+  'beatforge-beat-'+safeName(pr.name)+'.json'); toast('Beat file saved to your downloads'); }
+function exportSongFile(e){ downloadJSON({app:'BeatForge',kind:'song',v:1,name:e.name,ts:e.ts,data:{base:e.base,pats:e.pats,arr:e.arr,loop:e.loop}},
+  'beatforge-song-'+safeName(e.name)+'.json'); toast('Song file saved to your downloads'); }
+function triggerProjImport(){ const i=document.getElementById('projfile'); if(i){ i.value=''; i.click(); } }
+function importProjectFiles(files){ [...files].forEach(f=>{ const r=new FileReader();
+  r.onload=()=>{ let o=null; try{ o=JSON.parse(r.result); }catch(e){}
+    if(!o||o.app!=='BeatForge'||!o.kind||!o.data){ toast('“'+f.name+'” isn’t a BeatForge file'); return; }
+    const rid=p=>p+Date.now()+Math.random().toString(36).slice(2,5);
+    if(o.kind==='beat'){
+      projects.push({id:rid('p'),name:(o.name||'Imported beat').slice(0,24),ts:Date.now(),state:cloneJ(o.data)});
+      saveProjects(); renderProjects(); toast('Imported beat “'+(o.name||'')+'”'); }
+    else if(o.kind==='song'){ const d=o.data;
+      songs.push({id:rid('sg'),name:(o.name||'Imported song').slice(0,24),ts:Date.now(),base:cloneJ(d.base),pats:cloneJ(d.pats||[]),arr:cloneJ(d.arr||[]),loop:!!d.loop});
+      saveSongs(); renderSongLib(); toast('Imported song “'+(o.name||'')+'” — open the Song tab'); }
+    else toast('Unknown BeatForge file type'); };
+  r.readAsText(f); }); }
+
+// ---------- Jam tab: live tap-to-play pads ----------
+// Nothing sounds on its own. A tap plays one hit. If a beat is already running and
+// "In time" is on, the hit snaps to the next step; otherwise it plays instantly.
+const JAM={ mode:'drum', snap:true };
+function jamBus(){ if(!A._jamBus){ A._jamBus=A.ctx.createGain(); A._jamBus.gain.value=0.9; A._jamBus.connect(A.dryBus); } return A._jamBus; }
+function jamTime(){ const now=A.ctx.currentTime;
+  if(!S.timer || !JAM.snap) return now+0.01;          // nothing playing, or free mode → instant
+  const sd=stepDur(); let t=S.next; while(t-sd >= now+0.02) t-=sd; if(t<now) t=now+0.005; return t; }
+function jamHitDrum(id){ const tr=R8.tracks.find(x=>x.id===id); if(tr&&tr.fire){ try{ tr.fire(jamTime(),false); }catch(e){} } }
+function jamHitNote(midi){ try{ _bus=jamBus(); (INSTR[compLane().inst]||vLead)(jamTime(),midi,stepDur()*3*0.92); }catch(e){} }
+function jamNotes(){ const deg=SCALES[COMP.scale].deg, base=60+COMP.key, out=[]; deg.forEach(d=>out.push(base+d)); out.push(base+12); return out; }
+function jamWire(pad,fn){ pad.addEventListener('pointerdown',e=>{ e.preventDefault(); startAudio(); fn();
+  pad.classList.add('lit'); clearTimeout(pad._t); pad._t=setTimeout(()=>pad.classList.remove('lit'),120); }); }
+function buildJam(){ const root=document.getElementById('jam'); if(!root)return; root.innerHTML='';
+  const head=document.createElement('div'); head.className='jamhead';
+  head.innerHTML='<div class="jamseg"><button class="'+(JAM.mode==='drum'?'sel':'')+'" data-m="drum">Drums</button>'+
+    '<button class="'+(JAM.mode==='melody'?'sel':'')+'" data-m="melody">Notes</button></div>'+
+    '<button class="jamsnap'+(JAM.snap?'':' off')+'" id="jam-snap">'+(JAM.snap?'⏱ In time: on':'⏱ In time: off')+'</button>';
+  root.appendChild(head);
+  head.querySelectorAll('.jamseg button').forEach(b=>b.addEventListener('click',()=>{ JAM.mode=b.dataset.m; buildJam(); }));
+  head.querySelector('#jam-snap').addEventListener('click',()=>{ JAM.snap=!JAM.snap; buildJam(); });
+  const hint=document.createElement('div'); hint.className='jamhint';
+  hint.textContent = JAM.mode==='drum'
+    ? 'Tap the pads to play drums live. Nothing plays on its own — a tap makes one sound. With “In time” on and a beat already playing, your taps snap to the rhythm.'
+    : 'Tap the pads to play notes live — every note fits the key, so there are no wrong ones. With “In time” on and a beat already playing, your taps lock to the groove.';
+  root.appendChild(hint);
+  const grid=document.createElement('div'); grid.className='jamgrid';
+  if(JAM.mode==='drum'){
+    const cols=['#f0a830','#ff6b6b','#4fd1c5','#7aa2ff','#b0d235','#c98bff'];
+    CORE808.forEach((id,i)=>{ const pad=document.createElement('button'); pad.className='jampad'; pad.style.color=cols[i%cols.length];
+      pad.innerHTML='<span>'+(NAMES808[id]||id)+'</span>'; jamWire(pad,()=>jamHitDrum(id)); grid.appendChild(pad); });
+  } else {
+    const notes=jamNotes();
+    notes.forEach((m,i)=>{ const pad=document.createElement('button'); pad.className='jampad'; pad.style.color='hsl('+(95+i*16)+',60%,62%)';
+      pad.innerHTML='<span>'+NOTE_NAMES[((m%12)+12)%12]+'</span>'+(i===notes.length-1?'<span class="sub">octave</span>':'');
+      jamWire(pad,()=>jamHitNote(m)); grid.appendChild(pad); });
+  }
+  root.appendChild(grid);
+}
+
 // ---------- Boot ----------
 function boot(){
   // manifest (inline, with embedded PNG icons)
@@ -2390,6 +2488,7 @@ function boot(){
   document.getElementById('nav-grid').innerHTML=SVG.loop+'<span>Loop</span>';
   document.getElementById('nav-comp').innerHTML=SVG.comp+'<span>Write</span>';
   document.getElementById('nav-r8').innerHTML=SVG.r8+'<span>808</span>';
+  document.getElementById('nav-jam').innerHTML='<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg><span>Jam</span>';
   document.getElementById('nav-mix').innerHTML=SVG.mix+'<span>Mix</span>';
   document.getElementById('nav-fx').innerHTML=SVG.wave+'<span>FX</span>';
   document.getElementById('addbtn').innerHTML=SVG.plus+'<span>Add</span>';
@@ -2406,6 +2505,9 @@ function boot(){
   document.getElementById('song-bounce').addEventListener('click',bounceSong);
   document.getElementById('song-save').addEventListener('click',saveSongAs);
   document.getElementById('song-new').addEventListener('click',newSong);
+  document.getElementById('beat-import').addEventListener('click',triggerProjImport);
+  document.getElementById('song-import').addEventListener('click',triggerProjImport);
+  document.getElementById('projfile').addEventListener('change',e=>{ if(e.target.files&&e.target.files.length) importProjectFiles(e.target.files); });
   loadSong();
   document.getElementById('conf-ok').addEventListener('click',confirmOk);
   document.getElementById('conf-cancel').addEventListener('click',closeConfirm);
