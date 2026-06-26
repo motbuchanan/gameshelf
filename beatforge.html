@@ -163,11 +163,29 @@
   .jamgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
   .jampad{aspect-ratio:1/1;border-radius:18px;border:1px solid var(--line);background:#17171e;color:#fff;
     display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
-    font-weight:800;font-size:16px;position:relative;overflow:hidden;-webkit-user-select:none;user-select:none;touch-action:manipulation;}
+    font-weight:800;font-size:16px;position:relative;overflow:hidden;-webkit-user-select:none;user-select:none;touch-action:none;}
   .jampad .sub{font-size:10px;font-weight:600;opacity:.7;}
   .jampad:active{transform:scale(.96);}
   .jampad.lit{box-shadow:inset 0 0 0 2px currentColor,0 0 18px currentColor;background:#20202a;}
   body.simple .jamgrid{gap:14px;} body.simple .jampad{border-radius:22px;}
+
+  /* ---- Trim / audio editor ---- */
+  #trimscrim .sheet{max-width:560px;}
+  .trimwrap{position:relative;width:100%;height:124px;background:#0c0e13;border:1px solid var(--line);
+    border-radius:12px;overflow:hidden;margin:8px 0 4px;touch-action:none;}
+  .trimwrap canvas{display:block;width:100%;height:100%;}
+  .trimdim{position:absolute;top:0;height:100%;background:rgba(8,8,11,.62);pointer-events:none;}
+  .trimsel{position:absolute;top:0;height:100%;border-left:2px solid var(--accent);border-right:2px solid var(--accent);
+    background:rgba(176,210,53,.07);pointer-events:none;box-sizing:border-box;}
+  .trimhandle{position:absolute;top:0;height:100%;width:26px;margin-left:-13px;cursor:ew-resize;
+    display:flex;align-items:center;justify-content:center;touch-action:none;}
+  .trimhandle::after{content:'';width:4px;height:50px;border-radius:3px;background:var(--accent);box-shadow:0 0 8px var(--accent);}
+  .trimread{font-size:12px;color:var(--dim);text-align:center;margin:4px 0 12px;font-variant-numeric:tabular-nums;}
+  .trimrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;}
+  .trimrow .tbtn,.trimrow .jamsnap{flex:1;min-width:130px;}
+  .trimrow input,.trimrow select{background:#0f0f13;border:1px solid var(--line);color:#fff;border-radius:9px;padding:11px;font-size:14px;}
+  .trimrow input{flex:1;min-width:130px;}
+  .trimrow .act{flex:1;min-width:130px;}
   .projempty{text-align:center;color:var(--dim);font-size:13px;line-height:1.6;padding:24px 12px;}
   .pad .eq{position:absolute;top:13px;right:11px;display:flex;gap:2.5px;align-items:flex-end;
     height:16px;opacity:0;transition:opacity .2s;}
@@ -490,6 +508,7 @@
 </nav>
 <input type="file" id="fileinput" accept="audio/*,.m4a,.mp4,.aac,.wav,.caf,.mp3,.ogg,.oga,.opus,.weba,.webm,.aiff,.aif,.flac,.3gp" multiple style="display:none">
 <input type="file" id="projfile" accept=".json,application/json,text/json,text/plain,.txt" style="display:none">
+<input type="file" id="trimfile" accept="audio/*,.m4a,.mp4,.aac,.wav,.caf,.mp3,.ogg,.oga,.opus,.weba,.webm,.aiff,.aif,.flac,.3gp" style="display:none">
 
 <div class="hl" id="hl"></div>
 
@@ -655,8 +674,38 @@
     <p>Turn any audio into a pad you can play in time with the rest of your track. Two ways:</p>
     <button class="bigopt" id="add-record"><span class="bi" id="add-rec-ic"></span><span class="bt"><b>Record your voice</b><small>Guided mic capture — ad-libs, beatbox, sound effects, your own ideas.</small></span></button>
     <button class="bigopt" id="add-import"><span class="bi" id="add-imp-ic"></span><span class="bt"><b>Import audio files</b><small>Pick sounds from your phone’s storage.</small></span></button>
+    <button class="bigopt" id="add-trim"><span class="bi" id="add-trim-ic"></span><span class="bt"><b>Trim / edit audio</b><small>Open any audio file from your phone, cut it down to the part you want, and save that as a loop.</small></span></button>
     <p class="addnote">Each sound you add gets a <b>type</b> you choose (that sets its icon and color so your library stays sorted), is <b>saved inside the app</b> so it’s here next time, and plays through your FX and the recorder like any other pad. It shows up as a new pad in every kit and in <b>★ My Board</b>. Short, punchy sounds work best — recordings are trimmed for you.</p>
     <button class="skip" id="add-close">Close</button>
+  </div>
+</div>
+
+<div class="scrim" id="trimscrim">
+  <div class="sheet">
+    <h2>✂ Trim audio</h2>
+    <p>Drag the two green handles to pick the part you want to keep. Press ▶ to hear just that piece on a loop, then save it as a pad you can play.</p>
+    <div class="trimwrap" id="trim-wrap">
+      <canvas id="trim-wave"></canvas>
+      <div class="trimdim" id="trim-dimL"></div>
+      <div class="trimdim" id="trim-dimR"></div>
+      <div class="trimsel" id="trim-sel"></div>
+      <div class="trimhandle" id="trim-h0"></div>
+      <div class="trimhandle" id="trim-h1"></div>
+    </div>
+    <div class="trimread" id="trim-read"></div>
+    <div class="trimrow">
+      <button class="act play tbtn" id="trim-play">▶ Play selection</button>
+      <button class="jamsnap off" id="trim-snap">⏱ Snap to bars: off</button>
+    </div>
+    <div class="trimrow">
+      <input id="trim-name" placeholder="Name this sound…" maxlength="18">
+      <select id="trim-cat"></select>
+    </div>
+    <div class="trimrow">
+      <button class="act primary" id="trim-save">Save as a pad</button>
+      <button class="act" id="trim-file">⤓ Save file</button>
+    </div>
+    <button class="skip" id="trim-close">Close</button>
   </div>
 </div>
 
@@ -1411,6 +1460,7 @@ function stopAll(){
   padsPaused=false;
   if(R8.running){ R8.running=false; setR8PlayBtn(); }
   if(COMP.running){ COMP.running=false; setCompPlayBtn(); compPlayhead(-1); }
+  trimStop(); stopSyncTest();   // kill the independent loops too (trim preview, sync metronome)
   stopClock(); updateLoopTransport(); }
 
 // ---------- Samples (IndexedDB) ----------
@@ -2432,6 +2482,70 @@ function importProjectFiles(files){ [...files].forEach(f=>{ const r=new FileRead
     else toast('Unknown BeatForge file type'); };
   r.readAsText(f); }); }
 
+// ---------- Trim / audio editor ----------
+// Opens ANY audio file off the device (or a saved sound), shows its waveform, lets you drag
+// two handles to keep the middle, preview it on a loop, and save the slice as a pad (+ optional file).
+let trimBuf=null, selA=0, selB=0, trimSnap=false, trimSrc=null, trimDragReady=false;
+function sliceBuffer(buf,t0,t1){ const sr=buf.sampleRate, s0=Math.max(0,Math.floor(t0*sr)), s1=Math.min(buf.length,Math.floor(t1*sr)), len=Math.max(1,s1-s0);
+  const out=A.ctx.createBuffer(buf.numberOfChannels,len,sr);
+  for(let ch=0;ch<buf.numberOfChannels;ch++){ out.getChannelData(ch).set(buf.getChannelData(ch).subarray(s0,s1)); } return out; }
+function drawTrimWave(){ const wrap=document.getElementById('trim-wrap'), c=document.getElementById('trim-wave');
+  const w=Math.max(160,wrap.clientWidth||320), h=124; c.width=w; c.height=h; const g=c.getContext('2d');
+  g.fillStyle='#0c0e13'; g.fillRect(0,0,w,h); if(!trimBuf)return;
+  const data=trimBuf.getChannelData(0), n=data.length, step=Math.max(1,Math.floor(n/w));
+  g.strokeStyle='#4fd1c5'; g.lineWidth=1; g.beginPath();
+  for(let x=0;x<w;x++){ let mn=1,mx=-1; const i0=x*step; for(let i=0;i<step;i++){ const v=data[i0+i]; if(v==null)break; if(v<mn)mn=v; if(v>mx)mx=v; }
+    if(mn>mx){mn=0;mx=0;} const y0=(1-(mx*0.92+1)/2)*h, y1=(1-(mn*0.92+1)/2)*h; g.moveTo(x+0.5,y0); g.lineTo(x+0.5,Math.max(y0+1,y1)); }
+  g.stroke(); }
+function trimBarSec(){ return 16*stepDur(); }
+function renderTrimSel(){ if(!trimBuf)return; const dur=trimBuf.duration||1;
+  const a=Math.max(0,Math.min(100,selA/dur*100)), b=Math.max(0,Math.min(100,selB/dur*100));
+  document.getElementById('trim-h0').style.left=a+'%'; document.getElementById('trim-h1').style.left=b+'%';
+  document.getElementById('trim-sel').style.left=a+'%'; document.getElementById('trim-sel').style.width=(b-a)+'%';
+  document.getElementById('trim-dimL').style.left='0%'; document.getElementById('trim-dimL').style.width=a+'%';
+  document.getElementById('trim-dimR').style.left=b+'%'; document.getElementById('trim-dimR').style.width=(100-b)+'%';
+  const len=selB-selA, bars=trimBarSec()>0?(len/trimBarSec()):0;
+  document.getElementById('trim-read').textContent='Start '+selA.toFixed(2)+'s · End '+selB.toFixed(2)+'s · Length '+len.toFixed(2)+'s'+(trimSnap?'  ('+Math.max(1,Math.round(bars))+' bars)':''); }
+function trimSnapLen(){ if(!trimSnap||!trimBuf)return; const bs=trimBarSec(); if(bs<=0)return;
+  let bars=Math.max(1,Math.round((selB-selA)/bs)); selB=Math.min(trimBuf.duration,selA+bars*bs);
+  if(selB-selA<0.02)selB=Math.min(trimBuf.duration,selA+bs); renderTrimSel(); }
+function openTrimEditor(buf,name){ startAudio(); trimBuf=buf; selA=0; selB=buf.duration; trimStop();
+  document.getElementById('trim-name').value=(name||'Clip').slice(0,18);
+  const cs=document.getElementById('trim-cat'); cs.innerHTML=CATS.map(c=>'<option value="'+c+'">'+c+'</option>').join(''); cs.value='Sample';
+  if(!trimDragReady){ trimDragInit(); trimDragReady=true; }
+  document.getElementById('trimscrim').classList.add('show');
+  requestAnimationFrame(()=>{ drawTrimWave(); renderTrimSel(); }); }
+function closeTrim(){ trimStop(); document.getElementById('trimscrim').classList.remove('show'); }
+function setTrimPlayBtn(on){ const b=document.getElementById('trim-play'); if(b)b.textContent=on?'■ Stop':'▶ Play selection'; }
+function trimPlay(){ trimStop(); if(!trimBuf)return; startAudio();
+  trimSrc=A.ctx.createBufferSource(); trimSrc.buffer=trimBuf; trimSrc.loop=true; trimSrc.loopStart=selA; trimSrc.loopEnd=Math.max(selA+0.02,selB);
+  trimSrc.connect(A.master); try{ trimSrc.start(0,selA); }catch(e){} setTrimPlayBtn(true); }
+function trimStop(){ if(trimSrc){ try{trimSrc.stop();}catch(e){} try{trimSrc.disconnect();}catch(e){} trimSrc=null; } setTrimPlayBtn(false); }
+function trimToggleSnap(){ trimSnap=!trimSnap; const b=document.getElementById('trim-snap');
+  b.classList.toggle('off',!trimSnap); b.textContent='⏱ Snap to bars: '+(trimSnap?'on':'off'); if(trimSnap)trimSnapLen(); else renderTrimSel(); }
+function trimSaveSound(){ if(!trimBuf)return; trimStop();
+  const name=((document.getElementById('trim-name').value||'Clip').trim()||'Clip').slice(0,18);
+  const cat=document.getElementById('trim-cat').value||'Sample';
+  const clip=sliceBuffer(trimBuf,selA,selB), wav=bufferToWav(clip);
+  commitSample(name,cat,clip,wav); loadKit(curKit);
+  toast('Saved “'+name+'” — it’s a pad now'); closeTrim(); }
+function trimSaveFile(){ if(!trimBuf)return; const name=((document.getElementById('trim-name').value||'clip').trim()||'clip');
+  const clip=sliceBuffer(trimBuf,selA,selB), wav=bufferToWav(clip), blob=new Blob([wav],{type:'audio/wav'}), url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download='beatforge-clip-'+safeName(name)+'.wav'; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),4000); toast('Clip saved to your files'); }
+function triggerTrimImport(){ const i=document.getElementById('trimfile'); if(i){ i.value=''; i.click(); } }
+function trimImportFile(file){ if(!file)return; startAudio();
+  file.arrayBuffer().then(ab=>A.ctx.decodeAudioData(ab)).then(buf=>{ document.getElementById('addscrim').classList.remove('show');
+    openTrimEditor(buf,(file.name||'Clip').replace(/\.[^.]+$/,'').slice(0,18)); }).catch(()=>toast('Could not read that audio file')); }
+function trimDragInit(){ const wrap=document.getElementById('trim-wrap'); let drag=null;
+  const fracX=x=>{ const r=wrap.getBoundingClientRect(); return Math.max(0,Math.min(1,(x-r.left)/r.width)); };
+  const move=e=>{ if(!drag||!trimBuf)return; e.preventDefault(); const cx=(e.touches&&e.touches[0])?e.touches[0].clientX:e.clientX;
+    const t=fracX(cx)*trimBuf.duration; if(drag==='a')selA=Math.max(0,Math.min(t,selB-0.02)); else selB=Math.min(trimBuf.duration,Math.max(t,selA+0.02)); renderTrimSel(); };
+  const up=()=>{ if(drag){ const was=drag; drag=null; if(trimSnap&&was==='b')trimSnapLen(); } };
+  document.getElementById('trim-h0').addEventListener('pointerdown',e=>{ e.preventDefault(); drag='a'; });
+  document.getElementById('trim-h1').addEventListener('pointerdown',e=>{ e.preventDefault(); drag='b'; });
+  document.addEventListener('pointermove',move); document.addEventListener('pointerup',up); document.addEventListener('pointercancel',up); }
+
 // ---------- Jam tab: live tap-to-play pads ----------
 // Nothing sounds on its own. A tap plays one hit. If a beat is already running and
 // "In time" is on, the hit snaps to the next step; otherwise it plays instantly.
@@ -2443,8 +2557,12 @@ function jamTime(){ const now=A.ctx.currentTime;
 function jamHitDrum(id){ const tr=R8.tracks.find(x=>x.id===id); if(tr&&tr.fire){ try{ tr.fire(jamTime(),false); }catch(e){} } }
 function jamHitNote(midi){ try{ _bus=jamBus(); (INSTR[compLane().inst]||vLead)(jamTime(),midi,stepDur()*3*0.92); }catch(e){} }
 function jamNotes(){ const deg=SCALES[COMP.scale].deg, base=60+COMP.key, out=[]; deg.forEach(d=>out.push(base+d)); out.push(base+12); return out; }
-function jamWire(pad,fn){ pad.addEventListener('pointerdown',e=>{ e.preventDefault(); startAudio(); fn();
-  pad.classList.add('lit'); clearTimeout(pad._t); pad._t=setTimeout(()=>pad.classList.remove('lit'),120); }); }
+const JAM_TOUCH = ('ontouchstart' in window) || (navigator.maxTouchPoints>0);
+function jamFire(pad,fn){ startAudio(); fn(); pad.classList.add('lit'); clearTimeout(pad._t); pad._t=setTimeout(()=>pad.classList.remove('lit'),120); }
+function jamWire(pad,fn){
+  if(JAM_TOUCH){ pad.addEventListener('touchstart',e=>{ e.preventDefault(); jamFire(pad,fn); },{passive:false}); }
+  else { pad.addEventListener('pointerdown',e=>{ e.preventDefault(); jamFire(pad,fn); }); }
+}
 function buildJam(){ const root=document.getElementById('jam'); if(!root)return; root.innerHTML='';
   const head=document.createElement('div'); head.className='jamhead';
   head.innerHTML='<div class="jamseg"><button class="'+(JAM.mode==='drum'?'sel':'')+'" data-m="drum">Drums</button>'+
@@ -2531,6 +2649,15 @@ function boot(){
   document.getElementById('add-close').addEventListener('click',()=>document.getElementById('addscrim').classList.remove('show'));
   document.getElementById('add-record').addEventListener('click',openWizard);
   document.getElementById('add-import').addEventListener('click',()=>{ document.getElementById('addscrim').classList.remove('show'); document.getElementById('fileinput').click(); });
+  document.getElementById('add-trim-ic').innerHTML='<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>';
+  document.getElementById('add-trim').addEventListener('click',triggerTrimImport);
+  document.getElementById('trimfile').addEventListener('change',e=>{ const f=e.target.files&&e.target.files[0]; if(f)trimImportFile(f); });
+  document.getElementById('trim-play').addEventListener('click',()=>{ if(trimSrc)trimStop(); else trimPlay(); });
+  document.getElementById('trim-snap').addEventListener('click',trimToggleSnap);
+  document.getElementById('trim-save').addEventListener('click',trimSaveSound);
+  document.getElementById('trim-file').addEventListener('click',trimSaveFile);
+  document.getElementById('trim-close').addEventListener('click',closeTrim);
+  document.getElementById('trimscrim').addEventListener('click',e=>{ if(e.target.id==='trimscrim')closeTrim(); });
   document.getElementById('wiz-recbtn').addEventListener('click',wizToggleRec);
   document.getElementById('wiz-play').addEventListener('click',wizPlay);
   document.getElementById('wiz-redo').addEventListener('click',wizRedo);
