@@ -341,6 +341,18 @@
   .sheet button.act.danger{background:#2a1414;color:#ff9a9a;border-color:#6a2a2a;}
   .sheet .skip{background:none;border:none;color:var(--dim);font-size:12px;margin-top:14px;width:100%;}
 
+  /* diagnostics (hold build badge) */
+  #buildtag{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;cursor:pointer;}
+  .diagbox{display:flex;justify-content:space-between;align-items:center;gap:12px;
+    background:#13131a;border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px;}
+  .diaglab{font-size:13px;font-weight:700;color:var(--txt);}
+  .diaglab small{display:block;font-weight:400;font-size:11px;color:var(--dim);margin-top:3px;max-width:230px;line-height:1.35;}
+  .diagval{font-size:22px;font-weight:800;color:var(--accent);white-space:nowrap;}
+  .diagval.sm{font-size:13px;font-weight:600;color:#cfcfd6;text-align:right;max-width:150px;line-height:1.35;}
+  .diaghint{font-size:11px;color:var(--dim);line-height:1.45;margin:6px 0 4px;}
+  .diaghdr{font-size:11px;text-transform:uppercase;letter-spacing:1.3px;color:var(--accent);
+    font-weight:700;margin:16px 0 10px!important;}
+
   /* import sorter */
   .imp{max-height:60vh;overflow-y:auto;margin:0 -4px 16px;padding:0 4px;}
   .impfile{background:#121217;border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:9px;}
@@ -684,6 +696,27 @@
   </div>
 </div>
 
+<div class="scrim" id="diagscrim">
+  <div class="sheet">
+    <h2>Diagnostics</h2>
+    <p>A quick health check to find what's making playback chug. Numbers update live, and nothing here is saved — close to go back to normal.</p>
+    <div class="diagbox">
+      <div class="diaglab">Frame rate <small>visual smoothness — on a stressed device, audio chugging tracks this closely</small></div>
+      <div class="diagval" id="diag-fps">– fps</div>
+    </div>
+    <div class="diagbox">
+      <div class="diaglab">Saved-sound memory <small>every saved sound is decoded and held in RAM the whole time the app runs</small></div>
+      <div class="diagval sm" id="diag-samples">–</div>
+    </div>
+    <div class="diaghint" id="diag-ctx">audio engine not started yet</div>
+    <p class="diaghdr">A/B tests — flip one, watch the frame rate</p>
+    <button class="act" id="diag-fx" style="width:100%;margin-bottom:10px;">Reverb + delay: ON</button>
+    <button class="act danger" id="diag-free" style="width:100%;margin-bottom:6px;">Unload saved sounds (this session)</button>
+    <div class="diaghint">If frame rate jumps when you bypass FX, the reverb is the cost. If it jumps when you unload sounds, memory is the cost. Reload the app to restore either.</div>
+    <button class="skip" id="diag-close">Close</button>
+  </div>
+</div>
+
 <div class="scrim" id="addscrim">
   <div class="sheet">
     <h2>Add your own sounds</h2>
@@ -786,7 +819,7 @@ const FAM = {
   Lead:'#f0a830', Arp:'#46c98b', Keys:'#f4894f', Synth:'#38d6e0',
   Vox:'#c084fc', FX:'#b0d235', Sample:'#94a3b8'
 };
-const BUILD='v10.3 · Jun 26';
+const BUILD='v10.4 · Jun 27';
 const CATS = ['Beat','Bass','Chord','Pad','Lead','Arp','Keys','Synth','Vox','FX','Sample'];
 const CATICON = {Beat:'beat',Bass:'bass',Chord:'chord',Pad:'pad',Lead:'lead',Arp:'arp',
   Keys:'keys',Synth:'synth',Vox:'vox',FX:'fx',Sample:'sample'};
@@ -1238,6 +1271,7 @@ const KITS = {
 
 // ---------- State ----------
 let pads=[], curKit='SynthWave', padsPaused=false;
+let diagOpen=false, diagFxBypassed=false, diagFpsRAF=null; // diagnostics sheet (hold build badge)
 let userTouched=false; // becomes true on first real interaction; gates autosave
 let syncOffset=0; // seconds: manual headphone/Bluetooth calibration on top of auto outputLatency
 try{ const _v=parseFloat(localStorage.getItem('bf_sync')); if(!isNaN(_v))syncOffset=_v; }catch(e){}
@@ -1278,7 +1312,7 @@ function loadKit(name){
   pads.forEach(p=>{ ['gain','filt','drv','post','rs','ds'].forEach(k=>{ if(p[k]){ try{p[k].disconnect();}catch(e){} p[k]=null; } }); });
   pads = KITS[name].make().map((d,i)=>({...d,on:false,muted:false,vol:0.85,fx:{filter:14000,drive:0,reverb:0,delay:0},
     _srcKit:d._srcKit||name, _srcIdx:(d._srcIdx!=null?d._srcIdx:i)}));
-  samples.slice().sort((a,b)=>CATS.indexOf(a.cat)-CATS.indexOf(b.cat))
+  samples.slice().filter(s=>s.buffer).sort((a,b)=>CATS.indexOf(a.cat)-CATS.indexOf(b.cat))
     .forEach(s=>pads.push(makeSamplePad(s)));
   padsPaused=false; if(typeof updateLoopTransport==='function')updateLoopTransport();
   if(KITS[name].bpm){ bpm=KITS[name].bpm; document.getElementById('bpm').value=bpm;
@@ -1509,6 +1543,40 @@ function loadSamples(){ if(!DB)return;
 }
 function saveSample(rec){ if(!DB)return;
   DB.transaction('samples','readwrite').objectStore('samples').put(rec); }
+
+// ---------- Diagnostics (hold the build badge to open) ----------
+function diagSampleBytes(){ let b=0; for(const s of samples){ if(s.buffer) b+=s.buffer.length*s.buffer.numberOfChannels*4; } return b; }
+function diagRefresh(){
+  const n=samples.filter(s=>s.buffer).length, mb=diagSampleBytes()/1048576;
+  const se=document.getElementById('diag-samples');
+  if(se) se.innerHTML='<b>'+n+'</b> sound'+(n===1?'':'s')+' · <b>~'+mb.toFixed(1)+' MB</b> in RAM';
+  const fxb=document.getElementById('diag-fx');
+  if(fxb){ fxb.textContent='Reverb + delay: '+(diagFxBypassed?'BYPASSED':'ON'); fxb.className='act'+(diagFxBypassed?' danger':''); }
+  const ce=document.getElementById('diag-ctx');
+  if(ce) ce.textContent = A.ctx ? ('audio engine running · '+Math.round(A.ctx.sampleRate/1000)+' kHz · '+(A.ctx.state||'')) : 'audio engine not started yet — play a pad first';
+}
+let _diagLast=0, _diagFps=60;
+function diagFpsTick(ts){ if(!diagOpen)return;
+  if(_diagLast){ _diagFps=_diagFps*0.9+(1000/(ts-_diagLast))*0.1; } _diagLast=ts;
+  const el=document.getElementById('diag-fps');
+  if(el){ const v=Math.round(_diagFps); el.textContent=v+' fps';
+    el.style.color = v>=50?'var(--accent)':v>=30?'#e7c14a':'#ff7a7a'; }
+  diagFpsRAF=requestAnimationFrame(diagFpsTick);
+}
+function openDiag(){ diagOpen=true; _diagLast=0; _diagFps=60;
+  document.getElementById('diagscrim').classList.add('show'); diagRefresh();
+  diagFpsRAF=requestAnimationFrame(diagFpsTick); }
+function closeDiag(){ diagOpen=false; if(diagFpsRAF){ cancelAnimationFrame(diagFpsRAF); diagFpsRAF=null; }
+  document.getElementById('diagscrim').classList.remove('show'); }
+function diagToggleFx(){ if(!A.ctx){ toast('Start audio first — play a pad'); return; }
+  diagFxBypassed=!diagFxBypassed;
+  try{ if(diagFxBypassed){ A.RV.disconnect(A.master); A.DL.disconnect(A.master); }
+       else { A.RV.connect(A.master); A.DL.connect(A.master); } }catch(e){}
+  diagRefresh(); toast(diagFxBypassed?'Reverb + delay bypassed (A/B)':'Reverb + delay back on'); }
+function diagFreeSamples(){ if(!samples.some(s=>s.buffer)){ toast('No saved sounds loaded'); return; }
+  for(const s of samples){ s.buffer=null; }
+  if(A.ctx) loadKit(curKit);
+  diagRefresh(); toast('Sounds unloaded for this session — reload the app to bring them back'); }
 
 function guessCat(name){ const n=name.toLowerCase();
   if(/kick|drum|beat|perc|clap|snare|hat|hi-?hat/.test(n))return 'Beat';
@@ -2625,7 +2693,20 @@ function boot(){
   document.getElementById('nav-grid').innerHTML=SVG.loop+'<span>Loop</span>';
   document.getElementById('nav-comp').innerHTML=SVG.comp+'<span>Write</span>';
   document.getElementById('nav-r8').innerHTML=SVG.r8+'<span>808</span>';
-  { const bt=document.getElementById('buildtag'); if(bt){ bt.textContent=BUILD; bt.addEventListener('click',()=>toast('BeatForge build '+BUILD)); } }
+  { const bt=document.getElementById('buildtag'); if(bt){ bt.textContent=BUILD;
+      let lpT=null, lpFired=false;
+      const cancelLP=()=>{ if(lpT){ clearTimeout(lpT); lpT=null; } };
+      bt.addEventListener('pointerdown',()=>{ lpFired=false; cancelLP(); lpT=setTimeout(()=>{ lpFired=true; openDiag(); },600); });
+      bt.addEventListener('pointerup',cancelLP);
+      bt.addEventListener('pointercancel',cancelLP);
+      bt.addEventListener('pointerleave',cancelLP);
+      bt.addEventListener('click',e=>{ if(lpFired){ e.preventDefault(); e.stopPropagation(); lpFired=false; return; }
+        toast('BeatForge build '+BUILD+' · hold for diagnostics'); });
+    } }
+  { const dc=document.getElementById('diag-close'); if(dc)dc.addEventListener('click',closeDiag);
+    const dfx=document.getElementById('diag-fx'); if(dfx)dfx.addEventListener('click',diagToggleFx);
+    const dfr=document.getElementById('diag-free'); if(dfr)dfr.addEventListener('click',diagFreeSamples);
+    const ds=document.getElementById('diagscrim'); if(ds)ds.addEventListener('click',e=>{ if(e.target.id==='diagscrim')closeDiag(); }); }
   document.getElementById('nav-mix').innerHTML=SVG.mix+'<span>Mix</span>';
   document.getElementById('nav-fx').innerHTML=SVG.wave+'<span>FX</span>';
   document.getElementById('addbtn').innerHTML=SVG.plus+'<span>Add</span>';
