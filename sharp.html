@@ -222,15 +222,36 @@
 
   /* ---------- songs ---------- */
   var SONGS=[
-    {name:"Hot Cross Buns", steps:[64,62,60,64,62,60,60,60,60,60,62,62,62,62,64,62,60]},
-    {name:"Mary Had a Little Lamb", steps:[64,62,60,62,64,64,64,62,62,62,64,67,67,64,62,60,62,64,64,64,64,62,62,64,62,60]},
-    {name:"Twinkle Twinkle", steps:[60,60,67,67,69,69,67,65,65,64,64,62,62,60]},
-    {name:"Frère Jacques", steps:[60,62,64,60,60,62,64,60,64,65,67,64,65,67]},
-    {name:"Ode to Joy", steps:[64,64,65,67,67,65,64,62,60,60,62,64,64,62,62]}
-  ];
+    {series:"The Legend of Zelda", name:"Zelda's Lullaby", steps:[71,74,69,71,74,69]},
+    {series:"The Legend of Zelda", name:"Epona's Song", steps:[74,71,69,74,71,69]},
+    {series:"The Legend of Zelda", name:"Saria's Song", steps:[65,69,71,65,69,71]},
+    {series:"The Legend of Zelda", name:"Sun's Song", steps:[69,65,74,69,65,74]},
+    {series:"The Legend of Zelda", name:"Song of Time", steps:[69,62,65,69,62,65]},
+    {series:"The Legend of Zelda", name:"Song of Storms", steps:[62,65,74,62,65,74]},
+    {series:"The Legend of Zelda", name:"Prelude of Light", steps:[74,69,74,69,71,74]},
+    {series:"The Legend of Zelda", name:"Minuet of Forest", steps:[62,74,71,69,71,69]},
+    {series:"The Legend of Zelda", name:"Bolero of Fire", steps:[65,62,65,62,69,65,69,65]},
+    {series:"The Legend of Zelda", name:"Serenade of Water", steps:[62,65,69,69,71]},
+    {series:"The Legend of Zelda", name:"Nocturne of Shadow", steps:[71,69,69,62,71,69,65]},
+    {series:"The Legend of Zelda", name:"Requiem of Spirit", steps:[62,65,62,69,65,62]},
+    {series:"Undertale", name:"Megalovania", steps:[74,74,74,69,67,65,74,74,74,69,67,65]},
+    {series:"Classics & Nursery", name:"Hot Cross Buns", steps:[64,62,60,64,62,60,60,60,60,60,62,62,62,62,64,62,60]},
+    {series:"Classics & Nursery", name:"Mary Had a Little Lamb", steps:[64,62,60,62,64,64,64,62,62,62,64,67,67,64,62,60,62,64,64,64,64,62,62,64,62,60]},
+    {series:"Classics & Nursery", name:"Twinkle Twinkle", steps:[60,60,67,67,69,69,67,65,65,64,64,62,62,60]},
+    {series:"Classics & Nursery", name:"Frère Jacques", steps:[60,62,64,60,60,62,64,60,64,65,67,64,65,67]},
+    {series:"Classics & Nursery", name:"Ode to Joy", steps:[64,64,65,67,67,65,64,62,60,60,62,64,64,62,62]},
+    {series:"Classics & Nursery", name:"Old MacDonald", steps:[60,60,60,67,69,69,67,64,64,62,62,60]},
+    {series:"Classics & Nursery", name:"Row Row Row Your Boat", steps:[60,60,60,62,64,64,62,64,65,67,72,72,72,67,67,67,64,64,64,60,60,60,67,65,64,62,60]},
+    {series:"Classics & Nursery", name:"Jingle Bells", steps:[64,64,64,64,64,64,64,67,60,62,64]},
+    {series:"Classics & Nursery", name:"Au Clair de la Lune", steps:[60,60,60,62,64,62,60,64,62,62,60]},
+    {series:"Classics & Nursery", name:"Lightly Row", steps:[67,64,64,65,62,62,60,62,64,65,67,67,67]},
+    {series:"Warm-Ups", name:"C Major Scale", steps:[60,62,64,65,67,69,71,72,71,69,67,65,64,62,60]},
+    {series:"Warm-Ups", name:"Five-Finger Warm-Up", steps:[60,62,64,65,67,67,65,64,62,60]},
+    {series:"Warm-Ups", name:"Skip Hops (Thirds)", steps:[60,64,62,65,64,67,65,69,67,71,69,72]}
+  ];;
 
   /* ---------- state ---------- */
-  var st={ mode:lsGet("mc_mode","full"), lights:lsGet("mc_lights",true), abc:lsGet("mc_abc",true), baseOct:4 };
+  var st={ mode:lsGet("mc_mode","full"), lights:lsGet("mc_lights",true), abc:lsGet("mc_abc",true), baseOct:4, nOct:1 };
   var done=lsGet("mc_done",{});
   var view="play", pmode="free", song=null, idx=0, busy=false, mistakes=0;
   var keyEls={}, voices={};
@@ -244,13 +265,18 @@
   function baseC(){ return 12*(st.baseOct+1); }
   function buildKeyboard(){
     whitesEl.innerHTML=""; blacksEl.innerHTML=""; keyEls={}; var bc=baseC();
-    W_OFF.forEach(function(off){ var m=bc+off,k=document.createElement("button");
+    var nOct=st.nOct||1, totalW=7*nOct+1, wUnit=100/totalW, bW=wUnit*0.62;
+    function addWhite(m){ var k=document.createElement("button");
       k.className="wkey"; k.dataset.m=m; k.setAttribute("aria-label",letter(m)+" "+(Math.floor(m/12)-1));
-      k.innerHTML='<span class="lbl">'+letter(m)+'</span>'; whitesEl.appendChild(k); keyEls[m]=k; });
-    B_OFF.forEach(function(b){ var m=bc+b.o,k=document.createElement("button");
-      k.className="bkey"; k.dataset.m=m; k.setAttribute("aria-label",letter(m)+" "+(Math.floor(m/12)-1));
-      k.style.left=((b.after+1)*12.5-3.75)+"%"; blacksEl.appendChild(k); keyEls[m]=k; });
-    octLab.textContent="C"+st.baseOct+" – C"+(st.baseOct+1);
+      k.innerHTML='<span class="lbl">'+letter(m)+'</span>'; whitesEl.appendChild(k); keyEls[m]=k; }
+    for(var o=0;o<nOct;o++){ [0,2,4,5,7,9,11].forEach(function(off){ addWhite(bc+12*o+off); }); }
+    addWhite(bc+12*nOct); // top C
+    for(var o2=0;o2<nOct;o2++){ (function(oo){ B_OFF.forEach(function(b){
+        var m=bc+12*oo+b.o, wi=7*oo+b.after, k=document.createElement("button");
+        k.className="bkey"; k.dataset.m=m; k.setAttribute("aria-label",letter(m)+" "+(Math.floor(m/12)-1));
+        k.style.width=bW+"%"; k.style.left=((wi+1)*wUnit-bW/2)+"%";
+        blacksEl.appendChild(k); keyEls[m]=k; }); })(o2); }
+    octLab.textContent="C"+st.baseOct+" – C"+(st.baseOct+nOct);
     if(view==="play" && pmode==="practice") showCue();
   }
   function pressVisual(m){ var k=keyEls[m]; if(!k)return; k.classList.add("press"); setTimeout(function(){k.classList.remove("press");},110); }
@@ -278,7 +304,8 @@
     cueText.innerHTML='<b>Tap any key to play.</b> C sits just left of the two black keys.';
     noteEl.textContent="Pick a song, hear it once, then practice. Flip the lights off to read the cue and find the keys yourself.";
     el("listen").disabled=true; el("practice").disabled=true; }
-  function selectSong(i){ song=SONGS[i]; idx=0; pmode="free"; busy=false; st.baseOct=4; buildKeyboard();
+  function selectSong(i){ song=SONGS[i]; idx=0; pmode="free"; busy=false; st.baseOct=4;
+    st.nOct=(Math.max.apply(null,song.steps)>72)?2:1; buildKeyboard();
     el("listen").disabled=false; el("practice").disabled=false; cueLetter.classList.add("dim"); cueArrow.textContent="";
     cueText.innerHTML='<b>'+song.name+'</b> loaded. Tap \u25B6 Listen to hear it, then \u25CF Practice.';
     noteEl.textContent="Listen first so you know how it goes. Then practice \u2014 lights on to learn, lights off to read.";
@@ -359,7 +386,7 @@
     el("woodList").classList.add("hide"); el("drillView").classList.remove("hide"); el("drillCtrls").classList.remove("hide");
     el("dChoices").innerHTML=""; el("dStaffBox").classList.add("hide");
     document.body.classList.toggle("noHelp", d.keys);  // key drills hide letters
-    st.baseOct=4; buildKeyboard();
+    st.baseOct=4; st.nOct=1; buildKeyboard();
     updateScore();
     el("dShow").onclick=function(){ showMe(id); };
     nextRound();
@@ -469,14 +496,18 @@
     el("woodTop").classList.toggle("hide",v!=="wood"); el("woodBottom").classList.toggle("hide",v!=="wood");
     if(v==="play"){ document.body.classList.remove("noHelp"); drill=null; clearNext();
       if(song){ selectSong(SONGS.indexOf(song)); } else setFree(); }
-    else { pmode="free"; busy=false; st.baseOct=4; buildKeyboard(); showWoodList(); }
+    else { pmode="free"; busy=false; st.baseOct=4; st.nOct=1; buildKeyboard(); showWoodList(); }
   }
   el("navPlay").addEventListener("click",function(){ setView("play"); });
   el("navWood").addEventListener("click",function(){ setView("wood"); });
   el("dBack").addEventListener("click",function(){ document.body.classList.remove("noHelp"); buildKeyboard(); closeDrill(); });
 
   function refreshSongList(){ sel.innerHTML='<option value="-1">Free play</option>';
-    SONGS.forEach(function(s,i){ var o=document.createElement("option"); o.value=i; o.textContent=s.name+(s.name in done?"  ✓":""); sel.appendChild(o); }); }
+    var groups={}, order=[];
+    SONGS.forEach(function(s,i){ var g=s.series||"Songs"; if(!groups[g]){groups[g]=[];order.push(g);} groups[g].push({s:s,i:i}); });
+    order.forEach(function(g){ var og=document.createElement("optgroup"); og.label=g;
+      groups[g].forEach(function(x){ var o=document.createElement("option"); o.value=x.i; o.textContent=x.s.name+(x.s.name in done?"  \u2713":""); og.appendChild(o); });
+      sel.appendChild(og); }); }
   refreshSongList();
   sel.addEventListener("change",function(){ var v=+sel.value; if(v<0) setFree(); else selectSong(v); });
   el("listen").addEventListener("click",function(){ ac(); listen(); });
