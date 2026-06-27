@@ -30,6 +30,30 @@
   header{display:flex;align-items:center;gap:10px;padding:12px 16px 8px;}
   .brand{display:flex;align-items:baseline;gap:0;font-weight:800;font-size:20px;letter-spacing:-.3px;flex:1;}
   .ver{font-size:10px;font-weight:700;color:#5a6472;margin-left:7px;letter-spacing:.2px;}
+  .recbar{position:fixed;left:50%;transform:translateX(-50%);bottom:76px;z-index:240;display:none;
+    align-items:center;gap:8px;background:#c0392b;color:#fff;border:none;border-radius:22px;
+    padding:9px 17px;font-size:13px;font-weight:800;letter-spacing:.2px;box-shadow:0 6px 20px rgba(0,0,0,.45);}
+  .recbar.show{display:flex;}
+  .recbar .rdot{width:11px;height:11px;border-radius:50%;background:#fff;animation:recpulse 1s infinite;}
+  @keyframes recpulse{0%,100%{opacity:1;}50%{opacity:.2;}}
+  .icobtn.recording{color:#ff5b5b;animation:recpulse 1s infinite;}
+  .performfab{position:fixed;right:14px;bottom:78px;z-index:230;width:52px;height:52px;border-radius:50%;
+    border:1px solid var(--line);background:#1b2230;color:#fff;font-size:22px;box-shadow:0 6px 18px rgba(0,0,0,.42);
+    display:flex;align-items:center;justify-content:center;}
+  .performfab.on{background:var(--accent);color:#10130a;border-color:var(--accent);}
+  .performpanel{position:fixed;right:14px;bottom:140px;z-index:235;display:none;flex-direction:column;gap:11px;
+    background:#12141b;border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:0 12px 32px rgba(0,0,0,.55);min-width:236px;}
+  .performpanel.show{display:flex;}
+  .pphead{font-size:13px;font-weight:800;color:#fff;}
+  .pphead small{display:block;font-size:11px;font-weight:600;color:var(--dim);margin-top:2px;}
+  .pprow{display:flex;gap:8px;}
+  .ppbtn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:14px 6px;border-radius:13px;
+    border:1px solid var(--line);background:#1d1d24;color:var(--dim);}
+  .ppbtn b{font-size:14px;color:#fff;}
+  .ppbtn span{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;}
+  .ppbtn.live{background:var(--accent);border-color:var(--accent);}
+  .ppbtn.live b,.ppbtn.live span{color:#10130a;}
+  .ppbtn.off span{color:#ff7a7a;}
   .brand .b{color:var(--txt);} .brand .f{color:var(--accent);}
   .kitwrap{position:relative;}
   .kitsel{appearance:none;background:linear-gradient(180deg,#1c1c24,#141419);
@@ -458,6 +482,18 @@
   <button class="icobtn" id="helpbtn" title="How it works">?</button>
 </header>
 
+<button class="recbar" id="recbar"><span class="rdot"></span>REC <span id="recbar-time">0:00</span> · tap to stop</button>
+
+<button class="performfab adv" id="performfab" title="Perform">🎛</button>
+<div class="performpanel adv" id="performpanel">
+  <div class="pphead">Perform <small>drop &amp; relaunch layers for breakdowns</small></div>
+  <div class="pprow">
+    <button class="ppbtn" id="pp-loops"><b>Loops</b><span>on</span></button>
+    <button class="ppbtn" id="pp-r8"><b>808</b><span>on</span></button>
+    <button class="ppbtn" id="pp-comp"><b>Melody</b><span>on</span></button>
+  </div>
+</div>
+
 <div class="transport">
   <span class="lab">BPM</span>
   <input type="range" id="bpm" min="60" max="170" value="100">
@@ -570,9 +606,9 @@
   <div class="sheet">
     <div class="step" style="color:var(--accent)">EXPORT</div>
     <h2>Save your song</h2>
-    <p style="margin-bottom:16px">This records <b>everything you hear</b> — your loops, 808 beat, and melody together — into one audio file you can share or keep. Press ●, let your song play through once, then ■ to save it to your phone.</p>
+    <p style="margin-bottom:16px">This records <b>everything you hear</b> — your loops, 808 beat, and melody together. Press <b>● Start</b>, then build your song <b>live</b>: turn loops on and off, switch tabs, bring the 808 or melody in and out — it all gets captured. Tap the red <b>REC</b> bar (or the dot up top) to stop and save.</p>
     <div class="exprec">
-      <button class="wizbig" id="export-recbtn">●</button>
+      <button class="wizbig" id="export-recbtn">● Start</button>
       <div class="exptime" id="export-time">0:00</div>
       <div class="micro" id="export-status" style="padding:0;text-align:center;"></div>
     </div>
@@ -771,7 +807,7 @@ const FAM = {
   Lead:'#f0a830', Arp:'#46c98b', Keys:'#f4894f', Synth:'#38d6e0',
   Vox:'#c084fc', FX:'#b0d235', Sample:'#94a3b8'
 };
-const BUILD='v9 · Jun 26';
+const BUILD='v10.1 · Jun 26';
 const CATS = ['Beat','Bass','Chord','Pad','Lead','Arp','Keys','Synth','Vox','FX','Sample'];
 const CATICON = {Beat:'beat',Bass:'bass',Chord:'chord',Pad:'pad',Lead:'lead',Arp:'arp',
   Keys:'keys',Synth:'synth',Vox:'vox',FX:'fx',Sample:'sample'};
@@ -1424,7 +1460,7 @@ function closePadSheet(){ document.getElementById('padscrim').classList.remove('
 // ---------- Loop transport ----------
 function loopAnyOn(){ return pads.some(p=>p.on); }
 function anyPlaying(){ return (loopAnyOn()&&!padsPaused)||R8.running||COMP.running; }
-function maybeStopClock(){ if(!anyPlaying()) stopClock(); }
+function maybeStopClock(){ if(recorder&&recorder.state==='recording')return; if(!anyPlaying()) stopClock(); }
 function swingWord(v){ return v===0?'Straight — no groove yet.':v<=20?'A little swing — gentle bounce.':v<=40?'Classic swing — feels human. \uD83C\uDFB5':'Heavy shuffle — great for lo-fi.'; }
 function setSwingHelp(){ const h=document.getElementById('swinghelp'); if(!h)return; const v=Math.round(swing*100);
   h.innerHTML=swingWord(v)+' <b id="swingtry">Tap to hear swing</b>';
@@ -1558,6 +1594,52 @@ function playEverything(){ startAudio();
   if(R8.tracks.some(t=>t.steps&&t.steps.some(Boolean))){ R8.running=true; setR8PlayBtn(); }
   if(COMP.lanes.some(l=>l.grid&&l.grid.some(r=>r&&r.some(Boolean)))){ COMP.running=true; setCompPlayBtn(); }
   if(anyPlaying())startClock(); updateLoopTransport(); }
+// ---------- Perform panel: drop & relaunch layers live (for breakdowns / change-ups) ----------
+// Loops use the pause flag; 808 and Melody use their running flags. Toggling never stops the
+// clock, so dropped layers re-enter exactly on-beat. Reachable from any tab.
+function renderPerform(){
+  const setb=(id,live)=>{ const b=document.getElementById(id); if(!b)return;
+    b.classList.toggle('live',live); b.classList.toggle('off',!live);
+    const s=b.querySelector('span'); if(s)s.textContent=live?'on':'off'; };
+  setb('pp-loops', loopAnyOn()&&!padsPaused);
+  setb('pp-r8', R8.running);
+  setb('pp-comp', COMP.running); }
+function performToggleLoops(){ startAudio();
+  if(loopAnyOn()&&!padsPaused){ padsPaused=true; } else { padsPaused=false; if(loopAnyOn())startClock(); }
+  try{updateLoopTransport();}catch(e){} renderPerform(); }
+function performToggleR8(){ startAudio(); R8.running=!R8.running; if(R8.running)startClock(); try{setR8PlayBtn();}catch(e){} renderPerform(); }
+function performToggleComp(){ startAudio(); COMP.running=!COMP.running; if(COMP.running)startClock(); else { try{compPlayhead(-1);}catch(e){} } try{setCompPlayBtn();}catch(e){} renderPerform(); }
+function togglePerformPanel(){ const p=document.getElementById('performpanel'), f=document.getElementById('performfab');
+  const open=!p.classList.contains('show'); p.classList.toggle('show',open); f.classList.toggle('on',open); if(open)renderPerform(); }
+
+// ---------- Live recording (non-modal: grid stays interactive while recording) ----------
+let recTimer=null, recStart=0, recMax=null;
+function recTick(){ const s=Math.floor((Date.now()-recStart)/1000);
+  const el=document.getElementById('recbar-time'); if(el)el.textContent=Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); }
+function setRecUI(on){ const bar=document.getElementById('recbar'), btn=document.getElementById('recbtn');
+  if(bar)bar.classList.toggle('show',on); if(btn)btn.classList.toggle('recording',on); }
+function startRecording(){ startAudio(); if(recorder&&recorder.state==='recording')return;
+  document.getElementById('exportscrim').classList.remove('show');   // never block the grid
+  chunks=[]; exportMime=MediaRecorder.isTypeSupported('audio/mp4')?'audio/mp4':(MediaRecorder.isTypeSupported('audio/webm')?'audio/webm':'');
+  try{ recorder=new MediaRecorder(A.recDest.stream, exportMime?{mimeType:exportMime}:undefined); }
+  catch(e){ toast('Recording isn’t supported in this browser.'); return; }
+  recorder.ondataavailable=e=>{ if(e.data.size)chunks.push(e.data); };
+  recorder.onstop=()=>{ clearInterval(recTimer); recTimer=null; clearTimeout(recMax);
+    const type=exportMime||'audio/webm', blob=new Blob(chunks,{type});
+    const ext=type.includes('mp4')?'.m4a':(type.includes('webm')?'.webm':'.audio');
+    const fname='beatforge-'+(curKit||'song').replace(/[^a-z0-9]+/gi,'-').toLowerCase()+'-'+Date.now()+ext;
+    const url=URL.createObjectURL(blob), a=document.createElement('a'); a.href=url; a.download=fname; a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),5000); setRecUI(false); toast('Saved to your downloads'); };
+  recorder.start(); recStart=Date.now(); recTimer=setInterval(recTick,250); recTick(); setRecUI(true); startClock();
+  try{ localStorage.setItem('bf_recseen','1'); }catch(e){}
+  toast(anyPlaying()?'Recording — turn loops on and off to build it live · tap REC to stop'
+                    :'Recording — tap pads to bring your loops in · tap REC to stop');
+  recMax=setTimeout(()=>{ if(recorder&&recorder.state==='recording')recorder.stop(); },180000); }
+function stopRecording(){ if(recorder&&recorder.state==='recording')recorder.stop(); }
+function recPress(){ if(recorder&&recorder.state==='recording'){ stopRecording(); return; }
+  let seen=false; try{ seen=localStorage.getItem('bf_recseen')==='1'; }catch(e){}
+  if(seen) startRecording(); else openExport(); }   // first time: show the one-time explainer
+
 function openExport(){ startAudio();
   document.getElementById('export-time').textContent='0:00';
   document.getElementById('export-status').textContent='Press ● and your whole song records — every layer you can hear.';
@@ -1620,7 +1702,7 @@ const TOUR=[
   {sel:'.grid',title:'Swap instruments & build a board',body:'Long-press any pad to change its instrument — drum pads get alternate kits, melodic pads can become piano, strings, brass, sax and more. The same menu has “Add to My Board,” which collects your favorite pads from any style into your own custom kit (pick ★ My Board in the kit list). Two new kits, Live Band and Orchestra, come pre-voiced with real instruments.'},
   {sel:'#nav-mix',adv:true,title:'Mix & per-track FX',body:'The Mix tab gives every pad a volume slider and a mute (M) button. The ∿ button next to each opens FX for that track alone — its own Filter, Drive, Reverb and Delay. The FX tab stays as the whole-mix layer on top.'},
   {sel:'#nav-fx',adv:true,title:'FX',body:'Flip on Filter, Delay, Reverb, or Drive and drag to taste. They shape the whole mix live.'},
-  {sel:'#recbtn',title:'Save your song',body:'The dot up top is Export. It records everything you hear — loops, 808, and melody together — into one audio file. It auto-starts your layers so you never record silence; let it loop once and press stop to save it to your downloads.'},
+  {sel:'#recbtn',title:'Record your song live',body:'The dot up top records everything you hear into one audio file. It’s live — once it’s recording, the grid stays open, so you turn loops, the 808, and your melody on and off to build the song as it captures. Tap the red REC bar (or the dot) to stop and save to your downloads.'},
   {sel:'#projbtn',title:'Save your beat — and build a song',body:'Record makes an audio file — but Beats saves the whole project: kit, tempo, every pad, instrument, FX and the 808 grid. Name it, save it, and reopen it later. The Song tab in here is the next step: capture a few beats as patterns (A, B, C) and chain them into an arrangement — intro, verse, chorus. Tap “Load demo song” there to hear it.'},
   {sel:'#addbtn',title:'Add your own sounds',body:'Tap Add for two options: record your voice with a guided wizard (ad-libs, beatbox, sound effects — it even suggests ideas), or import audio files from your phone. You pick a type for each so it sorts into your library, and it’s saved for next time. The Add screen explains the whole thing.'},
   {sel:'#syncbtn',title:'Using headphones? Sync them',body:'Bluetooth headphones delay the sound, so the moving playhead can look ahead of what you hear. Tap 🎧, start the test beat, and slide until the flashing dot matches the click in your ears. It’s saved for your device, so you only do it once.'},
@@ -2681,8 +2763,13 @@ function boot(){
   document.getElementById('stopbtn').addEventListener('click',()=>stopAll());
   buildLoopTransport();
   document.getElementById('pad-done').addEventListener('click',closePadSheet);
-  document.getElementById('recbtn').addEventListener('click',openExport);
-  document.getElementById('export-recbtn').addEventListener('click',exportToggle);
+  document.getElementById('recbtn').addEventListener('click',recPress);
+  document.getElementById('export-recbtn').addEventListener('click',startRecording);
+  document.getElementById('recbar').addEventListener('click',stopRecording);
+  document.getElementById('performfab').addEventListener('click',togglePerformPanel);
+  document.getElementById('pp-loops').addEventListener('click',performToggleLoops);
+  document.getElementById('pp-r8').addEventListener('click',performToggleR8);
+  document.getElementById('pp-comp').addEventListener('click',performToggleComp);
   document.getElementById('export-close').addEventListener('click',closeExport);
   document.getElementById('helpbtn').addEventListener('click',()=>showTour(0));
   document.getElementById('syncbtn').addEventListener('click',openSync);
