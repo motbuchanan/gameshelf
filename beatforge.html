@@ -175,25 +175,6 @@
   .savehelp b{color:#cdd6e6;font-weight:700;} .savehelp .ft{color:var(--accent);}
   .impbtn{width:100%;margin:8px 0 0;}
 
-  /* ---- Jam tab (live tap-to-play pads) ---- */
-  .jam{display:none;flex-direction:column;gap:12px;}
-  .jamhead{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
-  .jamseg{display:flex;background:#0e0e13;border:1px solid var(--line);border-radius:11px;padding:4px;gap:4px;}
-  .jamseg button{background:none;border:none;color:var(--dim);font-weight:700;font-size:13px;padding:8px 15px;border-radius:8px;}
-  .jamseg button.sel{background:var(--accent);color:#10130a;}
-  .jamsnap{margin-left:auto;font-size:13px;font-weight:700;padding:9px 14px;border-radius:10px;
-    background:#15201a;border:1px solid #2f5d44;color:#9fe3bd;}
-  .jamsnap.off{background:#1d1d24;border-color:var(--line);color:var(--dim);}
-  .jamhint{font-size:12.5px;line-height:1.45;color:#8895a6;background:#13161d;border:1px solid var(--line);border-radius:12px;padding:10px 12px;}
-  .jamgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
-  .jampad{aspect-ratio:1/1;border-radius:18px;border:1px solid var(--line);background:#17171e;color:#fff;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
-    font-weight:800;font-size:16px;position:relative;overflow:hidden;-webkit-user-select:none;user-select:none;touch-action:none;}
-  .jampad .sub{font-size:10px;font-weight:600;opacity:.7;}
-  .jampad:active{transform:scale(.96);}
-  .jampad.lit{box-shadow:inset 0 0 0 2px currentColor,0 0 18px currentColor;background:#20202a;}
-  body.simple .jamgrid{gap:14px;} body.simple .jampad{border-radius:22px;}
-
   /* ---- Trim / audio editor ---- */
   #trimscrim .sheet{max-width:560px;}
   .trimwrap{position:relative;width:100%;height:124px;background:#0c0e13;border:1px solid var(--line);
@@ -207,7 +188,7 @@
   .trimhandle::after{content:'';width:4px;height:50px;border-radius:3px;background:var(--accent);box-shadow:0 0 8px var(--accent);}
   .trimread{font-size:12px;color:var(--dim);text-align:center;margin:4px 0 12px;font-variant-numeric:tabular-nums;}
   .trimrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;}
-  .trimrow .tbtn,.trimrow .jamsnap{flex:1;min-width:130px;}
+  .trimrow .tbtn,.trimrow .snappill{flex:1;min-width:130px;}
   .trimrow input,.trimrow select{background:#0f0f13;border:1px solid var(--line);color:#fff;border-radius:9px;padding:11px;font-size:14px;}
   .trimrow input{flex:1;min-width:130px;}
   .trimrow .act{flex:1;min-width:130px;}
@@ -531,14 +512,12 @@
   </div>
   <div class="r8" id="r8"></div>
   <div class="comp" id="comp"></div>
-  <div class="jam" id="jam"></div>
 </main>
 
 <nav>
   <button data-view="grid" class="active" id="nav-grid"></button>
   <button data-view="comp" id="nav-comp"></button>
   <button data-view="r8" id="nav-r8"></button>
-  <button data-view="jam" id="nav-jam"></button>
   <button data-view="mix" id="nav-mix" class="adv"></button>
   <button data-view="fx" id="nav-fx" class="adv"></button>
   <button id="addbtn"></button>
@@ -732,7 +711,7 @@
     <div class="trimread" id="trim-read"></div>
     <div class="trimrow">
       <button class="act play tbtn" id="trim-play">▶ Play selection</button>
-      <button class="jamsnap off" id="trim-snap">⏱ Snap to bars: off</button>
+      <button class="snappill off" id="trim-snap">⏱ Snap to bars: off</button>
     </div>
     <div class="trimrow">
       <input id="trim-name" placeholder="Name this sound…" maxlength="18">
@@ -807,7 +786,7 @@ const FAM = {
   Lead:'#f0a830', Arp:'#46c98b', Keys:'#f4894f', Synth:'#38d6e0',
   Vox:'#c084fc', FX:'#b0d235', Sample:'#94a3b8'
 };
-const BUILD='v10.2 · Jun 26';
+const BUILD='v10.3 · Jun 26';
 const CATS = ['Beat','Bass','Chord','Pad','Lead','Arp','Keys','Synth','Vox','FX','Sample'];
 const CATICON = {Beat:'beat',Bass:'bass',Chord:'chord',Pad:'pad',Lead:'lead',Arp:'arp',
   Keys:'keys',Synth:'synth',Vox:'vox',FX:'fx',Sample:'sample'};
@@ -1678,8 +1657,6 @@ function setView(v){
   document.getElementById('fx').style.display=v==='fx'?'flex':'none';
   document.getElementById('r8').style.display=v==='r8'?'flex':'none';
   document.getElementById('comp').style.display=v==='comp'?'flex':'none';
-  document.getElementById('jam').style.display=v==='jam'?'flex':'none';
-  if(v==='jam') buildJam();
   document.querySelectorAll('nav button[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===v));
 }
 function startAudio(){ userTouched=true; initAudio(); if(A.ctx.state==='suspended')A.ctx.resume();
@@ -1697,7 +1674,6 @@ const TOUR=[
   {sel:'#kitsel',title:'Six sound kits',body:'Switch kits here: SynthWave, Hip-Hop, Techno, Lo-Fi, Trap, Ambient. Every pad in a kit is tuned to the same key and tempo, so anything you stack stays in time.'},
   {sel:'#nav-comp',title:'Write your own melody',body:'The Write tab is a note grid locked to a musical scale — so every note you tap sounds right. Pick an instrument, a key and scale (Pentatonic means no wrong notes), and tap to place notes. Hit ✨ Surprise for a starter melody to tweak. It plays in time with your drums and 808.'},
   {sel:'#nav-r8',title:'808 drum machine',body:'The 808 tab is a step sequencer — a grid of 16 steps. Tap cells to place drum hits, hit Play, and program your own beat. The kick’s tune and decay are adjustable for that classic 808 boom. It runs on the same tempo and through the same FX and recorder.'},
-  {sel:'#nav-jam',title:'Jam — play it live',body:'The Jam tab is a live pad you tap to play — flip the Drums / Notes switch up top. Notes always fit the key, so there are no wrong ones. With “In time” on and a beat already playing, your taps snap to the groove so you stay on rhythm. Nothing plays until you tap.'},
   {sel:'.transport',title:'Tempo & Swing',body:'Drag BPM to speed up or slow down everything at once. Swing adds groove — it nudges the off-beats a little late so the rhythm feels human instead of robotic. Try it around 30–40% on a beat.'},
   {sel:'.grid',title:'Swap instruments & build a board',body:'Long-press any pad to change its instrument — drum pads get alternate kits, melodic pads can become piano, strings, brass, sax and more. The same menu has “Add to My Board,” which collects your favorite pads from any style into your own custom kit (pick ★ My Board in the kit list). Two new kits, Live Band and Orchestra, come pre-voiced with real instruments.'},
   {sel:'#nav-mix',adv:true,title:'Mix & per-track FX',body:'The Mix tab gives every pad a volume slider and a mute (M) button. The ∿ button next to each opens FX for that track alone — its own Filter, Drive, Reverb and Delay. The FX tab stays as the whole-mix layer on top.'},
@@ -2633,50 +2609,6 @@ function trimDragInit(){ const wrap=document.getElementById('trim-wrap'); let dr
   document.getElementById('trim-h1').addEventListener('pointerdown',e=>{ e.preventDefault(); drag='b'; });
   document.addEventListener('pointermove',move); document.addEventListener('pointerup',up); document.addEventListener('pointercancel',up); }
 
-// ---------- Jam tab: live tap-to-play pads ----------
-// Nothing sounds on its own. A tap plays one hit. If a beat is already running and
-// "In time" is on, the hit snaps to the next step; otherwise it plays instantly.
-const JAM={ mode:'drum', snap:true };
-function jamBus(){ if(!A._jamBus){ A._jamBus=A.ctx.createGain(); A._jamBus.gain.value=0.9; A._jamBus.connect(A.dryBus); } return A._jamBus; }
-function jamTime(){ const now=A.ctx.currentTime;
-  if(!S.timer || !JAM.snap) return now+0.01;          // nothing playing, or free mode → instant
-  const sd=stepDur(); let t=S.next; while(t-sd >= now+0.02) t-=sd; if(t<now) t=now+0.005; return t; }
-function jamHitDrum(id){ const tr=R8.tracks.find(x=>x.id===id); if(tr&&tr.fire){ try{ tr.fire(jamTime(),false); }catch(e){} } }
-function jamHitNote(midi){ try{ _bus=jamBus(); (INSTR[compLane().inst]||vLead)(jamTime(),midi,stepDur()*3*0.92); }catch(e){} }
-function jamNotes(){ const deg=SCALES[COMP.scale].deg, base=60+COMP.key, out=[]; deg.forEach(d=>out.push(base+d)); out.push(base+12); return out; }
-const JAM_TOUCH = ('ontouchstart' in window) || (navigator.maxTouchPoints>0);
-function jamFire(pad,fn){ startAudio(); fn(); pad.classList.add('lit'); clearTimeout(pad._t); pad._t=setTimeout(()=>pad.classList.remove('lit'),120); }
-function jamWire(pad,fn){
-  if(JAM_TOUCH){ pad.addEventListener('touchstart',e=>{ e.preventDefault(); jamFire(pad,fn); },{passive:false}); }
-  else { pad.addEventListener('pointerdown',e=>{ e.preventDefault(); jamFire(pad,fn); }); }
-}
-function buildJam(){ const root=document.getElementById('jam'); if(!root)return; root.innerHTML='';
-  const head=document.createElement('div'); head.className='jamhead';
-  head.innerHTML='<div class="jamseg"><button class="'+(JAM.mode==='drum'?'sel':'')+'" data-m="drum">Drums</button>'+
-    '<button class="'+(JAM.mode==='melody'?'sel':'')+'" data-m="melody">Notes</button></div>'+
-    '<button class="jamsnap'+(JAM.snap?'':' off')+'" id="jam-snap">'+(JAM.snap?'⏱ In time: on':'⏱ In time: off')+'</button>';
-  root.appendChild(head);
-  head.querySelectorAll('.jamseg button').forEach(b=>b.addEventListener('click',()=>{ JAM.mode=b.dataset.m; buildJam(); }));
-  head.querySelector('#jam-snap').addEventListener('click',()=>{ JAM.snap=!JAM.snap; buildJam(); });
-  const hint=document.createElement('div'); hint.className='jamhint';
-  hint.textContent = JAM.mode==='drum'
-    ? 'Tap the pads to play drums live. Nothing plays on its own — a tap makes one sound. With “In time” on and a beat already playing, your taps snap to the rhythm.'
-    : 'Tap the pads to play notes live — every note fits the key, so there are no wrong ones. With “In time” on and a beat already playing, your taps lock to the groove.';
-  root.appendChild(hint);
-  const grid=document.createElement('div'); grid.className='jamgrid';
-  if(JAM.mode==='drum'){
-    const cols=['#f0a830','#ff6b6b','#4fd1c5','#7aa2ff','#b0d235','#c98bff'];
-    CORE808.forEach((id,i)=>{ const pad=document.createElement('button'); pad.className='jampad'; pad.style.color=cols[i%cols.length];
-      pad.innerHTML='<span>'+(NAMES808[id]||id)+'</span>'; jamWire(pad,()=>jamHitDrum(id)); grid.appendChild(pad); });
-  } else {
-    const notes=jamNotes();
-    notes.forEach((m,i)=>{ const pad=document.createElement('button'); pad.className='jampad'; pad.style.color='hsl('+(95+i*16)+',60%,62%)';
-      pad.innerHTML='<span>'+NOTE_NAMES[((m%12)+12)%12]+'</span>'+(i===notes.length-1?'<span class="sub">octave</span>':'');
-      jamWire(pad,()=>jamHitNote(m)); grid.appendChild(pad); });
-  }
-  root.appendChild(grid);
-}
-
 // ---------- Boot ----------
 function boot(){
   // manifest (inline, with embedded PNG icons)
@@ -2694,7 +2626,6 @@ function boot(){
   document.getElementById('nav-comp').innerHTML=SVG.comp+'<span>Write</span>';
   document.getElementById('nav-r8').innerHTML=SVG.r8+'<span>808</span>';
   { const bt=document.getElementById('buildtag'); if(bt){ bt.textContent=BUILD; bt.addEventListener('click',()=>toast('BeatForge build '+BUILD)); } }
-  document.getElementById('nav-jam').innerHTML='<svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg><span>Jam</span>';
   document.getElementById('nav-mix').innerHTML=SVG.mix+'<span>Mix</span>';
   document.getElementById('nav-fx').innerHTML=SVG.wave+'<span>FX</span>';
   document.getElementById('addbtn').innerHTML=SVG.plus+'<span>Add</span>';
