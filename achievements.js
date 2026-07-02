@@ -29,12 +29,14 @@ var NAMES={
   farkle_games:"Farkle", gofish_games:"Go Fish", gomoku_games:"Gomoku",
   guesswho_games:"Guess Who", hex_games:"Hex", mancala_games:"Mancala",
   morris_games:"Nine Men's Morris", paddleduel_games:"Paddle Duel",
-  reversi_games:"Reversi", sb_games:"Shut the Box", snakearcade_games:"Snake",
+  reversi_games:"Reversi", sb_games:"Shut the Box", scrabble_games:"Scrabble", snakearcade_games:"Snake",
   sl_games:"Snakes & Ladders", sorry_games:"Sorry!", stardefender_games:"Star Defender",
   trouble_games:"Trouble", ur_games:"Royal Game of Ur", uttt_games:"Tic-Tac-Toe",
   war_games:"War", yahtzee_games:"Yahtzee",
   blackjack_games:"Blackjack", solitaire_games:"Solitaire", memory_games:"Memory",
-  gin_games:"Gin Rummy", oldmaid_games:"Old Maid", onecardleft_games:"One Card Left!"
+  gin_games:"Gin Rummy", oldmaid_games:"Old Maid", onecardleft_games:"One Card Left!",
+  knuckle_games:"Knucklebones", pig_games:"Pig", liarsdice_games:"Liar's Dice",
+  craps_games:"Craps", minesweeper_games:"Minesweeper", gemmatch_games:"Gem Match"
 };
 
 /* per-game "challenge" ladders: a single higher-is-better metric (score/level/wave).
@@ -43,11 +45,15 @@ var CHALLENGES={
   snakearcade_games:{label:"Snake Charmer",   tiers:[15,30,60,100]},
   brickbreak_games: {label:"Brick Buster",    tiers:[50,150,300,600]},
   blocks_games:     {label:"Block Master",    tiers:[3,5,8,12]},
-  stardefender_games:{label:"Star Defender",  tiers:[3,5,8,12]}
+  stardefender_games:{label:"Star Defender",  tiers:[3,5,8,12]},
+  gemmatch_games:   {label:"Gem Crusher",     tiers:[500,1500,4000,8000]},
+  minesweeper_games:{label:"Mine Clearer",    tiers:[200,800,2000,5000]},
+  craps_games:      {label:"High Roller",     tiers:[200,500,1000,2500]}
 };
 
 /* which rec field is the higher-is-better metric for each challenge game */
-var METRIC={snakearcade_games:"score",brickbreak_games:"score",blocks_games:"level",stardefender_games:"wave"};
+var METRIC={snakearcade_games:"score",brickbreak_games:"score",blocks_games:"level",stardefender_games:"wave",
+  gemmatch_games:"score",minesweeper_games:"score",craps_games:"score"};
 
 /* ---- storage (localStorage with in-memory fallback, like the ledger) ---- */
 var SKEY="gn_achievements", _mem=null;
