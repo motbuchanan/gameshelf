@@ -63,6 +63,7 @@
 .plank{height:18px;border-radius:2px 2px 3px 3px;margin:0 -2px;background:repeating-linear-gradient(91deg,rgba(60,32,8,.34) 0 3px,rgba(0,0,0,0) 3px 12px,rgba(255,215,160,.08) 12px 14px,rgba(0,0,0,0) 14px 27px),linear-gradient(180deg,#b07e46,#8a5c30 40%,#6e4421 70%,#46280f);box-shadow:0 11px 20px rgba(0,0,0,.6),inset 0 1.5px 0 rgba(255,230,190,.5),inset 0 -3px 4px rgba(0,0,0,.45);}
 .plank::after{content:"";display:block;height:6px;border-radius:2px 2px 0 0;background:linear-gradient(180deg,rgba(255,232,190,.5),transparent);}
 
+ 
 /* board cover */
 .cbox{position:relative;display:block;cursor:pointer;text-decoration:none;color:inherit;perspective:640px;}
 .cbox .cface{position:relative;border-radius:6px 10px 10px 6px;overflow:hidden;display:flex;flex-direction:column;aspect-ratio:.82;
@@ -95,7 +96,6 @@
 .book .btitle{margin-top:7px;text-align:center;font-family:'Fraunces',Georgia,serif;font-weight:800;color:#efe2c4;font-size:14px;line-height:1.12;overflow-wrap:break-word;text-shadow:0 1px 2px rgba(0,0,0,.5);}
 .bsub{text-align:center;color:#a98f6a;font-size:11.5px;margin-top:2px;font-weight:600;}
 
- 
 /* card deck box + tin (approved) */
 .deck{display:block;text-decoration:none;flex:1 1 0;min-width:0;max-width:128px;cursor:pointer;}
 .deck .deckbody{position:relative;border-radius:5px 7px 7px 5px;aspect-ratio:.7;box-shadow:5px 12px 22px rgba(0,0,0,.55),inset 0 0 0 1px rgba(255,255,255,.1),inset 0 -5px 8px rgba(0,0,0,.34);transition:transform .15s;}
@@ -391,9 +391,9 @@ html.gn-easy #shelves .gsinstr .cap{font-size:11px;}
 </head>
 <body>
 <header style="position:relative;">
-  <div id="verBadge" title="Build version — bump on each deploy" style="position:absolute;top:6px;right:8px;z-index:5;font-family:inherit;font-weight:700;font-size:11px;letter-spacing:.5px;color:#3a2a12;background:linear-gradient(180deg,#f0d48a,#caa052);border:1px solid rgba(120,84,30,.55);border-radius:999px;padding:3px 10px;box-shadow:0 1px 2px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,245,210,.6);">v36</div>
+  <div id="verBadge" title="Build version — bump on each deploy" style="position:absolute;top:6px;right:8px;z-index:5;font-family:inherit;font-weight:700;font-size:11px;letter-spacing:.5px;color:#3a2a12;background:linear-gradient(180deg,#f0d48a,#caa052);border:1px solid rgba(120,84,30,.55);border-radius:999px;padding:3px 10px;box-shadow:0 1px 2px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,245,210,.6);">v37</div>
   <h1>The Game Shelf</h1>
-  <div class="sub">Pick a box. Loser racks up the next one.</div>
+  <div class="sub" id="subLine">Pick a box. Loser racks up the next one.</div>
   <div style="margin-top:10px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;"><button id="tvToggle" class="tally" style="cursor:pointer;border:1px solid rgba(255,220,170,.25);font-family:inherit;">📺 TV mode: <b id="tvState">Off</b></button><button id="sortToggle" class="tally" style="cursor:pointer;border:1px solid rgba(255,220,170,.25);font-family:inherit;">🔀 Sort: <b id="sortState">Shelf</b></button><button id="easyToggle" class="tally" style="cursor:pointer;border:1px solid rgba(255,220,170,.25);font-family:inherit;">🔎 Easy view: <b id="easyState">Off</b></button><button id="padHelp" class="tally" style="cursor:pointer;border:1px solid rgba(255,220,170,.25);font-family:inherit;">🎮 Controller</button></div>
 </header>
 
@@ -562,6 +562,9 @@ const GAMES=[
  {id:"hexempire",players:"1",name:"Hex Empire",tag:"Conquer the hex map.",href:"hexempire.html",key:"hexempire_save",
   bg:"linear-gradient(165deg,#2a1414,#0c0708)",ink:"#f3dcc8",
   art:'<svg viewBox="0 0 100 100"><g stroke="#0c0708" stroke-width="1.5"><polygon points="50,22 63,29.5 63,44.5 50,52 37,44.5 37,29.5" fill="#cf4b3a"/><polygon points="33,49 46,56.5 46,71.5 33,79 20,71.5 20,56.5" fill="#d8c3a0"/><polygon points="67,49 80,56.5 80,71.5 67,79 54,71.5 54,56.5" fill="#3f6fb0"/></g></svg>'},
+ {id:"thumbstack",players:"1",name:"Thumbstack",tag:"One thumb does it all.",href:"thumbstack.html",key:"thumbstack_games",
+  bg:"linear-gradient(165deg,#173942,#081418)",ink:"#eaf6f4",
+  art:'<svg viewBox="0 0 100 100"><g fill="#33d6c0"><rect x="30" y="18" width="40" height="12" rx="3"/></g><g fill="#9d5fe0"><rect x="36" y="32" width="14" height="14" rx="3"/><rect x="50" y="32" width="14" height="14" rx="3"/><rect x="36" y="46" width="14" height="14" rx="3"/></g><g fill="#ffcf4d"><rect x="30" y="62" width="40" height="10" rx="5"/></g><circle cx="50" cy="80" r="6" fill="#ffd76a"/></svg>'},
 ];
 const shelves=document.getElementById("shelves");
 const perRow=()=>window.innerWidth>=560?3:2;
@@ -574,7 +577,7 @@ function sortedGames(){const m=sortMode(),gs=GAMES.slice();
   else if(m==="played"){const idx=new Map(GAMES.map((g,i)=>[g.id,i]));
     gs.sort((a,b)=>(playCount(b)-playCount(a))||(idx.get(a.id)-idx.get(b.id)));}
   return gs;}
-const ARCADE_H=['snake.html','paddleduel.html','brickbreak.html','blocks.html','stardefender.html','minesweeper.html','match3.html','salon-dash.html','hexempire.html'];
+const ARCADE_H=['snake.html','paddleduel.html','brickbreak.html','blocks.html','stardefender.html','minesweeper.html','match3.html','salon-dash.html','hexempire.html','thumbstack.html'];
 const CARD_H=['blackjack.html','solitaire.html','memory.html','gin.html','oldmaid.html','onecardleft.html','gofish.html','war.html'];
 /* ===== Settled shelf render (v2) ===== */
 const ABOOKS=[{h:"crypto.html",t:"Cryptograms",a:"#8c7d34",b:"#4e461c"},{h:"slide.html",t:"Slide Puzzles",a:"#52647e",b:"#2b3647"},{h:"crossword.html",t:"Mini Crosswords",a:"#56567e",b:"#2c2c48"},{h:"spot.html",t:"Spot the Difference",a:"#b0466a",b:"#6e2540"},{h:"nonogram.html",t:"Nonograms",a:"#3f6398",b:"#243a5e"},{h:"maze.html",t:"Mazes",a:"#c06f34",b:"#7d3f17"},{h:"sudoku.html",t:"Sudoku",a:"#35907c",b:"#1d5749"},{h:"wordsearch.html",t:"Word Search",a:"#866bb2",b:"#523a78"}];
@@ -684,6 +687,104 @@ function gsLight(){
   shelves.style.setProperty("--sx",L.sx);
   shelves.style.setProperty("--glow",L.glow);
 }
+/* ===== v35: rotating shelf taglines — one per load, Minecraft-splash style.
+   All original lines. Add freely; the picker never repeats the previous load. ===== */
+var TAGLINES=[
+ 'Winner gloats. Loser reshelves.',
+ 'The ledger remembers.',
+ 'Settle it on the board.',
+ 'Best of 3? Again',
+ 'Rematch is a legal right in this house.',
+ 'One more game? You said that last time.',
+ 'Trash talk responsibly.',
+ 'May the best half of the couch win.',
+ 'The shelf keeps score so you don\'t have to.',
+ 'Play nice. The ledger is watching.',
+ 'Dibs on the good dice.',
+ 'Winner picks the snack.',
+ 'Loser shuffles.',
+ 'The shelf has seen things.',
+ 'Someone loses badly at every game night. Rotation is fair.',
+ 'Second place still puts the box away.',
+ 'Loser restocks the snacks too.',
+ 'Nobody remembers game two. Everyone remembers game one.',
+ 'Reshelve it right side up. We know who you are.',
+ 'Winner\'s choice. Loser\'s chores.',
+ 'No crying at the table. Yelling is fine.',
+ 'The rematch clause is non-negotiable.',
+ 'Whoever shuffles owns what happens next.',
+ 'Loyalty ends at the game table.',
+ 'The couch has two sides. Only one is winning.',
+ 'Family bonding, technically.',
+ 'Now leaving reality. Please play responsibly.',
+ 'Filmed in front of a live family.',
+ 'As seen on the kitchen table!',
+ 'Any resemblance to fair play is coincidental.',
+ 'No pixels were harmed.',
+ 'May contain traces of luck.',
+ 'This program contains scenes of competitive board gaming.',
+ 'All outcomes are final. All complaints are noted and ignored.',
+ 'Terms and conditions apply. So do house rules.',
+ 'Any strategy shown here is purely coincidental.',
+ 'Sorry! Not sorry.',
+ 'Don\'t get in Trouble. Get even.',
+ 'Double sixes or it didn\'t happen.',
+ 'Yahtzee is a state of mind.',
+ 'Checkmate is chess for told-you-so.',
+ 'Triple word score. Zero mercy.',
+ 'Farkle: the sound of greed.',
+ 'Go fish. No, really, go.',
+ 'The Old Maid did nothing wrong.',
+ 'Mancala: farming, but competitive.',
+ 'Nine men, one Morris.',
+ 'Reversi: it\'s not over till it flips.',
+ 'A lucky guess is still a Guess Who.',
+ 'Sudoku is self-care with numbers.',
+ 'Minesweeper: tread lightly.',
+ 'Knucklebones favors the bold.',
+ 'Pig: quit while you\'re ahead. You won\'t.',
+ 'Shut the box. Politely.',
+ 'Dots and Boxes: the long con.',
+ 'Solitaire: you versus you. Place your bets.',
+ 'Checkers: hop responsibly.',
+ 'Liar\'s Dice: it\'s only lying if they catch you.',
+ 'Battleship: last one afloat wins bragging rights.',
+ 'Chinese Checkers: everyone\'s marbles, one winner.',
+ 'Snakes & Ladders: pure chaos, zero skill, all yelling.',
+ 'Ultimate TTT: tic-tac-toe with a PhD.',
+ 'Brick Break: therapy, but with a ball.',
+ 'Statistically, someone has to win.',
+ 'The dice owe you nothing.',
+ 'Correlation implies bragging rights.',
+ 'Card counting is just paying attention.',
+ 'Tonight\'s forecast: dice with a chance of gloating.',
+ 'The shelf believes in you. The dice are neutral.',
+ 'Streaks end. Bragging rights don\'t.',
+ 'Now with 100% more wood grain!',
+ 'Also try going outside!',
+ 'Handcrafted pixels!',
+ 'Made in a browser!',
+ 'Free shipping!',
+ 'Smells like cedar!',
+ 'Dust-free since v34!',
+ 'Now in glorious 2D!',
+ 'Contents may have settled during shipping.',
+ 'This message will change. The rules won\'t.',
+ 'The bin is deeper than it looks.',
+ 'Objects on shelf are closer than they appear.',
+ 'Loading... just kidding, it\'s done.',
+ 'The orb sees you.',
+ 'Built for rematches!',
+ 'Shelf-stable since forever!'
+];
+function pickTag(){
+  var el=document.getElementById("subLine"); if(!el)return;
+  var last=-1; try{last=parseInt(localStorage.getItem("shelf_tag"),10);}catch(e){}
+  var i=Math.floor(Math.random()*TAGLINES.length);
+  if(TAGLINES.length>1&&i===last)i=(i+1)%TAGLINES.length;
+  try{localStorage.setItem("shelf_tag",i);}catch(e){}
+  el.textContent=TAGLINES[i];
+}
 function build(){
   gsLight();
   shelves.innerHTML=boardSection()+cardSection()+booksBoxSection()+toysLibrarySection();
@@ -695,7 +796,7 @@ shelves.addEventListener('click',function(e){
   var unit=t.closest('.gsunit');
   if(unit)unit.classList.toggle('open');
 });
-build();
+pickTag();build();
 window.addEventListener("resize",function(){});
 // Reset stats: wipes every game ledger + the global ledger on THIS device.
 // Keeps players, TV mode, themes, rule choices, and saved games.
