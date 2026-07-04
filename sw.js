@@ -10,7 +10,7 @@ const CORE=["index.html","gamenight.js","sfx.js","bot.js","words.js","achievemen
   "rules.html","records.html","achievements.html","highscores.html","howto.html","profiles.html","rulesdata.js","backup.html",
   "wordsearch.html","wordsearch.js","sudoku.html","sudoku.js",
   "maze.html","nonogram.html","spot.html","crossword.html","slide.html","crypto.html",
-  "backgammon.html","battleship.html","bridge.html","checkers.html","chess.html","knightschool.html","chinese.html",
+  "backgammon.html","battleship.html","bridge.html","checkers.html","chess.html","chinese.html",
   "codebreaker.html","connect4.html","dominoes.html","dots.html","farkle.html",
   "gofish.html","gomoku.html","guesswho.html","hex.html","mancala.html","morris.html",
   "reversi.html","scrabble.html","shutbox.html","snakes.html","sorry.html","trouble.html","urgame.html",
@@ -18,7 +18,7 @@ const CORE=["index.html","gamenight.js","sfx.js","bot.js","words.js","achievemen
   "knucklebones.html","pig.html","craps.html","liarsdice.html",
   "blackjack.html","solitaire.html","memory.html","gin.html","oldmaid.html",
   "snake.html","paddleduel.html","brickbreak.html","blocks.html","stardefender.html","minesweeper.html","match3.html",
-  "salon-dash.html","hexempire.html","thumbstack.html","theorb.html","dollhouse.html","magic8.html","beatforge.html","harmonica.html","sharp.html"];
+  "salon-dash.html","hexempire.html","theorb.html","dollhouse.html","magic8.html","beatforge.html","harmonica.html","sharp.html","coloringbook.html"];
 self.addEventListener("install",e=>{
   e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting()));
 });
