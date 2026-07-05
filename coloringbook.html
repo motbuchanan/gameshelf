@@ -153,7 +153,7 @@
     <div class="title">Coloring<span class="dot">.</span>Book</div>
     <div class="grow"></div>
     <button class="iconbtn" id="helpBtn" aria-label="How to">?</button>
-    <button class="badge" id="badge">v0.6</button>
+    <button class="badge" id="badge">v0.8</button>
   </div>
 
   <!-- HOME -->
@@ -173,7 +173,7 @@
       </button>
       <button class="card" id="sampleCard">
         <div class="em green">🐙</div>
-        <div><div class="t">Color a sample</div><div class="s">Jump straight in with a ready-made page</div></div>
+        <div><div class="t">Color a sample</div><div class="s">Pick from ready-made pages</div></div>
       </button>
       <button class="card" id="galleryCard">
         <div class="em grid">📁</div>
@@ -256,6 +256,14 @@
     <div class="empty hidden" id="galleryEmpty">No saved colorings yet.<br>Color something and tap Save.</div>
   </section>
 
+  <!-- SAMPLE PICKER -->
+  <section class="screen hidden" id="sampleScreen">
+    <div class="row" style="padding:12px 16px 0;">
+      <button class="btn ghost" id="sampBack">← Home</button>
+    </div>
+    <div id="sampleGrid" class="grid"></div>
+  </section>
+
   <!-- first-run help -->
   <div class="overlay hidden" id="helpOverlay">
     <div class="sheet">
@@ -310,7 +318,7 @@
    Standalone Game Shelf file. Register in index.html + sw.js
    from the hub chat only (do not edit those here).
    ============================================================ */
-var VERSION = "v0.6 \u00B7 Jul 4";
+var VERSION = "v0.8 \u00B7 Jul 4";
 var WORK_MAX = 1200;      // longest side of working canvas (perf + undo memory)
 var UNDO_DEPTH = 5;
 
@@ -335,7 +343,7 @@ function toast(msg){
 }
 
 /* ---------- screens ---------- */
-var SCREENS=["homeScreen","convertScreen","colorScreen","galleryScreen"];
+var SCREENS=["homeScreen","convertScreen","colorScreen","galleryScreen","sampleScreen"];
 function goto(name){
   SCREENS.forEach(function(s){ var el=$(s); if(s===name) show(el); else hide(el); });
 }
@@ -477,37 +485,192 @@ function currentLineCanvas(){
 }
 
 /* ============================================================
-   SAMPLE page — procedurally drawn line art (no base64 asset)
+   SAMPLE pages — procedurally drawn line art (no base64 assets).
+   Built from closed shapes, so the Fill bucket works cleanly.
    ============================================================ */
-function buildSampleCanvas(){
-  var w=900,h=1200, c=document.createElement("canvas"); c.width=w; c.height=h;
+function sampleCanvas(drawFn){
+  var w=900,h=1200,c=document.createElement("canvas");c.width=w;c.height=h;
   var x=c.getContext("2d");
-  x.strokeStyle="#141414"; x.lineWidth=7; x.lineJoin="round"; x.lineCap="round";
-  function blob(cx,cy,rx,ry){ x.beginPath(); x.ellipse(cx,cy,rx,ry,0,0,Math.PI*2); x.stroke(); }
-  // big round body
-  blob(450,720,300,320);
-  // head dome
-  blob(450,360,250,210);
-  // eyes
-  blob(370,340,55,70); blob(530,340,55,70);
-  x.beginPath(); x.arc(370,350,20,0,Math.PI*2); x.stroke();
-  x.beginPath(); x.arc(530,350,20,0,Math.PI*2); x.stroke();
-  // smile
-  x.beginPath(); x.arc(450,430,70,0.15*Math.PI,0.85*Math.PI); x.stroke();
-  // arms (tentacles)
-  function tent(sx,sy,dir){
-    x.beginPath(); x.moveTo(sx,sy);
-    for(var i=1;i<=5;i++){ x.quadraticCurveTo(sx+dir*70*i,sy+40*i+ (i%2?40:-40), sx+dir*60*i,sy+70*i); }
-    x.stroke();
-  }
-  tent(210,760,-1); tent(690,760,1); tent(300,940,-1); tent(600,940,1);
-  // three round spots on body to color
-  blob(450,820,60,60); blob(340,700,45,45); blob(560,700,45,45);
-  // little hat
-  x.beginPath(); x.moveTo(380,175); x.lineTo(450,70); x.lineTo(520,175); x.stroke();
-  x.beginPath(); x.moveTo(360,178); x.lineTo(540,178); x.stroke();
-  return { canvas:c, w:w, h:h };
+  x.strokeStyle="#141414";x.lineWidth=7;x.lineJoin="round";x.lineCap="round";
+  var T=Math.PI*2;
+  var H={
+    el:function(cx,cy,rx,ry){x.beginPath();x.ellipse(cx,cy,rx,ry,0,0,T);x.stroke();},
+    ci:function(cx,cy,r){x.beginPath();x.arc(cx,cy,r,0,T);x.stroke();},
+    ln:function(a,b,cc,d){x.beginPath();x.moveTo(a,b);x.lineTo(cc,d);x.stroke();},
+    pl:function(p,cl){x.beginPath();p.forEach(function(q,i){i?x.lineTo(q[0],q[1]):x.moveTo(q[0],q[1]);});if(cl)x.closePath();x.stroke();},
+    ar:function(cx,cy,r,a,b){x.beginPath();x.arc(cx,cy,r,a,b);x.stroke();},
+    q:function(a,b,cx,cy,ex,ey){x.beginPath();x.moveTo(a,b);x.quadraticCurveTo(cx,cy,ex,ey);x.stroke();},
+    rot:function(cx,cy,ang,rx,ry){x.save();x.translate(cx,cy);x.rotate(ang);x.beginPath();x.ellipse(0,0,rx,ry,0,0,T);x.stroke();x.restore();}
+  };
+  drawFn(H,w,h,x);
+  return {canvas:c,w:w,h:h};
 }
+function sOcto(H){
+  H.el(450,720,300,320); H.el(450,360,250,210);
+  H.el(370,340,55,70); H.el(530,340,55,70); H.ci(370,350,20); H.ci(530,350,20);
+  H.ar(450,430,70,0.15*Math.PI,0.85*Math.PI);
+  [[210,760,-1],[690,760,1],[300,940,-1],[600,940,1]].forEach(function(t){
+    var sx=t[0],sy=t[1],d=t[2],px=sx,py=sy;
+    for(var i=1;i<=5;i++){var ex=sx+d*60*i,ey=sy+70*i,cx=sx+d*70*i,cy=sy+40*i+(i%2?40:-40);H.q(px,py,cx,cy,ex,ey);px=ex;py=ey;}
+  });
+  H.el(450,820,60,60);H.el(340,700,45,45);H.el(560,700,45,45);
+  H.pl([[380,175],[450,70],[520,175]],false); H.ln(360,178,540,178);
+}
+function sFish(H){
+  H.el(440,600,260,170);
+  H.pl([[670,600],[860,470],[860,730]],true);
+  H.pl([[420,430],[520,520],[380,540]],true);
+  H.pl([[420,770],[520,690],[390,670]],true);
+  H.ar(250,600,80,-0.7,0.7);
+  H.ci(300,560,34); H.ci(300,560,12);
+  H.q(205,640,185,660,212,682);
+  H.ci(150,520,18); H.ci(112,470,12); H.ci(122,420,8);
+  H.ar(470,560,40,0.3,2.0); H.ar(540,600,40,0.3,2.0); H.ar(470,650,40,0.3,2.0);
+}
+function sRocket(H){
+  H.pl([[450,110],[560,340],[340,340]],true);
+  H.pl([[350,340],[550,340],[550,820],[350,820]],true);
+  H.ci(450,470,72);
+  H.pl([[350,700],[250,880],[350,850]],true);
+  H.pl([[550,700],[650,880],[550,850]],true);
+  H.pl([[390,820],[450,970],[510,820]],true);
+  H.pl([[420,820],[450,910],[480,820]],true);
+  [[180,250],[720,300],[240,560],[700,600]].forEach(function(s){
+    H.ln(s[0]-16,s[1],s[0]+16,s[1]); H.ln(s[0],s[1]-16,s[0],s[1]+16);
+    H.ln(s[0]-11,s[1]-11,s[0]+11,s[1]+11); H.ln(s[0]-11,s[1]+11,s[0]+11,s[1]-11);
+  });
+}
+function sCat(H){
+  H.pl([[300,300],[360,150],[455,268]],true);
+  H.pl([[600,300],[540,150],[445,268]],true);
+  H.el(450,400,220,200);
+  H.el(380,390,40,55); H.el(520,390,40,55); H.ci(380,400,15); H.ci(520,400,15);
+  H.pl([[430,450],[470,450],[450,480]],true);
+  H.q(450,480,450,512,420,522); H.q(450,480,450,512,480,522);
+  H.ln(250,430,370,445); H.ln(250,470,372,470);
+  H.ln(650,430,530,445); H.ln(650,470,528,470);
+  H.el(450,830,230,260);
+  H.q(665,910,790,860,760,1055); H.q(760,1055,740,1120,660,1085);
+  H.el(370,1035,55,45); H.el(530,1035,55,45);
+}
+function sFlower(H,w,h,x){
+  var cx=450,cy=380;
+  for(var i=0;i<8;i++){var a=i/8*Math.PI*2;H.rot(cx+Math.cos(a)*140,cy+Math.sin(a)*140,a,92,46);}
+  H.ci(cx,cy,80);
+  H.ln(cx-9,cy+150,cx-9,1080); H.ln(cx+9,cy+150,cx+9,1080);
+  H.rot(cx-120,770,-0.6,110,55); H.rot(cx+120,890,0.6,110,55);
+  H.q(150,1080,450,1030,760,1080);
+}
+function sButterfly(H){
+  H.el(450,600,26,230); H.ci(450,360,40);
+  H.q(450,330,430,250,400,230); H.ci(398,224,16);
+  H.q(450,330,470,250,500,230); H.ci(502,224,16);
+  H.el(320,480,155,125); H.el(320,730,120,150);
+  H.el(580,480,155,125); H.el(580,730,120,150);
+  H.ci(300,470,36); H.ci(600,470,36); H.ci(320,730,28); H.ci(580,730,28);
+}
+function sCar(H){
+  H.pl([[160,760],[220,660],[340,660],[420,560],[600,560],[680,660],[760,660],[760,820],[160,820]],true);
+  H.pl([[360,655],[432,575],[560,575],[600,655]],true); H.ln(492,575,492,655);
+  H.ci(300,820,72); H.ci(300,820,30); H.ci(620,820,72); H.ci(620,820,30);
+  H.ci(735,730,22);
+}
+function sRobot(H){
+  H.ln(450,118,450,180); H.ci(450,108,22);
+  H.pl([[330,180],[570,180],[570,360],[330,360]],true);
+  H.ci(400,270,30); H.ci(500,270,30); H.ln(400,330,500,330);
+  H.pl([[300,380],[600,380],[600,720],[300,720]],true);
+  H.ci(450,468,42); H.pl([[380,560],[520,560],[520,640],[380,640]],true);
+  H.ln(230,420,300,420); H.pl([[180,420],[230,400],[230,440]],true);
+  H.ln(600,420,670,420); H.pl([[720,420],[670,400],[670,440]],true);
+  H.pl([[350,720],[420,720],[420,860],[350,860]],true);
+  H.pl([[480,720],[550,720],[550,860],[480,860]],true);
+  H.el(385,880,55,30); H.el(515,880,55,30);
+}
+function sRainbow(H,w,h,x){
+  var cx=450,cy=880,rs=[430,370,310,250,190,130];
+  for(var i=0;i<rs.length;i++){ x.beginPath(); x.arc(cx,cy,rs[i],Math.PI,2*Math.PI); x.stroke(); }
+  for(var j=0;j<rs.length-1;j++){ H.ln(cx-rs[j],cy,cx-rs[j+1],cy); H.ln(cx+rs[j+1],cy,cx+rs[j],cy); }
+  function cloud(bx,by){ H.ci(bx,by,55); H.ci(bx-55,by+12,42); H.ci(bx+55,by+12,42); H.ci(bx,by+38,50); }
+  cloud(cx-380,cy); cloud(cx+380,cy);
+  H.ci(720,230,66);
+  for(var a=0;a<8;a++){var an=a/8*Math.PI*2;H.ln(720+Math.cos(an)*86,230+Math.sin(an)*86,720+Math.cos(an)*126,230+Math.sin(an)*126);}
+}
+function sForest(H,w,h,x){
+  H.q(70,990,450,945,830,990);
+  H.ci(730,220,58);
+  for(var a=0;a<8;a++){var an=a/8*Math.PI*2;H.ln(730+Math.cos(an)*78,220+Math.sin(an)*78,730+Math.cos(an)*112,220+Math.sin(an)*112);}
+  function pine(bx,base,s){
+    H.pl([[bx-95*s,base-130*s],[bx+95*s,base-130*s],[bx,base-280*s]],true);
+    H.pl([[bx-110*s,base-45*s],[bx+110*s,base-45*s],[bx,base-205*s]],true);
+    H.pl([[bx-20,base],[bx+20,base],[bx+20,base-48],[bx-20,base-48]],true);
+  }
+  pine(230,965,1); pine(455,985,1.25); pine(660,958,0.95);
+  H.ci(160,205,42);H.ci(120,220,30);H.ci(205,220,32);
+}
+function sHorse(H,w,h,x){
+  H.el(430,640,235,145);
+  H.pl([[590,555],[655,360],[720,375],[650,600]],true);
+  H.rot(715,320,0.5,72,108);
+  H.pl([[690,235],[708,185],[730,242]],true);
+  H.ci(722,300,11);
+  H.q(755,405,778,428,748,442);
+  H.q(650,360,600,450,560,560);
+  [[300,760],[382,770],[520,770],[592,760]].forEach(function(l){
+    H.pl([[l[0]-16,l[1]],[l[0]+16,l[1]],[l[0]+16,l[1]+185],[l[0]-16,l[1]+185]],true);
+    H.pl([[l[0]-22,l[1]+185],[l[0]+24,l[1]+185],[l[0]+24,l[1]+212],[l[0]-22,l[1]+212]],true);
+  });
+  H.q(210,600,140,660,175,850);
+}
+function sBunny(H){
+  H.el(450,770,190,220);
+  H.el(450,435,150,170);
+  H.el(392,235,45,150); H.el(508,235,45,150); H.el(392,248,22,112); H.el(508,248,22,112);
+  H.ci(407,425,17); H.ci(493,425,17);
+  H.pl([[435,472],[465,472],[450,492]],true);
+  H.q(450,492,450,512,425,517); H.q(450,492,450,512,475,517);
+  H.ln(300,470,405,482); H.ln(300,500,405,497); H.ln(600,470,495,482); H.ln(600,500,495,497);
+  H.el(320,730,45,92); H.el(580,730,45,92);
+  H.el(372,970,82,46); H.el(528,970,82,46);
+  H.ci(618,808,40);
+}
+function sBird(H){
+  H.el(450,570,200,220);
+  H.el(450,345,150,140);
+  H.pl([[438,362],[368,392],[438,412]],true);
+  H.ci(492,332,22); H.ci(492,332,9);
+  H.ar(540,560,120,-0.5,0.6);
+  H.pl([[560,700],[705,762],[560,762]],true);
+  H.ar(450,568,110,0.35,2.79);
+  H.ln(410,782,410,858); H.ln(490,782,490,858);
+  H.ln(410,858,378,884); H.ln(410,858,442,884); H.ln(490,858,458,884); H.ln(490,858,522,884);
+}
+function sLeprechaun(H){
+  H.pl([[352,120],[548,120],[538,258],[362,258]],true);
+  H.pl([[312,258],[588,258],[588,300],[312,300]],true);
+  H.pl([[422,268],[478,268],[478,300],[422,300]],true);
+  H.el(450,400,120,110);
+  H.ci(415,388,14); H.ci(485,388,14);
+  H.q(450,400,456,426,444,432);
+  H.q(452,175,470,150,492,168); H.ci(500,150,13); H.ci(520,150,13); H.ci(510,134,13);
+  H.q(335,430,345,620,450,645); H.q(450,645,555,620,565,430); H.q(335,430,450,478,565,430);
+  H.pl([[362,522],[538,522],[578,822],[322,822]],true);
+  H.pl([[362,542],[302,700],[352,720],[402,562]],true);
+  H.pl([[538,542],[598,700],[548,720],[498,562]],true);
+  H.pl([[332,702],[568,702],[568,742],[332,742]],true);
+  H.pl([[426,707],[474,707],[474,737],[426,737]],true);
+  H.pl([[382,822],[442,822],[442,958],[382,958]],true);
+  H.pl([[458,822],[518,822],[518,958],[458,958]],true);
+  H.el(372,975,72,36); H.el(528,975,72,36);
+  H.pl([[357,966],[377,966],[377,986],[357,986]],true);
+  H.pl([[523,966],[543,966],[543,986],[523,986]],true);
+}
+var SAMPLES=[
+  {name:"Octopus",draw:sOcto},{name:"Fish",draw:sFish},{name:"Rocket",draw:sRocket},{name:"Cat",draw:sCat},
+  {name:"Flower",draw:sFlower},{name:"Butterfly",draw:sButterfly},{name:"Car",draw:sCar},{name:"Robot",draw:sRobot},
+  {name:"Rainbow",draw:sRainbow},{name:"Forest",draw:sForest},{name:"Horse",draw:sHorse},{name:"Bunny",draw:sBunny},
+  {name:"Bird",draw:sBird},{name:"Leprechaun",draw:sLeprechaun}
+];
 
 /* ============================================================
    COLORING engine
@@ -1068,11 +1231,25 @@ $("helpClose").addEventListener("click",function(){ hide($("helpOverlay")); stor
 
 $("importCard").addEventListener("click",function(){ $("fileInput").click(); });
 $("cameraCard").addEventListener("click",function(){ $("cameraInput").click(); });
-$("sampleCard").addEventListener("click",function(){
-  currentPageId=null;
-  var s=buildSampleCanvas();
-  loadPage(s.canvas,s.w,s.h,null);
-});
+$("sampleCard").addEventListener("click",openSamplePicker);
+$("sampBack").addEventListener("click",function(){ goto("homeScreen"); });
+function openSamplePicker(){
+  if(typeof commitLive==="function") commitLive();
+  goto("sampleScreen");
+  var grid=$("sampleGrid"); grid.innerHTML="";
+  SAMPLES.forEach(function(s){
+    var built=sampleCanvas(s.draw);
+    var t=document.createElement("div"); t.className="tile";
+    var cv=document.createElement("canvas"); cv.className="thumb"; cv.width=300; cv.height=400;
+    var cx=cv.getContext("2d"); cx.fillStyle="#fff"; cx.fillRect(0,0,300,400);
+    cx.drawImage(built.canvas,0,0,300,400);
+    var meta=document.createElement("div"); meta.className="meta";
+    var nm=document.createElement("div"); nm.className="nm"; nm.textContent=s.name;
+    meta.appendChild(nm); t.appendChild(cv); t.appendChild(meta);
+    t.addEventListener("click",function(){ currentPageId=null; loadPage(built.canvas,built.w,built.h,null); });
+    grid.appendChild(t);
+  });
+}
 $("galleryCard").addEventListener("click",openGallery);
 $("galBack").addEventListener("click",function(){ goto("homeScreen"); });
 
