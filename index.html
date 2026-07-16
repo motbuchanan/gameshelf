@@ -390,7 +390,7 @@ html.gn-easy #shelves .gsinstr .cap{font-size:11px;}
 </head>
 <body>
 <header style="position:relative;">
-  <div id="verBadge" title="Build version — bump on each deploy" style="position:absolute;top:6px;right:8px;z-index:5;font-family:inherit;font-weight:700;font-size:11px;letter-spacing:.5px;color:#3a2a12;background:linear-gradient(180deg,#f0d48a,#caa052);border:1px solid rgba(120,84,30,.55);border-radius:999px;padding:3px 10px;box-shadow:0 1px 2px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,245,210,.6);">v41</div>
+  <div id="verBadge" title="Build version — bump on each deploy" style="position:absolute;top:6px;right:8px;z-index:5;font-family:inherit;font-weight:700;font-size:11px;letter-spacing:.5px;color:#3a2a12;background:linear-gradient(180deg,#f0d48a,#caa052);border:1px solid rgba(120,84,30,.55);border-radius:999px;padding:3px 10px;box-shadow:0 1px 2px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,245,210,.6);">v43</div>
   <h1>The Game Shelf</h1>
   <div class="sub" id="subLine">Pick a box. Loser racks up the next one.</div>
   <div style="margin-top:10px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;"><button id="tvToggle" class="tally" style="cursor:pointer;border:1px solid rgba(255,220,170,.25);font-family:inherit;">📺 TV mode: <b id="tvState">Off</b></button><button id="sortToggle" class="tally" style="cursor:pointer;border:1px solid rgba(255,220,170,.25);font-family:inherit;">🔀 Sort: <b id="sortState">Shelf</b></button><button id="easyToggle" class="tally" style="cursor:pointer;border:1px solid rgba(255,220,170,.25);font-family:inherit;">🔎 Easy view: <b id="easyState">Off</b></button><button id="padHelp" class="tally" style="cursor:pointer;border:1px solid rgba(255,220,170,.25);font-family:inherit;">🎮 Controller</button></div>
@@ -658,14 +658,15 @@ function booksOrder(list){return list.map(function(b,i){return {b:b,i:i,r:bookRe
 function booksBoxSection(){
   var ord=booksOrder(ABOOKS),front=ord.slice(0,4),rest=ord.slice(4);
   var frontSpines='<div class="gsbooks" style="margin-bottom:15px">'+front.map(gsSpineBook).join('')+'</div>';
-  var booksMore=rest.length?('<div class="gsmore">'+gsRow('<div class="gsbooks" style="flex:1;margin:0 0 15px;flex-wrap:wrap">'+rest.map(gsSpineBook).join('')+'</div>','min-height:0')+'</div>'):'';
-  var booksBar=rest.length?'<button class="gsbar"><span class="c">＋ '+rest.length+' more — tap to open</span><span class="o">▲ show less</span></button>':'';
-  var booksUnit='<div class="gsunit">'+gsRow(frontSpines,'min-height:0')+booksBar+booksMore+'</div>';
   var carts=ARCADE_H.map(function(h){var g=GAMES.find(function(x){return x.href===h;});return g?cabCart(g):'';}).join('');
   var box='<div class="gscardbox gstap"><div class="seamH"></div><div class="seamV"></div><div class="gstape gstapeH"></div><div class="gstape gstapeV"></div><div class="gslabel">'+gsHand(['old video','games'])+'</div></div>';
+  var shelfRow=gsRow(frontSpines+'<div style="flex:1"></div>'+box,'min-height:0;padding-top:6px');
+  var booksMore=rest.length?('<div class="gsmore">'+gsRow('<div class="gsbooks" style="flex:1;margin:0 0 15px;flex-wrap:wrap">'+rest.map(gsSpineBook).join('')+'</div>','min-height:0')+'</div>'):'';
+  var booksBar=rest.length?'<button class="gsbar"><span class="c">＋ '+rest.length+' more — tap to open</span><span class="o">▲ show less</span></button>':'';
   var boxMore='<div class="gsmore">'+gsRow('<div class="vcarts" style="flex:1;margin:0 0 15px;">'+carts+'</div>','min-height:0')+'</div>';
   var boxBar='<button class="gsbar"><span class="c">＋ open the box — '+ARCADE_H.length+' games</span><span class="o">▲ close the box</span></button>';
-  var boxUnit='<div class="gsunit">'+gsRow(box+'<div style="flex:1"></div>','min-height:0;padding-top:22px')+boxBar+boxMore+'</div>';
+  var booksUnit='<div class="gsunit">'+shelfRow+booksBar+booksMore+'</div>';
+  var boxUnit='<div class="gsunit">'+boxBar+boxMore+'</div>';
   return gsSec('Activity Books &amp; Arcade Box',ABOOKS.length+' books · '+ARCADE_H.length+' games',booksUnit+boxUnit);
 }
 function toysLibrarySection(){
@@ -804,9 +805,12 @@ shelves.addEventListener('click',function(e){
   var t=e.target.closest('.gsbar,.gstap');    // bars + box/bin fronts toggle their own unit
   if(!t)return;
   var unit=t.closest('.gsunit');
+  if(t.classList.contains('gscardbox')){var nu=unit&&unit.nextElementSibling;if(nu&&nu.classList.contains('gsunit'))nu.classList.toggle('open');return;}
   if(unit)unit.classList.toggle('open');
 });
 pickTag();build();
+function gsShowUpdate(){if(document.getElementById('gsUpd'))return;var d=document.createElement('div');d.id='gsUpd';d.style.cssText='position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:9999;display:flex;align-items:center;gap:12px;background:linear-gradient(180deg,#f0d48a,#caa052);color:#3a2a12;font-weight:700;padding:10px 14px;border-radius:999px;box-shadow:0 6px 18px rgba(0,0,0,.5);font-family:inherit;font-size:14px;';d.innerHTML='<span>✨ Shelf updated</span>';var btn=document.createElement('button');btn.textContent='Refresh';btn.style.cssText='background:#3a2a12;color:#f0d48a;border:0;border-radius:999px;padding:6px 14px;font-weight:800;cursor:pointer;';btn.onclick=function(){location.reload();};d.appendChild(btn);document.body.appendChild(d);}
+(function(){try{if(navigator.clearAppBadge)navigator.clearAppBadge();}catch(e){}if(!('serviceWorker' in navigator))return;var had=!!navigator.serviceWorker.controller;navigator.serviceWorker.addEventListener('controllerchange',function(){if(had)gsShowUpdate();});function chk(){navigator.serviceWorker.getRegistration().then(function(r){if(r)r.update();}).catch(function(){});}document.addEventListener('visibilitychange',function(){if(!document.hidden)chk();});window.addEventListener('focus',chk);navigator.serviceWorker.getRegistration().then(function(r){if(!r)return;if(r.waiting&&navigator.serviceWorker.controller)gsShowUpdate();r.addEventListener('updatefound',function(){var nw=r.installing;if(!nw)return;nw.addEventListener('statechange',function(){if(nw.state==='installed'&&navigator.serviceWorker.controller)gsShowUpdate();});});}).catch(function(){});})();
 window.addEventListener("resize",function(){});
 // Reset stats: wipes every game ledger + the global ledger on THIS device.
 // Keeps players, TV mode, themes, rule choices, and saved games.

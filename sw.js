@@ -4,7 +4,7 @@
    Offline: requests fall back to the cache, so the whole shelf plays with no signal.
    CACHE name only needs bumping when the precache LIST changes (e.g. a new game),
    to seed offline copies; day-to-day edits need nothing. */
-const CACHE="gameshelf-v41";
+const CACHE="gameshelf-v43";
 const CORE=["index.html","gamenight.js","sfx.js","bot.js","words.js","achievements.js","manifest.webmanifest",
   "icon192.png","icon512.png","iconmaskable512.png",
   "rules.html","records.html","achievements.html","highscores.html","howto.html","profiles.html","rulesdata.js","backup.html",
@@ -23,9 +23,12 @@ self.addEventListener("install",e=>{
   e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting()));
 });
 self.addEventListener("activate",e=>{
-  e.waitUntil(caches.keys().then(ks=>Promise.all(
-    ks.filter(k=>k!==CACHE).map(k=>caches.delete(k))
-  )).then(()=>self.clients.claim()));
+  e.waitUntil(caches.keys().then(ks=>{
+    var old=ks.filter(k=>k!==CACHE);
+    return Promise.all(old.map(k=>caches.delete(k))).then(()=>{
+      if(old.length&&self.navigator&&self.navigator.setAppBadge){try{self.navigator.setAppBadge();}catch(e){}}
+    });
+  }).then(()=>self.clients.claim()));
 });
 function stripped(req){const u=new URL(req.url);return u.origin+u.pathname;}
 self.addEventListener("fetch",e=>{
