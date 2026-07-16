@@ -1,0 +1,1678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Bot Lab</title>
+<!-- manifest handled by Game Shelf shell -->
+<meta name="theme-color" content="#0e0f13">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Bot Lab">
+
+<style>
+:root{
+  --bg:#101216; --panel:#1a1d23; --panel2:#22262e; --line:rgba(255,255,255,.08);
+  --txt:#e8eaee; --dim:#8a90a0; --accent:#ff8c1a; --good:#4cd964; --bad:#ff3b30; --blue:#3d8bfd; --wall:#4a5060;
+}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;}
+body{display:flex;flex-direction:column;height:100dvh;overflow:hidden;}
+header{display:flex;align-items:center;justify-content:space-between;padding:8px 14px 4px;flex:0 0 auto;}
+h1{font-size:17px;margin:0;letter-spacing:.5px;}
+#ver{font-size:11px;color:var(--dim);background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:3px 8px;cursor:pointer;}
+#wrap{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;padding:0 10px 8px;gap:6px;max-width:560px;margin:0 auto;width:100%;}
+.cvbox{position:relative;width:100%;flex:1;min-height:0;display:flex;overflow:hidden;border-radius:14px;touch-action:none;}
+#cv{width:100%;height:100%;background:#15171c;border-radius:14px;border:1px solid var(--line);display:block;touch-action:none;}
+#zoomHint{position:absolute;bottom:8px;right:10px;font-size:11px;color:var(--dim);background:rgba(16,18,22,.75);border:1px solid var(--line);border-radius:9px;padding:3px 8px;pointer-events:none;opacity:0;transition:opacity .3s;}
+#zoomReset{position:absolute;bottom:8px;left:10px;font-size:12px;font-weight:700;color:var(--accent);background:rgba(16,18,22,.85);border:1px solid var(--accent);border-radius:9px;padding:4px 10px;cursor:pointer;display:none;}
+#vs{position:absolute;top:6px;left:50%;transform:translateX(-50%);display:none;gap:12px;background:rgba(16,18,22,.55);border:1px solid var(--line);border-radius:14px;padding:2px 12px;font-weight:800;font-size:13px;z-index:2;pointer-events:auto;}
+#vs.on{display:flex;}
+#clock{pointer-events:none;}
+.row{display:flex;gap:8px;width:100%;align-items:center;flex:0 0 auto;}
+.btn{flex:1;background:var(--panel);border:1px solid var(--line);color:var(--txt);border-radius:12px;padding:9px 6px;font-size:14px;font-weight:600;cursor:pointer;text-align:center;user-select:none;}
+.btn:active{background:var(--panel2);}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#181818;}
+.btn.on{outline:2px solid var(--accent);color:var(--accent);}
+.seg{display:flex;flex:1;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;}
+.seg button{flex:1;background:none;border:none;color:var(--dim);padding:9px 0;font-size:14px;font-weight:700;cursor:pointer;}
+.seg button.on{background:var(--panel2);color:var(--accent);}
+.pal{display:flex;gap:6px;width:100%;flex:0 0 auto;}
+.pal .btn{flex:1 1 0;min-width:0;display:flex;align-items:center;justify-content:center;gap:4px;font-size:13px;padding:11px 2px;white-space:nowrap;overflow:hidden;}
+.pal .btn .lbl{overflow:hidden;text-overflow:ellipsis;}
+.dot{width:13px;height:13px;border-radius:50%;display:inline-block;}
+.sq{width:13px;height:13px;border-radius:3px;display:inline-block;}
+label.slid{display:flex;align-items:center;gap:10px;width:100%;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:9px 12px;font-size:13px;color:var(--dim);flex:0 0 auto;}
+input[type=range]{flex:1;accent-color:var(--accent);}
+.mini{background:var(--panel2);border:1px solid var(--line);color:var(--dim);border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;}
+.mini.on{color:var(--accent);outline:1.5px solid var(--accent);}
+#sparkWrap{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 12px;flex:0 0 auto;}
+#sparkWrap span{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;}
+#spark{width:100%;height:44px;display:block;}
+#ebar{position:relative;width:100%;height:20px;background:var(--panel);border:1px solid var(--line);border-radius:11px;overflow:hidden;flex:0 0 auto;}
+#efill{position:absolute;left:0;top:0;bottom:0;width:60%;background:var(--good);transition:width .12s linear,background .3s;border-radius:11px;}
+#ebar b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#0c0e12;text-shadow:0 1px 1px rgba(255,255,255,.25);}
+#stats{display:flex;gap:8px;width:100%;flex:0 0 auto;}
+.stat{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:6px 4px;text-align:center;}
+.stat b{display:block;font-size:16px;}
+.stat span{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;}
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--line);padding:10px 16px;border-radius:12px;font-size:14px;opacity:0;transition:opacity .25s;pointer-events:none;z-index:50;text-align:center;max-width:90%;}
+#guide{position:fixed;inset:0;background:rgba(10,11,14,.92);z-index:40;display:flex;align-items:center;justify-content:center;padding:20px;overflow:auto;}
+#guide.hide{display:none;}
+.wizcard{max-width:400px;width:100%;}
+.wiztop{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;}
+.wizstep{font-size:12px;color:var(--dim);letter-spacing:.5px;}
+.wizskip{font-size:13px;color:var(--dim);cursor:pointer;padding:4px 10px;border:1px solid var(--line);border-radius:8px;}
+.wizicon{font-size:44px;line-height:1;text-align:center;margin:6px 0 10px;}
+.wizcard h2{text-align:center;margin:0 0 10px;}
+#wizBody{font-size:15px;line-height:1.5;}
+#wizBody p{margin:8px 0;}
+#wizBody .tip{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:9px 12px;margin:8px 0;font-size:14px;}
+#wizBody ul{margin:6px 0;padding-left:4px;list-style:none;}
+#wizBody li{margin:7px 0;padding-left:2px;}
+.wizdots{display:flex;gap:6px;justify-content:center;margin:14px 0 10px;flex-wrap:wrap;}
+.wizdots i{width:7px;height:7px;border-radius:50%;background:var(--line);display:block;}
+.wizdots i.on{background:var(--accent);}
+.wiznav{margin-top:2px;}
+.wiznav .btn{flex:1;text-align:center;}
+#clock{position:absolute;top:8px;left:8px;background:rgba(16,18,22,.7);border:1px solid var(--line);border-radius:14px;padding:3px 10px;font-size:12px;font-weight:700;}
+#settings{position:fixed;inset:0;background:rgba(8,9,12,.6);z-index:45;display:flex;align-items:flex-end;justify-content:center;}
+#settings.hide{display:none;}
+.sheet{background:var(--panel);border:1px solid var(--line);border-radius:18px 18px 0 0;padding:16px;max-width:560px;width:100%;max-height:80vh;overflow:auto;}
+.sheetbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.sheetbar b{font-size:17px;}
+.setrow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;background:var(--panel2);border:1px solid var(--line);border-radius:12px;margin-bottom:8px;}
+.setrow.off{opacity:.5;}
+.setlabel{font-size:14px;font-weight:700;display:flex;flex-direction:column;gap:2px;}
+.setlabel small{font-size:11px;font-weight:400;color:var(--dim);}
+.soon{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;border:1px solid var(--line);border-radius:8px;padding:3px 8px;}
+#feedSheet{position:fixed;inset:0;background:rgba(8,9,12,.6);z-index:45;display:flex;align-items:flex-end;justify-content:center;}
+#feedSheet.hide{display:none;}
+#feedList{max-height:52vh;overflow-y:auto;}
+.feeditem{display:flex;gap:9px;align-items:flex-start;padding:7px 2px;border-bottom:1px solid var(--line);font-size:14px;}
+.feeditem .fic{font-size:17px;flex:0 0 auto;line-height:1.3;}
+.feeditem .ftx{line-height:1.35;}
+.feeditem .fday{color:var(--dim);font-size:11px;}
+.feedempty{color:var(--dim);font-size:13px;padding:14px 4px;text-align:center;}
+#feedDot{position:absolute;top:4px;right:4px;width:8px;height:8px;border-radius:50%;background:var(--bad);display:none;}
+#moreSheet.hide{display:none;}
+.sheetbox{background:var(--panel);border:1px solid var(--line);border-radius:18px 18px 0 0;padding:16px;width:100%;max-width:560px;}
+.sheethead{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.sheethead b{font-size:16px;}
+#obsPanel{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:11px 13px;}
+#obsPanel.hide{display:none;}
+#obsPanel .obshead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;}
+#obsPanel .obshead b{font-size:15px;}
+#obsPanel .obsx{font-size:13px;color:var(--dim);cursor:pointer;padding:2px 8px;border:1px solid var(--line);border-radius:8px;}
+#obsPanel .intent{font-size:15px;font-weight:700;margin:2px 0 8px;}
+#obsPanel .obsline{font-size:12px;color:var(--dim);margin:3px 0;}
+#obsPanel .obsline b{color:var(--txt);font-weight:600;}
+#obsPanel .obsbtns{display:flex;gap:8px;margin-top:10px;}
+#obsPanel .obsbtn{flex:1;background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:9px;padding:8px 4px;font-size:12px;font-weight:600;text-align:center;cursor:pointer;}
+#obsPanel .cbars{display:flex;flex-direction:column;gap:5px;margin-top:6px;}
+#obsPanel .cbar{display:flex;align-items:center;gap:8px;font-size:11px;}
+#obsPanel .cbar .cl{width:50px;color:var(--dim);}
+#obsPanel .cbar .ct{flex:1;height:8px;background:var(--panel2);border-radius:4px;overflow:hidden;}
+#obsPanel .cbar .ct i{display:block;height:100%;}
+#vs{cursor:pointer;}
+#card{position:fixed;inset:0;background:rgba(8,9,12,.68);z-index:48;display:flex;align-items:center;justify-content:center;padding:20px;}
+#card.hide{display:none;}
+.cardbox{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:18px;max-width:380px;width:100%;}
+.cardtop{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+#cardSwatch{width:34px;height:34px;border-radius:9px;flex:0 0 auto;box-shadow:inset 0 -3px 6px rgba(0,0,0,.3),inset 0 3px 4px rgba(255,255,255,.25);}
+#cardName{flex:1;background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:10px;padding:8px 10px;font-size:18px;font-weight:800;}
+#cardSub{font-size:12px;color:var(--dim);margin-bottom:12px;}
+#cardTraits{display:flex;flex-direction:column;gap:7px;margin-bottom:12px;}
+.trow{display:flex;align-items:center;gap:8px;font-size:12px;}
+.trow .tl{width:52px;color:var(--dim);}
+.tbar{flex:1;height:9px;background:var(--panel2);border-radius:5px;overflow:hidden;}
+.tbar i{display:block;height:100%;border-radius:5px;}
+.trow .tv{width:64px;text-align:right;color:var(--txt);font-weight:600;}
+#cardStats{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;}
+.cst{flex:1;min-width:70px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:7px 4px;text-align:center;}
+.cst b{display:block;font-size:15px;}
+.cst span{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.4px;}
+#cardKnow{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--txt);}
+#cardKnow b{color:var(--accent);}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px;max-width:440px;width:100%;}
+.card h2{margin:0 0 10px;font-size:20px;}
+.card p{font-size:14.5px;line-height:1.5;color:var(--txt);margin:8px 0;}
+.card .k{color:var(--accent);font-weight:700;}
+.card .g{color:var(--good);font-weight:700;}
+.card .b{color:var(--bad);font-weight:700;}
+.card .bl{color:var(--blue);font-weight:700;}
+</style>
+</head>
+<body>
+<header>
+  <h1>🧠 Bot Lab</h1>
+  <div style="display:flex;gap:8px;align-items:center;">
+    <div id="gear" style="font-size:15px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:3px 9px;cursor:pointer;">⚙️</div>
+    <div id="ver">v18.0 · Jul 16</div>
+  </div>
+</header>
+<div id="wrap">
+  <div class="cvbox">
+    <canvas id="cv"></canvas>
+    <div id="clock">☀️ Day 1</div>
+    <div id="vs">👥 <b id="vsPop">1</b> · Gen <b id="vsGen">1</b></div>
+    <div id="zoomReset">⤢ Fit</div>
+    <div id="zoomHint">pinch to zoom · drag to pan</div>
+  </div>
+
+  <div id="obsPanel" class="hide"></div>
+
+  <div class="pal">
+    <div class="btn on" id="palHappy"><span class="dot" style="background:var(--good)"></span><span class="lbl">Happy</span></div>
+    <div class="btn" id="palOuch"><span class="dot" style="background:var(--bad)"></span><span class="lbl">Ouch</span></div>
+    <div class="btn" id="palWall"><span class="sq" style="background:var(--wall)"></span><span class="lbl">Wall</span></div>
+    <div class="btn" id="palErase"><span class="lbl">🧽 Erase</span></div>
+    <div class="btn" id="moveBtn"><span class="lbl">✋ Move</span></div>
+  </div>
+
+  <div id="ebar"><i id="efill"></i><b id="etxt">60%</b></div>
+
+  <div class="row">
+    <div class="btn primary" id="playBtn">▶ Play</div>
+    <div class="seg" id="speedSeg">
+      <button data-s="1" class="on">1×</button>
+      <button data-s="5">5×</button>
+      <button data-s="20">20×</button>
+      <button data-s="100">100×</button>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="seg" id="brainSeg">
+      <button data-m="place" class="on">🧠 Memory</button>
+      <button data-m="sense">👃 Senses</button>
+    </div>
+    <div class="btn" id="brainBtn" style="flex:0 0 auto;padding:9px 12px;">👁 Brain</div>
+    <div class="btn" id="feedBtn" style="flex:0 0 auto;padding:9px 12px;position:relative;">📜 Story<span id="feedDot"></span></div>
+    <div class="btn" id="moreBtn" style="flex:0 0 auto;padding:9px 12px;">⋯ More</div>
+  </div>
+
+  <div id="stats">
+    <div class="stat"><b id="stMeals" style="color:var(--good)">0</b><span>Meals</span></div>
+    <div class="stat"><b id="stPop">1</b><span>Pop</span></div>
+    <div class="stat"><b id="stGen">1</b><span>Gen</span></div>
+    <div class="stat"><b id="stMood">😐</b><span>Mood</span></div>
+  </div>
+</div>
+
+<div id="feedSheet" class="hide">
+  <div class="sheetbox">
+    <div class="sheethead"><b>📜 Colony Story</b><span id="feedClose" class="mini">Done</span></div>
+    <div id="feedList"></div>
+  </div>
+</div>
+
+<div id="moreSheet" class="hide">
+  <div class="sheetbox">
+    <div class="sheethead"><b>More controls</b><span id="moreClose" class="mini">Done</span></div>
+    <label class="slid">Curiosity
+      <input type="range" id="eps" min="0" max="100" value="90">
+      <b id="epsVal" style="color:var(--txt);min-width:38px;text-align:right;">90%</b>
+      <button id="epsAuto" class="mini on">Auto</button>
+    </label>
+    <div class="row" style="margin-top:8px">
+      <div class="btn" id="rivalBtn"><span class="sq" style="background:var(--blue)"></span> Rival</div>
+      <div class="btn" id="resetBtn">🔄 Forget</div>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <div class="btn" id="clearBtn">🗑 Clear</div>
+      <div class="btn" id="newGroupBtn">✨ New Group</div>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <div class="btn" id="helpBtn">❓ Tutorial</div>
+      <div class="btn" id="gearBtn2">⚙️ Settings</div>
+    </div>
+    <div id="sparkWrap" style="margin-top:8px"><span>Learning · avg energy per 200 steps</span><canvas id="spark"></canvas></div>
+  </div>
+</div>
+
+<div id="guide" class="hide">
+  <div class="card wizcard">
+    <div class="wiztop"><span id="wizStep" class="wizstep"></span><span id="wizSkip" class="wizskip">Skip</span></div>
+    <div id="wizIcon" class="wizicon"></div>
+    <h2 id="wizTitle"></h2>
+    <div id="wizBody"></div>
+    <div id="wizDots" class="wizdots"></div>
+    <div class="row wiznav">
+      <div class="btn" id="wizBack">Back</div>
+      <div class="btn primary" id="wizNext">Next</div>
+    </div>
+    <div class="row" id="wizStartRow" style="margin-top:10px;display:none;">
+      <div class="btn" id="guideClose">Start empty</div>
+      <div class="btn primary" id="guideDemo">Give me a demo world</div>
+    </div>
+  </div>
+</div>
+
+<div id="updateBar" class="hide"><span>✨ New version ready</span><button id="updateGo">Reload</button></div>
+<div id="card" class="hide">
+  <div class="cardbox">
+    <div class="cardtop">
+      <div id="cardSwatch"></div>
+      <input id="cardName" maxlength="14" spellcheck="false">
+      <div id="cardClose" class="mini">Done</div>
+    </div>
+    <div id="cardSub"></div>
+    <div id="cardTraits"></div>
+    <div id="cardStats"></div>
+    <div id="cardKnow"></div>
+  </div>
+</div>
+
+<div id="settings" class="hide">
+  <div class="sheet">
+    <div class="sheetbar"><b>World settings</b><div id="setClose" class="mini">Done</div></div>
+    <div class="setrow">
+      <div class="setlabel">🌗 Day &amp; night<small>Flowers only refill in daylight. His nose gets short at night.</small></div>
+      <button id="dnToggle" class="mini on">On</button>
+    </div>
+    <label class="slid" id="dnLenRow">Day length
+      <input type="range" id="dnLen" min="200" max="1600" step="50" value="700">
+      <b id="dnLenVal" style="color:var(--txt);min-width:52px;text-align:right;">700</b>
+    </label>
+    <div class="setrow">
+      <div class="setlabel">👪 Breeding<small>Healthy, grown foragers have young that inherit their brain.</small></div>
+      <button id="brToggle" class="mini on">On</button>
+    </div>
+    <label class="slid" id="popRow">Max population
+      <input type="range" id="popMax" min="1" max="20" step="1" value="5">
+      <b id="popVal" style="color:var(--txt);min-width:52px;text-align:right;">5</b>
+    </label>
+    <div class="setrow">
+      <div class="setlabel">☠️ Survival of the fittest<small>Starving means death, not a nap. Turns the world into real natural selection.</small></div>
+      <button id="pdToggle" class="mini">Off</button>
+    </div>
+    <div class="setrow">
+      <div class="setlabel">🎨 Heritable traits<small>Each creature's colour shows its strengths. 🔴 nose · 🟢 thrift · 🔵 belly. Traits are a fixed budget, so nobody's good at everything.</small></div>
+      <button id="trToggle" class="mini on">On</button>
+    </div>
+    <div class="setrow">
+      <div class="setlabel">🌦️ Weather<small>Seasons that shift on their own: 🌧️ rain (flowers thrive), 🔥 heat &amp; ❄️ cold (burn faster), 🌫️ fog (can't smell far).</small></div>
+      <button id="wxToggle" class="mini">Off</button>
+    </div>
+    <div class="setrow">
+      <div class="setlabel">🦊 Predators<small>Hunters that chase the colony. Foragers can learn to flee and hide behind walls.</small></div>
+      <button id="prToggle" class="mini">Off</button>
+    </div>
+    <label class="slid" id="prRow" style="opacity:.4">Predators
+      <input type="range" id="prCount" min="1" max="4" step="1" value="1">
+      <b id="prVal" style="color:var(--txt);min-width:52px;text-align:right;">1</b>
+    </label>
+    <div class="setrow">
+      <div class="setlabel">🐰 Prey to hunt<small>Little critters that run. One creature can't catch them alone, so the group has to team up. The catch is shared.</small></div>
+      <button id="huToggle" class="mini">Off</button>
+    </div>
+    <label class="slid" id="huRow" style="opacity:.4">Prey
+      <input type="range" id="huCount" min="1" max="4" step="1" value="2">
+      <b id="huVal" style="color:var(--txt);min-width:52px;text-align:right;">2</b>
+    </label>
+    <div class="setlabel" style="margin-top:6px">🗺️ World size<small>A bigger world gives tribes room to spread out and hold real territory. Changing size starts a fresh world.</small></div>
+    <div id="sizeKinds" style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 4px">
+      <button class="mini szk" data-g="10">Cozy 10×10</button>
+      <button class="mini szk" data-g="16">Roomy 16×16</button>
+      <button class="mini szk" data-g="22">Big 22×22</button>
+    </div>
+    <div class="setrow">
+      <div class="setlabel">🛖 Tribes<small>Families stick together when fed and form home turf. Predators pick off loners, so grouping keeps them safer. Each tribe has its own color and badge.</small></div>
+      <button id="tbToggle" class="mini">Off</button>
+    </div>
+    <div class="setrow">
+      <div class="setlabel">⏳ Aging<small>Creatures grow old and pass on, not just starve. A life has an arc.</small></div>
+      <button id="agToggle" class="mini">Off</button>
+    </div>
+    <div class="setrow">
+      <div class="setlabel">👫 Two parents<small>Needs a male + female side by side to make a baby. The baby takes a random share of each parent's traits and brain. Off = a lone adult clones itself.</small></div>
+      <button id="sxToggle" class="mini">Off</button>
+    </div>
+    <div class="setlabel" style="margin-top:6px">🧬 Introduce a specialist<small>Drop a purpose-built creature into the world and watch how its genes spread.</small></div>
+    <div id="specKinds" style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 4px">
+      <button class="mini spk" data-k="scout">🔴 Scout</button>
+      <button class="mini spk" data-k="thrifty">🟢 Thrifty</button>
+      <button class="mini spk" data-k="camel">🔵 Camel</button>
+      <button class="mini spk" data-k="generalist">⚪ Generalist</button>
+    </div>
+    <div id="specBrainRow" class="hide" style="margin:2px 0 4px;font-size:12px;color:var(--dim)">
+      Brain for this <b id="specKindName" style="color:var(--txt)"></b>:
+      <div style="display:flex;gap:6px;margin-top:6px">
+        <button class="mini" id="specSmart">Copy smartest</button>
+        <button class="mini" id="specBlank">Blank / untrained</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+// ================= CORE (pure, testable) =================
+var GRID = 10, ACTIONS = 4; // GRID can be changed via New World size; place-brains resize with it
+var DX = [0,1,0,-1], DY = [-1,0,1,0];
+var EMPTY=0, HAPPY=1, OUCH=2, WALL=3;
+var ALPHA=0.3, GAMMA=0.95, LAMBDA=0.85;
+var WIN=200;
+// survival / foraging
+var ENERGY_MAX=100, ENERGY_START=60, HUNGRY_BELOW=55;
+var METAB=0.35;         // energy burned per step (the drive to keep foraging)
+var BITE=30;            // energy pulled from a flower per feeding — a sip nearly empties it
+var NECTAR_MAX=40, REFILL=0.28;  // refill is SLOWER than metabolism: one flower alone can't keep him alive
+var MIN_SIP=8;          // a flower must hold at least this much to be worth a real sip (no trickle-camping)
+var SPIKE_DMG=30, SMELL_MIN=15;  // a flower below SMELL_MIN is "dark" — he can't smell it, so he moves on
+var FAINT_PENALTY=15;
+// day / night
+var SMELL_RANGE_DAY=18, SMELL_RANGE_NIGHT=3;  // how far he can smell full flowers
+var REFILL_NIGHT_FLOOR=0.08;                  // flowers barely refill after dark (photosynthesis)
+var SENSE_STATES = 9*9*16*2; // treatDir * spikeDir * wallBits * hungerBit
+
+function makeWorld(){
+  return { cells:new Uint8Array(GRID*GRID), nectar:new Float32Array(GRID*GRID),
+    dayNight:false, cycleLen:700, time:0,
+    daylight:1, refillMult:1, smellRange:SMELL_RANGE_DAY,
+    permadeath:false, breeding:true, maxPop:5, traits:true, sexualRepro:false,
+    aging:false, weatherOn:false, weather:"sunny", weatherTimer:0, metabEnv:1,
+    predatorsOn:false, predCount:1, predators:[],
+    huntingOn:false, preyCount:2, prey:[] };
+}
+function hueColor(h){ // HSL(h,68%,55%) -> hex
+  var s=0.68, l=0.55, c=(1-Math.abs(2*l-1))*s, x=c*(1-Math.abs((h/60)%2-1)), m=l-c/2, r=0,g=0,b=0;
+  if(h<60){r=c;g=x;} else if(h<120){r=x;g=c;} else if(h<180){g=c;b=x;}
+  else if(h<240){g=x;b=c;} else if(h<300){r=x;b=c;} else {r=c;b=x;}
+  function hx(v){ return ("0"+Math.round((v+m)*255).toString(16)).slice(-2); }
+  return "#"+hx(r)+hx(g)+hx(b);
+}
+var NAMES=["Pip","Bo","Momo","Tato","Fen","Zuzu","Kip","Nib","Ora","Wren","Dot","Gus","Lumi","Pib","Fizz","Juno","Taz","Mika","Poff","Cricket","Sage","Bumble","Noodle","Quill","Fern","Pockets","Biscuit","Clover","Waffle","Nimbus"];
+function randomName(){ return NAMES[(Math.random()*NAMES.length)|0]; }
+function makeAgent(x,y,hue,gen){
+  var N=GRID*GRID, color;
+  if(typeof hue==="string"){ color=hue; hue=32; } else { if(hue==null) hue=32; color=hueColor(hue); }
+  return {
+    x:x, y:y, ax:x, ay:y, hue:hue, color:color, gen:gen||1, age:0, dead:false,
+    lifespan:4500+((Math.random()*3600)|0)-1800, name:randomName(), kids:0, sex:(Math.random()<0.5?0:1),
+    traits:{nose:0.5,thrift:0.5,stomach:0.5},
+    Qp:new Float32Array(N*ACTIONS), Ep:new Float32Array(N*ACTIONS),
+    Qs:new Float32Array(SENSE_STATES*ACTIONS), Es:new Float32Array(SENSE_STATES*ACTIONS),
+    energy:ENERGY_START, steps:0, meals:0, ouches:0, faints:0,
+    eWinSum:0, winN:0, hist:[]
+  };
+}
+// --- traits: three-way conserved budget (nose / thrift / stomach) mapped to R/G/B ---
+function tval(world,ag,k){ if(!world || !world.traits || !ag.traits || ag.traits[k]==null) return 0.5; return ag.traits[k]; }
+function noseMult(world,ag){ return 0.4 + tval(world,ag,'nose')*1.2; }     // smell range x0.4..x1.6 (0.5 -> 1.0)
+function metabMult(world,ag){ return 1.0 + (0.5 - tval(world,ag,'thrift'))*0.8; } // burn x1.4..x0.6 (0.5 -> 1.0)
+function emaxOf(world,ag){ return ENERGY_MAX*(0.6 + 0.8*tval(world,ag,'stomach')); } // cap 64..134 (0.5 -> 100)
+function clampT(v){ return v<0.05?0.05:(v>0.95?0.95:v); }
+function mutateTraits(pt){
+  function g(){ return (Math.random()+Math.random()+Math.random()-1.5)/1.5; } // ~gaussian
+  var MUT=0.13;
+  var t={ nose:clampT((pt.nose||0.5)+g()*MUT), thrift:clampT((pt.thrift||0.5)+g()*MUT), stomach:clampT((pt.stomach||0.5)+g()*MUT) };
+  // conserve the budget (sum -> 1.5) then re-clamp; iterate so specialization can't push a trait past its cap
+  for(var it=0; it<4; it++){
+    var s=t.nose+t.thrift+t.stomach, k=1.5/s;
+    t.nose=clampT(t.nose*k); t.thrift=clampT(t.thrift*k); t.stomach=clampT(t.stomach*k);
+    if(Math.abs((t.nose+t.thrift+t.stomach)-1.5)<1e-4) break;
+  }
+  return t;
+}
+function randomTraits(){ return mutateTraits({nose:0.5,thrift:0.5,stomach:0.5}); }
+
+// Recombination: each trait takes a random % from each parent, then a small mutation, then re-conserve the budget.
+function crossTraits(a,b){
+  function g(){ return (Math.random()+Math.random()+Math.random()-1.5)/1.5; }
+  var MUT=0.06, t={};
+  ['nose','thrift','stomach'].forEach(function(k){ var w=Math.random();
+    t[k]=clampT((a[k]==null?0.5:a[k])*w + (b[k]==null?0.5:b[k])*(1-w) + g()*MUT); });
+  for(var it=0;it<4;it++){ var s=t.nose+t.thrift+t.stomach, kk=1.5/s;
+    t.nose=clampT(t.nose*kk); t.thrift=clampT(t.thrift*kk); t.stomach=clampT(t.stomach*kk);
+    if(Math.abs((t.nose+t.thrift+t.stomach)-1.5)<1e-4) break; }
+  return t;
+}
+// Brain from two parents: average the two Q-tables (child gets a share of what each parent knew).
+function blendBrain(qa,qb){ var out=qa.slice(); for(var i=0;i<out.length;i++){ out[i]=(qa[i]+qb[i])*0.5; } return out; }
+// Two-parent child (sexual reproduction).
+function birthChild2(pa,pb,x,y){
+  var childHue = (((pa.hue+pb.hue)/2) + (Math.random()*30-15) + 360) % 360;
+  var c = makeAgent(x,y,childHue,(Math.max(pa.gen||1,pb.gen||1))+1);
+  c.Qp = blendBrain(pa.Qp,pb.Qp); c.Qs = blendBrain(pa.Qs,pb.Qs);
+  c.traits = crossTraits(pa.traits||{nose:0.5,thrift:0.5,stomach:0.5}, pb.traits||{nose:0.5,thrift:0.5,stomach:0.5});
+  c.parentName = pa.name+" & "+pb.name; c.energy = ENERGY_START;
+  c.clan = (Math.random()<0.5?pa.clan:pb.clan); // baby joins one parent's tribe
+  pa.kids=(pa.kids||0)+1; pb.kids=(pb.kids||0)+1;
+  return c;
+}
+// Build a creature biased toward one specialty (for the "introduce a specialist" tool).
+function makeSpecialist(x,y,kind){
+  var base={nose:0.5,thrift:0.5,stomach:0.5};
+  if(kind==="scout") base={nose:0.9,thrift:0.3,stomach:0.3};
+  else if(kind==="thrifty") base={nose:0.3,thrift:0.9,stomach:0.3};
+  else if(kind==="camel") base={nose:0.3,thrift:0.3,stomach:0.9};
+  var s=base.nose+base.thrift+base.stomach, k=1.5/s;
+  var hue = kind==="scout"?0 : kind==="thrifty"?120 : kind==="camel"?220 : 32;
+  var c=makeAgent(x,y,hue,1);
+  c.traits={ nose:clampT(base.nose*k), thrift:clampT(base.thrift*k), stomach:clampT(base.stomach*k) };
+  return c;
+}
+
+// A child inherits the parent's trained brain (faithful copy) and a mutated trait mix.
+function birthChild(parent,x,y){
+  var childHue = (parent.hue + (Math.random()*50-25) + 360) % 360;
+  var c = makeAgent(x,y,childHue,(parent.gen||1)+1);
+  c.Qp = parent.Qp.slice(); c.Qs = parent.Qs.slice();
+  c.traits = mutateTraits(parent.traits||{nose:0.5,thrift:0.5,stomach:0.5});
+  c.parentName = parent.name; c.energy = ENERGY_START;
+  c.clan = parent.clan; // child stays in the parent's tribe
+  parent.kids = (parent.kids||0)+1;
+  return c;
+}
+// --- tribes: clan membership drives clustering (cohesion) + safety in numbers ---
+var COH_RADIUS=4, COH_PROB=0.4, COH_FED=0.55;
+function kinNear(agents, ag, radius){ var n=0;
+  for(var i=0;i<agents.length;i++){ var a=agents[i]; if(a.dead||a===ag) continue;
+    if(a.clan===ag.clan && (Math.abs(a.x-ag.x)+Math.abs(a.y-ag.y))<=radius) n++; }
+  return n; }
+function clanCentroid(agents, ag){ var sx=0,sy=0,n=0;
+  for(var i=0;i<agents.length;i++){ var a=agents[i]; if(a.dead||a===ag) continue; if(a.clan!==ag.clan) continue;
+    if(Math.abs(a.x-ag.x)+Math.abs(a.y-ag.y)<=COH_RADIUS){ sx+=a.x; sy+=a.y; n++; } }
+  if(n===0) return null; return {x:sx/n, y:sy/n, n:n}; }
+function occupiedBy(agents,x,y){ for(var i=0;i<agents.length;i++){ if(!agents[i].dead && agents[i].x===x&&agents[i].y===y) return true; } return false; }
+// Well-fed creatures drift toward family; hungry ones keep foraging. Returns how many nudged.
+function cohesionPass(world, agents, rng){ rng=rng||Math.random; var moved=0;
+  for(var i=0;i<agents.length;i++){ var ag=agents[i]; if(ag.dead) continue;
+    var emax=emaxOf(world,ag); if(ag.energy < emax*COH_FED) continue;
+    if(rng()>COH_PROB) continue;
+    var cen=clanCentroid(agents, ag); if(!cen) continue;
+    var dx=cen.x-ag.x, dy=cen.y-ag.y; if(Math.abs(dx)+Math.abs(dy)<=1) continue;
+    var sx = Math.abs(dx)>=Math.abs(dy)?Math.sign(dx):0, sy = Math.abs(dx)>=Math.abs(dy)?0:Math.sign(dy);
+    var nx=ag.x+sx, ny=ag.y+sy;
+    if(passable(world,nx,ny) && !occupiedBy(agents,nx,ny)){ ag.x=nx; ag.y=ny; moved++; }
+  }
+  return moved;
+}
+function makeState(){
+  return { world:makeWorld(), agents:[ makeAgent((GRID/2)|0,(GRID/2)|0,32,1) ], mode:"place" };
+}
+
+function idx(x,y){ return y*GRID+x; }
+function inBounds(x,y){ return x>=0&&x<GRID&&y>=0&&y<GRID; }
+function passable(world,x,y){ return inBounds(x,y) && world.cells[idx(x,y)]!==WALL; }
+// --- prey + cooperative hunting: mobile food that flees; needs a group to bring down; meal is shared ---
+var PREY_HP=4, HUNT_DMG=1, PREY_MEAL=55, PREY_FLEE_SENSE=6;
+function makePrey(x,y){ return {x:x,y:y,ax:x,ay:y,hp:PREY_HP,maxhp:PREY_HP}; }
+function nearestAgentTo(agents,x,y){ var best=null,bd=1e9;
+  for(var i=0;i<agents.length;i++){ var a=agents[i]; if(a.dead) continue; var d=Math.abs(a.x-x)+Math.abs(a.y-y); if(d<bd){bd=d;best=a;} }
+  return {a:best,d:bd}; }
+function preyFleeStep(world,p,agents,rng){
+  rng=rng||Math.random;
+  var na=nearestAgentTo(agents,p.x,p.y);
+  if(!na.a || na.d>PREY_FLEE_SENSE){ // no hunter near: wander occasionally
+    if(rng()<0.4){ var k=(rng()*4)|0, nx=p.x+DX[k], ny=p.y+DY[k];
+      if(passable(world,nx,ny) && !preyAt(world,nx,ny)){ p.x=nx; p.y=ny; } }
+    return; }
+  var best=null,bd=-1; // move to the passable neighbor farthest from the nearest hunter
+  for(var m=0;m<4;m++){ var fx=p.x+DX[m], fy=p.y+DY[m]; if(!passable(world,fx,fy)||preyAt(world,fx,fy)) continue;
+    var d=Math.abs(fx-na.a.x)+Math.abs(fy-na.a.y); if(d>bd){bd=d;best={x:fx,y:fy};} }
+  if(best){ p.x=best.x; p.y=best.y; }
+}
+function preyAt(world,x,y){ if(!world.prey) return false; for(var i=0;i<world.prey.length;i++){ if(world.prey[i].x===x&&world.prey[i].y===y) return true; } return false; }
+function huntResolve(world,p,agents){ // damage scales with nearby hunters; on kill, split the meal among them
+  var hunters=[];
+  for(var i=0;i<agents.length;i++){ var a=agents[i]; if(a.dead) continue;
+    if(Math.abs(a.x-p.x)+Math.abs(a.y-p.y)<=1) hunters.push(a); }
+  if(hunters.length>0) p.hp -= hunters.length*HUNT_DMG;
+  if(p.hp<=0){ var share=PREY_MEAL/hunters.length;
+    for(var j=0;j<hunters.length;j++){ var h=hunters[j], emax=emaxOf(world,h);
+      h.energy=Math.min(emax,h.energy+share); h.meals=(h.meals||0)+1; }
+    return {caught:true, hunters:hunters};
+  }
+  return {caught:false, hunters:hunters};
+}
+
+function bestAction(Q,s){ var b=0,bv=Q[s*ACTIONS]; for(var a=1;a<ACTIONS;a++){var v=Q[s*ACTIONS+a];if(v>bv){bv=v;b=a;}} return b; }
+function isFlat(Q,s){ var v0=Q[s*ACTIONS]; for(var a=1;a<ACTIONS;a++){ if(Q[s*ACTIONS+a]!==v0) return false; } return true; }
+function maxQ(Q,s){ var bv=Q[s*ACTIONS]; for(var a=1;a<ACTIONS;a++){var v=Q[s*ACTIONS+a];if(v>bv)bv=v;} return bv; }
+
+function compass(dx,dy){ if(dx===0&&dy===0) return 0; var b=Math.round(Math.atan2(dy,dx)/(Math.PI/4)); return ((b%8)+8)%8 + 1; }
+function placeKey(world,x,y){ return idx(x,y); }
+function senseKey(world,x,y,hungry,range){
+  if(range==null) range = (world.smellRange==null) ? SMELL_RANGE_DAY : world.smellRange;
+  var bt=1e9,tdx=0,tdy=0,bs=1e9,sdx=0,sdy=0;
+  for(var yy=0;yy<GRID;yy++)for(var xx=0;xx<GRID;xx++){
+    var i=idx(xx,yy), c=world.cells[i];
+    var d=Math.abs(xx-x)+Math.abs(yy-y);
+    if(c===HAPPY && world.nectar[i]>=SMELL_MIN && d<=range){ if(d<bt){bt=d;tdx=xx-x;tdy=yy-y;} }
+    else if(c===OUCH){ if(d<=3 && d<bs){bs=d;sdx=xx-x;sdy=yy-y;} }
+  }
+  if(world.predators){ for(var pk=0;pk<world.predators.length;pk++){ var pp=world.predators[pk];
+    var pd=Math.abs(pp.x-x)+Math.abs(pp.y-y); if(pd<=3 && pd<bs){ bs=pd; sdx=pp.x-x; sdy=pp.y-y; } } }
+  if(world.prey){ for(var qk=0;qk<world.prey.length;qk++){ var qp=world.prey[qk];
+    var qd=Math.abs(qp.x-x)+Math.abs(qp.y-y); if(qd<=range && qd<bt){ bt=qd; tdx=qp.x-x; tdy=qp.y-y; } } }
+  var treatDir = bt<1e9 ? compass(tdx,tdy) : 0;
+  var spikeDir = bs<1e9 ? compass(sdx,sdy) : 0;
+  var wallBits=0;
+  for(var a=0;a<ACTIONS;a++){ if(!passable(world,x+DX[a],y+DY[a])) wallBits|=(1<<a); }
+  return (((treatDir*9 + spikeDir)*16 + wallBits)*2) + (hungry?1:0);
+}
+function stateKey(world,x,y,mode,hungry,range){ return mode==="sense" ? senseKey(world,x,y,hungry,range) : placeKey(world,x,y); }
+
+function spawnCell(world,ag){
+  for(var t=0;t<200;t++){ var x=(Math.random()*GRID)|0, y=(Math.random()*GRID)|0, i=idx(x,y);
+    if(world.cells[i]===EMPTY) return {x:x,y:y}; }
+  return {x:(GRID/2)|0,y:(GRID/2)|0};
+}
+
+// One survival step for one agent. Reward = energy change (staying alive is the goal).
+function stepAgent(world, ag, mode, epsilon, rng, learn){
+  rng = rng || Math.random; learn = (learn!==false);
+  var Q = mode==="sense" ? ag.Qs : ag.Qp;
+  var E = mode==="sense" ? ag.Es : ag.Ep;
+  var hungry = ag.energy<HUNGRY_BELOW ? 1 : 0;
+  var range = (world.smellRange==null?SMELL_RANGE_DAY:world.smellRange) * noseMult(world,ag);
+  var s = stateKey(world, ag.x, ag.y, mode, hungry, range);
+  var greedy = bestAction(Q, s);
+  var explore = (rng() < epsilon) || isFlat(Q, s);
+  var a = explore ? (rng()*ACTIONS)|0 : greedy;
+  var nx = ag.x+DX[a], ny = ag.y+DY[a], ev=0;
+  if(!passable(world,nx,ny)){ nx=ag.x; ny=ag.y; ev=3; }
+  var e0 = ag.energy, emax = emaxOf(world,ag);
+  ag.energy -= METAB*metabMult(world,ag)*(world.metabEnv||1); // metabolism scaled by thrift trait and weather
+  var ni=idx(nx,ny), c=world.cells[ni];
+  if(c===HAPPY && world.nectar[ni]>=MIN_SIP){
+    var bite = Math.min(BITE, world.nectar[ni]);
+    world.nectar[ni] -= bite;
+    ag.energy += bite; if(ag.energy>emax) ag.energy=emax;
+    if(bite>0.5){ ev=1; ag.meals++; }
+  } else if(c===OUCH){ ag.energy -= SPIKE_DMG; ev=2; ag.ouches++; }
+  ag.x=nx; ag.y=ny; ag.steps++; ag.age++;
+  var fainted=false;
+  if(ag.energy<=0){ ag.energy=0; fainted=true; ag.faints++; }
+  var r = (ag.energy - e0) - (fainted?FAINT_PENALTY:0);
+  if(fainted && world.permadeath){ ag.dead=true; ev=5; }
+  else if(fainted){ var p=spawnCell(world,ag); ag.x=p.x; ag.y=p.y; ag.ax=p.x; ag.ay=p.y; ag.energy=ENERGY_START; ev=4; }
+  if(world.aging && ag.age>ag.lifespan && !ag.dead){ ag.dead=true; ev=6; } // died of old age
+  var hungry2 = ag.energy<HUNGRY_BELOW ? 1 : 0;
+  var ns = stateKey(world, ag.x, ag.y, mode, hungry2, range);
+  if(learn){
+    var qi = s*ACTIONS+a;
+    var delta = r + GAMMA*maxQ(Q,ns) - Q[qi];
+    E[qi]=1;
+    var keep = (a===greedy) ? GAMMA*LAMBDA : 0;
+    for(var t=0;t<E.length;t++){ var e=E[t]; if(e!==0){ Q[t]+=ALPHA*delta*e; e*=keep; E[t]= e<1e-4?0:e; } }
+  }
+  ag.eWinSum += ag.energy; ag.winN++;
+  if(ag.winN>=WIN){ ag.hist.push(ag.eWinSum/WIN); if(ag.hist.length>60) ag.hist.shift(); ag.eWinSum=0; ag.winN=0; }
+  return ev;
+}
+function updateEnv(world){
+  var dl=1;
+  if(world.dayNight){ var f=(world.time % world.cycleLen)/world.cycleLen;
+    dl=0.5+0.5*Math.cos(2*Math.PI*f); }
+  world.daylight=dl;
+  var refillMult = world.dayNight ? (REFILL_NIGHT_FLOOR+(1-REFILL_NIGHT_FLOOR)*dl) : 1;
+  var smellRange = world.dayNight ? (SMELL_RANGE_NIGHT+(SMELL_RANGE_DAY-SMELL_RANGE_NIGHT)*dl) : SMELL_RANGE_DAY;
+  var metabEnv=1;
+  if(world.weatherOn){ switch(world.weather){
+    case "rain": refillMult*=1.7; break;               // downpour, flowers thrive
+    case "heat": metabEnv=1.45; refillMult*=0.85; break; // burns fast, flowers droop
+    case "cold": metabEnv=1.30; refillMult*=0.55; break; // hard winter
+    case "fog":  smellRange*=0.5; break;                 // can't smell far
+  }}
+  world.refillMult=refillMult; world.smellRange=smellRange; world.metabEnv=metabEnv;
+}
+function pickWeather(){
+  var r=Math.random();
+  if(r<0.42) return "sunny"; if(r<0.62) return "rain"; if(r<0.78) return "heat"; if(r<0.9) return "cold"; return "fog";
+}
+function worldTick(world){
+  world.time++;
+  if(world.weatherOn){ world.weatherTimer--; if(world.weatherTimer<=0){ world.weather=pickWeather(); world.weatherTimer=700+((Math.random()*700)|0); } }
+  updateEnv(world);
+  var rate=REFILL*world.refillMult;
+  for(var i=0;i<world.nectar.length;i++){
+    if(world.cells[i]===HAPPY && world.nectar[i]<NECTAR_MAX){ world.nectar[i]+=rate; if(world.nectar[i]>NECTAR_MAX) world.nectar[i]=NECTAR_MAX; }
+  }
+}
+// --- predators: scripted hunters (prey learn to flee them because they register as danger in senseKey) ---
+var PREDATOR_DMG=42;
+function makePredator(x,y){ return {x:x,y:y,ax:x,ay:y,fed:0}; }
+function stepPredator(world, pred, agents, rng){
+  rng=rng||Math.random;
+  if(pred.fed>0){ pred.fed--; return null; }
+  var best=null,bd=1e9;
+  for(var i=0;i<agents.length;i++){ var a=agents[i]; if(a.dead) continue;
+    var d=Math.abs(a.x-pred.x)+Math.abs(a.y-pred.y);
+    var score = world.tribesOn ? (d + 1.6*kinNear(agents,a,2)) : d; // grouped = safer, loners get picked off
+    if(score<bd){bd=score;best=a;} }
+  if(!best) return null;
+  var dx=best.x-pred.x, dy=best.y-pred.y;
+  var order = Math.abs(dx)>=Math.abs(dy) ? [[Math.sign(dx),0],[0,Math.sign(dy)]] : [[0,Math.sign(dy)],[Math.sign(dx),0]];
+  for(var o=0;o<order.length;o++){ var ox=order[o][0],oy=order[o][1]; if(ox===0&&oy===0) continue;
+    if(passable(world,pred.x+ox,pred.y+oy)){ pred.x+=ox; pred.y+=oy; break; } }
+  if(pred.x===best.x && pred.y===best.y){ best.energy-=PREDATOR_DMG; if(best.energy<0)best.energy=0; pred.fed=8; return best; }
+  return null;
+}
+function moodScore(ag){ return ag.energy/ENERGY_MAX - 0.5; }
+
+// ================= APP (browser only) =================
+if (typeof document !== "undefined") (function(){
+  var st = makeState();
+  var running=false, speed=1, epsilon=0.9, epsAuto=true, brainView=false, tool=1;
+  var emotes=[];
+  var SAVE_KEY="botlab_v5";
+
+  function agent(){ return st.agents[0]; }
+
+  // ---- storage ----
+  function ser(ag){ return { x:ag.x,y:ag.y,hue:ag.hue,color:ag.color,gen:ag.gen,age:ag.age,traits:ag.traits,
+    name:ag.name,kids:ag.kids,lifespan:ag.lifespan,parentName:ag.parentName,sex:ag.sex,clan:ag.clan, Qp:Array.from(ag.Qp), Qs:Array.from(ag.Qs),
+    energy:ag.energy, steps:ag.steps,meals:ag.meals,ouches:ag.ouches,faints:ag.faints,hist:ag.hist }; }
+  function deser(o){ var ag=makeAgent(o.x,o.y, (o.hue!=null?o.hue:o.color), o.gen||1); ag.Qp=Float32Array.from(o.Qp); ag.Qs=Float32Array.from(o.Qs);
+    if(o.traits) ag.traits=o.traits;
+    if(o.name) ag.name=o.name; ag.kids=o.kids||0; if(o.lifespan) ag.lifespan=o.lifespan; if(o.parentName) ag.parentName=o.parentName; if(o.sex!=null) ag.sex=o.sex; if(o.clan!=null) ag.clan=o.clan;
+    ag.age=o.age||0; ag.energy=(o.energy==null?ENERGY_START:o.energy); ag.steps=o.steps||0; ag.meals=o.meals||0; ag.ouches=o.ouches||0; ag.faints=o.faints||0; ag.hist=o.hist||[]; return ag; }
+  function save(){
+    try{ localStorage.setItem(SAVE_KEY, JSON.stringify({
+      cells:Array.from(st.world.cells), nectar:Array.from(st.world.nectar), mode:st.mode, agents:st.agents.map(ser),
+      env:{ dayNight:st.world.dayNight, cycleLen:st.world.cycleLen, time:st.world.time,
+            permadeath:st.world.permadeath, breeding:st.world.breeding, maxPop:st.world.maxPop, traits:st.world.traits,
+            aging:st.world.aging, weatherOn:st.world.weatherOn, weather:st.world.weather,
+            predatorsOn:st.world.predatorsOn, predCount:st.world.predCount,
+            huntingOn:st.world.huntingOn, preyCount:st.world.preyCount }
+    })); }catch(e){}
+  }
+  function load(){
+    try{
+      var raw=localStorage.getItem(SAVE_KEY);
+      if(raw){ var d=JSON.parse(raw);
+        st.world.cells=Uint8Array.from(d.cells);
+        st.world.nectar = d.nectar ? Float32Array.from(d.nectar) : st.world.nectar;
+        st.mode=d.mode||"place"; st.agents=d.agents.map(deser);
+        if(d.env){ var e=d.env; st.world.dayNight=!!e.dayNight; st.world.cycleLen=e.cycleLen||700; st.world.time=e.time||0;
+          if(e.permadeath!=null) st.world.permadeath=!!e.permadeath;
+          if(e.breeding!=null) st.world.breeding=!!e.breeding;
+          if(e.maxPop!=null) st.world.maxPop=e.maxPop;
+          if(e.traits!=null) st.world.traits=!!e.traits;
+          if(e.aging!=null) st.world.aging=!!e.aging;
+          if(e.sexualRepro!=null) st.world.sexualRepro=!!e.sexualRepro;
+          if(e.weatherOn!=null) st.world.weatherOn=!!e.weatherOn;
+          if(e.weather) st.world.weather=e.weather;
+          if(e.predatorsOn!=null) st.world.predatorsOn=!!e.predatorsOn;
+          if(e.predCount!=null) st.world.predCount=e.predCount;
+          if(e.huntingOn!=null) st.world.huntingOn=!!e.huntingOn;
+          if(e.preyCount!=null) st.world.preyCount=e.preyCount; }
+        updateEnv(st.world);
+        return true; }
+      // migrate world layout from earlier version (brains kept if present)
+      var old=localStorage.getItem("botlab_v2");
+      if(old){ var o=JSON.parse(old); st.world.cells=Uint8Array.from(o.cells);
+        for(var i=0;i<st.world.cells.length;i++){ if(st.world.cells[i]===HAPPY) st.world.nectar[i]=NECTAR_MAX; }
+        migrated=true; return true; }
+    }catch(e2){}
+    return false;
+  }
+  var migrated=false;
+
+  // ---- canvas ----
+  var cv=document.getElementById("cv"), ctx=cv.getContext("2d");
+  var view={z:1, ox:0, oy:0}; // zoom + pan offset (in canvas px)
+  function fit(){ var r=cv.getBoundingClientRect(); var d=Math.min(window.devicePixelRatio||1,2);
+    cv.width=Math.round(r.width*d); cv.height=Math.round(r.height*d); clampView(); }
+  window.addEventListener("resize",function(){fit();draw();});
+  function cell(){ return (cv.width/GRID)*view.z; }
+  function clampView(){
+    var span=cv.width*view.z;
+    // keep the board covering the viewport (no empty gaps) when zoomed in; center when zoomed out
+    if(view.z<=1){ view.z=1; view.ox=0; view.oy=0; return; }
+    var minx=cv.width-span, miny=cv.height-span;
+    if(view.ox>0) view.ox=0; if(view.ox<minx) view.ox=minx;
+    if(view.oy>0) view.oy=0; if(view.oy<miny) view.oy=miny;
+    document.getElementById("zoomReset").style.display = view.z>1.02?"block":"none";
+  }
+  function draw(){
+    var c=cell(), w=st.world;
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.clearRect(0,0,cv.width,cv.height);
+    ctx.fillStyle="#0e0f13"; ctx.fillRect(0,0,cv.width,cv.height);
+    ctx.setTransform(1,0,0,1,view.ox,view.oy); // apply pan; zoom is baked into cell()
+    ctx.fillStyle="#15171c"; ctx.fillRect(0,0,cv.width*view.z,cv.height*view.z);
+
+    // brain heat
+    if(brainView){
+      var Q = st.mode==="sense"? agent().Qs : agent().Qp;
+      var hb = agent().energy<HUNGRY_BELOW?1:0;
+      var pr = (w.smellRange==null?18:w.smellRange)*noseMult(w,agent());
+      for(var y=0;y<GRID;y++)for(var x=0;x<GRID;x++){
+        if(w.cells[idx(x,y)]===WALL) continue;
+        var key = stateKey(w,x,y,st.mode,hb,pr), m=maxQ(Q,key);
+        if(Math.abs(m)>0.15){ var al=Math.min(Math.abs(m)/6,0.4);
+          ctx.fillStyle = m>0 ? "rgba(76,217,100,"+al+")" : "rgba(255,59,48,"+al+")";
+          ctx.fillRect(x*c,y*c,c,c); }
+      }
+    }
+    // grid
+    ctx.strokeStyle="rgba(255,255,255,0.07)"; ctx.lineWidth=Math.max(1,c*0.02);
+    for(var i=0;i<=GRID;i++){ ctx.beginPath();ctx.moveTo(i*c,0);ctx.lineTo(i*c,cv.height);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(0,i*c);ctx.lineTo(cv.width,i*c);ctx.stroke(); }
+    // items + walls
+    for(var y2=0;y2<GRID;y2++)for(var x2=0;x2<GRID;x2++){
+      var s2=idx(x2,y2), cx=x2*c+c/2, cy=y2*c+c/2, cc=w.cells[s2];
+      if(cc===WALL){ ctx.fillStyle="#4a5060"; roundRect(x2*c+c*0.06,y2*c+c*0.06,c*0.88,c*0.88,c*0.16); ctx.fill();
+        ctx.fillStyle="rgba(255,255,255,0.06)"; roundRect(x2*c+c*0.06,y2*c+c*0.06,c*0.88,c*0.4,c*0.14); ctx.fill(); }
+      else if(cc===HAPPY){ var frac=w.nectar[s2]/NECTAR_MAX; // flower fullness
+        drawFlower(cx,cy,c,frac);
+      }
+      else if(cc===OUCH){ ctx.fillStyle="#ff3b30"; spike(cx,cy,c*0.3); }
+    }
+    // brain arrows
+    if(brainView){
+      var Q2 = st.mode==="sense"? agent().Qs : agent().Qp;
+      var hb2 = agent().energy<HUNGRY_BELOW?1:0;
+      ctx.fillStyle="rgba(255,255,255,0.75)";
+      var pr2 = (w.smellRange==null?18:w.smellRange)*noseMult(w,agent());
+      for(var y3=0;y3<GRID;y3++)for(var x3=0;x3<GRID;x3++){
+        if(w.cells[idx(x3,y3)]===WALL || w.cells[idx(x3,y3)]===OUCH) continue;
+        var k=stateKey(w,x3,y3,st.mode,hb2,pr2);
+        if(Math.abs(maxQ(Q2,k))>0.2) arrow(x3*c+c/2,y3*c+c/2,bestAction(Q2,k),c*0.16);
+      }
+    }
+    // night tint (dims the world; bots drawn on top stay readable)
+    if(w.dayNight && w.daylight<0.98){
+      ctx.fillStyle="rgba(12,20,52,"+((1-w.daylight)*0.55).toFixed(3)+")";
+      ctx.fillRect(0,0,cv.width,cv.height);
+    }
+    // weather overlay
+    if(w.weatherOn) drawWeather(w.weather,c);
+    // smell line (sense mode): faint line from primary bot to nearest full flower
+    if(st.mode==="sense"){
+      var ag0=agent(), near=nearestTreat(w,ag0.x,ag0.y);
+      if(near){ ctx.strokeStyle="rgba(76,217,100,0.35)"; ctx.lineWidth=Math.max(1.5,c*0.04); ctx.setLineDash([c*0.15,c*0.15]);
+        ctx.beginPath(); ctx.moveTo(ag0.ax*c+c/2,ag0.ay*c+c/2); ctx.lineTo(near.x*c+c/2,near.y*c+c/2); ctx.stroke(); ctx.setLineDash([]); }
+    }
+    // tribe territory auras (soft coloured turf per clan)
+    if(st.world.tribesOn && st.agents.length){
+      var byClan={};
+      for(var ti=0;ti<st.agents.length;ti++){ var ag2=st.agents[ti]; if(ag2.dead) continue;
+        var cl=ag2.clan||0; (byClan[cl]||(byClan[cl]=[])).push(ag2); }
+      for(var cl in byClan){ var grp=byClan[cl]; if(grp.length<2) continue;
+        var mx=0,my=0; for(var gi=0;gi<grp.length;gi++){ mx+=grp[gi].ax; my+=grp[gi].ay; } mx/=grp.length; my/=grp.length;
+        var sp=1; for(var gj=0;gj<grp.length;gj++){ sp+=Math.hypot(grp[gj].ax-mx,grp[gj].ay-my); } sp=sp/grp.length+1.2;
+        var gx=mx*c+c/2, gy=my*c+c/2, rad=sp*c;
+        var rg=ctx.createRadialGradient(gx,gy,0,gx,gy,rad);
+        rg.addColorStop(0, CLAN_COLORS[cl%CLAN_COLORS.length]); rg.addColorStop(1,"rgba(0,0,0,0)");
+        ctx.save(); ctx.globalAlpha=0.08; ctx.fillStyle=rg; ctx.beginPath(); ctx.arc(gx,gy,rad,0,7); ctx.fill(); ctx.restore();
+      }
+    }
+    // bots
+    for(var b=0;b<st.agents.length;b++) drawBot(st.agents[b], c);
+    // predators
+    if(w.predatorsOn){ for(var pd=0;pd<w.predators.length;pd++) drawPredator(w.predators[pd], c); }
+    // emotes
+    for(var e=emotes.length-1;e>=0;e--){ var em=emotes[e]; em.t+=1;
+      ctx.globalAlpha=Math.max(0,1-em.t/40); ctx.font=(c*0.5)+"px system-ui"; ctx.textAlign="center";
+      ctx.fillText(em.ch, em.x, em.y-em.t*c*0.02); ctx.globalAlpha=1;
+      if(em.t>40) emotes.splice(e,1); }
+    // focus spotlight: dim the world, re-pop the focused creature + show what it's chasing/fleeing
+    if(focusAgent && st.agents.indexOf(focusAgent)>=0){
+      var fa=focusAgent, fx=fa.ax*c+c/2, fy=fa.ay*c+c/2;
+      ctx.fillStyle="rgba(8,9,12,0.5)"; ctx.fillRect(0,0,cv.width,cv.height);
+      var it=intentOf(fa);
+      if(it.target){ ctx.strokeStyle=it.flee?"rgba(255,90,90,0.85)":"rgba(120,220,140,0.85)";
+        ctx.lineWidth=Math.max(2,c*0.05); ctx.setLineDash([c*0.18,c*0.14]);
+        ctx.beginPath(); ctx.moveTo(fx,fy); ctx.lineTo(it.target.x*c+c/2, it.target.y*c+c/2); ctx.stroke(); ctx.setLineDash([]);
+      }
+      // pulsing ring under it
+      var pr=(Math.sin(Date.now()/240)*0.5+0.5);
+      ctx.strokeStyle="rgba(255,255,255,"+(0.55+0.35*pr)+")"; ctx.lineWidth=Math.max(2,c*0.05);
+      ctx.beginPath(); ctx.arc(fx,fy,c*(0.5+0.08*pr),0,7); ctx.stroke();
+      drawBot(fa,c);
+      if(w.predatorsOn){ for(var pd2=0;pd2<w.predators.length;pd2++){ var pp=w.predators[pd2];
+        if(Math.abs(pp.x-fa.x)+Math.abs(pp.y-fa.y)<=3) drawPredator(pp,c); } }
+    }
+    // overview: mark where the group is centered and how spread out
+    if(overview && st.agents.length){
+      var mx=0,my=0; for(var oi=0;oi<st.agents.length;oi++){ mx+=st.agents[oi].ax; my+=st.agents[oi].ay; }
+      mx/=st.agents.length; my/=st.agents.length;
+      var sp=0; for(var oj=0;oj<st.agents.length;oj++){ sp+=Math.hypot(st.agents[oj].ax-mx,st.agents[oj].ay-my); }
+      sp=Math.max(0.6, sp/st.agents.length);
+      var gx=mx*c+c/2, gy=my*c+c/2;
+      ctx.strokeStyle="rgba(120,180,255,0.55)"; ctx.lineWidth=Math.max(1.5,c*0.04); ctx.setLineDash([c*0.2,c*0.16]);
+      ctx.beginPath(); ctx.arc(gx,gy,sp*c,0,7); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle="rgba(120,180,255,0.9)"; ctx.beginPath(); ctx.arc(gx,gy,c*0.14,0,7); ctx.fill();
+    }
+  }
+
+  function drawWeather(kind,c){
+    var t=Date.now(), W=cv.width, H=cv.height;
+    if(kind==="rain"){ ctx.strokeStyle="rgba(140,190,255,0.35)"; ctx.lineWidth=Math.max(1,c*0.02);
+      for(var i=0;i<40;i++){ var x=((i*97+ (t*0.6))%W), y=((i*53+(t*1.4))%H);
+        ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x-c*0.08,y+c*0.28); ctx.stroke(); } }
+    else if(kind==="cold"){ ctx.fillStyle="rgba(180,210,255,0.10)"; ctx.fillRect(0,0,W,H);
+      ctx.fillStyle="rgba(255,255,255,0.7)";
+      for(var i=0;i<28;i++){ var x=((i*131+(t*0.25))%W), y=((i*77+(t*0.5))%H);
+        ctx.beginPath(); ctx.arc(x,y,c*0.03,0,7); ctx.fill(); } }
+    else if(kind==="heat"){ ctx.fillStyle="rgba(255,150,60,0.10)"; ctx.fillRect(0,0,W,H); }
+    else if(kind==="fog"){ ctx.fillStyle="rgba(210,215,225,0.22)"; ctx.fillRect(0,0,W,H); }
+  }
+  function drawPrey(q,c){
+    var an=q._a||(q._a={hop:Math.random()*6}); an.hop+=0.18;
+    var cx=q.ax*c+c/2, cy=q.ay*c+c/2, r=c*0.3, bob=Math.abs(Math.sin(an.hop))*c*0.06;
+    // shadow
+    ctx.fillStyle="rgba(0,0,0,0.25)"; ctx.beginPath(); ctx.ellipse(cx,cy+r*0.9,r*0.8,r*0.28,0,0,7); ctx.fill();
+    cy-=bob;
+    // body (little critter)
+    var g=ctx.createLinearGradient(0,cy-r,0,cy+r); g.addColorStop(0,"#c9a06a"); g.addColorStop(1,"#8a6a3e");
+    ctx.fillStyle=g; ctx.beginPath(); ctx.ellipse(cx,cy,r*0.8,r*0.7,0,0,7); ctx.fill();
+    // ears
+    ctx.fillStyle="#b98f5c"; ctx.beginPath(); ctx.ellipse(cx-r*0.3,cy-r*0.75,r*0.14,r*0.36,0,0,7); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(cx+r*0.3,cy-r*0.75,r*0.14,r*0.36,0,0,7); ctx.fill();
+    // scared eyes
+    ctx.fillStyle="#1a120a"; ctx.beginPath(); ctx.arc(cx-r*0.28,cy-r*0.05,r*0.12,0,7); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx+r*0.28,cy-r*0.05,r*0.12,0,7); ctx.fill();
+    ctx.fillStyle="#fff"; ctx.beginPath(); ctx.arc(cx-r*0.24,cy-r*0.1,r*0.04,0,7); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx+r*0.32,cy-r*0.1,r*0.04,0,7); ctx.fill();
+    // health pips (how close to caught)
+    if(q.hp<q.maxhp){ var pw=r*1.4, x0=cx-pw/2, y0=cy-r*1.25;
+      for(var i=0;i<q.maxhp;i++){ ctx.fillStyle = i<q.hp?"#6ad06a":"rgba(255,255,255,0.18)";
+        ctx.beginPath(); ctx.arc(x0+ (i+0.5)*(pw/q.maxhp), y0, r*0.1, 0,7); ctx.fill(); } }
+  }
+  function drawPredator(p,c){
+    var an=p._a||(p._a={breathe:Math.random()*6}); an.breathe+=0.05;
+    var cx=p.ax*c+c/2, cy=p.ay*c+c/2, r=c*0.4, br=Math.sin(an.breathe)*0.03;
+    var resting=p.fed>0;
+    // shadow
+    ctx.fillStyle="rgba(0,0,0,0.28)"; ctx.beginPath(); ctx.ellipse(cx+r*0.15,cy+r*0.85,r*0.9,r*0.34,0,0,7); ctx.fill();
+    // body
+    var g=ctx.createLinearGradient(0,cy-r,0,cy+r);
+    g.addColorStop(0,resting?"#6a4548":"#8f2f34"); g.addColorStop(1,"#3a1418");
+    ctx.fillStyle=g;
+    ctx.save(); ctx.translate(cx,cy); ctx.scale(1+br,1-br);
+    // spiky silhouette
+    ctx.beginPath();
+    for(var i=0;i<10;i++){ var a1=i/10*Math.PI*2, rr=(i%2? r*1.14:r*0.86); ctx.lineTo(Math.cos(a1)*rr,Math.sin(a1)*rr); }
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+    // angry eyes
+    ctx.fillStyle="#ffd23a";
+    ctx.beginPath(); ctx.ellipse(cx-r*0.32,cy-r*0.1,r*0.2,r*0.14,0.4,0,7); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(cx+r*0.32,cy-r*0.1,r*0.2,r*0.14,-0.4,0,7); ctx.fill();
+    ctx.fillStyle="#1a0d0d";
+    ctx.beginPath(); ctx.arc(cx-r*0.3,cy-r*0.06,r*0.07,0,7); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx+r*0.3,cy-r*0.06,r*0.07,0,7); ctx.fill();
+    // fanged frown
+    ctx.strokeStyle="#1a0d0d"; ctx.lineWidth=Math.max(1.5,r*0.09); ctx.lineCap="round";
+    ctx.beginPath(); ctx.arc(cx,cy+r*0.55,r*0.28,1.2*Math.PI,1.8*Math.PI); ctx.stroke();
+  }
+  function drawFlower(cx,cy,c,frac){
+    var t=Date.now()/1000, sway=Math.sin(t*1.2+cx*0.3)*0.08;
+    // soil socket ring
+    ctx.strokeStyle="rgba(120,150,120,0.22)"; ctx.lineWidth=Math.max(1.2,c*0.025);
+    ctx.beginPath(); ctx.arc(cx,cy,c*0.28,0,7); ctx.stroke();
+    if(frac<=0.02){ // wilted: tiny bud
+      ctx.fillStyle="rgba(110,130,110,0.5)"; ctx.beginPath(); ctx.arc(cx,cy,c*0.06,0,7); ctx.fill(); return;
+    }
+    var petR=c*(0.10+0.14*frac), off=c*(0.10+0.09*frac);
+    // glow when full
+    if(frac>0.6){ var gg=ctx.createRadialGradient(cx,cy,0,cx,cy,c*0.34);
+      gg.addColorStop(0,"rgba(120,240,150,"+(0.18*frac).toFixed(3)+")"); gg.addColorStop(1,"rgba(120,240,150,0)");
+      ctx.fillStyle=gg; ctx.beginPath(); ctx.arc(cx,cy,c*0.34,0,7); ctx.fill(); }
+    var hueMix=frac; // greener when full, paler when low
+    ctx.save(); ctx.translate(cx,cy); ctx.rotate(sway);
+    for(var p=0;p<6;p++){ var ang=p/6*Math.PI*2, px=Math.cos(ang)*off, py=Math.sin(ang)*off;
+      var pg=ctx.createRadialGradient(px,py,0,px,py,petR);
+      pg.addColorStop(0, "rgba("+Math.round(140-40*hueMix)+","+Math.round(220+20*hueMix)+","+Math.round(150-30*hueMix)+",1)");
+      pg.addColorStop(1, "rgba("+Math.round(60+20*hueMix)+","+Math.round(170+30*hueMix)+","+Math.round(90)+",0.9)");
+      ctx.fillStyle=pg; ctx.beginPath(); ctx.ellipse(px,py,petR,petR*0.72,ang,0,7); ctx.fill();
+    }
+    // center
+    ctx.fillStyle="#ffe27a"; ctx.beginPath(); ctx.arc(0,0,petR*0.5,0,7); ctx.fill();
+    ctx.fillStyle="rgba(255,255,255,0.6)"; ctx.beginPath(); ctx.arc(-petR*0.15,-petR*0.15,petR*0.16,0,7); ctx.fill();
+    ctx.restore();
+  }
+
+  function nearestTreat(w,x,y){ var bt=1e9,r=null, range=(w.smellRange==null?18:w.smellRange);
+    for(var yy=0;yy<GRID;yy++)for(var xx=0;xx<GRID;xx++){ var i=idx(xx,yy);
+      if(w.cells[i]===HAPPY&&w.nectar[i]>=SMELL_MIN){ var d=Math.abs(xx-x)+Math.abs(yy-y); if(d<=range&&d<bt){bt=d;r={x:xx,y:yy};} } }
+    return r; }
+
+  function spike(cx,cy,r){ ctx.beginPath();
+    for(var i=0;i<8;i++){ var a1=i/8*Math.PI*2,a2=(i+0.5)/8*Math.PI*2;
+      ctx.lineTo(cx+Math.cos(a1)*r,cy+Math.sin(a1)*r); ctx.lineTo(cx+Math.cos(a2)*r*0.45,cy+Math.sin(a2)*r*0.45); }
+    ctx.closePath(); ctx.fill(); }
+  function arrow(cx,cy,dir,r){ ctx.save(); ctx.translate(cx,cy);
+    ctx.rotate([-Math.PI/2,0,Math.PI/2,Math.PI][dir]);
+    ctx.beginPath(); ctx.moveTo(r,0); ctx.lineTo(-r*0.6,-r*0.7); ctx.lineTo(-r*0.6,r*0.7); ctx.closePath(); ctx.fill(); ctx.restore(); }
+
+  var CLAN_COLORS=["#ff5a5a","#4cd964","#3d8bfd","#ffcb2e","#c77dff","#2ee6d6","#ff8f3f","#ff6fae"];
+  var CLAN_EMBLEMS=["circle","triangle","square","diamond","star","hex","drop","cross"];
+  function clanColor(ag){ return CLAN_COLORS[((ag.clan||0)%CLAN_COLORS.length+CLAN_COLORS.length)%CLAN_COLORS.length]; }
+  function clanEmblem(ag){ return CLAN_EMBLEMS[((ag.clan||0)%CLAN_EMBLEMS.length+CLAN_EMBLEMS.length)%CLAN_EMBLEMS.length]; }
+  function drawEmblem(kind,cx,cy,r,color){ ctx.fillStyle=color; ctx.beginPath();
+    if(kind==="circle"){ ctx.arc(cx,cy,r,0,7); }
+    else if(kind==="square"){ ctx.rect(cx-r,cy-r,r*2,r*2); }
+    else if(kind==="triangle"){ ctx.moveTo(cx,cy-r); ctx.lineTo(cx+r,cy+r); ctx.lineTo(cx-r,cy+r); ctx.closePath(); }
+    else if(kind==="diamond"){ ctx.moveTo(cx,cy-r); ctx.lineTo(cx+r,cy); ctx.lineTo(cx,cy+r); ctx.lineTo(cx-r,cy); ctx.closePath(); }
+    else if(kind==="star"){ for(var i=0;i<10;i++){ var a=i/10*Math.PI*2-Math.PI/2, rr=(i%2?r:r*0.45); ctx.lineTo(cx+Math.cos(a)*rr,cy+Math.sin(a)*rr); } ctx.closePath(); }
+    else if(kind==="hex"){ for(var h=0;h<6;h++){ var ah=h/6*Math.PI*2; ctx.lineTo(cx+Math.cos(ah)*r,cy+Math.sin(ah)*r); } ctx.closePath(); }
+    else if(kind==="drop"){ ctx.arc(cx,cy+r*0.2,r*0.8,0,7); ctx.moveTo(cx,cy-r); ctx.lineTo(cx+r*0.7,cy+r*0.3); ctx.lineTo(cx-r*0.7,cy+r*0.3); ctx.closePath(); }
+    else { ctx.rect(cx-r,cy-r*0.35,r*2,r*0.7); ctx.rect(cx-r*0.35,cy-r,r*0.7,r*2); } // cross
+    ctx.fill();
+  }
+  function traitColor(ag){
+    var t=ag.traits||{nose:0.5,thrift:0.5,stomach:0.5};
+    function ch(v){ return Math.max(48,Math.min(255,Math.round(60+v*195))); }
+    return [ch(t.nose),ch(t.thrift),ch(t.stomach)];
+  }
+  function shade(rgb,f){ // f<1 darken, f>1 lighten
+    return "rgb("+Math.min(255,Math.max(0,Math.round(rgb[0]*f)))+","+Math.min(255,Math.max(0,Math.round(rgb[1]*f)))+","+Math.min(255,Math.max(0,Math.round(rgb[2]*f)))+")";
+  }
+  function ai(ag){ // lazy per-agent animation state
+    if(ag._a) return ag._a;
+    ag._a={ blink:60+Math.random()*140, blinkDur:0, breathe:Math.random()*6.28,
+      hop:0, sx:1, sy:1, look:0, lookT:0, pupx:0, pupy:0, spawn:1, eat:0, fx:0, fy:1 };
+    return ag._a;
+  }
+  function drawBot(ag,c){
+    var a=ai(ag), light=st.world.daylight==null?1:st.world.daylight;
+    var belly=(st.world.traits&&ag.traits)?ag.traits.stomach:0.5;
+    var baseR=c*0.34*(0.82+0.34*belly);
+    // spawn pop-in (overshoot)
+    var pop=a.spawn<1 ? (function(){ var p=a.spawn; return p<0.7? (p/0.7)*1.12 : 1.12-(p-0.7)/0.3*0.12; })() : 1;
+    var hop=a.hop, sx=a.sx, sy=a.sy;
+    var cx=ag.ax*c+c/2, cy=ag.ay*c+c/2 - hop*baseR*0.9;
+    var rgb=(st.world.traits)?traitColor(ag):[255,140,26];
+    var m=moodScore(ag), emax=emaxOf(st.world,ag), efrac=ag.energy/emax;
+    // ---- clan halo (tribe colour glow behind the body) ----
+    var cc=clanColor(ag);
+    ctx.save(); ctx.globalAlpha=0.18; ctx.fillStyle=cc;
+    ctx.beginPath(); ctx.arc(cx,cy,baseR*1.4,0,7); ctx.fill(); ctx.restore();
+    // ---- ground shadow (light from top-left; softer/smaller when hopping or at night) ----
+    var shOff=baseR*0.28, shA=(0.16+0.12*light)*(1-hop*0.5);
+    ctx.fillStyle="rgba(0,0,0,"+shA.toFixed(3)+")";
+    ctx.beginPath(); ctx.ellipse(cx+baseR*0.18, ag.ay*c+c/2+baseR*0.82, baseR*(0.85-hop*0.25), baseR*0.32*(1-hop*0.3), 0,0,7); ctx.fill();
+    // ---- body with vertical light gradient + squash/stretch + pop ----
+    var rw=baseR*sx*pop, rh=baseR*sy*pop;
+    var g=ctx.createLinearGradient(0,cy-rh,0,cy+rh);
+    g.addColorStop(0, shade(rgb, 1.0+0.28*light));
+    g.addColorStop(0.55, shade(rgb, 1.0));
+    g.addColorStop(1, shade(rgb, 0.72));
+    ctx.fillStyle=g;
+    roundRectC(cx-rw,cy-rh,rw*2,rh*2,baseR*0.42); ctx.fill();
+    // rim light (top-left)
+    ctx.strokeStyle="rgba(255,255,255,"+(0.10+0.14*light).toFixed(3)+")"; ctx.lineWidth=Math.max(1,baseR*0.10);
+    ctx.beginPath(); ctx.arc(cx,cy,baseR*0.9*sx,Math.PI*1.05,Math.PI*1.65); ctx.stroke();
+    // inner bottom shadow
+    ctx.fillStyle="rgba(0,0,0,0.10)"; roundRectC(cx-rw,cy+rh*0.42,rw*2,rh*0.58,baseR*0.34); ctx.fill();
+
+    // ---- face ----
+    var eyeY=cy-rh*0.16, eyeDX=rw*0.42, eyeR=baseR*0.30;
+    var blinking=a.blinkDur>0;
+    var scared=(ag._scare>0), hungry=efrac<0.32, joy=(a.eat>0)||m>0.32;
+    // pupils track toward facing / food
+    var pxo=a.pupx*eyeR*0.34, pyo=a.pupy*eyeR*0.34;
+    for(var s=-1;s<=1;s+=2){
+      var ex=cx+s*eyeDX;
+      if(blinking || (hungry&&!joy&&Math.random()<0)){ // closed
+      }
+      // sclera
+      ctx.fillStyle="#fbfdff";
+      var eh = joy? eyeR*0.72 : (hungry? eyeR*0.82 : eyeR);
+      var ew = scared? eyeR*1.12 : eyeR;
+      if(blinking){
+        ctx.strokeStyle="#20242c"; ctx.lineWidth=Math.max(1.4,baseR*0.09); ctx.lineCap="round";
+        ctx.beginPath(); ctx.moveTo(ex-ew*0.8,eyeY); ctx.lineTo(ex+ew*0.8,eyeY); ctx.stroke();
+      } else if(joy){ // happy upward arcs ^ ^
+        ctx.strokeStyle="#20242c"; ctx.lineWidth=Math.max(1.6,baseR*0.11); ctx.lineCap="round";
+        ctx.beginPath(); ctx.arc(ex,eyeY+eyeR*0.15,eyeR*0.6,Math.PI*1.15,Math.PI*1.85); ctx.stroke();
+      } else {
+        ctx.beginPath(); ctx.ellipse(ex,eyeY,ew,eh,0,0,7); ctx.fill();
+        // pupil
+        ctx.fillStyle="#181b21";
+        var pr=scared?eyeR*0.34:eyeR*0.46;
+        ctx.beginPath(); ctx.arc(ex+pxo,eyeY+pyo,pr,0,7); ctx.fill();
+        // catchlight
+        ctx.fillStyle="rgba(255,255,255,0.9)";
+        ctx.beginPath(); ctx.arc(ex+pxo-pr*0.3,eyeY+pyo-pr*0.35,pr*0.32,0,7); ctx.fill();
+      }
+    }
+    // brows for worry/scared
+    if((hungry||scared)&&!joy&&!blinking){
+      ctx.strokeStyle="rgba(20,24,32,0.75)"; ctx.lineWidth=Math.max(1.4,baseR*0.09); ctx.lineCap="round";
+      ctx.beginPath(); ctx.moveTo(cx-eyeDX-eyeR*0.5,eyeY-eyeR*0.95); ctx.lineTo(cx-eyeDX+eyeR*0.5,eyeY-eyeR*1.2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx+eyeDX+eyeR*0.5,eyeY-eyeR*0.95); ctx.lineTo(cx+eyeDX-eyeR*0.5,eyeY-eyeR*1.2); ctx.stroke();
+    }
+    // mouth
+    ctx.strokeStyle="#20242c"; ctx.lineWidth=Math.max(1.5,baseR*0.10); ctx.lineCap="round";
+    var my=cy+rh*0.34; ctx.beginPath();
+    if(a.eat>0){ ctx.fillStyle="#7a2230"; ctx.beginPath(); ctx.ellipse(cx,my,baseR*0.16,baseR*0.18*(0.5+a.eat*0.5),0,0,7); ctx.fill(); }
+    else if(joy) ctx.arc(cx,my-baseR*0.05,baseR*0.26,0.12*Math.PI,0.88*Math.PI);
+    else if(hungry||m<-0.2) ctx.arc(cx,my+baseR*0.32,baseR*0.24,1.18*Math.PI,1.82*Math.PI);
+    else { ctx.moveTo(cx-baseR*0.16,my); ctx.lineTo(cx+baseR*0.16,my); }
+    if(a.eat<=0) ctx.stroke();
+    // blush when very full/happy
+    if(efrac>0.85){ ctx.fillStyle="rgba(255,120,120,0.28)";
+      ctx.beginPath(); ctx.arc(cx-rw*0.62,cy+rh*0.1,baseR*0.14,0,7); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx+rw*0.62,cy+rh*0.1,baseR*0.14,0,7); ctx.fill(); }
+    // ---- clan emblem badge (tribe marker, top-right) ----
+    var bx=cx+rw*0.72, by=cy-rh*0.82, br2=baseR*0.26;
+    ctx.save(); ctx.fillStyle="rgba(12,14,18,0.85)"; ctx.beginPath(); ctx.arc(bx,by,br2*1.5,0,7); ctx.fill();
+    drawEmblem(clanEmblem(ag), bx, by, br2, cc); ctx.restore();
+  }
+  function roundRectC(x,y,w,h,r){ r=Math.min(r,w/2,h/2); ctx.beginPath(); ctx.moveTo(x+r,y);
+    ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+  function roundRect(x,y,w,h,r){ roundRectC(x,y,w,h,r); }
+
+  // ---- loop ----
+  var frame=0;
+  function autoEps(){ return Math.max(0.05, 0.9*Math.exp(-agent().steps/1500)); }
+  function animAgent(a, moved, dt){
+    var an=ai(a);
+    // spawn pop-in
+    if(an.spawn<1) an.spawn=Math.min(1, an.spawn+0.06);
+    // breathing
+    an.breathe+=0.06;
+    var br=Math.sin(an.breathe)*0.02;
+    // blink countdown
+    an.blink-=1; if(an.blinkDur>0){ an.blinkDur-=1; } else if(an.blink<=0){ an.blinkDur=5; an.blink=90+Math.random()*160; }
+    // eat pulse decays
+    if(an.eat>0) an.eat=Math.max(0,an.eat-0.06);
+    if(a._scare>0) a._scare-=1;
+    // hop + squash from movement progress
+    if(moved && speed===1){ an.hop=1; }
+    an.hop*=0.78; if(an.hop<0.01) an.hop=0;
+    var landing = an.hop<0.35 && an.hop>0;
+    an.sx = 1 + (landing? 0.14: -0.06*an.hop) + br;
+    an.sy = 1 + (landing? -0.14: 0.10*an.hop) - br;
+    // position lerp
+    a.ax+=(a.x-a.ax)*0.28; a.ay+=(a.y-a.ay)*0.28;
+    // pupils track: toward nearest full flower if any, else toward movement
+    var tgt=nearestTreat(st.world,a.x,a.y), dx=0,dy=0;
+    if(tgt){ dx=tgt.x-a.x; dy=tgt.y-a.y; } else { dx=a.x-a.ax; dy=a.y-a.ay; }
+    var mag=Math.hypot(dx,dy)||1; var tx=dx/mag, ty=dy/mag;
+    an.pupx+=(tx-an.pupx)*0.15; an.pupy+=(ty-an.pupy)*0.15;
+  }
+  function loop(){
+    if(epsAuto){ epsilon=autoEps(); var pct=Math.round(epsilon*100);
+      document.getElementById("eps").value=pct; document.getElementById("epsVal").textContent=pct+"%"; }
+    var moved=false;
+    if(running){
+      if(speed===1){ frame++; if(frame>=16){ frame=0; doStep(); moved=true; } }
+      else { for(var i=0;i<speed;i++) doStep(); for(var b2=0;b2<st.agents.length;b2++){ st.agents[b2].ax=st.agents[b2].x; st.agents[b2].ay=st.agents[b2].y; ai(st.agents[b2]).spawn=1; } }
+    }
+    if(speed===1 || !running){ for(var b=0;b<st.agents.length;b++) animAgent(st.agents[b], moved, 1); }
+    if(st.world.predatorsOn){ for(var pd=0;pd<st.world.predators.length;pd++){ var p=st.world.predators[pd];
+      if(speed===1||!running){ p.ax+=(p.x-p.ax)*0.28; p.ay+=(p.y-p.ay)*0.28; } else { p.ax=p.x; p.ay=p.y; } } }
+    draw(); updateStats(); if(focusAgent||overview) updateObs(); requestAnimationFrame(loop);
+  }
+  var REPRO_AGE=600, REPRO_ENERGY=85, REPRO_COST=45;
+  function freeAdjacent(a){ for(var k=0;k<4;k++){ var nx=a.x+[0,1,0,-1][k], ny=a.y+[-1,0,1,0][k];
+    if(nx<0||nx>=GRID||ny<0||ny>=GRID) continue;
+    if(st.world.cells[idx(nx,ny)]!==EMPTY) continue;
+    if(st.agents.some(function(o){return !o.dead&&o.x===nx&&o.y===ny;})) continue;
+    if(st.world.predators.some(function(p){return p.x===nx&&p.y===ny;})) continue;
+    if(st.world.prey.some(function(p){return p.x===nx&&p.y===ny;})) continue;
+    return {x:nx,y:ny}; } return null; }
+  function doStep(){
+    var c=cell();
+    for(var b=0;b<st.agents.length;b++){
+      var a=st.agents[b], preName=a.name, ev=stepAgent(st.world,a,st.mode,epsilon);
+      if(ev===1){ ai(a).eat=1; emotes.push({ch:"🌸",x:a.x*c+c/2,y:a.y*c+c*0.2,t:0}); }
+      else if(ev===2){ a._scare=18; emotes.push({ch:"💥",x:a.x*c+c/2,y:a.y*c+c*0.2,t:0}); }
+      else if(ev===4){ ai(a).spawn=0; emotes.push({ch:"💫",x:a.x*c+c/2,y:a.y*c+c*0.2,t:0}); }
+      else if(ev===5){ emotes.push({ch:"💀",x:a.x*c+c/2,y:a.y*c+c*0.2,t:0}); logEvent(a._byPred?"🦊":"💀", a._byPred? (preName+" was caught by a predator.") : (preName+" ran out of energy.")); }
+      else if(ev===6){ logEvent("🕊️", preName+" grew old and passed away peacefully."); }
+    }
+    // predators: scripted hunters chase the nearest forager
+    if(st.world.predatorsOn){
+      while(st.world.predators.length<st.world.predCount){ var pp=spawnCell(st.world,{}); st.world.predators.push(makePredator(pp.x,pp.y)); }
+      while(st.world.predators.length>st.world.predCount) st.world.predators.pop();
+      for(var pi=0;pi<st.world.predators.length;pi++){ var caught=stepPredator(st.world, st.world.predators[pi], st.agents, Math.random);
+        if(caught){ caught._scare=24; caught._byPred=true; emotes.push({ch:"😱",x:caught.x*c+c/2,y:caught.y*c+c*0.2,t:0}); } }
+    } else if(st.world.predators.length){ st.world.predators.length=0; }
+    // prey: mobile food that flees; a group brings it down and shares the meal
+    if(st.world.huntingOn){
+      while(st.world.prey.length<st.world.preyCount){ var qp=freeCell(); st.world.prey.push(makePrey(qp.x,qp.y)); }
+      while(st.world.prey.length>st.world.preyCount) st.world.prey.pop();
+      for(var qi=0;qi<st.world.prey.length;qi++){ var q=st.world.prey[qi];
+        var res=huntResolve(st.world, q, st.agents);
+        if(res.caught){ emotes.push({ch:"🍖",x:q.x*c+c/2,y:q.y*c+c*0.2,t:0});
+          if(res.hunters.length>=2) logEvent("🍖", res.hunters.length+" hunters teamed up and caught prey together.");
+          else if(res.hunters.length===1) logEvent("🍖", res.hunters[0].name+" caught prey.");
+          for(var hi=0;hi<res.hunters.length;hi++){ res.hunters[hi]._joy=18; }
+          var np=freeCell(); q.x=np.x; q.y=np.y; q.ax=np.x; q.ay=np.y; q.hp=q.maxhp; // respawn a new one elsewhere
+        } else { preyFleeStep(st.world, q, st.agents, Math.random); }
+      }
+    } else if(st.world.prey.length){ st.world.prey.length=0; }
+    if(st.world.tribesOn) cohesionPass(st.world, st.agents, Math.random);
+    checkTribeMilestone();
+    worldTick(st.world);
+    // remove the dead (permadeath)
+    if(st.agents.some(function(a){return a.dead;})){
+      st.agents=st.agents.filter(function(a){return !a.dead;});
+      if(st.agents.length===0){ var p=spawnCell(st.world,{}); { var nc=makeAgent(p.x,p.y,(Math.random()*360)|0,1); nc.traits=randomTraits(); st.agents.push(nc); }
+        toast("The colony died out. A newcomer arrives."); }
+    }
+    // breeding
+    if(st.world.breeding && st.agents.length<st.world.maxPop){
+      var eligible=[];
+      for(var b2=0;b2<st.agents.length;b2++){ var pa=st.agents[b2];
+        if(pa.age>=REPRO_AGE && pa.energy>=REPRO_ENERGY) eligible.push(pa); }
+      if(st.world.sexualRepro){
+        // need two mature, well-fed adults of opposite sex, adjacent (found a mate)
+        var made=false;
+        for(var i=0;i<eligible.length && !made;i++){ for(var j=i+1;j<eligible.length && !made;j++){
+          var A=eligible[i], B=eligible[j];
+          if(A.sex===B.sex) continue;
+          if(Math.abs(A.x-B.x)+Math.abs(A.y-B.y)>1) continue; // must be next to each other
+          var pos=freeAdjacent(A)||freeAdjacent(B)||freeCell();
+          if(pos){ var child=birthChild2(A,B,pos.x,pos.y); A.energy-=REPRO_COST; B.energy-=REPRO_COST; A.age=0; B.age=0;
+            st.agents.push(child); logEvent("🐣", child.name+" was born to "+A.name+" and "+B.name+".");
+            emotes.push({ch:"🌱",x:pos.x*c+c/2,y:pos.y*c+c*0.2,t:0});
+            emotes.push({ch:"💞",x:((A.x+B.x)/2)*c+c/2,y:((A.y+B.y)/2)*c+c*0.1,t:0}); made=true; }
+        } }
+        // lone/unpaired adults do NOT breed — colony can dwindle (realistic)
+      } else if(eligible.length){
+        // solo cloning (legacy asexual mode)
+        var solo=eligible[0], pos2=freeAdjacent(solo)||freeCell();
+        if(pos2){ var ch=birthChild(solo,pos2.x,pos2.y); solo.energy-=REPRO_COST; solo.age=0; st.agents.push(ch);
+          logEvent("🐣", ch.name+" was born to "+solo.name+".");
+          emotes.push({ch:"🌱",x:pos2.x*c+c/2,y:pos2.y*c+c*0.2,t:0}); }
+      }
+    }
+  }
+
+  var lastSave=0;
+  function updateStats(){
+    var a=agent();
+    document.getElementById("stMeals").textContent = a.meals>9999?(a.meals/1000).toFixed(1)+"k":a.meals;
+    document.getElementById("stPop").textContent = st.agents.length;
+    var maxGen=1; for(var i=0;i<st.agents.length;i++) if(st.agents[i].gen>maxGen) maxGen=st.agents[i].gen;
+    document.getElementById("stGen").textContent = maxGen;
+    var m=moodScore(a);
+    document.getElementById("stMood").textContent = a.energy<=0?"💫":(m>0.2?"😄":(m<-0.2?"😟":"😐"));
+    // energy bar (primary/hero), relative to its own belly capacity
+    var emax=emaxOf(st.world,a), pct=Math.max(0,Math.min(100,Math.round(a.energy/emax*100))), ef=document.getElementById("efill");
+    ef.style.width=pct+"%"; ef.style.background = pct>50?"var(--good)":(pct>20?"#ffb020":"var(--bad)");
+    document.getElementById("etxt").textContent = pct+"%";
+    // population badge
+    var vs=document.getElementById("vs");
+    if(st.agents.length>1){ vs.classList.add("on"); document.getElementById("vsPop").textContent=st.agents.length; document.getElementById("vsGen").textContent=maxGen; }
+    else vs.classList.remove("on");
+    drawSpark();
+    // clock badge
+    var w=st.world, clk=document.getElementById("clock");
+    var wxIc = w.weatherOn ? ({sunny:"☀️",rain:"🌧️",heat:"🔥",cold:"❄️",fog:"🌫️"}[w.weather]||"") : "";
+    if(w.dayNight){ var day=Math.floor(w.time/w.cycleLen)+1;
+      var ic = w.daylight>0.6?"☀️":(w.daylight>0.28?"🌇":"🌙");
+      clk.textContent = (w.weatherOn?wxIc+" ":"")+ic+" Day "+day; clk.style.display="block"; }
+    else if(w.weatherOn){ clk.textContent=wxIc+" "+w.weather; clk.style.display="block"; }
+    else clk.style.display="none";
+    var now=Date.now(); if(now-lastSave>5000){ lastSave=now; save(); }
+  }
+
+  // ---- sparkline ----
+  var sp=document.getElementById("spark"), spx=sp.getContext("2d");
+  function drawSpark(){
+    var w=sp.clientWidth,h=44,d=Math.min(window.devicePixelRatio||1,2);
+    if(sp.width!==w*d){ sp.width=w*d; sp.height=h*d; }
+    spx.setTransform(d,0,0,d,0,0); spx.clearRect(0,0,w,h);
+    var hist=agent().hist, lo=0, hi=100;
+    // mid guide (50%)
+    var y0=h-4-((50-lo)/(hi-lo))*(h-8);
+    spx.strokeStyle="rgba(255,255,255,0.12)"; spx.lineWidth=1; spx.beginPath(); spx.moveTo(0,y0); spx.lineTo(w,y0); spx.stroke();
+    if(hist.length<2) return;
+    spx.strokeStyle="#4cd964"; spx.lineWidth=2; spx.lineJoin="round"; spx.beginPath();
+    for(var i=0;i<hist.length;i++){ var x=i/59*w, y=h-4-((hist[i]-lo)/(hi-lo))*(h-8); if(i===0)spx.moveTo(x,y);else spx.lineTo(x,y); }
+    spx.stroke();
+  }
+
+  // ---- input ----
+  function toast(msg){ var t=document.getElementById("toast"); t.textContent=msg; t.style.opacity=1;
+    clearTimeout(t._h); t._h=setTimeout(function(){t.style.opacity=0;},2000); }
+
+  // ---- canvas input: tap to paint/focus, pinch to zoom, drag to pan ----
+  function cellFromEvent(e){ var r=cv.getBoundingClientRect();
+    var px=(e.clientX-r.left)*(cv.width/r.width), py=(e.clientY-r.top)*(cv.height/r.height);
+    var c=cell();
+    var x=Math.floor((px-view.ox)/c), y=Math.floor((py-view.oy)/c);
+    return {x:x,y:y};
+  }
+  var pointers={}, pinchStart=null, panStart=null, movedFar=false, downPt=null;
+  function showHint(){ var h=document.getElementById("zoomHint"); h.style.opacity=1; clearTimeout(h._t); h._t=setTimeout(function(){h.style.opacity=0;},1400); }
+  cv.addEventListener("pointerdown",function(e){ cv.setPointerCapture(e.pointerId);
+    pointers[e.pointerId]={x:e.clientX,y:e.clientY};
+    var ids=Object.keys(pointers);
+    if(ids.length===1){ downPt={x:e.clientX,y:e.clientY}; movedFar=false;
+      panStart={ox:view.ox,oy:view.oy,x:e.clientX,y:e.clientY}; }
+    else if(ids.length===2){ var a=pointers[ids[0]],b=pointers[ids[1]];
+      pinchStart={d:Math.hypot(a.x-b.x,a.y-b.y),z:view.z,cx:(a.x+b.x)/2,cy:(a.y+b.y)/2,ox:view.ox,oy:view.oy}; panStart=null; }
+  });
+  cv.addEventListener("pointermove",function(e){ if(!pointers[e.pointerId]) return;
+    pointers[e.pointerId]={x:e.clientX,y:e.clientY};
+    var ids=Object.keys(pointers);
+    if(ids.length===2 && pinchStart){ var a=pointers[ids[0]],b=pointers[ids[1]];
+      var d=Math.hypot(a.x-b.x,a.y-b.y), r=cv.getBoundingClientRect(), scale=cv.width/r.width;
+      var nz=Math.max(1,Math.min(4, pinchStart.z*(d/pinchStart.d)));
+      // zoom around the pinch midpoint
+      var mx=(pinchStart.cx-r.left)*scale, my=(pinchStart.cy-r.top)*scale;
+      var wx=(mx-pinchStart.ox)/(cv.width*pinchStart.z/GRID)/GRID; // fraction 0..1 of board under midpoint
+      var wy=(my-pinchStart.oy)/(cv.height*pinchStart.z/GRID)/GRID;
+      view.z=nz;
+      view.ox=mx-wx*cv.width*view.z; view.oy=my-wy*cv.height*view.z;
+      clampView(); draw(); movedFar=true; return;
+    }
+    if(ids.length===1 && panStart && view.z>1){ var r2=cv.getBoundingClientRect(), sc=cv.width/r2.width;
+      view.ox=panStart.ox+(e.clientX-panStart.x)*sc; view.oy=panStart.oy+(e.clientY-panStart.y)*sc;
+      clampView(); draw();
+    }
+    if(downPt && Math.hypot(e.clientX-downPt.x,e.clientY-downPt.y)>10) movedFar=true;
+  });
+  function endPointer(e){ delete pointers[e.pointerId];
+    var ids=Object.keys(pointers); if(ids.length<2) pinchStart=null; if(ids.length===0) panStart=null; }
+  cv.addEventListener("pointerup",function(e){
+    var wasTap = !movedFar && Object.keys(pointers).length===1;
+    endPointer(e);
+    if(wasTap) handleTap(e);
+  });
+  cv.addEventListener("pointercancel",endPointer);
+  document.getElementById("zoomReset").onclick=function(){ view.z=1; view.ox=0; view.oy=0; clampView(); draw(); };
+
+  function handleTap(e){
+    var p=cellFromEvent(e), x=p.x, y=p.y;
+    if(!inBounds(x,y)) return;
+    var s=idx(x,y);
+    if(tool===9){ if(st.world.cells[s]===WALL) return;
+      var a=agent(); a.x=x; a.y=y; a.ax=x; a.ay=y; a.Ep.fill(0); a.Es.fill(0); save(); draw(); return; }
+    for(var b=0;b<st.agents.length;b++){ var ba=st.agents[b];
+      if(!ba.dead && ba.x===x&&ba.y===y){ focusAgent=ba; overview=false; updateObs(); return; } }
+    if(tool===0){ st.world.cells[s]=EMPTY; st.world.nectar[s]=0; }
+    else { var was=st.world.cells[s]; st.world.cells[s]=(was===tool)?EMPTY:tool;
+      st.world.nectar[s]=(st.world.cells[s]===HAPPY)?NECTAR_MAX:0; }
+    draw(); save();
+  }
+  cv.addEventListener("pointerdown",function(){ if(view.z>1) showHint(); });
+
+  function setTool(t){
+    tool=t;
+    document.getElementById("palHappy").classList.toggle("on",t===HAPPY);
+    document.getElementById("palOuch").classList.toggle("on",t===OUCH);
+    document.getElementById("palWall").classList.toggle("on",t===WALL);
+    document.getElementById("palErase").classList.toggle("on",t===0);
+    document.getElementById("moveBtn").classList.toggle("on",t===9);
+  }
+  document.getElementById("palHappy").onclick=function(){setTool(HAPPY);};
+  document.getElementById("palOuch").onclick=function(){setTool(OUCH);};
+  document.getElementById("palWall").onclick=function(){setTool(WALL);};
+  document.getElementById("palErase").onclick=function(){setTool(0);};
+  document.getElementById("moveBtn").onclick=function(){ setTool(tool===9?HAPPY:9); if(tool===9) toast("Tap the grid to move him."); };
+
+  var playBtn=document.getElementById("playBtn");
+  playBtn.onclick=function(){ running=!running; playBtn.textContent=running?"⏸ Pause":"▶ Play"; if(!running) save(); };
+
+  document.querySelectorAll("#speedSeg button").forEach(function(b){ b.onclick=function(){
+    speed=parseInt(b.dataset.s,10);
+    document.querySelectorAll("#speedSeg button").forEach(function(x){x.classList.remove("on");}); b.classList.add("on"); }; });
+
+  document.querySelectorAll("#brainSeg button").forEach(function(b){ b.onclick=function(){
+    st.mode=b.dataset.m;
+    document.querySelectorAll("#brainSeg button").forEach(function(x){x.classList.remove("on");}); b.classList.add("on");
+    st.agents.forEach(function(a){ a.Ep.fill(0); a.Es.fill(0); }); // traces stale across brains
+    save(); draw();
+    toast(st.mode==="sense"?"Senses brain: learns a rule, generalizes.":"Memory brain: learns the map."); }; });
+
+  var eps=document.getElementById("eps"), epsAutoBtn=document.getElementById("epsAuto");
+  eps.oninput=function(){ epsAuto=false; epsAutoBtn.classList.remove("on"); epsilon=eps.value/100; document.getElementById("epsVal").textContent=eps.value+"%"; };
+  epsAutoBtn.onclick=function(){ epsAuto=!epsAuto; epsAutoBtn.classList.toggle("on",epsAuto); if(!epsAuto) epsilon=eps.value/100; };
+
+  document.getElementById("brainBtn").onclick=function(){ brainView=!brainView; this.classList.toggle("on",brainView); draw(); };
+
+  var rivalBtn=document.getElementById("rivalBtn");
+  rivalBtn.onclick=function(){
+    if(st.agents.length>=st.world.maxPop){ toast("Population is at the max ("+st.world.maxPop+"). Raise it in ⚙️."); return; }
+    var p=freeCell(); { var nc=makeAgent(p.x,p.y,(Math.random()*360)|0,1); nc.traits=randomTraits(); st.agents.push(nc); }
+    toast("A fresh newcomer joins (untrained brain).");
+    save(); draw();
+  };
+  function freeCell(){ for(var t=0;t<200;t++){ var x=(Math.random()*GRID)|0,y=(Math.random()*GRID)|0;
+    if(st.world.cells[idx(x,y)]!==EMPTY) continue;
+    if(st.agents.some(function(a){return !a.dead&&a.x===x&&a.y===y;})) continue;
+    if(st.world.predators.some(function(p){return p.x===x&&p.y===y;})) continue;
+    if(st.world.prey.some(function(p){return p.x===x&&p.y===y;})) continue;
+    return {x:x,y:y}; } return {x:0,y:0}; }
+
+  document.getElementById("resetBtn").onclick=function(){
+    if(!confirm("Wipe every bot's brain?")) return;
+    st.agents.forEach(function(a){ a.Qp.fill(0);a.Qs.fill(0);a.Ep.fill(0);a.Es.fill(0);
+      a.energy=ENERGY_START; a.steps=0;a.meals=0;a.ouches=0;a.faints=0;a.hist=[];a.eWinSum=0;a.winN=0; });
+    save(); toast("Brains wiped. Fresh start."); };
+  document.getElementById("clearBtn").onclick=function(){
+    if(!confirm("Remove all flowers, spikes and walls?")) return;
+    st.world.cells.fill(0); st.world.nectar.fill(0); save(); draw(); };
+  document.getElementById("newGroupBtn").onclick=function(){
+    if(!confirm("Start a brand new group? This wipes the board and replaces everyone with 3 fresh, untrained creatures.")) return;
+    // clear the board
+    st.world.cells.fill(0); st.world.nectar.fill(0);
+    st.world.predators.length=0;
+    st.world.time=0; if(typeof updateEnv==="function") updateEnv(st.world);
+    // fresh colony: 3 brand-new gen-1 creatures, untrained brains
+    focusAgent=null; overview=false;
+    st.agents=[];
+    for(var i=0;i<3;i++){ var p=freeCell(); var nc=makeAgent(p.x,p.y,(Math.random()*360)|0,1);
+      nc.traits=randomTraits(); nc.clan=i; st.agents.push(nc); }
+    updateObs(); save(); draw(); updateStats();
+    toast("New group: 3 fresh creatures, clean board.");
+  };
+  document.getElementById("ver").onclick=function(){ toast("Bot Lab v3.0 · Jul 15"); };
+  // ============================================================
+  // TUTORIAL / HOW-TO / STRATEGY WIZARD
+  // To update as features change: edit WIZARD_STEPS below. Each step
+  // is { icon, title, body }. body is HTML. Keep words kid-simple.
+  // The last step auto-shows the Start empty / Demo world buttons.
+  // ============================================================
+  var WIZARD_STEPS = [
+    { icon:"🐣", title:"Welcome to Bot Lab!",
+      body:"<p>These little guys are alive and learning. Your job is to build a world for them and watch what they figure out.</p><div class='tip'>Tip: you can't really break it. Play around!</div>" },
+    { icon:"🍏", title:"They get hungry",
+      body:"<p>Every step they take burns <b>energy</b>. If it hits zero, they faint.</p><p>Green <b>flowers</b> are food. Eating fills their energy back up. So their whole life is: <b>find food, keep going</b>.</p>" },
+    { icon:"🎨", title:"You build the world",
+      body:"<p>Tap the buttons, then tap the grid to paint:</p><ul><li>🟢 <b>Happy</b> puts down a flower (food)</li><li>🔴 <b>Ouch</b> puts down a spike (it hurts them)</li><li>⬜ <b>Wall</b> blocks the way</li><li>🧽 <b>Erase</b> removes stuff</li></ul><div class='tip'>Start by placing a few flowers around the edges.</div>" },
+    { icon:"🧠", title:"Give them a brain",
+      body:"<p>Two ways they can think. Tap to switch anytime:</p><ul><li>🧠 <b>Memory</b>: learns the <i>map</i>, which spot has food. Fast, but move the food and they're lost.</li><li>👃 <b>Senses</b>: learns to <i>smell</i> the nearest flower. Slower, but they still find food if you move it.</li></ul>" },
+    { icon:"▶️", title:"Press Play and speed it up",
+      body:"<p>Hit <b>Play</b> to start. At first they wander and bump around, that's them learning.</p><p>Tap <b>5x, 20x, 100x</b> to fast-forward. At 100x you can watch them get smart in seconds.</p><div class='tip'>Curiosity is how much they try random stuff. High = explore, low = stick to what works. Leave it on <b>Auto</b>.</div>" },
+    { icon:"👆", title:"Tap a creature to follow it",
+      body:"<p>Tap any creature to <b>focus</b> on it. You'll see its name and what it's trying to do right now (hunting food, running from danger, and so on).</p><p>Tap the <b>👥 number at the top</b> to zoom out and see the whole group.</p>" },
+    { icon:"⚙️", title:"The gear = the fun stuff",
+      body:"<p>Open the <b>gear</b> for the big toggles:</p><ul><li>🌗 <b>Day &amp; night</b> and 🌦️ <b>weather</b></li><li>👶 <b>Breeding</b> so they have babies, and 👫 <b>Two parents</b> so babies mix both parents</li><li>🦊 <b>Predators</b>, ⏳ <b>Aging</b>, and 🧬 <b>introduce a specialist</b></li></ul>" },
+    { icon:"🐰", title:"Hunt as a team",
+      body:"<p>Turn on <b>Prey to hunt</b> in the gear. Little critters hop around and run away.</p><p>One creature can't catch one alone, it just chases. But when <b>two or three gang up</b>, they corner it and bring it down, then <b>share the meal</b>.</p><div class='tip'>This is how the group learns to work together.</div>" },
+    { icon:"🛖", title:"They form tribes",
+      body:"<p>Turn on <b>Tribes</b> in the gear. Each family gets its own <b>color and badge</b>, so you can tell who belongs together.</p><p>When they're fed, families <b>drift together</b> and make home turf you can see as a colored glow. Predators go after loners first, so the group is safer.</p>" },
+    { icon:"📜", title:"Follow the story",
+      body:"<p>Tap <b>📜 Story</b> to read what's happening in plain words: who was born, who caught prey, who grew old, which tribe is taking over.</p><div class='tip'>A red dot means something new happened while you were away.</div>" },
+    { icon:"🏆", title:"Strategy tips",
+      body:"<ul><li>🌸 Spread flowers <b>far apart</b> so they must travel, that's when they learn a route.</li><li>💀 Want them to <b>evolve</b>? Turn on <b>Aging</b> or <b>Survival-of-the-fittest</b>, or nothing changes.</li><li>🎨 Creatures turn colors as families specialize. All grey means the world is too easy, make it harder.</li><li>🧬 Drop in a <b>specialist</b> and see if its family takes over.</li><li>✨ <b>New Group</b> starts totally fresh whenever you want.</li></ul>" }
+  ];
+  var wizIdx=0;
+  function renderWiz(){
+    var s=WIZARD_STEPS[wizIdx];
+    document.getElementById("wizIcon").textContent=s.icon;
+    document.getElementById("wizTitle").textContent=s.title;
+    document.getElementById("wizBody").innerHTML=s.body;
+    document.getElementById("wizStep").textContent="Step "+(wizIdx+1)+" of "+WIZARD_STEPS.length;
+    var dots=""; for(var i=0;i<WIZARD_STEPS.length;i++){ dots+="<i class='"+(i===wizIdx?"on":"")+"'></i>"; }
+    document.getElementById("wizDots").innerHTML=dots;
+    document.getElementById("wizBack").style.visibility = wizIdx===0?"hidden":"visible";
+    var last = wizIdx===WIZARD_STEPS.length-1;
+    document.getElementById("wizNext").textContent = last?"Let's go!":"Next";
+    document.getElementById("wizStartRow").style.display = last?"flex":"none";
+  }
+  function openWizard(reset){ if(reset!==false) wizIdx=0; renderWiz(); document.getElementById("guide").classList.remove("hide"); }
+  function closeWizard(){ document.getElementById("guide").classList.add("hide"); try{ localStorage.setItem("botlab_seen_tut","1"); }catch(e){} }
+  document.getElementById("wizNext").onclick=function(){ if(wizIdx<WIZARD_STEPS.length-1){ wizIdx++; renderWiz(); } else { closeWizard(); } };
+  document.getElementById("wizBack").onclick=function(){ if(wizIdx>0){ wizIdx--; renderWiz(); } };
+  document.getElementById("wizSkip").onclick=function(){ closeWizard(); };
+  document.getElementById("helpBtn").onclick=function(){ openWizard(true); };
+  document.getElementById("vs").addEventListener("click",function(){ overview=!overview; if(overview) focusAgent=null; updateObs(); });
+
+  // ---- creature stat card ----
+  var cardEl=document.getElementById("card"), cardAgent=null;
+  // ---- focus / overview observation ----
+  var focusAgent=null, overview=false;
+  function dangerNear(ag){
+    var w=st.world, best=null,bd=1e9;
+    for(var yy=0;yy<GRID;yy++)for(var xx=0;xx<GRID;xx++){ if(w.cells[idx(xx,yy)]===OUCH){ var d=Math.abs(xx-ag.x)+Math.abs(yy-ag.y); if(d<=2&&d<bd){bd=d;best={x:xx,y:yy};} } }
+    if(w.predators) for(var i=0;i<w.predators.length;i++){ var p=w.predators[i], d=Math.abs(p.x-ag.x)+Math.abs(p.y-ag.y); if(d<=3&&d<bd){bd=d;best={x:p.x,y:p.y};} }
+    return best;
+  }
+  function intentOf(ag){
+    var w=st.world, emax=emaxOf(w,ag), efrac=ag.energy/emax;
+    var dg=dangerNear(ag);
+    if(dg) return {t:"Fleeing danger!", c:"#ff5a5a", target:dg, flee:true};
+    var food=nearestTreat(w,ag.x,ag.y);
+    if(efrac<0.35) return food ? {t:"Hungry, heading for food", c:"#ffb020", target:food} : {t:"Hungry, searching for food", c:"#ffb020"};
+    if(ag.age>=REPRO_AGE && efrac>0.8 && w.breeding && st.agents.length<w.maxPop) return {t:"Well-fed, ready to raise young", c:"#4cd964"};
+    if(food && efrac<0.75) return {t:"Topping up at a flower", c:"#4cd964", target:food};
+    return {t:"Content, wandering", c:"#8a90a0"};
+  }
+  function updateObs(){
+    var p=document.getElementById("obsPanel");
+    if(focusAgent && st.agents.indexOf(focusAgent)<0){ focusAgent=null; } // it died
+    if(focusAgent){
+      var ag=focusAgent, it=intentOf(ag), emax=emaxOf(st.world,ag), kn=knowledge(ag);
+      var mode=st.mode==="sense"?"Senses":"Memory";
+      p.innerHTML =
+        "<div class='obshead'><b>"+(ag.name||"—")+"</b><span class='obsx' id='obsClose'>✕</span></div>"+
+        "<div class='intent' style='color:"+it.c+"'>"+it.t+"</div>"+
+        "<div class='obsline'>Energy <b>"+Math.round(ag.energy/emax*100)+"%</b> · Gen <b>"+ag.gen+"</b> · Meals <b>"+ag.meals+"</b> · Kids <b>"+(ag.kids||0)+"</b></div>"+
+        "<div class='obsline'>Its "+mode.toLowerCase()+" brain: <b>"+kn.label+"</b> ("+(kn.frac*100).toFixed(1)+"% learned)</div>"+
+        "<div class='obsbtns'><div class='obsbtn' id='obsCard'>📋 Full card</div><div class='obsbtn' id='obsGroup'>👥 Whole group</div><div class='obsbtn' id='obsRelease'>Release</div></div>";
+      p.classList.remove("hide");
+      document.getElementById("obsClose").onclick=document.getElementById("obsRelease").onclick=function(){ focusAgent=null; updateObs(); };
+      document.getElementById("obsCard").onclick=function(){ openCard(ag); };
+      document.getElementById("obsGroup").onclick=function(){ focusAgent=null; overview=true; updateObs(); };
+    } else if(overview){
+      var ags=st.agents, n=ags.length;
+      var e=0,g=1,tn=0,tt=0,tb=0,meals=0;
+      for(var i=0;i<n;i++){ var a=ags[i]; e+=a.energy/emaxOf(st.world,a); if(a.gen>g)g=a.gen; meals+=a.meals;
+        if(a.traits){tn+=a.traits.nose;tt+=a.traits.thrift;tb+=a.traits.stomach;} }
+      var avgE=n?Math.round(e/n*100):0;
+      var cbars = st.world.traits ?
+        "<div class='cbars'>"+
+        "<div class='cbar'><span class='cl'>🔴 Nose</span><span class='ct'><i style='width:"+Math.round(tn/n/0.95*100)+"%;background:#ff5a5a'></i></span></div>"+
+        "<div class='cbar'><span class='cl'>🟢 Thrift</span><span class='ct'><i style='width:"+Math.round(tt/n/0.95*100)+"%;background:#4cd964'></i></span></div>"+
+        "<div class='cbar'><span class='cl'>🔵 Belly</span><span class='ct'><i style='width:"+Math.round(tb/n/0.95*100)+"%;background:#3d8bfd'></i></span></div>"+
+        "</div>" : "";
+      p.innerHTML =
+        "<div class='obshead'><b>The colony</b><span class='obsx' id='obsClose'>✕</span></div>"+
+        "<div class='obsline'>Living: <b>"+n+"</b> · Generations reached: <b>"+g+"</b> · Total meals: <b>"+meals+"</b></div>"+
+        "<div class='obsline'>Average energy across the group: <b>"+avgE+"%</b></div>"+
+        (st.world.traits?"<div class='obsline'>Average makeup (what's winning):</div>"+cbars:"")+
+        "<div class='obsbtns'><div class='obsbtn' id='obsClose2'>Done</div></div>";
+      p.classList.remove("hide");
+      document.getElementById("obsClose").onclick=document.getElementById("obsClose2").onclick=function(){ overview=false; updateObs(); };
+    } else { p.classList.add("hide"); }
+  }
+  function knowledge(ag){
+    var Q = st.mode==="sense"?ag.Qs:ag.Qp, n=0, tot=Q.length;
+    for(var i=0;i<Q.length;i++){ if(Math.abs(Q[i])>0.4) n++; }
+    var frac=n/tot;
+    var label = frac<0.008?"Newborn, knows almost nothing yet" :
+                frac<0.03?"Still figuring out the world" :
+                frac<0.08?"Getting the hang of foraging" :
+                frac<0.16?"A capable forager" : "A seasoned survivor";
+    return { frac:frac, label:label };
+  }
+  function traitLabel(t){
+    var mx=Math.max(t.nose,t.thrift,t.stomach);
+    if(mx-Math.min(t.nose,t.thrift,t.stomach)<0.12) return "a generalist";
+    if(t.nose===mx) return "a scout (great nose)";
+    if(t.thrift===mx) return "an economizer (sips energy)";
+    return "a camel (big reserves)";
+  }
+  function openCard(ag){
+    cardAgent=ag;
+    document.getElementById("cardSwatch").style.background = st.world.traits?("rgb("+traitColor(ag).join(",")+")"):ag.color;
+    document.getElementById("cardName").value = ag.name||"—";
+    var days=st.world.dayNight?(" · "+(ag.age/st.world.cycleLen).toFixed(1)+" days old"):(" · "+ag.age+" steps");
+    var mode = st.mode==="sense"?"Senses":"Memory";
+    document.getElementById("cardSub").innerHTML = "Gen "+ag.gen+days+(ag.parentName?(" · child of "+ag.parentName):"")+" · "+mode+" brain"+(st.world.traits?(" · "+traitLabel(ag.traits)):"");
+    // traits
+    var tw=document.getElementById("cardTraits");
+    if(st.world.traits){ var t=ag.traits;
+      function bar(label,val,col){ return "<div class='trow'><span class='tl'>"+label+"</span><div class='tbar'><i style='width:"+Math.round(val/0.95*100)+"%;background:"+col+"'></i></div><span class='tv'>"+val.toFixed(2)+"</span></div>"; }
+      tw.innerHTML = bar("🔴 Nose",t.nose,"#ff5a5a")+bar("🟢 Thrift",t.thrift,"#4cd964")+bar("🔵 Belly",t.stomach,"#3d8bfd");
+      tw.style.display="flex";
+    } else tw.style.display="none";
+    // stats
+    var emax=emaxOf(st.world,ag), lifeLeft=st.world.aging?Math.max(0,Math.round((ag.lifespan-ag.age)/(st.world.cycleLen||700)*10)/10):null;
+    var cs="<div class='cst'><b>"+Math.round(ag.energy/emax*100)+"%</b><span>Energy</span></div>"+
+           "<div class='cst'><b>"+ag.meals+"</b><span>Meals</span></div>"+
+           "<div class='cst'><b>"+(ag.kids||0)+"</b><span>Kids</span></div>";
+    if(st.world.aging) cs+="<div class='cst'><b>"+lifeLeft+"</b><span>Days left</span></div>";
+    else cs+="<div class='cst'><b>"+ag.faints+"</b><span>Faints</span></div>";
+    document.getElementById("cardStats").innerHTML=cs;
+    // knowledge
+    var kn=knowledge(ag);
+    document.getElementById("cardKnow").innerHTML = "🧠 <b>"+kn.label+"</b><br><span style='color:var(--dim)'>Its "+mode.toLowerCase()+" brain has learned "+(kn.frac*100).toFixed(1)+"% of what it could know. Turn on 👁 Brain to see what this one is thinking.</span>";
+    cardEl.classList.remove("hide");
+  }
+  document.getElementById("cardName").addEventListener("input",function(){ if(cardAgent){ cardAgent.name=this.value.trim()||cardAgent.name; } });
+  document.getElementById("cardName").addEventListener("blur",function(){ save(); });
+  document.getElementById("cardClose").onclick=function(){ cardEl.classList.add("hide"); save(); };
+  cardEl.addEventListener("click",function(e){ if(e.target===cardEl){ cardEl.classList.add("hide"); save(); } });
+
+  // settings drawer
+  var settings=document.getElementById("settings");
+  document.getElementById("gear").onclick=function(){ syncSettings(); settings.classList.remove("hide"); };
+  var moreSheet=document.getElementById("moreSheet");
+  document.getElementById("moreBtn").onclick=function(){ moreSheet.classList.remove("hide"); };
+  var feedSheet=document.getElementById("feedSheet");
+  document.getElementById("feedBtn").onclick=function(){ feedOpen=true; feedNew=false; updateFeedDot(); renderFeed(); feedSheet.classList.remove("hide"); };
+  document.getElementById("feedClose").onclick=function(){ feedOpen=false; feedSheet.classList.add("hide"); };
+  feedSheet.addEventListener("click",function(e){ if(e.target===feedSheet){ feedOpen=false; feedSheet.classList.add("hide"); } });
+  document.getElementById("moreClose").onclick=function(){ moreSheet.classList.add("hide"); };
+  moreSheet.addEventListener("click",function(e){ if(e.target===moreSheet) moreSheet.classList.add("hide"); });
+  document.getElementById("gearBtn2").onclick=function(){ moreSheet.classList.add("hide"); syncSettings(); settings.classList.remove("hide"); };
+  document.getElementById("setClose").onclick=function(){ settings.classList.add("hide"); save(); };
+  settings.addEventListener("click",function(e){ if(e.target===settings){ settings.classList.add("hide"); save(); } });
+  var dnToggle=document.getElementById("dnToggle"), dnLen=document.getElementById("dnLen"), dnLenRow=document.getElementById("dnLenRow");
+  var brToggle=document.getElementById("brToggle"), popMax=document.getElementById("popMax"), popRow=document.getElementById("popRow"), pdToggle=document.getElementById("pdToggle"), trToggle=document.getElementById("trToggle");
+  var wxToggle=document.getElementById("wxToggle"), prToggle=document.getElementById("prToggle"), prCount=document.getElementById("prCount"), prRow=document.getElementById("prRow"), agToggle=document.getElementById("agToggle");
+  function syncSettings(){
+    dnToggle.classList.toggle("on",st.world.dayNight); dnToggle.textContent=st.world.dayNight?"On":"Off";
+    dnLen.value=st.world.cycleLen; document.getElementById("dnLenVal").textContent=st.world.cycleLen;
+    dnLenRow.style.opacity=st.world.dayNight?"1":"0.4";
+    brToggle.classList.toggle("on",st.world.breeding); brToggle.textContent=st.world.breeding?"On":"Off";
+    popMax.value=st.world.maxPop; document.getElementById("popVal").textContent=st.world.maxPop;
+    popRow.style.opacity=st.world.breeding?"1":"0.4";
+    pdToggle.classList.toggle("on",st.world.permadeath); pdToggle.textContent=st.world.permadeath?"On":"Off";
+    trToggle.classList.toggle("on",st.world.traits); trToggle.textContent=st.world.traits?"On":"Off";
+    wxToggle.classList.toggle("on",st.world.weatherOn); wxToggle.textContent=st.world.weatherOn?"On":"Off";
+    prToggle.classList.toggle("on",st.world.predatorsOn); prToggle.textContent=st.world.predatorsOn?"On":"Off";
+    prCount.value=st.world.predCount; document.getElementById("prVal").textContent=st.world.predCount;
+    prRow.style.opacity=st.world.predatorsOn?"1":"0.4";
+    var hu=document.getElementById("huToggle"); hu.classList.toggle("on",st.world.huntingOn); hu.textContent=st.world.huntingOn?"On":"Off";
+    document.getElementById("huCount").value=st.world.preyCount; document.getElementById("huVal").textContent=st.world.preyCount;
+    document.getElementById("huRow").style.opacity=st.world.huntingOn?"1":"0.4";
+    var tb=document.getElementById("tbToggle"); tb.classList.toggle("on",st.world.tribesOn); tb.textContent=st.world.tribesOn?"On":"Off";
+    agToggle.classList.toggle("on",st.world.aging); agToggle.textContent=st.world.aging?"On":"Off";
+    var sx=document.getElementById("sxToggle"); sx.classList.toggle("on",st.world.sexualRepro); sx.textContent=st.world.sexualRepro?"On":"Off";
+  }
+  dnToggle.onclick=function(){ st.world.dayNight=!st.world.dayNight; updateEnv(st.world); syncSettings(); save(); };
+  dnLen.oninput=function(){ st.world.cycleLen=parseInt(dnLen.value,10); document.getElementById("dnLenVal").textContent=dnLen.value; updateEnv(st.world); save(); };
+  brToggle.onclick=function(){ st.world.breeding=!st.world.breeding; syncSettings(); save(); };
+  popMax.oninput=function(){ st.world.maxPop=parseInt(popMax.value,10); document.getElementById("popVal").textContent=popMax.value; save(); };
+  pdToggle.onclick=function(){ st.world.permadeath=!st.world.permadeath; syncSettings(); save(); };
+  trToggle.onclick=function(){ st.world.traits=!st.world.traits; syncSettings(); save(); draw(); };
+  wxToggle.onclick=function(){ st.world.weatherOn=!st.world.weatherOn; if(st.world.weatherOn&&!st.world.weather){st.world.weather="sunny";} if(st.world.weatherOn&&st.world.weatherTimer<=0){st.world.weatherTimer=1; } updateEnv(st.world); syncSettings(); save(); };
+  prToggle.onclick=function(){ st.world.predatorsOn=!st.world.predatorsOn; if(!st.world.predatorsOn) st.world.predators.length=0; syncSettings(); save(); draw(); };
+  prCount.oninput=function(){ st.world.predCount=parseInt(prCount.value,10); document.getElementById("prVal").textContent=prCount.value; save(); };
+  document.getElementById("huToggle").onclick=function(){ st.world.huntingOn=!st.world.huntingOn; if(!st.world.huntingOn) st.world.prey.length=0; syncSettings(); save(); draw(); };
+  document.getElementById("huCount").oninput=function(){ st.world.preyCount=parseInt(this.value,10); document.getElementById("huVal").textContent=this.value; save(); };
+  document.getElementById("tbToggle").onclick=function(){ st.world.tribesOn=!st.world.tribesOn; syncSettings(); save(); draw(); };
+  function resizeWorld(g){
+    if(!confirm("Start a fresh "+g+"×"+g+" world? This clears the board and starts a new group.")) return;
+    GRID = g;
+    st.world = makeWorld();
+    st.world.predators.length=0; st.world.prey.length=0;
+    focusAgent=null; overview=false;
+    st.agents=[];
+    var n=Math.min(3, Math.max(1, Math.round(g/6)));
+    for(var i=0;i<n;i++){ var p=freeCell(); var nc=makeAgent(p.x,p.y,(Math.random()*360)|0,1); nc.traits=randomTraits(); nc.clan=i; st.agents.push(nc); }
+    fit(); updateObs(); syncSettings(); save(); draw(); updateStats();
+    toast("New "+g+"×"+g+" world with "+n+" fresh creatures.");
+  }
+  Array.prototype.forEach.call(document.querySelectorAll("#sizeKinds .szk"),function(btn){
+    btn.onclick=function(){ resizeWorld(parseInt(btn.getAttribute("data-g"),10)); };
+  });
+  agToggle.onclick=function(){ st.world.aging=!st.world.aging; syncSettings(); save(); };
+  document.getElementById("sxToggle").onclick=function(){ st.world.sexualRepro=!st.world.sexualRepro; syncSettings(); save(); };
+  // ---- introduce a specialist ----
+  var pendingKind=null;
+  function smartestBrain(){ var best=null,bv=-1; for(var i=0;i<st.agents.length;i++){ var k=knowledge(st.agents[i]).frac; if(k>bv){bv=k;best=st.agents[i];} } return best; }
+  function dropSpecialist(kind, brainMode){
+    var pos=freeCell(); if(!pos) return;
+    var c=makeSpecialist(pos.x,pos.y,kind);
+    if(brainMode==="smart"){ var sb=smartestBrain(); if(sb){ c.Qp=sb.Qp.slice(); c.Qs=sb.Qs.slice(); } }
+    st.agents.push(c);
+    emotes.push({ch:"🧬",x:pos.x*cell()+cell()/2,y:pos.y*cell()+cell()*0.2,t:0});
+    draw(); updateStats(); save();
+    toast(kind.charAt(0).toUpperCase()+kind.slice(1)+" introduced ("+(brainMode==="smart"?"copied brain":"blank brain")+").");
+  }
+  Array.prototype.forEach.call(document.querySelectorAll("#specKinds .spk"),function(btn){
+    btn.onclick=function(){ pendingKind=btn.getAttribute("data-k");
+      document.getElementById("specKindName").textContent=pendingKind;
+      document.getElementById("specBrainRow").classList.remove("hide"); };
+  });
+  document.getElementById("specSmart").onclick=function(){ if(pendingKind){ dropSpecialist(pendingKind,"smart"); document.getElementById("specBrainRow").classList.add("hide"); pendingKind=null; } };
+  document.getElementById("specBlank").onclick=function(){ if(pendingKind){ dropSpecialist(pendingKind,"blank"); document.getElementById("specBrainRow").classList.add("hide"); pendingKind=null; } };
+  document.getElementById("guideClose").onclick=function(){ document.getElementById("guide").classList.add("hide"); };
+  document.getElementById("guideDemo").onclick=function(){ demoWorld(); document.getElementById("guide").classList.add("hide");
+    running=true; playBtn.textContent="⏸ Pause"; };
+
+  function demoWorld(){
+    st.world.cells.fill(0); st.world.nectar.fill(0);
+    [[1,1],[8,1],[1,8],[8,8],[4,4]].forEach(function(p){ var i=idx(p[0],p[1]); st.world.cells[i]=HAPPY; st.world.nectar[i]=NECTAR_MAX; });
+    [[5,2],[2,5],[7,6]].forEach(function(p){ st.world.cells[idx(p[0],p[1])]=OUCH; });
+    [[5,4],[5,5],[3,7],[4,7]].forEach(function(p){ st.world.cells[idx(p[0],p[1])]=WALL; });
+    save(); draw();
+  }
+
+  // ---- boot ----
+  fit();
+  var had=load();
+  if(st.agents.length>1){ document.getElementById("vs").classList.add("on"); document.getElementById("rivalBtn").classList.add("on"); }
+  document.querySelectorAll("#brainSeg button").forEach(function(x){ x.classList.toggle("on",x.dataset.m===st.mode); });
+  var seenTut=false; try{ seenTut=localStorage.getItem("botlab_seen_tut")==="1"; }catch(e){}
+  if(!had || !seenTut) openWizard(true);
+  else if(migrated) setTimeout(function(){ toast("New survival rules! Brains reset, your world kept. Hit Play."); },400);
+  draw(); requestAnimationFrame(loop);
+
+  var feed=[], feedOpen=false, feedNew=false;
+  // ---- event feed: plain-words story of colony life ----
+  function feedDay(){ var w=st.world; return w.dayNight? (Math.floor(w.time/w.cycleLen)+1) : null; }
+  function logEvent(ic, txt){ feed.push({ic:ic, txt:txt, day:feedDay()});
+    if(feed.length>60) feed.shift(); if(feedOpen) renderFeed(); feedNew=true; updateFeedDot(); }
+  function renderFeed(){ var p=document.getElementById("feedList"); if(!p) return;
+    if(!feed.length){ p.innerHTML="<div class='feedempty'>Press Play and watch. Births, deaths, hunts and tribes will show up here.</div>"; return; }
+    var h="";
+    for(var i=feed.length-1;i>=0;i--){ var e=feed[i];
+      h+="<div class='feeditem'><span class='fic'>"+e.ic+"</span><span class='ftx'>"+e.txt+(e.day?" <span class='fday'>· Day "+e.day+"</span>":"")+"</span></div>"; }
+    p.innerHTML=h;
+  }
+  function updateFeedDot(){ var d=document.getElementById("feedDot"); if(d) d.style.display=(feedNew&&!feedOpen)?"block":"none"; }
+  var _lastDom=-1;
+  function checkTribeMilestone(){
+    if(!st.world.tribesOn || st.agents.length<4) { _lastDom=-1; return; }
+    var count={}, total=0;
+    for(var i=0;i<st.agents.length;i++){ var a=st.agents[i]; if(a.dead) continue; var cl=a.clan||0; count[cl]=(count[cl]||0)+1; total++; }
+    var topCl=-1, topN=0; for(var k in count){ if(count[k]>topN){topN=count[k]; topCl=+k;} }
+    if(topCl>=0 && topN/total>=0.6 && topCl!==_lastDom){ _lastDom=topCl;
+      var names=["Red","Green","Blue","Gold","Purple","Teal","Orange","Pink"];
+      logEvent("🚩", "The "+(names[topCl%names.length])+" tribe now rules the colony ("+topN+" of "+total+").");
+    } else if(topN/total<0.6){ _lastDom=-1; }
+  }
+
+  // (standalone PWA service worker removed for Game Shelf embedding)
+
+})();
+
+// Node export
+if (typeof module!=="undefined" && module.exports){
+  module.exports = { makeState:makeState, makeWorld:makeWorld, makeAgent:makeAgent,
+    stepAgent:stepAgent, worldTick:worldTick, updateEnv:updateEnv, senseKey:senseKey, placeKey:placeKey, stateKey:stateKey,
+    compass:compass, bestAction:bestAction, maxQ:maxQ, idx:idx, GRID:GRID, makeAgent:makeAgent, birthChild:birthChild,
+    noseMult:noseMult, metabMult:metabMult, emaxOf:emaxOf, mutateTraits:mutateTraits, randomTraits:randomTraits,
+    crossTraits:crossTraits, blendBrain:blendBrain, birthChild2:birthChild2, makeSpecialist:makeSpecialist,
+    makePredator:makePredator, stepPredator:stepPredator, pickWeather:pickWeather, PREDATOR_DMG:PREDATOR_DMG,
+    makePrey:makePrey, preyFleeStep:preyFleeStep, huntResolve:huntResolve, nearestAgentTo:nearestAgentTo,
+    kinNear:kinNear, clanCentroid:clanCentroid, cohesionPass:cohesionPass,
+    PREY_HP:PREY_HP, HUNT_DMG:HUNT_DMG, PREY_MEAL:PREY_MEAL,
+    HAPPY:HAPPY, OUCH:OUCH, WALL:WALL, SENSE_STATES:SENSE_STATES, NECTAR_MAX:NECTAR_MAX,
+    SMELL_RANGE_DAY:SMELL_RANGE_DAY, SMELL_RANGE_NIGHT:SMELL_RANGE_NIGHT };
+}
+</script>
+</body>
+</html>
