@@ -22,7 +22,7 @@ var TIER_NAMES   =["Newcomer","Regular","Veteran","Devotee","Legend"];
 
 /* storage key -> display name (any game that records can live here) */
 var NAMES={
-  bg_games:"Backgammon", bs_games:"Battleship", blocks_games:"Blocks", ks_games:"Knight School",
+  bg_games:"Backgammon", bs_games:"Battleship", blocks_games:"Blocks", thumbstack_games:"Thumbstack", ks_games:"Knight School",
   brickbreak_games:"Brick Break", bridge_games:"Bridge", checkers_games:"Checkers",
   chess_games:"Chess", cc_games:"Chinese Checkers", cb_games:"Code Breaker",
   c4_games:"Connect Four", dom_games:"Dominoes", dots_games:"Dots and Boxes",
@@ -45,6 +45,7 @@ var CHALLENGES={
   snakearcade_games:{label:"Snake Charmer",   tiers:[15,30,60,100]},
   brickbreak_games: {label:"Brick Buster",    tiers:[50,150,300,600]},
   blocks_games:     {label:"Block Master",    tiers:[3,5,8,12]},
+  thumbstack_games: {label:"Thumb Master",    tiers:[1000,4000,10000,24000]},
   ks_games:         {label:"Chess Scholar",   tiers:[3,5,8,12]},
   stardefender_games:{label:"Star Defender",  tiers:[3,5,8,12]},
   gemmatch_games:   {label:"Gem Crusher",     tiers:[500,1500,4000,8000]},
@@ -53,7 +54,7 @@ var CHALLENGES={
 };
 
 /* which rec field is the higher-is-better metric for each challenge game */
-var METRIC={snakearcade_games:"score",brickbreak_games:"score",blocks_games:"level",stardefender_games:"wave",
+var METRIC={snakearcade_games:"score",brickbreak_games:"score",blocks_games:"level",thumbstack_games:"score",stardefender_games:"wave",
   gemmatch_games:"score",minesweeper_games:"score",craps_games:"score"};
 
 /* ---- storage (localStorage with in-memory fallback, like the ledger) ---- */
