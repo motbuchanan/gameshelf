@@ -22,7 +22,7 @@ var TIER_NAMES   =["Newcomer","Regular","Veteran","Devotee","Legend"];
 
 /* storage key -> display name (any game that records can live here) */
 var NAMES={
-  bg_games:"Backgammon", bs_games:"Battleship", blocks_games:"Blocks",
+  bg_games:"Backgammon", bs_games:"Battleship", blocks_games:"Blocks", ks_games:"Knight School",
   brickbreak_games:"Brick Break", bridge_games:"Bridge", checkers_games:"Checkers",
   chess_games:"Chess", cc_games:"Chinese Checkers", cb_games:"Code Breaker",
   c4_games:"Connect Four", dom_games:"Dominoes", dots_games:"Dots and Boxes",
@@ -45,6 +45,7 @@ var CHALLENGES={
   snakearcade_games:{label:"Snake Charmer",   tiers:[15,30,60,100]},
   brickbreak_games: {label:"Brick Buster",    tiers:[50,150,300,600]},
   blocks_games:     {label:"Block Master",    tiers:[3,5,8,12]},
+  ks_games:         {label:"Chess Scholar",   tiers:[3,5,8,12]},
   stardefender_games:{label:"Star Defender",  tiers:[3,5,8,12]},
   gemmatch_games:   {label:"Gem Crusher",     tiers:[500,1500,4000,8000]},
   minesweeper_games:{label:"Mine Clearer",    tiers:[200,800,2000,5000]},
