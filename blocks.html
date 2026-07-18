@@ -173,15 +173,20 @@ var _back=document.createElement("canvas");_back.width=W*CELL;_back.height=H*CEL
   var vg=g.createRadialGradient(W*CELL/2,H*CELL*0.4,W*CELL*0.3,W*CELL/2,H*CELL*0.5,H*CELL*0.6);vg.addColorStop(0,"rgba(0,0,0,0)");vg.addColorStop(1,"rgba(0,0,0,.4)");g.fillStyle=vg;g.fillRect(0,0,W*CELL,H*CELL);
 })();
 var _motes=[];for(var _i=0;_i<6;_i++)_motes.push({x:Math.random()*W*CELL,y:Math.random()*H*CELL,ph:Math.random()*6.28,sp:0.1+Math.random()*0.2});
+/* baked once: at 60fps, building 6 radial gradients per frame is the single most expensive thing here */
+var _moteImg=(function(){var c=document.createElement("canvas");c.width=c.height=80;var q=c.getContext("2d");
+  var mg=q.createRadialGradient(40,40,0,40,40,40);mg.addColorStop(0,"rgba(180,150,255,1)");mg.addColorStop(1,"rgba(180,150,255,0)");
+  q.fillStyle=mg;q.fillRect(0,0,80,80);return c;})();
 var _prevLines=0,_flash=0,_parts=[];
 function _spawnClear(n){_flash=1;for(var i=0;i<n*14;i++){var col=_COLORS[(Math.random()*_COLORS.length)|0];_parts.push({x:Math.random()*W*CELL,y:H*CELL*(0.35+Math.random()*0.4),vx:(Math.random()-0.5)*5,vy:(Math.random()-0.5)*5-1,life:1,color:col,s:2+Math.random()*3});}}
 
-function draw(){
+function draw(dt){
+  var k=(dt>0?dt:16.67)/16.67; if(k>3)k=3;   /* 1.0 at 60fps; legacy no-arg calls step one frame */
   var now=performance.now();
   ctx.drawImage(_back,0,0);
   // ambient shimmer
   for(var m=0;m<_motes.length;m++){var mo=_motes[m],my=(mo.y+now*mo.sp*0.05)%(H*CELL),a=0.04+0.03*Math.sin(now*0.001+mo.ph);
-    var mg=ctx.createRadialGradient(mo.x,my,0,mo.x,my,40);mg.addColorStop(0,"rgba(180,150,255,"+a.toFixed(3)+")");mg.addColorStop(1,"rgba(0,0,0,0)");ctx.fillStyle=mg;ctx.beginPath();ctx.arc(mo.x,my,40,0,7);ctx.fill();}
+    ctx.globalAlpha=a;ctx.drawImage(_moteImg,mo.x-40,my-40);ctx.globalAlpha=1;}
   // settled blocks
   for(var r=0;r<H;r++)for(var c=0;c<W;c++){var v=G.board[r][c];if(v)ctx.drawImage(_sprites[v]||_sprites[_COLORS[0]],c*CELL+1,r*CELL+1);}
   // active piece: ghost outline + glowing piece
@@ -195,8 +200,8 @@ function draw(){
   // line-clear celebration (triggered by line count change; no logic touched)
   if(G.lines<_prevLines)_prevLines=G.lines;
   if(G.lines>_prevLines){_spawnClear(G.lines-_prevLines);_prevLines=G.lines;}
-  if(_flash>0){ctx.fillStyle="rgba(255,255,255,"+(_flash*0.22).toFixed(3)+")";ctx.fillRect(0,0,W*CELL,H*CELL);_flash-=0.06;}
-  for(var i=_parts.length-1;i>=0;i--){var pt=_parts[i];pt.x+=pt.vx;pt.y+=pt.vy;pt.vy+=0.15;pt.life-=0.02;
+  if(_flash>0){ctx.fillStyle="rgba(255,255,255,"+(_flash*0.16).toFixed(3)+")";ctx.fillRect(0,0,W*CELL,H*CELL);_flash-=0.06*k;if(_flash<0)_flash=0;}
+  for(var i=_parts.length-1;i>=0;i--){var pt=_parts[i];pt.x+=pt.vx*k;pt.y+=pt.vy*k;pt.vy+=0.15*k;pt.life-=0.02*k;
     if(pt.life<=0){_parts.splice(i,1);continue;}ctx.globalAlpha=Math.max(0,pt.life);ctx.fillStyle=pt.color;ctx.fillRect(pt.x,pt.y,pt.s,pt.s);ctx.globalAlpha=1;}
 }
 function drawNext(){
@@ -214,9 +219,11 @@ function rrect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,
   ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
 
 function loop(ts){G.raf=requestAnimationFrame(loop);
-  if(G.over||!G.running)return;
-  if(!G.last)G.last=ts;const dt=ts-G.last;G.last=ts;G.acc+=dt;
-  if(G.acc>=dropInterval()){G.acc=0;dropStep();}
+  if(!G.last)G.last=ts;var dt=ts-G.last;G.last=ts;
+  if(!(dt>0)||dt>100)dt=16.67;            /* clamp: tab-switch / first frame */
+  if(!G.over&&G.running){G.acc+=dt;
+    if(G.acc>=dropInterval()){G.acc=0;dropStep();}}
+  draw(dt);                                /* FX need a real frame loop, not one draw per drop */
 }
 function newGame(){
   cancelAnimationFrame(G.raf);G.raf=0;
