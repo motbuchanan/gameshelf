@@ -293,3 +293,38 @@ correct, and the leak check still passes - profile object remains exactly
 A creature/character creator registers e.g. `GN.schema.register("dollhouseChar", {layers:[...]})`
 with types already supported (choice for species, tags for traits, text for name, number for age)
 and calls the same `GN.fields.build`. Only genuinely new *field types* need engine work.
+
+### 7c - Almanac (DONE, validated 2026-07-19)
+
+Everything derivable from a BIRTH DATE alone. No network, no birth time, no birth place.
+`GN.almanac.facts(born)` returns: star sign + element + mode, full Chinese sexagenary sign
+(animal AND element, the real 60-year cycle), moon phase that night with % lit, weekday +
+"Monday's child" line, birthstone, birth flower, season, generation, life path number,
+days alive + next 1,000-day milestone with its date, half-birthday, and which weekday this
+year's birthday lands on.
+
+`GN.almanac.compare(bornA, bornB)` -> shared sign / element / Chinese animal / birthstone /
+weekday / moon phase / same month or day, plus the day gap. Rendered in the editor as
+"Grandma: both Aries, same birthstone (Diamond)". Needs no new fields.
+`GN.almanac.upcoming(n)` -> whose birthday is next across every profile that has one.
+
+UI: a read-only Almanac panel in the profile editor that appears the moment a valid birthday
+exists and disappears if it is cleared. Live-updates as the date field changes.
+
+**Validated against known values, not eyeballed:** 8/8 moon phases correct (2000-01-06,
+2024-01-11, 2024-01-25, 2023-08-01, 2024-12-30, 2025-01-13, 2024-02-09, 2024-08-19) and
+5/5 Chinese sexagenary pairs (2020 Metal Rat, 2024 Wood Dragon, 1984 Wood Rat, 1972 Water Rat,
+1988 Earth Dragon). 0 page errors.
+
+Known approximations, both surfaced honestly in the UI or code comments:
+- Moon uses the mean synodic month, good to about half a day. Fine for "the moon that night",
+  can sit on the wrong side of an exact quarter by a few hours.
+- Chinese New Year falls Jan 21 - Feb 20, so a date in that window may belong to the previous
+  animal. `chinese.unsure` is true for those dates and the panel says so rather than lying.
+- The "Monday's child" rhyme is in a single `RHYME` object at the top of the module. The
+  traditional Wednesday line is "full of woe" - reword it there if that is not wanted for kids.
+
+### NOT built - needs a birth time + birth place layer (parked by Mot)
+Rising sign, houses, and an exact Moon sign all need the hour and the city, not just the date.
+Planet-in-sign at birth (Jupiter, Saturn, Mars) is date-only and IS feasible later without
+birth time, since those planets sit in a sign for months or years.

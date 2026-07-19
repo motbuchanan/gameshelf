@@ -64,6 +64,16 @@
   .wmarker{position:absolute;width:16px;height:16px;border-radius:50%;border:2.5px solid #fff;box-shadow:0 0 0 1.5px rgba(0,0,0,.45),0 1px 3px rgba(0,0,0,.4);transform:translate(-50%,-50%);pointer-events:none;display:none;}
   .lslider{width:160px;accent-color:#2f7d4f;}
   .wlabel{font-size:11.5px;color:#7a8a98;font-style:italic;}
+  .alm{margin-top:12px;border:1px solid rgba(255,255,255,.16);border-radius:12px;overflow:hidden}
+  .almh{padding:10px 13px;background:rgba(255,255,255,.07);font-weight:700;font-size:14px}
+  .almg{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:rgba(255,255,255,.09)}
+  .almc{background:rgba(0,0,0,.28);padding:9px 11px;min-width:0}
+  .almc.wide{grid-column:1/-1}
+  .almk{font-size:10px;opacity:.6;text-transform:uppercase;letter-spacing:.5px}
+  .almv{font-size:14px;font-weight:600;margin-top:3px;line-height:1.3;word-break:break-word}
+  .almn{font-size:11px;opacity:.6;margin-top:3px;line-height:1.35}
+  .almlink{padding:9px 13px;font-size:13px;border-top:1px solid rgba(255,255,255,.12);line-height:1.5}
+  .almlink b{font-weight:700}
   .layer{border:1px solid rgba(255,255,255,.14);border-radius:12px;margin-top:10px;overflow:hidden}
   .layer>summary{list-style:none;cursor:pointer;padding:11px 13px;display:flex;
        align-items:center;justify-content:space-between;gap:10px;background:rgba(255,255,255,.05)}
@@ -161,6 +171,7 @@ function openEditor(id){
   h+='<label class="tog"><input type="checkbox" id="econtoggle"'+(GN.people.contactsOn()?" checked":"")+'> Show phone &amp; email fields</label>';
   h+='<div class="note">Everything in here stays on this device. Never uploaded, never synced. '
     +'Fill in as much or as little as you like \u2014 a name on its own is a perfectly good profile.</div>';
+  h+='<div id="ealm"></div>';
   h+='</div>';
   if(!isNew)h+='<div class="fld"><label>Stats</label><div class="statbox" id="estats"></div></div>';
   h+='<div class="btns">';
@@ -283,7 +294,46 @@ function firstFreeColorIdx(){
 let peoDraft={born:"",interests:[],notes:"",contact:{phone:"",email:""}};
 function buildAbout(){
   const host=$("card").querySelector("#eabt"); if(!host)return;
-  GN.fields.build(host,GN.schema.get("people"),peoDraft,{gates:{contacts:GN.people.contactsOn()}});
+  GN.fields.build(host,GN.schema.get("people"),peoDraft,
+    {gates:{contacts:GN.people.contactsOn()},onChange:buildAlmanac});
+  buildAlmanac();
+}
+function almCell(k,v,note,wide){
+  return '<div class="almc'+(wide?' wide':'')+'"><div class="almk">'+k+'</div>'
+    +'<div class="almv">'+v+'</div>'+(note?'<div class="almn">'+note+'</div>':'')+'</div>';
+}
+function buildAlmanac(){
+  const box=$("card").querySelector("#ealm"); if(!box)return;
+  const f=GN.almanac.facts(peoDraft.born);
+  if(!f){box.innerHTML="";return;}
+  let h='<div class="alm"><div class="almh">\u2728 Almanac</div><div class="almg">';
+  h+=almCell("Star sign",esc(f.glyph+" "+f.sign),esc(f.element+" \u00b7 "+f.mode));
+  h+=almCell("Chinese year",esc(f.chinese.full),
+       f.chinese.unsure?"Born before Feb 21, so this depends on the exact Chinese New Year date that year":"");
+  h+=almCell("Moon that night",esc(f.moon.icon+" "+f.moon.name),esc(f.moon.lit+"% lit"));
+  h+=almCell("Born on a",esc(f.weekday),f.rhyme?esc(f.weekday+"\u2019s child is "+f.rhyme):"");
+  h+=almCell("Birthstone",esc(f.stone));
+  h+=almCell("Birth flower",esc(f.flower));
+  h+=almCell("Season",esc(f.season));
+  h+=almCell("Generation",esc(f.generation));
+  h+=almCell("Life path",esc(String(f.lifePath)));
+  h+=almCell("Days alive",esc(f.daysAlive.toLocaleString()),
+       esc(f.nextMilestone.days.toLocaleString()+" on "+f.nextMilestone.date));
+  h+=almCell("Half birthday",esc(f.halfBirthday));
+  h+=almCell("Birthday this year",esc("a "+f.birthdayWeekdayThisYear));
+  h+='</div>';
+  // cross-profile links - no new fields needed
+  const all=GN.people.all(), links=[];
+  Object.keys(all).forEach(function(oid){
+    if(oid===editId)return;
+    const ob=all[oid]&&all[oid].born; if(!ob)return;
+    const cmp=GN.almanac.compare(peoDraft.born,ob); if(!cmp||!cmp.shared.length)return;
+    const op=GN.profiles.get?GN.profiles.get(oid):null; if(!op)return;
+    links.push('<b>'+esc(op.name)+'</b>: '+esc(cmp.shared.join(", ")));
+  });
+  if(links.length)h+='<div class="almlink">'+links.slice(0,6).join("<br>")+'</div>';
+  h+='</div>';
+  box.innerHTML=h;
 }
 function saveEditor(){
   const name=($("card").querySelector("#enm").value||"").trim();

@@ -335,6 +335,149 @@ GN.schema.register("people",{
   ]
 });
 
+
+/* ---------- ALMANAC: everything derivable from a DATE alone ----------
+   No network, no birth time, no birth place. Anything needing the hour or the city
+   (rising sign, houses, exact Moon sign) is deliberately NOT here - that needs a
+   birth-time + birth-place layer which Mot has parked. */
+GN.almanac=(function(){
+  const SIGN_EL={Aries:"Fire",Leo:"Fire",Sagittarius:"Fire",Taurus:"Earth",Virgo:"Earth",Capricorn:"Earth",
+    Gemini:"Air",Libra:"Air",Aquarius:"Air",Cancer:"Water",Scorpio:"Water",Pisces:"Water"};
+  const SIGN_MODE={Aries:"Cardinal",Cancer:"Cardinal",Libra:"Cardinal",Capricorn:"Cardinal",
+    Taurus:"Fixed",Leo:"Fixed",Scorpio:"Fixed",Aquarius:"Fixed",
+    Gemini:"Mutable",Virgo:"Mutable",Sagittarius:"Mutable",Pisces:"Mutable"};
+  const ANIMALS=["Rat","Ox","Tiger","Rabbit","Dragon","Snake","Horse","Goat","Monkey","Rooster","Dog","Pig"];
+  const STEM_EL=["Wood","Wood","Fire","Fire","Earth","Earth","Metal","Metal","Water","Water"];
+  const STONE=["Garnet","Amethyst","Aquamarine","Diamond","Emerald","Pearl","Ruby","Peridot","Sapphire","Opal","Topaz","Turquoise"];
+  const FLOWER=["Carnation","Violet","Daffodil","Daisy","Lily of the valley","Rose","Larkspur","Gladiolus","Aster","Marigold","Chrysanthemum","Narcissus"];
+  const DOW=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  /* traditional rhyme - edit this array to reword any line */
+  const RHYME={Monday:"fair of face",Tuesday:"full of grace",Wednesday:"full of woe",
+    Thursday:"has far to go",Friday:"loving and giving",Saturday:"works hard for a living",
+    Sunday:"bonny and blithe, and good and gay"};
+  const MOONS=[[0.034,"New moon","\uD83C\uDF11"],[0.216,"Waxing crescent","\uD83C\uDF12"],
+    [0.284,"First quarter","\uD83C\uDF13"],[0.466,"Waxing gibbous","\uD83C\uDF14"],
+    [0.534,"Full moon","\uD83C\uDF15"],[0.716,"Waning gibbous","\uD83C\uDF16"],
+    [0.784,"Last quarter","\uD83C\uDF17"],[0.966,"Waning crescent","\uD83C\uDF18"],
+    [1.001,"New moon","\uD83C\uDF11"]];
+
+  function parts(b){
+    if(!b||!/^\d{4}-\d{2}-\d{2}$/.test(b))return null;
+    const y=+b.slice(0,4),m=+b.slice(5,7),d=+b.slice(8,10);
+    const dt=new Date(y,m-1,d);
+    if(dt.getFullYear()!==y||dt.getMonth()!==m-1||dt.getDate()!==d)return null;
+    return {y:y,m:m,d:d,dt:dt};
+  }
+  function julian(y,m,d){
+    if(m<=2){y-=1;m+=12;}
+    const A=Math.floor(y/100),B=2-A+Math.floor(A/4);
+    return Math.floor(365.25*(y+4716))+Math.floor(30.6001*(m+1))+d+B-1524.5;
+  }
+  /* mean synodic phase - good to roughly half a day, which is fine for "the moon
+     that night" but can sit on the wrong side of an exact quarter by a few hours */
+  function moonFrac(y,m,d){
+    const SYN=29.530588853;
+    let p=((julian(y,m,d)+0.5-2451550.1)/SYN)%1;
+    if(p<0)p+=1;
+    return p;
+  }
+  function moon(y,m,d){
+    const p=moonFrac(y,m,d);
+    for(let i=0;i<MOONS.length;i++) if(p<MOONS[i][0])
+      return {name:MOONS[i][1],icon:MOONS[i][2],frac:p,lit:Math.round((1-Math.cos(2*Math.PI*p))/2*100)};
+    return {name:"New moon",icon:"\uD83C\uDF11",frac:p,lit:0};
+  }
+  function chinese(y,m,d){
+    const i=((y-4)%12+12)%12, e=((y-4)%10+10)%10;
+    return {animal:ANIMALS[i],element:STEM_EL[e],
+      full:STEM_EL[e]+" "+ANIMALS[i],
+      /* Chinese New Year lands Jan 21 - Feb 20, so early-year dates may belong to the previous animal */
+      unsure:(m===1)||(m===2&&d<=20)};
+  }
+  function lifePath(y,m,d){
+    let n=String(y)+String(m)+String(d), t=0;
+    for(const c of n) t+=+c;
+    while(t>9&&t!==11&&t!==22&&t!==33){let x=0;for(const c of String(t))x+=+c;t=x;}
+    return t;
+  }
+  function generation(y){
+    if(y<=1945)return "Silent Generation";
+    if(y<=1964)return "Baby Boomer";
+    if(y<=1980)return "Gen X";
+    if(y<=1996)return "Millennial";
+    if(y<=2012)return "Gen Z";
+    if(y<=2024)return "Gen Alpha";
+    return "Gen Beta";
+  }
+  function season(m,d){
+    const md=m*100+d;
+    if(md>=320&&md<=620)return "Spring";
+    if(md>=621&&md<=921)return "Summer";
+    if(md>=922&&md<=1220)return "Autumn";
+    return "Winter";
+  }
+  function daysAlive(p){
+    const t=new Date(),today=new Date(t.getFullYear(),t.getMonth(),t.getDate());
+    return Math.round((today-p.dt)/86400000);
+  }
+  function fmt(dt){return dt.toLocaleDateString(undefined,{year:"numeric",month:"long",day:"numeric"});}
+
+  return {
+    /* everything a single date yields */
+    facts:function(born){
+      const p=parts(born); if(!p)return null;
+      const z=GN.people.zodiac(born);
+      const cn=chinese(p.y,p.m,p.d);
+      const mn=moon(p.y,p.m,p.d);
+      const dw=DOW[p.dt.getDay()];
+      const alive=daysAlive(p);
+      const nextK=(Math.floor(alive/1000)+1)*1000;
+      const kDate=new Date(p.dt.getTime()+nextK*86400000);
+      const half=new Date(p.dt.getTime()); half.setMonth(half.getMonth()+6);
+      const thisYr=new Date((new Date()).getFullYear(),p.m-1,p.d);
+      return {
+        sign:z?z.name:null, glyph:z?z.glyph:null,
+        element:z?SIGN_EL[z.name]:null, mode:z?SIGN_MODE[z.name]:null,
+        chinese:cn, moon:mn,
+        weekday:dw, rhyme:RHYME[dw],
+        stone:STONE[p.m-1], flower:FLOWER[p.m-1],
+        season:season(p.m,p.d), generation:generation(p.y), lifePath:lifePath(p.y,p.m,p.d),
+        daysAlive:alive, nextMilestone:{days:nextK,date:fmt(kDate)},
+        halfBirthday:half.toLocaleDateString(undefined,{month:"long",day:"numeric"}),
+        birthdayWeekdayThisYear:DOW[thisYr.getDay()]
+      };
+    },
+    /* the cross-profile delight - needs no new fields */
+    compare:function(a,b){
+      const A=this.facts(a),B=this.facts(b); if(!A||!B)return null;
+      const pa=parts(a),pb=parts(b);
+      const gap=Math.abs(Math.round((pa.dt-pb.dt)/86400000));
+      const out={shared:[],gapDays:gap};
+      if(A.sign&&A.sign===B.sign)out.shared.push("both "+A.sign);
+      else if(A.element&&A.element===B.element)out.shared.push("both "+A.element+" signs");
+      if(A.chinese.animal===B.chinese.animal)out.shared.push("both born in the year of the "+A.chinese.animal);
+      if(A.stone===B.stone)out.shared.push("same birthstone ("+A.stone+")");
+      if(A.weekday===B.weekday)out.shared.push("both born on a "+A.weekday);
+      if(A.moon.name===B.moon.name)out.shared.push("same moon phase ("+A.moon.name.toLowerCase()+")");
+      if(pa.m===pb.m&&pa.d===pb.d)out.shared.push("same birthday!");
+      else if(pa.m===pb.m)out.shared.push("birthdays in the same month");
+      return out;
+    },
+    /* whose birthday is next, across every profile that has one */
+    upcoming:function(limit){
+      const all=GN.people.all(),out=[];
+      Object.keys(all).forEach(function(id){
+        const b=all[id]&&all[id].born; if(!parts(b))return;
+        const d=GN.people.daysToBirthday(b);
+        const pr=GN.profiles.get?GN.profiles.get(id):null;
+        out.push({id:id,name:pr?pr.name:"",born:b,inDays:d});
+      });
+      out.sort(function(x,y){return x.inDays-y.inDays;});
+      return limit?out.slice(0,limit):out;
+    }
+  };
+})();
+
 GN.profiles={
   list:function(){return profLoad();},
   get:function(id){return profLoad().find(p=>p.id===id)||null;},
