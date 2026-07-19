@@ -1,0 +1,1779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
+<meta name="theme-color" content="#1A1626">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Pigment · color lab</title>
+<style>
+:root{
+  --ink:#FCF8F1;
+  --dim:#B9B2C6;
+  --bg:#1A1626;
+  --bg2:#221D31;
+  --panel:#2A2439;
+  --panel2:#342C46;
+  --line:#443A5C;
+  --pad:16px;
+  --disp:"Baloo 2","Nunito","Quicksand","Trebuchet MS",Verdana,system-ui,sans-serif;
+  --body:"Nunito",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;min-height:100%}
+body{
+  background:linear-gradient(180deg,var(--bg) 0%,var(--bg2) 100%);
+  background-attachment:fixed;
+  color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.45;
+  overscroll-behavior:none;-webkit-user-select:none;user-select:none;
+}
+button,input{font:inherit;color:inherit}
+button{background:none;border:0;cursor:pointer}
+b{font-weight:800}
+
+/* ---------- top ---------- */
+#top{
+  position:sticky;top:0;z-index:40;
+  background:var(--bg);
+  padding:calc(env(safe-area-inset-top) + 10px) var(--pad) 10px;
+  display:flex;align-items:center;gap:9px;
+  border-bottom:3px solid var(--line);
+}
+#wordmark{font-family:var(--disp);font-weight:800;font-size:23px;letter-spacing:.02em}
+#foundChip{
+  margin-left:auto;display:flex;align-items:center;gap:6px;
+  background:var(--panel);border:2px solid var(--line);border-radius:99px;
+  padding:6px 13px;font-weight:800;font-size:15px;
+}
+#foundChip span{font-size:12px;color:var(--dim);font-weight:700}
+#ver{background:var(--panel);border:2px solid var(--line);border-radius:99px;padding:0 12px;height:46px;font-family:var(--mono);font-size:12px;color:var(--dim)}
+#soundBtn{background:var(--panel);border:2px solid var(--line);border-radius:99px;width:46px;height:46px;font-size:18px;line-height:1}
+
+main{padding:14px var(--pad) 120px;max-width:780px;margin:0 auto}
+.screen{display:none}
+.screen.on{display:block;animation:fade .18s ease}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+h2.sec{font-family:var(--disp);font-size:22px;margin:20px 0 10px;font-weight:800}
+h2.sec:first-child{margin-top:4px}
+
+/* ---------- buttons ---------- */
+.btn{
+  background:var(--panel2);border:2px solid var(--line);border-radius:18px;
+  padding:14px 18px;font-size:16px;font-weight:800;min-height:56px;
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  box-shadow:0 4px 0 rgba(0,0,0,.32);
+}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,.32)}
+.btn.pri{background:var(--ink);color:#1A1626;border-color:var(--ink)}
+.btn.sm{padding:11px 14px;font-size:15px;min-height:48px;border-radius:15px}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+.hint{font-size:15px;color:var(--dim);line-height:1.5;margin-top:10px}
+
+/* ---------- wheel ---------- */
+#wheelWrap{position:relative;width:min(88vw,360px);margin:2px auto 0;aspect-ratio:1}
+#wheel{width:100%;height:100%;display:block;border-radius:50%;touch-action:none;
+  box-shadow:0 0 0 6px var(--panel),0 0 0 9px var(--line),0 10px 24px rgba(0,0,0,.45)}
+#pin{position:absolute;width:40px;height:40px;margin:-20px 0 0 -20px;border-radius:50%;
+  border:5px solid #fff;box-shadow:0 0 0 3px rgba(0,0,0,.5),0 3px 10px rgba(0,0,0,.5);
+  pointer-events:none;left:50%;top:50%;transition:transform .08s}
+#pin.pop{transform:scale(1.25)}
+.slabel{display:flex;justify-content:space-between;font-size:14px;font-weight:800;color:var(--dim);margin-top:18px}
+.slider{width:100%;height:44px;accent-color:#FCF8F1;margin:2px 0 0}
+
+#live{display:flex;gap:14px;align-items:center;background:var(--panel);border:3px solid var(--line);border-radius:24px;padding:12px;margin-top:14px}
+#liveSw{width:82px;height:82px;border-radius:20px;flex:0 0 auto;border:3px solid rgba(255,255,255,.18)}
+#liveName{font-family:var(--disp);font-size:27px;font-weight:800;line-height:1.05}
+#liveHex{font-family:var(--mono);font-size:13px;color:var(--dim);margin-top:2px}
+#liveTag{font-size:14px;color:var(--dim);margin-top:4px;font-weight:700}
+
+/* ---------- deck ---------- */
+#search{width:100%;background:var(--panel);border:3px solid var(--line);border-radius:18px;padding:15px;font-size:17px;font-weight:700}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:12px 0;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto;padding:11px 16px;border-radius:99px;border:2px solid var(--line);
+  font-size:15px;font-weight:800;background:var(--panel);white-space:nowrap;min-height:46px}
+.chip.on{background:var(--ink);color:#1A1626;border-color:var(--ink)}
+#grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:11px}
+.sw{border-radius:20px;overflow:hidden;border:3px solid var(--line);background:var(--panel);text-align:left;
+  box-shadow:0 4px 0 rgba(0,0,0,.28)}
+.sw:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,.28)}
+.sw i{display:block;height:74px;position:relative}
+.sw b{display:block;font-size:14px;font-weight:800;padding:8px 9px 2px;line-height:1.2;overflow-wrap:anywhere}
+.sw s{display:block;font-family:var(--mono);font-size:10px;color:var(--dim);padding:0 9px 9px;text-decoration:none}
+.sw.newfind{border-color:#FFD34D}
+.sw.newfind i:after{content:"★";position:absolute;right:6px;top:4px;font-size:17px;color:#FFD34D;
+  text-shadow:0 1px 3px rgba(0,0,0,.6)}
+
+/* ---------- mixer ---------- */
+.jarWrap{display:flex;align-items:flex-end;justify-content:center;gap:14px;margin-top:6px}
+.blob{width:84px;flex:0 0 auto;text-align:center}
+.blob i{display:block;width:84px;height:84px;border-radius:50% 50% 46% 54%/54% 50% 50% 46%;
+  border:3px solid rgba(255,255,255,.16);box-shadow:0 5px 0 rgba(0,0,0,.3)}
+.blob b{display:block;font-size:13px;font-weight:800;margin-top:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#jar{position:relative;width:132px;height:158px;flex:0 0 auto;
+  border:4px solid var(--line);border-top:0;border-radius:14px 14px 34px 34px;
+  background:rgba(255,255,255,.05);overflow:hidden}
+#jarFill{position:absolute;left:0;right:0;bottom:0;height:56%;transition:background .25s,height .3s}
+#jarFill:before{content:"";position:absolute;left:0;right:0;top:-9px;height:18px;border-radius:50%;background:inherit;filter:brightness(1.12)}
+#jarShine{position:absolute;left:12px;top:16px;width:16px;bottom:22px;border-radius:99px;background:linear-gradient(180deg,rgba(255,255,255,.34),rgba(255,255,255,0));pointer-events:none}
+#jarLip{width:150px;height:16px;border-radius:8px;background:var(--line);margin:0 auto -2px}
+.modeRow{display:flex;gap:10px;margin-top:16px}
+.mode{flex:1;padding:14px 8px;border:3px solid var(--line);border-radius:18px;text-align:center;
+  font-size:16px;font-weight:800;background:var(--panel);min-height:56px}
+.mode.on{background:var(--ink);color:#1A1626;border-color:var(--ink)}
+#mixInfo{background:var(--panel);border:3px solid var(--line);border-radius:22px;padding:14px;margin-top:16px}
+#mixName{font-family:var(--disp);font-size:26px;font-weight:800;line-height:1.1}
+#mixHex{font-family:var(--mono);font-size:13px;color:var(--dim);margin-top:4px}
+
+/* ---------- card sheet ---------- */
+#sheet{position:fixed;inset:0;z-index:60;display:none;background:rgba(10,8,16,.74)}
+#sheet.on{display:block}
+#card{position:absolute;left:0;right:0;bottom:0;max-height:93%;overflow:auto;background:var(--bg2);
+  border-radius:30px 30px 0 0;border-top:4px solid var(--line);
+  padding-bottom:calc(28px + env(safe-area-inset-bottom));animation:up .24s ease}
+@keyframes up{from{transform:translateY(40px)}to{transform:none}}
+#cardSw{height:170px;position:relative;border-radius:26px 26px 0 0}
+#closeCard{position:absolute;top:12px;right:12px;background:rgba(0,0,0,.4);color:#fff;
+  border-radius:99px;width:50px;height:50px;font-size:22px;font-weight:800}
+.cbody{padding:16px var(--pad)}
+#cardName{font-family:var(--disp);font-size:34px;font-weight:800;line-height:1.05}
+#cardMeta{font-size:15px;color:var(--dim);margin-top:6px;font-weight:700}
+.fact{background:#3A2F1B;border:3px solid #6B5326;border-radius:20px;padding:14px;margin-top:14px;
+  font-size:16px;line-height:1.5}
+.fact:before{content:"Did you know? ";font-weight:800;color:#FFD34D}
+.box{background:var(--panel);border:3px solid var(--line);border-radius:22px;padding:14px;margin-top:14px}
+.box h4{font-family:var(--disp);font-size:19px;margin:0 0 10px;font-weight:800}
+.part{display:flex;align-items:center;gap:11px;margin:9px 0;font-size:17px}
+.part i{width:38px;height:38px;border-radius:12px;flex:0 0 auto;border:2px solid rgba(255,255,255,.18)}
+.bar{display:flex;align-items:center;gap:9px;font-size:13px;margin:7px 0;color:var(--dim);font-weight:700}
+.bar u{flex:1;height:12px;background:#3B3350;border-radius:99px;overflow:hidden;text-decoration:none}
+.bar u b{display:block;height:100%;border-radius:99px}
+.hrow{display:flex;gap:8px}
+.hrow div{flex:1;text-align:center}
+.hrow i{display:block;height:56px;border-radius:14px;border:2px solid var(--line)}
+.hrow span{font-size:11px;color:var(--dim);display:block;padding-top:5px;font-weight:700;line-height:1.2}
+
+/* ---------- games ---------- */
+.gcard{background:var(--panel);border:3px solid var(--line);border-radius:24px;padding:16px;margin-top:14px}
+.gcard h3{font-family:var(--disp);font-size:24px;margin:0 0 4px;font-weight:800}
+.gcard p{margin:0;font-size:15px;color:var(--dim);line-height:1.45}
+.tw{flex:1;min-width:0}
+.tw span{font-size:13px;font-weight:800;color:var(--dim);display:block;padding-bottom:6px}
+#targetSw,#trySw{height:104px;border-radius:18px;border:3px solid var(--line)}
+.mixbtns{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:14px}
+.mixbtns button{border-radius:16px;padding:12px 0 8px;font-size:13px;font-weight:800;border:3px solid rgba(0,0,0,.25);
+  box-shadow:0 4px 0 rgba(0,0,0,.3);min-height:62px}
+.mixbtns button:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,.3)}
+.mixbtns em{display:block;font-style:normal;font-size:15px;font-weight:800;opacity:.9}
+.opts{display:grid;gap:9px;margin-top:14px}
+.opt{padding:17px;border-radius:18px;border:3px solid var(--line);background:var(--panel2);
+  font-size:18px;text-align:left;font-weight:800;min-height:60px}
+.opt.right{background:#2E7D4F;border-color:#59C98C}
+.opt.wrong{background:#7A2E3A;border-color:#C9596E}
+
+/* ---------- sticker book ---------- */
+.fam{margin-bottom:14px}
+.famhead{display:flex;align-items:center;gap:8px;font-weight:800;font-size:16px;margin-bottom:7px}
+.famhead u{flex:1;height:3px;background:var(--line);text-decoration:none;border-radius:9px}
+.famhead s{text-decoration:none;font-size:14px;color:var(--dim)}
+.dots{display:flex;flex-wrap:wrap;gap:5px}
+.dot{width:19px;height:19px;border-radius:7px;border:2px solid var(--line);background:#241F33}
+.dot.got{border-color:rgba(255,255,255,.35)}
+.mineRow{display:flex;align-items:center;gap:12px;padding:10px;margin-bottom:9px;
+  background:var(--panel);border:3px solid var(--line);border-radius:20px}
+
+/* ---------- nav ---------- */
+nav{position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;background:var(--panel);
+  border-top:4px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;padding:9px 2px 10px;font-size:12px;font-weight:800;color:var(--dim);
+  display:flex;flex-direction:column;align-items:center;gap:3px}
+nav button.on{color:var(--ink)}
+nav .ic{width:46px;height:34px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:20px}
+nav button.on .ic{background:var(--panel2)}
+
+/* ---------- overlays ---------- */
+#toast{position:fixed;left:50%;bottom:104px;transform:translateX(-50%);background:var(--ink);color:#1A1626;
+  padding:13px 20px;border-radius:99px;font-size:16px;font-weight:800;z-index:80;opacity:0;
+  pointer-events:none;transition:opacity .2s;max-width:88vw;text-align:center}
+#toast.on{opacity:1}
+.veil{position:fixed;inset:0;z-index:90;display:none;background:rgba(10,8,16,.86);
+  align-items:center;justify-content:center;padding:22px}
+.veil.on{display:flex}
+.pop{background:var(--bg2);border:4px solid var(--line);border-radius:30px;padding:22px;max-width:400px;width:100%;text-align:center}
+.pop h3{font-family:var(--disp);font-size:28px;margin:0 0 8px;font-weight:800}
+.pop p{font-size:16px;color:var(--dim);margin:0 0 14px;line-height:1.5}
+#celebSw{height:120px;border-radius:22px;border:4px solid rgba(255,255,255,.25);margin-bottom:14px}
+#confetti{position:fixed;inset:0;z-index:95;pointer-events:none;display:none}
+#nameInput{width:100%;background:var(--panel);border:3px solid var(--line);border-radius:18px;
+  padding:15px;font-size:19px;font-weight:800;text-align:center;margin-bottom:6px}
+#nameSw{height:74px;border-radius:20px;border:3px solid var(--line);margin-bottom:12px}
+#obSw{height:96px;border-radius:20px;margin-bottom:14px;background:linear-gradient(90deg,#F0533E,#FFC24D,#57C97F,#4E8BF5,#A46BE0)}
+#obDots{display:flex;gap:7px;justify-content:center;margin-top:14px}
+#obDots i{width:11px;height:11px;border-radius:99px;background:var(--line)}
+#obDots i.on{background:var(--ink)}
+#photoCanvas{width:100%;border-radius:20px;margin-top:12px;display:none;touch-action:none;border:3px solid var(--line)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<div id="top">
+  <a href="index.html" id="gsShelfBtn" aria-label="Back to the Game Shelf" style="pointer-events:auto;flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;background:rgba(127,127,127,.18);border:1px solid rgba(127,127,127,.42);color:inherit;font:600 12px/1 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;text-decoration:none;padding:10px 12px;border-radius:999px;white-space:nowrap">⌂ Shelf</a>
+  <span id="wordmark">Pigment</span>
+  <button id="soundBtn" title="Sound">🔇</button>
+  <div id="foundChip">★ <b id="foundN">0</b><span>found</span></div>
+  <button id="ver">v1.1</button>
+</div>
+
+<main>
+
+<section class="screen on" id="s-wheel">
+  <div id="wheelWrap"><canvas id="wheel" width="620" height="620"></canvas><div id="pin"></div></div>
+  <div class="slabel"><span>Darker</span><span>Lighter</span></div>
+  <input class="slider" type="range" id="lig" min="6" max="94" value="50">
+  <div id="live">
+    <div id="liveSw"></div>
+    <div style="min-width:0">
+      <div id="liveName">Touch the wheel</div>
+      <div id="liveHex">#______</div>
+      <div id="liveTag">Slide your finger around to hunt for colors</div>
+    </div>
+  </div>
+  <div class="row">
+    <button class="btn pri" id="openCard">Open this color</button>
+    <button class="btn" id="rnd">🎲 Surprise me</button>
+  </div>
+  <div class="row">
+    <button class="btn sm" id="photoBtn">📷 Grab a color from a photo</button>
+    <input type="file" id="photoIn" accept="image/*" hidden>
+  </div>
+  <canvas id="photoCanvas"></canvas>
+  <p class="hint">Every dot on this wheel is a real color. Pigment knows <b id="dbCount">0</b> color names, and it makes up a brand new name for anything in between.</p>
+  <div class="row"><button class="btn sm" id="helpBtn">How do I use this?</button></div>
+</section>
+
+<section class="screen" id="s-deck">
+  <input id="search" type="search" placeholder="Search color names" autocomplete="off">
+  <div class="chips" id="famChips"></div>
+  <div id="grid"></div>
+  <p class="hint" id="deckCount"></p>
+</section>
+
+<section class="screen" id="s-mix">
+  <h2 class="sec">Mixing bench</h2>
+  <div class="jarWrap">
+    <div class="blob"><i id="slotA"></i><b id="slotAName">—</b></div>
+    <div>
+      <div id="jarLip"></div>
+      <div id="jar"><div id="jarFill"></div><div id="jarShine"></div></div>
+    </div>
+    <div class="blob"><i id="slotB"></i><b id="slotBName">—</b></div>
+  </div>
+  <div class="row">
+    <button class="btn sm" data-pick="A">Pick color 1</button>
+    <button class="btn sm" data-pick="B">Pick color 2</button>
+    <button class="btn sm" id="swapMix">🔄 Swap</button>
+  </div>
+  <div class="slabel" style="margin-top:16px"><span id="mixLabA">50% of 1</span><span id="mixLabB">50% of 2</span></div>
+  <input class="slider" type="range" id="ratio" min="0" max="100" value="50">
+  <div class="modeRow">
+    <button class="mode on" data-mode="paint">🎨 Like paint</button>
+    <button class="mode" data-mode="light">💡 Like light</button>
+  </div>
+  <p class="hint" id="modeHint">Paint takes light away. Yellow and blue paint make green, and mixes keep getting darker.</p>
+  <div id="mixInfo">
+    <div id="mixName">—</div>
+    <div id="mixHex"></div>
+    <div class="row">
+      <button class="btn sm" id="mixCard">See its card</button>
+      <button class="btn sm" id="mixName2">✏️ Name it</button>
+      <button class="btn sm" id="mixToA">Keep mixing</button>
+    </div>
+  </div>
+  <div class="row" style="margin-top:14px">
+    <button class="btn sm" id="addWhite">+ White</button>
+    <button class="btn sm" id="addBlack">+ Black</button>
+    <button class="btn sm" id="addGray">+ Gray</button>
+    <button class="btn sm" id="mudIt">+ Its opposite</button>
+  </div>
+</section>
+
+<section class="screen" id="s-play">
+  <div class="gcard">
+    <h3>Match the color</h3>
+    <p>Add drops of paint until your jar matches the target.</p>
+    <div class="row" style="margin-top:12px">
+      <div class="tw"><span>Target</span><div id="targetSw"></div></div>
+      <div class="tw"><span>Your mix</span><div id="trySw"></div></div>
+    </div>
+    <div class="mixbtns">
+      <button id="pR" style="background:#E31E24">Red<em id="dR">0</em></button>
+      <button id="pY" style="background:#FFF200;color:#1A1626">Yellow<em id="dY">0</em></button>
+      <button id="pB" style="background:#1A529E">Blue<em id="dB">0</em></button>
+      <button id="pW" style="background:#FCF8F1;color:#1A1626">White<em id="dW">0</em></button>
+      <button id="pK" style="background:#101014">Black<em id="dK">0</em></button>
+    </div>
+    <div class="row">
+      <button class="btn sm" id="matchCheck">How close am I?</button>
+      <button class="btn sm" id="undoDrop">↩ Undo</button>
+      <button class="btn sm" id="matchClear">Empty the jar</button>
+      <button class="btn sm" id="matchNew">New target</button>
+    </div>
+    <p class="hint" id="matchMsg">Add one drop at a time. Watch what white does.</p>
+  </div>
+
+  <div class="gcard">
+    <h3>Name that color</h3>
+    <p>Four names, one swatch. Which one is right?</p>
+    <div id="quizSw" style="height:112px;border-radius:18px;border:3px solid var(--line);margin-top:12px"></div>
+    <div class="opts" id="quizOpts"></div>
+    <div class="row"><button class="btn sm" id="quizNew">Next color</button><span class="hint" id="quizScore" style="align-self:center;margin:0"></span></div>
+  </div>
+
+  <div class="gcard">
+    <h3>Warmer or cooler?</h3>
+    <p>Tap the warmer one. Warm colors lean toward fire, cool ones lean toward water.</p>
+    <div class="row" style="margin-top:12px">
+      <button class="tw" id="warmA" style="height:100px;border-radius:18px;border:3px solid var(--line)"></button>
+      <button class="tw" id="warmB" style="height:100px;border-radius:18px;border:3px solid var(--line)"></button>
+    </div>
+    <p class="hint" id="warmMsg">Streak: 0</p>
+  </div>
+</section>
+
+<section class="screen" id="s-mine">
+  <h2 class="sec">Colors you named</h2>
+  <div id="mineList"></div>
+  <h2 class="sec">Sticker book</h2>
+  <p class="hint" style="margin-top:0">Every color you open gets filled in. Empty squares are still out there.</p>
+  <div id="badges"></div>
+  <div class="row" style="margin-top:16px">
+    <button class="btn sm" id="exportBtn">Save my colors</button>
+    <button class="btn sm" id="importBtn">Load a saved file</button>
+    <input type="file" id="importIn" accept=".json,application/json" hidden>
+  </div>
+</section>
+
+</main>
+
+<nav>
+  <button class="on" data-go="wheel"><span class="ic">🌈</span>Wheel</button>
+  <button data-go="deck"><span class="ic">🗂️</span>Deck</button>
+  <button data-go="mix"><span class="ic">🥣</span>Mix</button>
+  <button data-go="play"><span class="ic">🎮</span>Play</button>
+  <button data-go="mine"><span class="ic">⭐</span>Mine</button>
+</nav>
+
+<div id="sheet"><div id="card">
+  <div id="cardSw"><button id="closeCard">✕</button></div>
+  <div class="cbody">
+    <div id="cardName"></div>
+    <div id="cardMeta"></div>
+    <div class="row">
+      <button class="btn sm" id="sayBtn">🔊 Say it</button>
+      <button class="btn sm" id="toMixA">Mix with this</button>
+      <button class="btn sm" id="renameBtn">✏️ My own name</button>
+    </div>
+    <div id="cardFact"></div>
+    <div class="box" id="cardRecipe"></div>
+    <div class="box" id="cardHarm"></div>
+    <div class="box" id="cardNear"></div>
+  </div>
+</div></div>
+
+<canvas id="confetti"></canvas>
+
+<div class="veil" id="celebrate"><div class="pop">
+  <div id="celebSw"></div>
+  <h3 id="celebName">New color!</h3>
+  <p id="celebSub"></p>
+  <button class="btn pri" id="celebOk" style="width:100%">Nice</button>
+</div></div>
+
+<div class="veil" id="nameModal"><div class="pop">
+  <h3>Name this color</h3>
+  <div id="nameSw"></div>
+  <input id="nameInput" maxlength="40" placeholder="Type a name">
+  <div class="row" style="justify-content:center">
+    <button class="btn sm" id="diceBtn">🎲 Give me an idea</button>
+  </div>
+  <div class="row" style="margin-top:14px">
+    <button class="btn sm" id="nameCancel" style="flex:1">Cancel</button>
+    <button class="btn pri sm" id="nameSave" style="flex:1">Save it</button>
+  </div>
+</div></div>
+
+<div class="veil" id="onboard"><div class="pop">
+  <div id="obSw"></div>
+  <h3 id="obTitle"></h3>
+  <p id="obText"></p>
+  <button class="btn pri" id="obNext" style="width:100%">Next</button>
+  <div id="obDots"><i class="on"></i><i></i><i></i><i></i></div>
+</div></div>
+
+<div id="toast"></div>
+<script>
+/* ============ PIGMENT · color lab ============ */
+var VERSION = "v1.1 · Jul 19";
+
+/* name | hex | source
+   c = crayon box   g = artist pigment   p = paint & product
+   n = nature & food   f = old world / fabric   w = web standard */
+var RAW = `
+Scarlet|FF2400|g
+Crimson|DC143C|w
+Cardinal|C41E3A|n
+Ruby|E0115F|n
+Cherry Red|D2042D|n
+Fire Engine Red|CE2029|c
+Candy Apple Red|FF0800|p
+Brick Red|CB4154|c
+Barn Red|7C0A02|p
+Alizarin Crimson|E32636|g
+Cadmium Red|E30022|g
+Vermilion|E34234|g
+Carmine|960018|g
+Madder Red|A32638|g
+Venetian Red|C80815|g
+Indian Red|CD5C5C|w
+Falu Red|801818|p
+Oxblood|4A0000|f
+Maroon|800000|w
+Burgundy|800020|f
+Wine|722F37|n
+Merlot|73343A|n
+Cranberry|9B1B30|n
+Raspberry|E30B5C|n
+Watermelon|FC6C85|n
+Strawberry|FC5A8D|n
+Chili Red|C21807|n
+Poppy|E35335|n
+Tomato|FF6347|w
+Salmon|FA8072|w
+Coral|FF7F50|w
+Living Coral|FF6F61|p
+Blush|DE5D83|c
+Rose|FF007F|g
+Dusty Rose|C9A0A0|f
+Rosewood|65000B|f
+Sangria|92000A|n
+Redwood|A45A52|n
+Terra Cotta|E2725B|p
+Persimmon|EC5800|n
+Fire Brick|B22222|w
+Rust|B7410E|n
+Sienna|A0522D|w
+Burnt Sienna|E97451|g
+Mahogany|C04000|c
+Chestnut|954535|n
+Copper Penny|AD6F69|n
+Lava|CF1020|n
+Ketchup|B31B1B|n
+Radish|E42D2D|n
+Beet|8E2141|n
+Pomegranate|B0233F|n
+Apple Red|C41E28|n
+Valentine Red|E63946|p
+Stop Sign Red|C8102E|p
+Pink|FFC0CB|w
+Hot Pink|FF69B4|w
+Deep Pink|FF1493|w
+Magenta|FF00FF|w
+Fuchsia|C154C1|g
+Bubblegum|FFC1CC|n
+Cotton Candy|FFBCD9|c
+Carnation Pink|FFA6C9|c
+Piggy Pink|FDDDE6|c
+Tickle Me Pink|FC89AC|c
+Mauvelous|EF98AA|c
+Wild Strawberry|FF43A4|c
+Razzmatazz|E3256B|c
+Razzle Dazzle Rose|FF33CC|c
+Shocking Pink|FC0FC0|p
+Flamingo|FC8EAC|n
+Rose Quartz|F7CAC9|p
+Tea Rose|F4C2C2|f
+Baby Pink|FFD1DC|p
+Millennial Pink|F3CFC6|p
+Salmon Pink|FF91A4|n
+Coral Pink|F88379|n
+Cherry Blossom|FFB7C5|n
+Amaranth|E52B50|g
+Cerise|DE3163|g
+Fandango|B53389|g
+Mulberry|C54B8C|n
+Orchid|DA70D6|w
+Thistle|D8BFD8|w
+Plum|DDA0DD|w
+Opera Mauve|B784A7|g
+Old Rose|C08081|f
+Puce|CC8899|f
+Peony|ED9CB4|n
+Taffy|F9A7C0|n
+Ballet Slipper|E8B4BC|p
+Watermelon Rind|F27995|n
+Orange|FFA500|w
+Tangerine|F28500|n
+Mandarin|F37A48|n
+Apricot|FBCEB1|c
+Peach|FFE5B4|n
+Cantaloupe|FFA062|n
+Papaya|FFEFD5|w
+Melon|FDBCB4|c
+Marigold|EAA221|n
+Amber|FFBF00|g
+Honey|EBA937|n
+Butterscotch|E09540|n
+Caramel|C68E17|n
+Pumpkin|FF7518|n
+Carrot|ED9121|n
+Sunset Orange|FD5E53|c
+Outrageous Orange|FF6E4A|c
+Neon Carrot|FFA343|c
+Atomic Tangerine|FF9966|c
+Burnt Orange|CC5500|p
+Safety Orange|FF7900|p
+International Orange|FF4F00|p
+Cadmium Orange|ED872D|g
+Ochre|CC7722|g
+Yellow Ochre|CB9D06|g
+Raw Sienna|D68A59|g
+Copper|B87333|n
+Bronze|CD7F32|n
+Ginger|B06500|n
+Cinnamon|D2691E|n
+Paprika|8F3B1B|n
+Sweet Potato|D9863A|n
+Basketball|EE7A30|p
+Traffic Cone|F4632B|p
+Monarch Wing|E2701E|n
+Yellow|FFFF00|w
+Lemon|FFF700|n
+Lemon Chiffon|FFFACD|w
+Banana|FFE135|n
+Canary|FFEF00|c
+Dandelion|FED85D|c
+Sunflower|FFDA03|n
+Goldenrod|DAA520|w
+Gold|FFD700|w
+Old Gold|CFB53B|f
+Mustard|FFDB58|n
+Corn|FBEC5D|c
+Buttercup|F0E130|n
+Butter|F5E663|n
+Cream|FFFDD0|n
+Vanilla|F3E5AB|n
+Champagne|F7E7CE|p
+Wheat|F5DEB3|w
+Straw|E4D96F|n
+Flax|EEDC82|f
+Khaki|F0E68C|w
+Sand|C2B280|n
+Beige|F5F5DC|w
+Ecru|CDB891|f
+Bone|E3DAC9|p
+Ivory|FFFFF0|w
+Eggshell|F0EAD6|p
+Cornsilk|FFF8DC|w
+Saffron|F4C430|n
+Turmeric|E1AD21|n
+Citron|E4D00A|g
+Naples Yellow|FADA5E|g
+Cadmium Yellow|FFF600|g
+Chrome Yellow|FFA700|g
+School Bus Yellow|FFD800|p
+Highlighter Yellow|EBFF00|p
+Laser Lemon|FFFF66|c
+Unmellow Yellow|FFFF6B|c
+Duckling|FBE870|n
+Beeswax|EEC900|n
+Pineapple|F6D860|n
+Chartreuse Yellow|DFFF00|g
+Green|008000|w
+Lime|00FF00|w
+Lime Green|32CD32|w
+Neon Green|39FF14|p
+Electric Lime|CCFF00|c
+Spring Green|00FF7F|w
+Mint|3EB489|n
+Mint Cream|F5FFFA|w
+Seafoam|9FE2BF|p
+Pistachio|93C572|n
+Celadon|ACE1AF|f
+Sage|9CAF88|p
+Eucalyptus|5F8575|n
+Moss|8A9A5B|n
+Fern|4F7942|n
+Pine|01796F|n
+Forest Green|228B22|w
+Hunter Green|355E3B|f
+Bottle Green|006A4E|f
+Emerald|50C878|g
+Jade|00A86B|g
+Malachite|0BDA51|g
+Viridian|40826D|g
+Sap Green|507D2A|g
+Terre Verte|6B7A56|g
+Olive|808000|w
+Olive Drab|6B8E23|w
+Army Green|4B5320|f
+Camouflage|78866B|f
+Avocado|568203|n
+Asparagus|87A96B|c
+Artichoke|8F9779|n
+Basil|579229|n
+Kale|4A6741|n
+Shamrock|009E60|c
+Clover|3F9B0B|n
+Lawn Green|7CFC00|w
+Kelly Green|4CBB17|f
+Apple Green|8DB600|n
+Granny Smith|A8E4A0|c
+Honeydew|F0FFF0|w
+Key Lime|E3F988|n
+Pear|D1E231|n
+Wasabi|A3C11F|n
+Cucumber|5D8A50|n
+Pickle|597D35|n
+Sea Green|2E8B57|w
+Juniper|5B7C5B|n
+Myrtle|21421E|f
+Rifle Green|444C38|f
+Laurel|A9BA9D|f
+Chartreuse|7FFF00|w
+Yellow Green|9ACD32|w
+Green Yellow|ADFF2F|w
+Slime Green|BCE954|p
+Inchworm|B2EC5D|c
+Screamin Green|76FF7A|c
+Caribbean Green|00CC99|c
+Jungle Green|29AB87|c
+Mountain Meadow|30BA8F|c
+Rain Forest|00755E|c
+Grasshopper|7BB661|n
+Frog|4F9C42|n
+Cactus|58755A|n
+Seaweed|41654B|n
+Cyan|00FFFF|w
+Aquamarine|7FFFD4|w
+Turquoise|40E0D0|w
+Robin Egg Blue|00CCCC|c
+Tiffany Blue|0ABAB5|p
+Teal|008080|w
+Peacock|005F69|f
+Lagoon|4CA6A6|n
+Cerulean|007BA7|g
+Sky Blue|87CEEB|w
+Powder Blue|B0E0E6|w
+Baby Blue|89CFF0|p
+Glacier|A8DCE7|n
+Pacific Blue|1CA9C9|c
+Blizzard Blue|ACE5EE|c
+Turquoise Blue|77DDE7|c
+Pool Water|63C5DA|p
+Icicle|D6ECEF|n
+Sea Glass|A3C1AD|n
+Blue|0000FF|w
+Royal Blue|4169E1|w
+Navy|000080|w
+Midnight Blue|191970|w
+Denim|1560BD|c
+Cobalt|0047AB|g
+Ultramarine|120A8F|g
+Prussian Blue|003153|g
+Phthalo Blue|000F89|g
+Indigo|4B0082|w
+Sapphire|0F52BA|n
+Lapis Lazuli|26619C|g
+Azure|007FFF|g
+Azure Mist|F0FFFF|w
+Cornflower|6495ED|w
+Periwinkle|CCCCFF|c
+Steel Blue|4682B4|w
+Slate Blue|6A5ACD|w
+Air Force Blue|5D8AA8|f
+Blue Jeans|5DADEC|c
+Blueberry|4F86F7|n
+Electric Blue|7DF9FF|p
+Neon Blue|4D4DFF|p
+Carolina Blue|4B9CD3|f
+Egyptian Blue|1034A6|g
+Yale Blue|00356B|f
+Oxford Blue|002147|f
+Space Cadet|1D2951|f
+Maya Blue|73C2FB|g
+Alice Blue|F0F8FF|w
+Cadet Blue|5F9EA0|w
+Storm Blue|4F666A|n
+Deep Sea|123C69|n
+Blue Raspberry|0CBFE9|n
+Chalkboard Blue|2E5266|p
+Purple|800080|w
+Violet|8F00FF|g
+Blue Violet|8A2BE2|w
+Amethyst|9966CC|n
+Lavender|E6E6FA|w
+Lilac|C8A2C8|n
+Wisteria|C9A0DC|c
+Heliotrope|DF73FF|g
+Mauve|E0B0FF|f
+Grape|6F2DA8|n
+Eggplant|614051|n
+Aubergine|3D0C02|n
+Plum Purple|8E4585|n
+Byzantium|702963|f
+Tyrian Purple|66023C|f
+Royal Purple|7851A9|f
+Regalia|522D80|f
+Iris|5A4FCF|c
+Ultra Violet|645394|p
+Purple Heart|69359C|c
+Vivid Violet|8F509D|c
+Mountain Majesty|9678B6|c
+Quinacridone Magenta|8E3A59|g
+Dioxazine Purple|3B1F6B|g
+Manganese Violet|8A5C93|g
+Lavender Gray|C4C3D0|f
+Jam|6E2C42|n
+Twilight|5D4E7B|n
+Brown|964B00|n
+Chocolate|7B3F00|n
+Coffee|6F4E37|n
+Cocoa|875C43|n
+Espresso|3C2218|n
+Mocha|967969|n
+Latte|C8A27A|n
+Cappuccino|A67B5B|n
+Toffee|795548|n
+Saddle Brown|8B4513|w
+Peanut Butter|CE9E5D|n
+Walnut|5C4033|n
+Camel|C19A6B|f
+Tan|D2B48C|w
+Taupe|483C32|f
+Fawn|E5AA70|n
+Buff|F0DC82|f
+Sepia|704214|g
+Umber|635147|g
+Burnt Umber|8A3324|g
+Raw Umber|826644|g
+Van Dyke Brown|664228|g
+Bistre|3D2B1F|g
+Russet|80461B|f
+Cordovan|893F45|f
+Brass|B5A642|n
+Clay|B66A50|p
+Adobe|BD6C48|p
+Desert Sand|EDC9AF|c
+Almond|EFDECD|c
+Shadow|8A795D|c
+Beaver|9F8170|c
+Cardboard|C1A173|p
+Gingerbread|9E5B34|n
+Pretzel|A05F31|n
+Acorn|7A5230|n
+Driftwood|A69880|n
+Antique Brass|CD9575|c
+Rose Gold|B76E79|p
+White|FFFFFF|w
+Snow|FFFAFA|w
+Ghost White|F8F8FF|w
+Linen|FAF0E6|w
+Seashell|FFF5EE|w
+Pearl|EAE0C8|n
+Alabaster|EDEAE0|p
+Chalk|DED9CE|p
+Silver|C0C0C0|w
+Platinum|E5E4E2|n
+Ash|B2BEB5|n
+Smoke|848884|n
+Gray|808080|w
+Light Gray|D3D3D3|w
+Fog|BFC5C7|n
+Slate|708090|w
+Gunmetal|2A3439|n
+Charcoal|36454F|n
+Graphite|41424C|n
+Pewter|899499|n
+Nickel|727472|n
+Steel|71797E|n
+Iron|48494B|n
+Payne Gray|536878|g
+Davy Gray|555555|g
+Black|000000|w
+Jet|343434|g
+Onyx|353839|n
+Obsidian|0B1215|n
+Ink|1D1E23|n
+Soot|1B1B1B|n
+Ebony|555D50|c
+Outer Space|414A4C|c
+Licorice|1A1110|n
+Raisin|242124|n
+Lamp Black|2B2B2B|g
+Ivory Black|231F20|g
+Storm Cloud|5A6870|n
+Dove|6D6C6C|n
+Oyster|D4CFC5|n
+Concrete|9A9A94|p
+Absinthe|76B583|n
+Bamboo|DAA06D|n
+Butterfly Blue|38B0DE|n
+Cerulean Frost|6D9BC3|c
+Cheddar|F6A21E|n
+Chili Powder|9E3A26|n
+Cinnabar|E44D2E|g
+Cloud|E8EDF0|n
+Coconut|F5EBDC|n
+Dragonfly|3FA9C9|n
+Dusk|4E5481|n
+Dune|C7B39B|n
+Firefly|D6E64B|n
+Fossil|CFC8B8|n
+Glow Worm|C3E86B|n
+Goldfish|FF8C42|n
+Grape Soda|6B3FA0|n
+Gravel|8E8C84|n
+Hazelnut|8E7618|n
+Hibiscus|B43757|n
+Iceberg|71A6D2|n
+Iguana|71A16B|n
+Jellyfish|B7C9E2|n
+Lichen|A3B58A|n
+Lobster|C0392B|n
+Marshmallow|F7EFE6|n
+Meteorite|3C3B44|n
+Milk|FDFFF5|n
+Mist|D5DBDB|n
+Moonstone|3AA8C1|g
+Mummy Brown|824A38|f
+Mushroom|BFAFA0|n
+Nectarine|FFA773|n
+Ocean Depth|09566B|n
+Orange Peel|FF9F00|n
+Pea Soup|929901|n
+Pebble|B8B0A5|n
+Petal Pink|F6D0D6|n
+Poison Dart|4FE04F|n
+Popsicle Blue|3EC7F0|p
+Pond Scum|6C7A3D|n
+Quicksand|BD9B7B|n
+Root Beer|4A2113|n
+Rubber Duck|FFD93B|p
+Sailor Blue|203864|f
+Sandcastle|DDBF94|n
+Sea Salt|E7ECEF|n
+Seagull|D6DBDF|n
+Shark|6E7F80|n
+Sherbet|F79F81|n
+Snapdragon|FED45B|n
+Soap|CEC8EF|c
+Spearmint|64C29E|n
+Stone|928E85|n
+Sunbeam|FBE8A6|n
+Sunburn|E8836A|n
+Swamp|4B5D3B|n
+Thunder|4E5754|n
+Tidepool|2E8B8B|n
+Tiger|E28B23|n
+Tortilla|E4C49A|n
+Tumbleweed|DEAA88|c
+Twig|8B7355|n
+Volcano|A63A2B|n
+Whale|4A5A6A|n
+Wildflower|9C6AB5|n
+Zucchini|4E734B|n
+`;
+
+/* a fact for the colors with the best stories */
+var FACTS = {
+  "Vermilion":"Made for centuries by grinding cinnabar, a bright red rock. Artists loved it and doctors warned about it, because it holds mercury.",
+  "Ultramarine":"Once ground from lapis lazuli hauled out of Afghan mountains, it cost more than gold, so painters saved it for the most important robe in the picture.",
+  "Lapis Lazuli":"The blue stone behind ultramarine. Egyptians carved it into scarabs 5,000 years ago.",
+  "Tyrian Purple":"Squeezed from sea snails. It took thousands of snails to dye one robe, so only emperors wore it.",
+  "Indigo":"A blue that comes from a plant, not a rock. It is what makes blue jeans blue.",
+  "Mummy Brown":"A real old paint color with a grim recipe. Painters stopped using it once they learned what was in it.",
+  "Carmine":"A deep red made from crushed cochineal insects. It still colors some foods and lipsticks.",
+  "Prussian Blue":"Invented by accident in 1706 when a color maker used a contaminated batch of chemicals.",
+  "Chartreuse":"Named after a green liqueur made by French monks, not the other way around.",
+  "Magenta":"Named after a battle fought in Magenta, Italy, in 1859, the same year the dye was invented.",
+  "Cyan":"One of the four printer inks. Look closely at a comic book and you can see tiny cyan dots.",
+  "Emerald":"Old emerald green paint contained arsenic. Some historians think its wallpaper made people sick.",
+  "Viridian":"The safe replacement for that poisonous green. Painters switched over in the 1800s.",
+  "Cerulean":"From the Latin word for sky. Painters use it for the top of a daytime sky, where the blue is deepest.",
+  "Ochre":"One of the oldest paints on earth. Cave painters used it 40,000 years ago.",
+  "Sienna":"Named for the Italian city of Siena, where the earth is this color.",
+  "Umber":"Another earth color, named for Umbria in Italy. Roast it in a fire and it becomes burnt umber.",
+  "Burnt Sienna":"Raw sienna heated in a kiln. Cooking earth pigments makes them redder.",
+  "Sepia":"Originally ink from cuttlefish. Old photographs faded toward this brown.",
+  "Saffron":"From crocus flower threads picked by hand. Gram for gram it is the most expensive spice.",
+  "Vanilla":"Real vanilla is a seed pod from an orchid that has to be pollinated by hand.",
+  "Turquoise":"Named for Turkey, because that is the route the stones traveled to Europe.",
+  "Scarlet":"Originally the name of a fine cloth, not a color. The cloth was usually dyed red, so the name moved over.",
+  "Crimson":"Also from an insect dye, kermes, used long before cochineal reached Europe.",
+  "Amaranth":"Named for a flower the Greeks said would never fade.",
+  "Fuchsia":"Named after botanist Leonhart Fuchs, who never saw the color that carries his name.",
+  "Goldenrod":"The color of a common roadside weed, and of old filing folders.",
+  "Periwinkle":"Named for a small blue flower that creeps along the ground.",
+  "Puce":"French for flea. Someone decided it was the color of a flea on white linen.",
+  "Mauve":"The first bright dye made in a lab, discovered in 1856 by an 18-year-old chemist trying to cure malaria.",
+  "Khaki":"From the Hindi and Urdu word for dust. Soldiers wanted uniforms that matched dry ground.",
+  "Chocolate":"Cacao seeds are actually purple inside. Roasting and fermenting turn them brown.",
+  "Copper":"Fresh copper is this pink orange, but weather turns it green. That is what happened to the Statue of Liberty.",
+  "Bronze":"Copper mixed with tin. It gave a whole age of history its name.",
+  "Slate":"Named for a rock that splits into flat sheets, once used for roofs and school writing boards.",
+  "Charcoal":"Burnt wood. Artists still draw with it because it smudges so well.",
+  "Lamp Black":"Made from soot scraped out of oil lamps, one of the oldest pigments there is.",
+  "Ivory Black":"Originally made by burning bones. Painters call it bone black too.",
+  "Cobalt":"German miners named cobalt ore after kobold, a goblin they blamed for worthless rock that made them sick.",
+  "Cadmium Yellow":"Brilliant and permanent, but the metal is toxic, so tubes carry a warning label.",
+  "Naples Yellow":"Dug from volcanic soil near Mount Vesuvius.",
+  "Malachite":"Ground from a green banded stone. Egyptians wore it as eye paint.",
+  "Jade":"Carvers in China prized it above gold for thousands of years.",
+  "Amber":"Not a mineral, but tree sap that hardened over millions of years. Insects get trapped inside.",
+  "Coral":"Named for the reef animal. Real coral loses its color when the ocean gets too warm.",
+  "Salmon":"The fish gets its pink from the tiny shrimp it eats. Farm-raised salmon needs it added to the feed.",
+  "Flamingo":"Same trick as salmon. A flamingo raised without shrimp in its diet turns out white.",
+  "Robin Egg Blue":"A real bird makes this. The pigment in the shell may help shade the chick inside from sun.",
+  "Peach":"The fruit was named first, and it came from China, not Georgia.",
+  "Pumpkin":"Orange comes from beta carotene, the same thing that makes carrots orange.",
+  "Carrot":"Carrots used to be purple and white. Orange ones were bred later.",
+  "Watermelon":"Red inside comes from lycopene, the same pigment that makes tomatoes red.",
+  "Avocado":"A 1970s kitchen appliance color. Whole refrigerators were this green.",
+  "Denim":"The name comes from serge de Nimes, a cloth from Nimes, France.",
+  "Sky Blue":"The sky is blue because air scatters short blue wavelengths of sunlight in every direction.",
+  "Sunset Orange":"Sunsets are orange because low sunlight travels through more air, and the blue gets scattered away.",
+  "Neon Green":"Real neon gas glows orange red. Green signs use argon and phosphor coatings.",
+  "White":"Not one color. White light holds every color, which is what a prism pulls apart.",
+  "Black":"Not a color of light at all, but the absence of it. The blackest lab-made coating absorbs over 99.9% of light.",
+  "Gold":"Gold is one of the few metals that is not gray. Its color comes from the way its electrons move at near light speed.",
+  "Silver":"The most reflective metal there is, which is why old mirrors were backed with it.",
+  "Gray":"A true gray has equal red, green and blue. Nudge any one of them and it picks a side.",
+  "Purple":"There is no single wavelength of purple. Your brain invents it when red and blue cones fire together.",
+  "Pink":"Same story. Pink is not in the rainbow, it is a mix your brain assembles."
+};
+
+/* words for inventing names for colors that have no name yet */
+var MODS = {
+  pale:["Pale","Faded","Whisper","Dusty","Sun-bleached","Powdered","Frosted","Ghost","Milky"],
+  soft:["Soft","Muted","Quiet","Hazy","Weathered","Antique","Vintage","Chalky"],
+  bright:["Electric","Screaming","Neon","Blazing","Radioactive","Turbo","Loud","Highlighter"],
+  deep:["Deep","Midnight","Velvet","Thunder","Cavern","Smoked","Storm","Shadow"],
+  muddy:["Muddy","Rusty","Swamp","Dirt-road","Old-boot","Campfire","Attic"],
+  odd:["Bewildered","Suspicious","Sleepy","Grumpy","Fancy","Wobbly","Secret","Alien","Rocket","Dragon","Wizard","Pirate","Dinosaur","Volcano","Comet","Jellyfish"]
+};
+/* ============ color math ============ */
+function clamp(v,a,b){return v<a?a:v>b?b:v;}
+function toHex(c){var s=Math.round(clamp(c,0,255)).toString(16);return s.length<2?"0"+s:s;}
+function hx(r){return "#"+toHex(r[0])+toHex(r[1])+toHex(r[2]);}
+function parseHex(h){
+  h=String(h).replace("#","").trim();
+  if(h.length===3)h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+  return [parseInt(h.slice(0,2),16)||0,parseInt(h.slice(2,4),16)||0,parseInt(h.slice(4,6),16)||0];
+}
+function rgb2hsl(r,g,b){
+  r/=255;g/=255;b/=255;
+  var mx=Math.max(r,g,b),mn=Math.min(r,g,b),h=0,s=0,l=(mx+mn)/2,d=mx-mn;
+  if(d){
+    s=l>0.5?d/(2-mx-mn):d/(mx+mn);
+    if(mx===r)h=((g-b)/d+(g<b?6:0));
+    else if(mx===g)h=(b-r)/d+2;
+    else h=(r-g)/d+4;
+    h*=60;
+  }
+  return [h,s,l];
+}
+function hsl2rgb(h,s,l){
+  h=((h%360)+360)%360;
+  var c=(1-Math.abs(2*l-1))*s, x=c*(1-Math.abs((h/60)%2-1)), m=l-c/2, r=0,g=0,b=0;
+  if(h<60){r=c;g=x;}else if(h<120){r=x;g=c;}else if(h<180){g=c;b=x;}
+  else if(h<240){g=x;b=c;}else if(h<300){r=x;b=c;}else{r=c;b=x;}
+  return [(r+m)*255,(g+m)*255,(b+m)*255];
+}
+function rgb2lab(rgb){
+  var f=[],i,v;
+  for(i=0;i<3;i++){v=rgb[i]/255;f[i]=v>0.04045?Math.pow((v+0.055)/1.055,2.4):v/12.92;}
+  var X=(f[0]*0.4124+f[1]*0.3576+f[2]*0.1805)/0.95047;
+  var Y=(f[0]*0.2126+f[1]*0.7152+f[2]*0.0722);
+  var Z=(f[0]*0.0193+f[1]*0.1192+f[2]*0.9505)/1.08883;
+  function g(t){return t>0.008856?Math.pow(t,1/3):(7.787*t+16/116);}
+  X=g(X);Y=g(Y);Z=g(Z);
+  return [116*Y-16,500*(X-Y),200*(Y-Z)];
+}
+function labDist(a,b){
+  var dl=a[0]-b[0],da=a[1]-b[1],db=a[2]-b[2];
+  return Math.sqrt(dl*dl+da*da+db*db);
+}
+
+/* ---- RYB: how paint behaves ---- */
+var RYB_CORNERS=[
+  [255,255,255], /* 000 nothing = white paper */
+  [255,  0,  0], /* r   */
+  [255,255,  0], /* y   */
+  [ 41, 95,153], /* b   */
+  [255,127,  0], /* r+y */
+  [128,  0,128], /* r+b */
+  [  0,168, 51], /* y+b */
+  [ 51, 24,  0]  /* r+y+b = mud to black */
+];
+function ryb2rgb(r,y,b){
+  var w=[
+    (1-r)*(1-y)*(1-b), r*(1-y)*(1-b), (1-r)*y*(1-b), (1-r)*(1-y)*b,
+    r*y*(1-b),         r*(1-y)*b,     (1-r)*y*b,     r*y*b
+  ];
+  var out=[0,0,0],i,k;
+  for(i=0;i<8;i++)for(k=0;k<3;k++)out[k]+=w[i]*RYB_CORNERS[i][k];
+  return out;
+}
+function rgb2ryb(rgb){
+  var best=[0,0,0],bd=1e9,step=0.2,c=[0.5,0.5,0.5],r,y,b,t,d,lab=rgb2lab(rgb);
+  var lo=[0,0,0],hi=[1,1,1];
+  for(var pass=0;pass<4;pass++){
+    bd=1e9;
+    for(r=lo[0];r<=hi[0]+1e-9;r+=step)
+      for(y=lo[1];y<=hi[1]+1e-9;y+=step)
+        for(b=lo[2];b<=hi[2]+1e-9;b+=step){
+          t=ryb2rgb(r,y,b);
+          d=labDist(rgb2lab(t),lab);
+          if(d<bd){bd=d;best=[r,y,b];}
+        }
+    for(var i=0;i<3;i++){lo[i]=clamp(best[i]-step,0,1);hi[i]=clamp(best[i]+step,0,1);}
+    step=step/2.5;
+  }
+  return {ryb:best,err:bd};
+}
+/* mix a list of {rgb, w} like paint on a palette */
+function mixPaint(list){
+  var tot=0,acc=[0,0,0],mxAvg=0,i,p,m;
+  for(i=0;i<list.length;i++)tot+=list[i].w;
+  if(!tot)return [128,128,128];
+  for(i=0;i<list.length;i++){
+    p=list[i].ryb||rgb2ryb(list[i].rgb).ryb;
+    acc[0]+=p[0]*list[i].w;acc[1]+=p[1]*list[i].w;acc[2]+=p[2]*list[i].w;
+    mxAvg+=Math.max(p[0],p[1],p[2])*list[i].w;
+  }
+  acc=[acc[0]/tot,acc[1]/tot,acc[2]/tot];mxAvg=mxAvg/tot;
+  /* straight averaging in the cube drains color (yellow+blue would go olive).
+     pull the strength back up toward the average strength of the paints,
+     but not all the way, because real mixes do lose a little life. */
+  var mxNow=Math.max(acc[0],acc[1],acc[2]);
+  if(mxNow>0.004&&mxAvg>mxNow){
+    var s=1+(mxAvg/mxNow-1)*0.9;
+    acc=[clamp(acc[0]*s,0,1),clamp(acc[1]*s,0,1),clamp(acc[2]*s,0,1)];
+  }
+  return ryb2rgb(acc[0],acc[1],acc[2]);
+}
+/* mix like light beams on a wall */
+function mixLight(list){
+  var mw=0,acc=[0,0,0],i,f;
+  for(i=0;i<list.length;i++)mw=Math.max(mw,list[i].w);
+  if(!mw)return [0,0,0];
+  for(i=0;i<list.length;i++){
+    f=list[i].w/mw;
+    acc[0]+=list[i].rgb[0]*f;acc[1]+=list[i].rgb[1]*f;acc[2]+=list[i].rgb[2]*f;
+  }
+  return [Math.min(255,acc[0]),Math.min(255,acc[1]),Math.min(255,acc[2])];
+}
+
+/* ---- the library ---- */
+var DB=[];
+function familyOf(rgb){
+  var h=rgb2hsl(rgb[0],rgb[1],rgb[2]),H=h[0],S=h[1],L=h[2];
+  if(S<0.10||L>0.955||L<0.055)return "Neutral";
+  var mxc=Math.max(rgb[0],rgb[1],rgb[2]);
+  if(H>=10&&H<50&&(mxc<165||(S<0.55&&L<0.75)))return "Brown";
+  if(H<12||H>=345)return "Red";
+  if(H<45)return "Orange";
+  if(H<66)return "Yellow";
+  if(H<160)return "Green";
+  if(H<200)return "Cyan";
+  if(H<255)return "Blue";
+  if(H<300)return "Purple";
+  return "Pink";
+}
+var SRC={c:"Crayon box",g:"Artist pigment",p:"Paint & products",n:"Nature & food",f:"Old world",w:"Web standard"};
+(function buildDB(){
+  var lines=RAW.split("\n"),i,p,rgb,seen={};
+  for(i=0;i<lines.length;i++){
+    var ln=lines[i].trim();
+    if(!ln)continue;
+    p=ln.split("|");
+    if(p.length<2)continue;
+    if(seen[p[0]])continue;
+    seen[p[0]]=1;
+    rgb=parseHex(p[1]);
+    DB.push({n:p[0],hex:"#"+p[1].toUpperCase(),rgb:rgb,lab:rgb2lab(rgb),src:p[2]||"w",fam:familyOf(rgb)});
+  }
+})();
+
+function nearest(rgb){
+  var lab=rgb2lab(rgb),bd=1e9,bi=0,d,i;
+  for(i=0;i<DB.length;i++){d=labDist(lab,DB[i].lab);if(d<bd){bd=d;bi=i;}}
+  return {c:DB[bi],d:bd};
+}
+function hashStr(s){var h=2166136261,i;for(i=0;i<s.length;i++){h^=s.charCodeAt(i);h=(h*16777619)>>>0;}return h>>>0;}
+var HUEWORDS=["Red","Orange","Yellow","Green","Blue","Purple","Pink","Brown","Gray","Violet","Rose","Blue-Violet"];
+function baseWord(name){
+  var strip=["Deep","Pale","Light","Dark","Bright","Neon","Electric","Burnt","Raw","Old","Hot","Vivid","Wild","Screamin"];
+  var parts=name.split(" ");
+  if(parts.length>1&&strip.indexOf(parts[0])>=0)parts.shift();
+  /* keep invented names short: Cadmium Orange -> Orange, but Purple Heart stays whole */
+  if(parts.length>1&&HUEWORDS.indexOf(parts[parts.length-1])>=0)return parts[parts.length-1];
+  return parts.join(" ");
+}
+/* a name for ANY color: the real one if it is close, an invented one if not */
+function nameFor(rgb){
+  var nr=nearest(rgb);
+  if(nr.d<7.0)return {name:nr.c.n,exact:true,near:nr.c,d:nr.d};
+  var hsl=rgb2hsl(rgb[0],rgb[1],rgb[2]),S=hsl[1],L=hsl[2];
+  var pool;
+  if(L>0.80)pool=MODS.pale;
+  else if(S>0.72&&L>0.42)pool=MODS.bright;
+  else if(L<0.26)pool=MODS.deep;
+  else if(S<0.22)pool=MODS.soft;
+  else if(S<0.42&&L<0.52)pool=MODS.muddy;
+  else pool=MODS.soft;
+  var h=hashStr(hx(rgb));
+  if(h%9===0)pool=MODS.odd;
+  var word=pool[h%pool.length];
+  return {name:word+" "+baseWord(nr.c.n),exact:false,near:nr.c,d:nr.d};
+}
+
+/* ---- how do I mix it? ---- */
+function recipe(rgb){
+  var res=rgb2ryb(rgb),v=res.ryb,hsl=rgb2hsl(rgb[0],rgb[1],rgb[2]);
+  var L=hsl[2],S=hsl[1];
+  var mx=Math.max(v[0],v[1],v[2]);
+  var out={parts:[],notes:[],ryb:v};
+  var names=["Red","Yellow","Blue"],cols=["#D3212D","#E8C31A","#1F4FA8"];
+  if(mx<0.06){
+    out.parts.push({n:"White",p:1,c:"#FFFFFF"});
+    out.notes.push("This one is basically white paint with almost nothing in it.");
+    return out;
+  }
+  if(S<0.09&&L>0.11&&L<0.93){
+    out.parts.push({n:"White",p:Math.max(1,Math.round(L*4)),c:"#FFFFFF"});
+    out.parts.push({n:"Black",p:Math.max(1,Math.round((1-L)*4)),c:"#101014"});
+    out.notes.push("Gray is just white and black. Painters often make a livelier gray by mixing two opposite colors instead, like blue and orange.");
+    return out;
+  }
+  if(L<0.11){
+    out.parts.push({n:"Black",p:1,c:"#101014"});
+    out.notes.push("Almost pure black. Fun fact: you can also make a deep near-black by mixing all three primaries as hard as they will go.");
+    return out;
+  }
+  var scale=[],i;
+  for(i=0;i<3;i++)scale.push(v[i]/mx);
+  var parts=scale.map(function(x){return x<0.08?0:Math.max(1,Math.round(x*4));});
+  for(i=0;i<3;i++)if(parts[i])out.parts.push({n:names[i],p:parts[i],c:cols[i]});
+  out.parts.sort(function(a,b){return b.p-a.p;});
+  if(L>0.82)out.notes.push("Then stir in a lot of white until it goes pastel.");
+  else if(L>0.66)out.notes.push("Then add white until it lightens up.");
+  else if(L>0.55&&S<0.6)out.notes.push("Then add a little white.");
+  if(L<0.22)out.notes.push("Add a small touch of black. Black is strong, so go slow.");
+  else if(L<0.34)out.notes.push("Darken it with a speck of black or its opposite color.");
+  if(S<0.25&&L<0.85&&L>0.2)out.notes.push("It looks dull because it has a bit of its opposite color mixed in. That is how you gray a color down without using black.");
+  if(mx>0.72&&parts[0]&&parts[1]&&parts[2])out.notes.push("All three primaries together head toward brown. Real mud.");
+  return out;
+}
+function complement(rgb){
+  var h=rgb2hsl(rgb[0],rgb[1],rgb[2]);
+  return hsl2rgb(h[0]+180,h[1],h[2]);
+}
+function shift(rgb,deg,ds,dl){
+  var h=rgb2hsl(rgb[0],rgb[1],rgb[2]);
+  return hsl2rgb(h[0]+deg,clamp(h[1]+(ds||0),0,1),clamp(h[2]+(dl||0),0.02,0.98));
+}
+function warmth(rgb){
+  var h=rgb2hsl(rgb[0],rgb[1],rgb[2])[0];
+  var d=Math.min(Math.abs(h-40),360-Math.abs(h-40));
+  return 1-d/180; /* 1 = warmest (orange), 0 = coolest (blue) */
+}
+function textOn(rgb){
+  var l=(0.299*rgb[0]+0.587*rgb[1]+0.114*rgb[2]);
+  return l>150?"#15141A":"#F4F1E8";
+}
+/* ============ storage ============ */
+var KEY="pigment_v1";
+var mem={found:{},mine:[],quiz:[0,0],warm:0};
+var store=(function(){
+  try{
+    var raw=localStorage.getItem(KEY);
+    if(raw){var o=JSON.parse(raw);for(var k in o)mem[k]=o[k];}
+    return {save:function(){try{localStorage.setItem(KEY,JSON.stringify(mem));}catch(e){}}};
+  }catch(e){return {save:function(){}};}
+})();
+function save(){store.save();}
+
+/* ============ helpers ============ */
+function $(id){return document.getElementById(id);}
+var toastT;
+function toast(msg){
+  var t=$("toast");t.textContent=msg;t.classList.add("on");
+  clearTimeout(toastT);toastT=setTimeout(function(){t.classList.remove("on");},1900);
+}
+function markFound(name,rgb){
+  if(!name||mem.found[name])return false;
+  mem.found[name]=1;save();updateFound();
+  celebrate(name,rgb||[100,100,100]);
+  return true;
+}
+function foundCount(){var n=0;for(var k in mem.found)n++;return n;}
+function updateFound(){$("foundN").textContent=foundCount();}
+
+/* ============ nav ============ */
+var pickTarget=null;
+document.querySelectorAll("nav button").forEach(function(b){
+  b.onclick=function(){go(b.dataset.go);};
+});
+function go(name){
+  document.querySelectorAll(".screen").forEach(function(s){s.classList.remove("on");});
+  $("s-"+name).classList.add("on");
+  document.querySelectorAll("nav button").forEach(function(b){b.classList.toggle("on",b.dataset.go===name);});
+  window.scrollTo(0,0);
+  if(name==="mine")renderMine();
+}
+
+/* ============ the wheel ============ */
+var wc=$("wheel"),wctx=wc.getContext("2d"),WS=440;
+wc.width=WS;wc.height=WS;
+var curL=0.5, cur=[220,60,60], curPos={x:0.5,y:0.5};
+function drawWheel(){
+  var img=wctx.createImageData(WS,WS),d=img.data,cx=WS/2,cy=WS/2,R=WS/2-2;
+  for(var y=0;y<WS;y++)for(var x=0;x<WS;x++){
+    var dx=x-cx,dy=y-cy,r=Math.sqrt(dx*dx+dy*dy),i=(y*WS+x)*4;
+    if(r>R){d[i+3]=0;continue;}
+    var h=(Math.atan2(dy,dx)*180/Math.PI+90+360)%360;
+    var s=Math.min(1,r/R);
+    var c=hsl2rgb(h,s,curL);
+    d[i]=c[0];d[i+1]=c[1];d[i+2]=c[2];d[i+3]=255;
+  }
+  wctx.putImageData(img,0,0);
+}
+function wheelPick(clientX,clientY){
+  var b=wc.getBoundingClientRect();
+  var x=(clientX-b.left)/b.width,y=(clientY-b.top)/b.height;
+  var dx=x-0.5,dy=y-0.5,r=Math.sqrt(dx*dx+dy*dy);
+  if(r>0.5){dx*=0.5/r;dy*=0.5/r;r=0.5;}
+  var h=(Math.atan2(dy,dx)*180/Math.PI+90+360)%360;
+  cur=hsl2rgb(h,Math.min(1,r/0.5),curL);
+  curPos={x:0.5+dx,y:0.5+dy};
+  var pin=$("pin");
+  pin.style.left=(curPos.x*100)+"%";pin.style.top=(curPos.y*100)+"%";
+  pin.style.background=hx(cur);
+  pin.classList.add("pop");
+  clearTimeout(pin._t);pin._t=setTimeout(function(){pin.classList.remove("pop");},110);
+  showLive();
+}
+function showLive(){
+  var nm=nameFor(cur);
+  $("liveSw").style.background=hx(cur);
+  $("liveName").textContent=nm.name;
+  $("liveHex").textContent=hx(cur).toUpperCase();
+  $("liveTag").textContent=nm.exact?("A real color from the "+SRC[nm.near.src].toLowerCase()):("Nobody named this one. Closest is "+nm.near.n+".");
+}
+wc.addEventListener("pointerdown",function(e){wc.setPointerCapture(e.pointerId);wheelPick(e.clientX,e.clientY);});
+wc.addEventListener("pointermove",function(e){if(e.buttons||e.pointerType==="touch")if(wc.hasPointerCapture&&wc.hasPointerCapture(e.pointerId))wheelPick(e.clientX,e.clientY);});
+function setFromHSL(h,s){
+  var ang=(h-90)*Math.PI/180,r=s*0.5;
+  curPos={x:0.5+Math.cos(ang)*r,y:0.5+Math.sin(ang)*r};
+  var pin=$("pin");
+  pin.style.left=(curPos.x*100)+"%";pin.style.top=(curPos.y*100)+"%";
+  cur=hsl2rgb(h,s,curL);pin.style.background=hx(cur);
+  showLive();
+}
+$("lig").addEventListener("input",function(){
+  curL=this.value/100;drawWheel();
+  var dx=curPos.x-0.5,dy=curPos.y-0.5,r=Math.sqrt(dx*dx+dy*dy);
+  var h=(Math.atan2(dy,dx)*180/Math.PI+90+360)%360;
+  setFromHSL(h,Math.min(1,r/0.5));
+});
+$("openCard").onclick=function(){openCard(cur);};
+$("rnd").onclick=function(){
+  var c=DB[Math.floor(Math.random()*DB.length)];
+  var hsl=rgb2hsl(c.rgb[0],c.rgb[1],c.rgb[2]);
+  curL=hsl[2];$("lig").value=Math.round(curL*100);drawWheel();
+  setFromHSL(hsl[0],hsl[1]);
+  cur=c.rgb.slice();$("pin").style.background=hx(cur);
+  showLive();openCard(cur);
+};
+
+/* photo sampler */
+var pc=$("photoCanvas"),pctx=pc.getContext("2d",{willReadFrequently:true});
+$("photoBtn").onclick=function(){$("photoIn").click();};
+$("photoIn").onchange=function(e){
+  var f=e.target.files&&e.target.files[0];if(!f)return;
+  var img=new Image(),url=URL.createObjectURL(f);
+  img.onload=function(){
+    var w=Math.min(900,img.width),h=Math.round(img.height*(w/img.width));
+    pc.width=w;pc.height=h;pctx.drawImage(img,0,0,w,h);
+    pc.style.display="block";URL.revokeObjectURL(url);
+    toast("Tap anywhere in the photo");
+  };
+  img.onerror=function(){toast("Could not open that picture");};
+  img.src=url;
+};
+pc.addEventListener("pointerdown",function(e){
+  var b=pc.getBoundingClientRect();
+  var x=Math.floor((e.clientX-b.left)/b.width*pc.width);
+  var y=Math.floor((e.clientY-b.top)/b.height*pc.height);
+  try{
+    var d=pctx.getImageData(x,y,1,1).data;
+    cur=[d[0],d[1],d[2]];showLive();openCard(cur);
+  }catch(err){toast("Photo colors need the online version");}
+});
+
+/* ============ the deck ============ */
+var famList=["All","Red","Pink","Orange","Yellow","Green","Cyan","Blue","Purple","Brown","Neutral"];
+var curFam="All",curQ="";
+(function(){
+  var w=$("famChips");
+  famList.forEach(function(f){
+    var b=document.createElement("button");
+    b.className="chip"+(f==="All"?" on":"");b.textContent=f;
+    b.onclick=function(){curFam=f;w.querySelectorAll(".chip").forEach(function(c){c.classList.remove("on");});b.classList.add("on");renderDeck();};
+    w.appendChild(b);
+  });
+})();
+$("search").addEventListener("input",function(){curQ=this.value.toLowerCase();renderDeck();});
+function renderDeck(){
+  var g=$("grid"),html=[],n=0;
+  for(var i=0;i<DB.length;i++){
+    var c=DB[i];
+    if(curFam!=="All"&&c.fam!==curFam)continue;
+    if(curQ&&c.n.toLowerCase().indexOf(curQ)<0&&c.hex.toLowerCase().indexOf(curQ)<0)continue;
+    n++;
+    html.push('<button class="sw'+(mem.found[c.n]?" newfind":"")+'" data-i="'+i+'"><i style="background:'+c.hex+'"></i><b>'+c.n+'</b><s>'+c.hex+'</s></button>');
+  }
+  g.innerHTML=html.join("");
+  $("deckCount").textContent=n+" of "+DB.length+" colors shown. A white outline means you have found it.";
+  g.querySelectorAll(".sw").forEach(function(b){
+    b.onclick=function(){
+      var c=DB[+b.dataset.i];
+      if(pickTarget){setSlot(pickTarget,c.rgb);pickTarget=null;go("mix");return;}
+      openCard(c.rgb);
+    };
+  });
+}
+
+/* ============ the color card ============ */
+var cardRGB=[0,0,0];
+function openCard(rgb){
+  cardRGB=rgb.slice();
+  var nm=nameFor(rgb),hexs=hx(rgb).toUpperCase(),fam=familyOf(rgb);
+  var ink=textOn(rgb);
+  $("cardSw").style.background=hexs;
+  $("closeCard").style.color="#FFFFFF";
+  $("cardName").textContent=nm.name;
+  var w=warmth(rgb);
+  var temp=w>0.62?"warm":w<0.38?"cool":"in between";
+  $("cardMeta").textContent=hexs+"  ·  "+fam+"  ·  "+(nm.exact?SRC[nm.near.src]:"your own blend")+"  ·  feels "+temp;
+  var fact=nm.exact?FACTS[nm.near.n]:null;
+  $("cardFact").innerHTML=fact?'<div class="fact">'+fact+"</div>":"";
+  var rc=recipe(rgb),h=["<h4>How to mix it with paint</h4>"];
+  rc.parts.forEach(function(p){
+    h.push('<div class="part"><i style="background:'+p.c+'"></i><span><b>'+p.p+" part"+(p.p>1?"s":"")+"</b> "+p.n+"</span></div>");
+  });
+  rc.notes.forEach(function(t){h.push('<div style="font-size:13px;color:var(--ink-dim);line-height:1.45;margin-top:8px">'+t+"</div>");});
+  var pct=[Math.round(rgb[0]/255*100),Math.round(rgb[1]/255*100),Math.round(rgb[2]/255*100)];
+  h.push('<div class="bars"><h4 style="margin-top:14px">How a screen makes it with light</h4>');
+  ["Red","Green","Blue"].forEach(function(nme,i){
+    h.push('<div class="bar"><span style="width:44px">'+nme+'</span><u><b style="width:'+pct[i]+'%;background:'+["#FF4D4D","#4DFF6A","#4D8CFF"][i]+'"></b></u><span>'+pct[i]+"%</span></div>");
+  });
+  h.push("</div>");
+  $("cardRecipe").innerHTML=h.join("");
+  var comp=complement(rgb),a1=shift(rgb,-32),a2=shift(rgb,32),lt=shift(rgb,0,-0.05,0.16),dk=shift(rgb,0,0.03,-0.16);
+  var hh=["<h4>Colors that live nearby</h4>",'<div class="hrow">'];
+  [[dk,"darker"],[a1,"cousin"],[comp,"opposite"],[a2,"cousin"],[lt,"lighter"]].forEach(function(p){
+    hh.push('<div><i data-hex="'+hx(p[0])+'" style="background:'+hx(p[0])+'"></i><span>'+p[1]+"</span></div>");
+  });
+  hh.push("</div>",'<div style="font-size:13px;color:var(--ink-dim);line-height:1.45;margin-top:9px">The opposite is the color straight across the wheel. Side by side they make each other look brighter. Mixed together they make mud.</div>');
+  $("cardHarm").innerHTML=hh.join("");
+  var lab=rgb2lab(rgb),sorted=DB.map(function(c){return {c:c,d:labDist(lab,c.lab)};}).sort(function(a,b){return a.d-b.d;}).slice(0,6);
+  var nh=["<h4>Closest names in the deck</h4>",'<div class="hrow">'];
+  sorted.forEach(function(s){nh.push('<div><i data-hex="'+s.c.hex+'" style="background:'+s.c.hex+'"></i><span>'+s.c.n+"</span></div>");});
+  nh.push("</div>");
+  $("cardNear").innerHTML=nh.join("");
+  document.querySelectorAll("#cardHarm i,#cardNear i").forEach(function(el){
+    el.style.cursor="pointer";
+    el.onclick=function(){openCard(parseHex(el.dataset.hex));};
+  });
+  if(nm.exact)markFound(nm.near.n,nm.near.rgb);
+  else blip("pop");
+  $("sheet").classList.add("on");
+  $("card").scrollTop=0;
+}
+$("closeCard").onclick=function(){$("sheet").classList.remove("on");};
+$("sheet").onclick=function(e){if(e.target===$("sheet"))$("sheet").classList.remove("on");};
+$("sayBtn").onclick=function(){
+  try{
+    var u=new SpeechSynthesisUtterance($("cardName").textContent);
+    u.rate=0.9;speechSynthesis.cancel();speechSynthesis.speak(u);
+  }catch(e){toast("No voice available here");}
+};
+$("toMixA").onclick=function(){setSlot("A",cardRGB);$("sheet").classList.remove("on");go("mix");};
+$("renameBtn").onclick=function(){askName(cardRGB);};
+
+/* ============ mixing bench ============ */
+var slots={A:[227,30,36],B:[255,242,0]},mixMode="paint",lastMix=[0,0,0];
+function setSlot(k,rgb){slots[k]=rgb.slice();renderMix();}
+document.querySelectorAll("[data-pick]").forEach(function(b){
+  b.onclick=function(){pickTarget=b.dataset.pick;go("deck");toast("Tap any color for slot "+(pickTarget==="A"?"1":"2"));};
+});
+$("swapMix").onclick=function(){var t=slots.A;slots.A=slots.B;slots.B=t;renderMix();};
+$("ratio").addEventListener("input",renderMix);
+document.querySelectorAll(".mode").forEach(function(b){
+  b.onclick=function(){
+    mixMode=b.dataset.mode;
+    document.querySelectorAll(".mode").forEach(function(c){c.classList.remove("on");});
+    b.classList.add("on");
+    $("modeHint").textContent=mixMode==="paint"
+      ? "Paint mixing is subtractive: yellow + blue makes green, and mixes drift darker."
+      : "Light mixing is additive, like stage lights or the pixels in this screen: red + green makes yellow, and mixes get brighter.";
+    renderMix();
+  };
+});
+function renderMix(){
+  var v=+$("ratio").value;
+  var list=[{rgb:slots.A,w:100-v},{rgb:slots.B,w:v}];
+  var out=mixMode==="paint"?mixPaint(list):mixLight(list);
+  lastMix=out;
+  $("slotA").style.background=hx(slots.A);
+  $("slotB").style.background=hx(slots.B);
+  $("slotAName").textContent=nameFor(slots.A).name;
+  $("slotBName").textContent=nameFor(slots.B).name;
+  $("mixLabA").textContent=(100-v)+"% of 1";
+  $("mixLabB").textContent=v+"% of 2";
+  var nm=nameFor(out);
+  var jf=$("jarFill");
+  jf.style.background=hx(out);
+  jf.style.height=(46+Math.round(v/100*14))+"%";
+  $("mixName").textContent=nm.name;
+  $("mixHex").textContent=hx(out).toUpperCase()+(nm.exact?"  ·  that is a real named color":"  ·  no official name, so name it yourself");
+}
+$("mixCard").onclick=function(){openCard(lastMix);};
+$("mixToA").onclick=function(){setSlot("A",lastMix);};
+$("mixName2").onclick=function(){askName(lastMix);};
+$("addWhite").onclick=function(){slots.A=lastMix.slice();slots.B=[255,255,255];$("ratio").value=30;renderMix();};
+$("addBlack").onclick=function(){slots.A=lastMix.slice();slots.B=[16,16,20];$("ratio").value=20;renderMix();};
+$("addGray").onclick=function(){slots.A=lastMix.slice();slots.B=[128,128,128];$("ratio").value=35;renderMix();};
+$("mudIt").onclick=function(){slots.A=lastMix.slice();slots.B=complement(lastMix);$("ratio").value=50;renderMix();};
+
+/* ============ game 1: match the color ============ */
+var drops={R:0,Y:0,B:0,W:0,K:0},target=null;
+var PRIM={R:[227,30,36],Y:[255,242,0],B:[26,82,158],W:[255,255,255],K:[16,16,20]};
+function newTarget(){
+  var c,guard=0;
+  do{c=DB[Math.floor(Math.random()*DB.length)];guard++;}while(guard<80&&c.fam==="Neutral");
+  target=c;
+  $("targetSw").style.background=c.hex;
+  clearDrops();
+  $("matchMsg").textContent="Target: "+c.n+". Add drops until yours matches.";
+}
+var dropLog=[];
+function clearDrops(){drops={R:0,Y:0,B:0,W:0,K:0};dropLog=[];renderTry();}
+function renderTry(){
+  var list=[],k,any=false;
+  for(k in drops)if(drops[k]){list.push({rgb:PRIM[k],w:drops[k]});any=true;}
+  var out=any?mixPaint(list):[42,36,57];
+  $("trySw").style.background=hx(out);
+  ["R","Y","B","W","K"].forEach(function(k){$("d"+k).textContent=drops[k];});
+  return out;
+}
+["R","Y","B","W","K"].forEach(function(k){
+  $("p"+k).onclick=function(){drops[k]++;dropLog.push(k);blip(k);renderTry();};
+});
+$("undoDrop").onclick=function(){
+  var k=dropLog.pop();
+  if(!k){toast("The jar is already empty");return;}
+  drops[k]=Math.max(0,drops[k]-1);renderTry();
+};
+$("matchClear").onclick=clearDrops;
+$("matchNew").onclick=newTarget;
+$("matchCheck").onclick=function(){
+  var out=renderTry(),d=labDist(rgb2lab(out),target.lab);
+  var pct=Math.max(0,Math.round(100-d*1.4)),msg;
+  if(d<8){msg="Dead on. That is "+target.n+".";markFound(target.n,target.rgb);win();}
+  else if(d<18)msg="Very close, "+pct+"%. Nudge it a little.";
+  else if(d<32)msg=pct+"%. Right neighborhood.";
+  else msg=pct+"%. Look again: is the target lighter, darker, warmer or cooler than yours?";
+  var hs1=rgb2hsl(out[0],out[1],out[2]),hs2=rgb2hsl(target.rgb[0],target.rgb[1],target.rgb[2]);
+  if(d>=8){
+    if(hs1[2]<hs2[2]-0.08)msg+=" Yours is too dark, add white.";
+    else if(hs1[2]>hs2[2]+0.08)msg+=" Yours is too light, go easier on the white.";
+    else if(hs1[1]<hs2[1]-0.12)msg+=" Yours is too dull, add more of the strong color.";
+  }
+  $("matchMsg").textContent=msg;
+};
+
+/* ============ game 2: name that color ============ */
+function newQuiz(){
+  var c=DB[Math.floor(Math.random()*DB.length)];
+  $("quizSw").style.background=c.hex;
+  var pool=DB.filter(function(x){return x.fam===c.fam&&x.n!==c.n;});
+  if(pool.length<3)pool=DB.filter(function(x){return x.n!==c.n;});
+  var opts=[c.n],guard=0;
+  while(opts.length<4&&guard++<300){
+    var p=pool[Math.floor(Math.random()*pool.length)].n;
+    if(opts.indexOf(p)<0)opts.push(p);
+  }
+  opts.sort(function(){return Math.random()-0.5;});
+  var w=$("quizOpts");w.innerHTML="";w.dataset.done="";
+  opts.forEach(function(o){
+    var b=document.createElement("button");
+    b.className="opt";b.textContent=o;
+    b.onclick=function(){
+      if(w.dataset.done)return;
+      w.dataset.done="1";mem.quiz[1]++;
+      if(o===c.n){b.classList.add("right");mem.quiz[0]++;blip("W");markFound(c.n,c.rgb);}
+      else{
+        b.classList.add("wrong");
+        w.querySelectorAll(".opt").forEach(function(x){if(x.textContent===c.n)x.classList.add("right");});
+      }
+      save();showQuizScore();
+    };
+    w.appendChild(b);
+  });
+  showQuizScore();
+}
+function showQuizScore(){$("quizScore").textContent="Right "+mem.quiz[0]+" of "+mem.quiz[1];}
+$("quizNew").onclick=newQuiz;
+
+/* ============ game 3: warmer or cooler ============ */
+var warmPair=[null,null];
+function newWarm(){
+  var a,b,guard=0;
+  do{a=DB[Math.floor(Math.random()*DB.length)];b=DB[Math.floor(Math.random()*DB.length)];guard++;}
+  while(guard<300&&Math.abs(warmth(a.rgb)-warmth(b.rgb))<0.18);
+  warmPair=[a,b];
+  $("warmA").style.background=a.hex;$("warmB").style.background=b.hex;
+  $("warmMsg").textContent="Streak: "+mem.warm;
+}
+["A","B"].forEach(function(k,i){
+  $("warm"+k).onclick=function(){
+    var mine=warmPair[i],other=warmPair[1-i];
+    if(!mine)return;
+    if(warmth(mine.rgb)>warmth(other.rgb)){
+      mem.warm++;$("warmMsg").textContent="Yes. "+mine.n+" is the warmer one. Streak: "+mem.warm;
+    }else{
+      mem.warm=0;$("warmMsg").textContent=other.n+" was warmer. Warm colors lean red, orange and yellow. Streak back to 0.";
+    }
+    save();setTimeout(newWarm,1600);
+  };
+});
+
+/* ============ my colors ============ */
+function renderMine(){
+  var w=$("mineList");
+  if(!mem.mine.length){
+    w.innerHTML='<div class="hint">Nothing here yet. Mix a color, or open any color and tap <b>My own name</b>. Whatever you call it, that is its name now.</div>';
+  }else{
+    w.innerHTML=mem.mine.map(function(m,i){
+      return '<div class="mineRow"><i style="width:60px;height:60px;border-radius:16px;flex:0 0 auto;border:2px solid rgba(255,255,255,.18);background:'+m.hex+'"></i><div style="flex:1;min-width:0"><div style="font-weight:800;font-size:18px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+m.n+'</div><div style="font-family:var(--mono);font-size:12px;color:var(--dim)">'+m.hex+" · "+m.d+'</div></div><button class="btn sm" data-del="'+i+'">Delete</button></div>';
+    }).join("");
+    w.querySelectorAll(".mineRow").forEach(function(row,i){
+      row.onclick=function(){openCard(parseHex(mem.mine[i].hex));};
+    });
+    w.querySelectorAll("[data-del]").forEach(function(b){
+      b.onclick=function(e){e.stopPropagation();mem.mine.splice(+b.dataset.del,1);save();renderMine();};
+    });
+  }
+  var got={},tot={},list={};
+  DB.forEach(function(c){
+    tot[c.fam]=(tot[c.fam]||0)+1;
+    (list[c.fam]=list[c.fam]||[]).push(c);
+    if(mem.found[c.n])got[c.fam]=(got[c.fam]||0)+1;
+  });
+  var html=[];
+  famList.slice(1).forEach(function(f){
+    var g=got[f]||0,all=tot[f]||1;
+    html.push('<div class="fam"><div class="famhead"><span>'+f+'</span><u></u><s>'+g+" / "+all+'</s></div><div class="dots">');
+    (list[f]||[]).forEach(function(c){
+      html.push(mem.found[c.n]
+        ? '<i class="dot got" title="'+c.n+'" style="background:'+c.hex+'"></i>'
+        : '<i class="dot"></i>');
+    });
+    html.push("</div></div>");
+  });
+  $("badges").innerHTML=html.join("");
+}
+$("exportBtn").onclick=function(){
+  try{
+    var blob=new Blob([JSON.stringify(mem,null,1)],{type:"application/json"});
+    var a=document.createElement("a");
+    a.href=URL.createObjectURL(blob);a.download="my-colors.json";a.click();
+    setTimeout(function(){URL.revokeObjectURL(a.href);},2000);
+  }catch(e){toast("Saving to a file needs the online version");}
+};
+$("importBtn").onclick=function(){$("importIn").click();};
+$("importIn").onchange=function(e){
+  var f=e.target.files&&e.target.files[0];if(!f)return;
+  var r=new FileReader();
+  r.onload=function(){
+    try{
+      var o=JSON.parse(r.result);
+      if(o.mine)mem.mine=o.mine.concat(mem.mine);
+      if(o.found)for(var k in o.found)mem.found[k]=1;
+      save();renderMine();toast("Loaded");
+    }catch(err){toast("That file did not look right");}
+  };
+  r.readAsText(f);
+};
+
+/* ============ boot ============ */
+$("ver").onclick=function(){toast("Pigment "+VERSION+" · "+DB.length+" named colors");};
+$("ver").textContent=VERSION.split(" ")[0];
+$("dbCount").textContent=DB.length;
+$("search").placeholder="Search "+DB.length+" color names";
+drawWheel();
+setFromHSL(14,0.82);
+renderDeck();renderMix();newTarget();newQuiz();newWarm();updateFound();
+
+/* ============ sound (off until you turn it on) ============ */
+var soundOn=!!mem.sound,actx=null;
+function blip(kind){
+  if(!soundOn)return;
+  try{
+    if(!actx)actx=new (window.AudioContext||window.webkitAudioContext)();
+    var f={R:392,Y:523,B:294,W:659,K:196,ok:784,pop:440}[kind]||440;
+    var o=actx.createOscillator(),g=actx.createGain();
+    o.type="triangle";o.frequency.value=f;
+    g.gain.setValueAtTime(0.0001,actx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.16,actx.currentTime+0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001,actx.currentTime+0.22);
+    o.connect(g);g.connect(actx.destination);
+    o.start();o.stop(actx.currentTime+0.24);
+  }catch(e){}
+}
+function fanfare(){
+  if(!soundOn)return;
+  [0,120,240,400].forEach(function(ms,i){setTimeout(function(){
+    if(!actx)return blip("ok");
+    try{
+      var o=actx.createOscillator(),g=actx.createGain();
+      o.type="triangle";o.frequency.value=[523,659,784,1047][i];
+      g.gain.setValueAtTime(0.0001,actx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.15,actx.currentTime+0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001,actx.currentTime+0.3);
+      o.connect(g);g.connect(actx.destination);o.start();o.stop(actx.currentTime+0.32);
+    }catch(e){}
+  },ms);});
+}
+function setSound(on){
+  soundOn=on;mem.sound=on?1:0;save();
+  $("soundBtn").textContent=on?"🔊":"🔇";
+}
+$("soundBtn").onclick=function(){
+  setSound(!soundOn);
+  if(soundOn){try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();}catch(e){}blip("ok");toast("Sound on");}
+  else toast("Sound off");
+};
+
+/* ============ confetti ============ */
+var cf=$("confetti"),cfx=cf.getContext("2d"),bits=[],cfRun=false;
+var REDUCED=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+function throwConfetti(baseHex){
+  if(REDUCED)return;
+  cf.width=window.innerWidth;cf.height=window.innerHeight;
+  cf.style.display="block";
+  var cols=[baseHex,"#FFD34D","#57C97F","#4E8BF5","#F0533E","#FCF8F1"];
+  bits=[];
+  for(var i=0;i<70;i++)bits.push({
+    x:Math.random()*cf.width,y:-20-Math.random()*cf.height*0.4,
+    w:7+Math.random()*8,h:9+Math.random()*10,
+    vy:2.4+Math.random()*3.4,vx:(Math.random()-0.5)*2.2,
+    r:Math.random()*Math.PI,vr:(Math.random()-0.5)*0.3,
+    c:cols[Math.floor(Math.random()*cols.length)]
+  });
+  if(!cfRun){cfRun=true;requestAnimationFrame(stepConfetti);}
+}
+function stepConfetti(){
+  cfx.clearRect(0,0,cf.width,cf.height);
+  var alive=0;
+  bits.forEach(function(b){
+    b.x+=b.vx;b.y+=b.vy;b.r+=b.vr;
+    if(b.y<cf.height+30)alive++;
+    cfx.save();cfx.translate(b.x,b.y);cfx.rotate(b.r);
+    cfx.fillStyle=b.c;cfx.fillRect(-b.w/2,-b.h/2,b.w,b.h);cfx.restore();
+  });
+  if(alive)requestAnimationFrame(stepConfetti);
+  else{cfRun=false;cf.style.display="none";cfx.clearRect(0,0,cf.width,cf.height);}
+}
+
+function win(){throwConfetti("#FFD34D");fanfare();}
+
+/* ============ new color celebration ============ */
+var celebQ=[],celebBusy=false;
+function celebrate(name,rgb){
+  celebQ.push([name,rgb]);
+  if(!celebBusy)nextCeleb();
+}
+function nextCeleb(){
+  var item=celebQ.shift();
+  if(!item){celebBusy=false;return;}
+  celebBusy=true;
+  var name=item[0],hex=hx(item[1]);
+  $("celebSw").style.background=hex;
+  $("celebName").textContent=name;
+  $("celebSub").textContent="Color number "+foundCount()+" in your sticker book.";
+  $("celebrate").classList.add("on");
+  throwConfetti(hex);fanfare();
+}
+$("celebOk").onclick=function(){$("celebrate").classList.remove("on");setTimeout(nextCeleb,180);};
+
+/* ============ name it ============ */
+var nameRGB=[0,0,0];
+var SILLY1=["Dragon","Wizard","Pirate","Robot","Volcano","Jellyfish","Rocket","Goblin","Yeti","Comet","Dinosaur","Bubble","Thunder","Sleepy","Grumpy","Turbo","Cosmic","Sneaky","Royal","Frozen"];
+var SILLY2=["Sneeze","Soup","Breath","Toes","Pajamas","Slime","Puddle","Freckle","Whisper","Smoothie","Sock","Tornado","Sherbet","Dust","Bubble","Shadow","Fizz","Jam","Frosting","Mustache"];
+function askName(rgb){
+  nameRGB=rgb.slice();
+  $("nameSw").style.background=hx(rgb);
+  $("nameInput").value="";
+  $("nameModal").classList.add("on");
+  setTimeout(function(){$("nameInput").focus();},120);
+}
+$("diceBtn").onclick=function(){
+  $("nameInput").value=SILLY1[Math.floor(Math.random()*SILLY1.length)]+" "+SILLY2[Math.floor(Math.random()*SILLY2.length)];
+  blip("pop");
+};
+$("nameCancel").onclick=function(){$("nameModal").classList.remove("on");};
+$("nameSave").onclick=function(){
+  var n=$("nameInput").value.trim();
+  if(!n){toast("Type a name first");return;}
+  mem.mine.unshift({n:n.slice(0,40),hex:hx(nameRGB).toUpperCase(),d:new Date().toISOString().slice(0,10)});
+  save();$("nameModal").classList.remove("on");
+  blip("ok");toast("Saved as "+n);
+};
+$("nameInput").addEventListener("keydown",function(e){if(e.key==="Enter")$("nameSave").click();});
+
+/* ============ first run walkthrough ============ */
+var OB=[
+  ["Find a color","Slide your finger around the big wheel. The name under it changes as you move. The slider makes everything lighter or darker."],
+  ["Learn about it","Tap Open this color. You get its name, how to mix it with paint, and sometimes a strange true story about where the color came from."],
+  ["Mix your own","On the Mix screen, drop two colors into the jar and slide to change the amounts. If your color has no name, name it yourself."],
+  ["Fill your sticker book","Every color you open gets a star. There are hundreds hiding in here. Go find them."]
+];
+var obI=0;
+function showOb(){
+  $("obTitle").textContent=OB[obI][0];
+  $("obText").textContent=OB[obI][1];
+  $("obNext").textContent=obI===OB.length-1?"Start exploring":"Next";
+  var dots=$("obDots").children;
+  for(var i=0;i<dots.length;i++)dots[i].className=(i===obI?"on":"");
+  $("onboard").classList.add("on");
+}
+$("obNext").onclick=function(){
+  obI++;
+  if(obI>=OB.length){$("onboard").classList.remove("on");mem.seen=1;save();}
+  else showOb();
+};
+$("helpBtn").onclick=function(){obI=0;showOb();};
+
+/* ============ go ============ */
+setSound(!!mem.sound);
+if(!mem.seen)setTimeout(function(){obI=0;showOb();},450);
+</script>
+</body>
+</html>

@@ -283,7 +283,7 @@
    ============================================================ */
 /* ---------------- CONFIG (all balancing) ---------------- */
 const CONFIG = {
-  version: "v0.4s · Jul 16 (shelf build)",
+  version: "v0.5 · Jul 18 (leaf)",
   storageKey: "astromerge_v1",
   cells: 48,                       // fixed board size; layout reflows 6x8 <-> 8x6
   tiers: 7,
@@ -295,8 +295,10 @@ const CONFIG = {
   xpForLevel: lv => Math.round(30 * Math.pow(lv, 1.6)),
   hp:  (t, el) => Math.round(20 * Math.pow(t, 1.35) * (el === "ice" ? 1.1 : 1)),
   atk: (t, el) => Math.round(6  * Math.pow(t, 1.25) * (el === "fire" ? 1.1 : 1)),
-  elemMod: (a, d) => (a === "fire" && d === "ice") || (a === "ice" && d === "fire") ? 1.25 : 1,
-  idlePerHr: t => 4 * Math.pow(t, 1.5),
+  elemMod: (a, d) => (CONFIG.beats[a] === d ? 1.25 : CONFIG.beats[d] === a ? 0.8 : 1),
+  beats: { fire: "leaf", leaf: "ice", ice: "fire" },   // fire burns leaf, leaf cracks ice, ice puts out fire
+  leafUnlockLevel: 3,
+  idlePerHr: (t, el) => 4 * Math.pow(t, 1.5) * (el === "leaf" ? 1.15 : 1),
   idleCapHrs: 8,
   biomeMatch: 1.5,
   waveBudget: (p, w) => Math.round(40 * Math.pow(1.18, p) * (1 + 0.15 * w)),
@@ -320,6 +322,7 @@ const CONFIG = {
   elements: {
     fire: { color: "#ff7a5c", dark: "#c94b33", name: "Fire", icon: "🔥" },
     ice:  { color: "#5cd6ff", dark: "#2f8fbf", name: "Ice",  icon: "❄️" },
+    leaf: { color: "#7ed957", dark: "#4a9e33", name: "Leaf", icon: "🌿" },
   },
   tierNames: ["Egg", "Pup", "Scout", "Ranger", "Guardian", "Mythic", "Celestial"],
 };
@@ -514,6 +517,7 @@ const Draw = (() => {
   const FAM = {
     fire: { main: "#ff7a5c", dark: "#d95535", band: "#ffb08f", inner: "#b23c22" },
     ice:  { main: "#5cd6ff", dark: "#2f9cd0", band: "#aee9ff", inner: "#ffd7e2" },
+    leaf: { main: "#7ed957", dark: "#4a9e33", band: "#c6f0a8", inner: "#eaffd6" },
   };
   function outline(ctx, r) { ctx.strokeStyle = "#10142b"; ctx.lineWidth = Math.max(2, r * 0.09); }
 
@@ -601,6 +605,31 @@ const Draw = (() => {
       ctx.ellipse(s * r * 0.42, -r * (0.78 + grow * 0.15), r * 0.1, r * (0.3 + grow * 0.11), s * 0.15, 0, 7);
       ctx.fill();
     }
+  }
+  function leafEars(ctx, r, C, grow) {
+    for (const s of [-1, 1]) {
+      ctx.save();
+      ctx.translate(s * r * 0.44, -r * 0.66);
+      ctx.rotate(s * 0.5);
+      const L = r * (0.5 + grow * 0.18), W = r * 0.26;
+      ctx.fillStyle = C.main;
+      ctx.beginPath();
+      ctx.moveTo(0, -L);
+      ctx.quadraticCurveTo(W, -L * 0.1, 0, L * 0.34);
+      ctx.quadraticCurveTo(-W, -L * 0.1, 0, -L);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = C.inner; ctx.lineWidth = Math.max(1.5, r * 0.05);
+      ctx.beginPath(); ctx.moveTo(0, -L * 0.8); ctx.lineTo(0, L * 0.18); ctx.stroke();
+      ctx.restore();
+    }
+  }
+  function leafTail(ctx, r, C) {
+    ctx.fillStyle = C.main;
+    ctx.beginPath();
+    ctx.moveTo(r * 0.5, r * 0.42);
+    ctx.quadraticCurveTo(r * 1.3, r * 0.12, r * 1.02, -r * 0.34);
+    ctx.quadraticCurveTo(r * 0.86, r * 0.16, r * 0.5, r * 0.64);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
   }
   function foxTail(ctx, r, C, t, seed) {
     const wag = REDUCED ? 0 : Math.sin(t * 3 + seed) * 0.12;
@@ -708,8 +737,8 @@ const Draw = (() => {
     } else {
       const grow = (tier - 2) / 5; // 0..1 ear growth
       // tail behind body (from T3)
-      if (tier >= 3) { if (el === "fire") foxTail(ctx, r, C, t, seed); else bunnyTail(ctx, r, C); }
-      if (el === "fire") foxEars(ctx, r, C, grow); else bunnyEars(ctx, r, C, grow);
+      if (tier >= 3) { if (el === "fire") foxTail(ctx, r, C, t, seed); else if (el === "leaf") leafTail(ctx, r, C); else bunnyTail(ctx, r, C); }
+      if (el === "fire") foxEars(ctx, r, C, grow); else if (el === "leaf") leafEars(ctx, r, C, grow); else bunnyEars(ctx, r, C, grow);
       // T5+ golden crest between ears
       if (tier >= 5) {
         ctx.fillStyle = "#ffd166";
@@ -1006,8 +1035,13 @@ const Grid = (() => {
     return out;
   }
 
+  function rollElement() {
+    // leaf joins the pool later: 3 elements from the start would drop merge-match odds 50% -> 33%
+    const pool = (S.player.level >= CONFIG.leafUnlockLevel) ? ["fire", "ice", "leaf"] : ["fire", "ice"];
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
   function makeCreature(tier, el) {
-    return { uid: uid(), tier, el: el || Tutorial.forceElement() || (Math.random() < 0.5 ? "fire" : "ice") };
+    return { uid: uid(), tier, el: el || Tutorial.forceElement() || rollElement() };
   }
 
   function spawn(pay) {
@@ -1525,14 +1559,14 @@ const Habitats = (() => {
   const BIOME = {
     magma:  { name: "Magma Den",   match: "fire", icon: "🌋" },
     frost:  { name: "Frost Hollow", match: "ice",  icon: "🧊" },
-    meadow: { name: "Star Meadow",  match: null,   icon: "🌱" },
+    meadow: { name: "Star Meadow",  match: "leaf", icon: "🌱" },
   };
   const refs = []; // per-slot DOM refs for cheap updates
 
   function ratePerHr(h) {
     if (!h.occ) return 0;
     const m = BIOME[h.biome].match === h.occ.el ? CONFIG.biomeMatch : 1;
-    return CONFIG.idlePerHr(h.occ.tier) * m * CONFIG.habMult(h.lvl || 1);
+    return CONFIG.idlePerHr(h.occ.tier, h.occ.el) * m * CONFIG.habMult(h.lvl || 1);
   }
   function accrue() {
     const t = now();
@@ -1702,6 +1736,13 @@ const Battle = (() => {
     });
   });
 
+  function waveElement(planetIdx, rng) {
+    const b = (CONFIG.planets[planetIdx] || {}).biome;
+    const home = b === "magma" ? "fire" : b === "frost" ? "ice" : "leaf";
+    if (rng() < 0.65) return home;
+    const rest = ["fire", "ice", "leaf"].filter(e => e !== home);
+    return rest[rng() < 0.5 ? 0 : 1];
+  }
   function genWave(planetIdx, w) {
     const rng = mulberry32(planetIdx * 1000 + w * 7 + 3);
     let budget = CONFIG.waveBudget(planetIdx, w);
@@ -1712,7 +1753,7 @@ const Battle = (() => {
       const cost = 14 * t;
       if (cost > budget && out.length) break;
       budget -= cost;
-      out.push({ el: rng() < 0.5 ? "fire" : "ice", tier: t });
+      out.push({ el: waveElement(planetIdx, rng), tier: t });
     }
     return out;
   }
