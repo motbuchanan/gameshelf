@@ -181,3 +181,115 @@ Trouble/Sorry/Snakes, etc.) record into profiles, and N-player stats are solved 
   after rename). Spec uses **id**; `recordResult` accepts name and resolves to id.
 - (Resolved) Deleting a profile drops its stats behind a confirm. New-device owner is prompted on
   first launch. See decisions above.
+
+
+---
+
+## Phase 7 — PEOPLE layer (added 2026-07-19, Mot)
+
+Turns profiles from "who is playing" into "the people in your life." Driven by Garrett
+filling out profiles for family and friends for fun.
+
+**Mot's decisions:**
+- **People data is saved to each device only.** Not synced, not mirrored, no cloud copy.
+- **Phone/email included, local-only, behind a toggle** (off by default).
+
+### Why it is a separate store (this is the load-bearing decision)
+`gn_profiles` is written to Firestore as a whole-list `set()` on EVERY profile write
+(`mirrorProfiles`). So any field added to the profile object syncs by construction. People
+data therefore lives in its own key, `gn_people`, keyed by profile id, and **no `mirror()`
+call exists anywhere in the `GN.people` block**. This makes the privacy property structural
+rather than a thing to remember: a future edit to the profile shape cannot leak birthdays,
+notes or contacts into the cloud, because they are not in that object.
+
+This matters because a lot of these records are other families' children.
+
+### Store
+`gn_people` (localStorage) = `{ "<profileId>": { born, interests[], notes, rel[], contact:{phone,email} } }`
+`gn_contacts_on` = `"1" | "0"` — whether phone/email fields are shown at all.
+
+### API (gamenight.js)
+```
+GN.people.get(id) / .set(id,patch) / .all() / .forget(id)
+GN.people.zodiac(born)        -> {name,glyph} | null      western sun sign
+GN.people.chineseSign(born)   -> "Rat".."Pig" | null      by birth YEAR (approximate near lunar new year)
+GN.people.age(born)           -> number | null
+GN.people.daysToBirthday(born)-> number | null
+GN.people.addInterest(id,tag) / .removeInterest(id,tag)   case-insensitive dedupe
+GN.people.interestIndex()     -> { tagLower: {tag, ids[]} }   <- the seed for the interest graph
+GN.people.shared(idA,idB)     -> [tag]                        <- "these two both like X"
+GN.people.contactsOn() / .setContactsOn(bool)
+```
+`rel[]` is in the model but has no UI yet — it is the anchor for Phase 8.
+
+### Status
+- **7a - DONE (validated 2026-07-19).** Store + API + editor UI in `profiles.html`:
+  birthday with a live readout (`Aries . year of the Pig . 7 years old . birthday in 267 days`),
+  interest chips with case-insensitive dedupe, notes, and phone/email behind the toggle.
+  Removing a profile also forgets its people record.
+  Validated: zodiac boundaries (Mar20/21, Dec21/22, Jan19/20 all correct), Feb 30 rejected as a
+  real date not just by regex, chinese signs 2019/2020/2024 correct, persistence across reload,
+  and **leak check: profile object still has exactly [id,name,color,light,dark,avatar,prefs,stats]
+  and its serialized form contains none of the people data.** 0 page errors.
+
+### Next (not built)
+- **7b - Relationships.** Typed edges on `rel[]` (parent / child / sibling / grandparent / cousin /
+  friend), auto-writing the inverse edge. Needs a generational layout for a real family tree, which
+  is a DIFFERENT renderer from the interest graph - build the edges once, render them twice.
+- **7c - Interest graph.** Force-directed / constellation view over `interestIndex()`, linking
+  people by shared tags and clustering groups. The "two people who have never met both like
+  dinosaurs" link is the novel bit and is pure local derivation.
+- **7d - Contacts import.** NOTE: the Contacts Picker API is Chrome-on-Android only. iOS Safari
+  does not implement it, so it CANNOT work on Garrett's iPad. Manual entry works everywhere;
+  vCard paste is the portable middle ground if bulk import is wanted.
+
+### 7b - Schema + field engine (DONE, validated 2026-07-19)
+
+Mot's framing: *"there's always one more layer to unravel only if you care to. Never pressure,
+just always an opportunity."* A name on its own must remain a complete, valid profile.
+
+So depth is **data, not markup**. `GN.schema` is a registry, `GN.fields` renders whatever schema
+it is handed. This exists in this shape specifically so the **dollhouse character/creature creator
+and other creator games register their own schema and reuse the same renderer** rather than
+growing a second bespoke form.
+
+```
+GN.schema.register(id, {layers:[...]})   GN.schema.get(id)   GN.schema.list()
+GN.fields.build(hostEl, schema, record, {gates:{...}, onChange, openFirst})
+GN.fields.filledCount(layer, record)     GN.fields.isFilled(field, record)
+
+layer  = {id, label, hint, gate?, fields:[]}
+field  = {k, label, type, ph?, help?, opts?, max?, live?}
+types  = text | longtext | date | tags | choice | number
+gate   = names a boolean the host must approve before the layer renders (contacts uses this)
+live(v)= returns a string rendered under the input (the star-sign readout uses it)
+```
+
+Rendered as native `<details>` per layer: collapsed by default, summary shows the hint when empty
+and `n of N` once anything is filled. First layer opens; nothing is ever required.
+
+People schema ships 5 layers / 15 fields: About them (birthday + likes), Favourites (food, colour,
+animal, thing to do), Their story (grew up, lives now, work or school), More about them (dislikes,
+how you know them, notes), Contact (phone, email - gated).
+
+Validated: layers render and collapse correctly, the gated Contact layer appears only with the
+toggle on, live star-sign readout intact, all 15 fields persist across reload, filled counts
+correct, and the leak check still passes - profile object remains exactly
+`[id,name,color,light,dark,avatar,prefs,stats]` with none of the people values in its serialized form.
+
+### Device integration - what is actually possible (checked, not assumed)
+- **Camera + photo library: YES on iPad.** `<input type="file" accept="image/*" capture="environment">`
+  works in iOS Safari; the existing avatar flow already does file -> canvas -> centre-crop -> 128px
+  JPEG dataURL. Richer per-person photos are achievable on the same path.
+- **Linking to a person's photo FOLDER: NO on iPad.** That needs the File System Access API
+  (`showDirectoryPicker`), which iOS Safari does not implement. Desktop Chrome only.
+- **Contacts import: NO on iPad.** Contacts Picker API is Chrome-on-Android only. Manual entry works
+  everywhere; vCard paste is the portable option for bulk.
+- **Storage ceiling.** `localStorage` is ~5MB total. 128px avatars (~4-8KB) are fine for dozens of
+  people. Anything approaching a photo gallery per person must move to **IndexedDB** - plan that
+  before adding multi-photo support, not after.
+
+### Reuse path for creator games
+A creature/character creator registers e.g. `GN.schema.register("dollhouseChar", {layers:[...]})`
+with types already supported (choice for species, tags for traits, text for name, number for age)
+and calls the same `GN.fields.build`. Only genuinely new *field types* need engine work.

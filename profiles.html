@@ -64,6 +64,27 @@
   .wmarker{position:absolute;width:16px;height:16px;border-radius:50%;border:2.5px solid #fff;box-shadow:0 0 0 1.5px rgba(0,0,0,.45),0 1px 3px rgba(0,0,0,.4);transform:translate(-50%,-50%);pointer-events:none;display:none;}
   .lslider{width:160px;accent-color:#2f7d4f;}
   .wlabel{font-size:11.5px;color:#7a8a98;font-style:italic;}
+  .layer{border:1px solid rgba(255,255,255,.14);border-radius:12px;margin-top:10px;overflow:hidden}
+  .layer>summary{list-style:none;cursor:pointer;padding:11px 13px;display:flex;
+       align-items:center;justify-content:space-between;gap:10px;background:rgba(255,255,255,.05)}
+  .layer>summary::-webkit-details-marker{display:none}
+  .layer>summary::after{content:"\203A";opacity:.5;font-size:18px;transform:rotate(90deg);transition:transform .18s}
+  .layer[open]>summary::after{transform:rotate(-90deg)}
+  .lyt{font-weight:700;font-size:14px}
+  .lyc{font-size:12px;opacity:.55;margin-left:auto;margin-right:4px}
+  .lyc.on{opacity:.95}
+  .lyb{padding:4px 13px 13px}
+  .abt{border-top:1px solid rgba(255,255,255,.14);margin-top:14px;padding-top:12px}
+  .zod{font-size:13px;opacity:.85;margin-top:6px;min-height:18px;line-height:1.45}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .chip{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.1);
+        border:1px solid rgba(255,255,255,.2);border-radius:999px;padding:5px 9px;font-size:13px}
+  .chip b{cursor:pointer;opacity:.7;font-weight:700}
+  .chip b:hover{opacity:1}
+  .rowin{display:flex;gap:8px}
+  .rowin input{flex:1;min-width:0}
+  .tog{display:flex;align-items:center;gap:8px;font-size:13px;opacity:.9;margin-top:10px}
+  .note{font-size:12px;opacity:.65;margin-top:4px;line-height:1.4}
 </style></head><body>
 <div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">&#128101; Players</div></div>
 <div id="wrap">
@@ -115,6 +136,13 @@ function openEditor(id){
   editId=id;
   const isNew=!id;
   const p=isNew?{name:"",...GN.palette()[ firstFreeColorIdx() ],avatar:{kind:"color"},stats:{}}:GN.profiles.get(id);
+  const per=id?GN.people.get(id):{born:"",interests:[],notes:"",rel:[],contact:{phone:"",email:""}};
+  peoDraft=JSON.parse(JSON.stringify(per||{}));
+  if(peoDraft.contact){ /* migrate the v1 nested shape up to flat schema keys */
+    if(!peoDraft.phone&&peoDraft.contact.phone)peoDraft.phone=peoDraft.contact.phone;
+    if(!peoDraft.email&&peoDraft.contact.email)peoDraft.email=peoDraft.contact.email;
+    delete peoDraft.contact;
+  }
   pickColor={color:p.color,light:p.light,dark:p.dark};
   pickAvatar=p.avatar?JSON.parse(JSON.stringify(p.avatar)):{kind:"color"};
   avMode=pickAvatar.kind||"color";
@@ -129,6 +157,11 @@ function openEditor(id){
   h+='<div class="fld"><label>Color</label><div class="grid" id="egrid"></div>'
     +'<div class="wheelwrap"><div class="wcanvas"><canvas id="ewheel" width="160" height="160"></canvas><div class="wmarker" id="ewmarker"></div></div>'
     +'<input type="range" id="elight" min="24" max="78" value="52" class="lslider"><div class="wlabel">Tap the wheel for any custom color</div></div></div>';
+  h+='<div class="abt"><div id="eabt"></div>';
+  h+='<label class="tog"><input type="checkbox" id="econtoggle"'+(GN.people.contactsOn()?" checked":"")+'> Show phone &amp; email fields</label>';
+  h+='<div class="note">Everything in here stays on this device. Never uploaded, never synced. '
+    +'Fill in as much or as little as you like \u2014 a name on its own is a perfectly good profile.</div>';
+  h+='</div>';
   if(!isNew)h+='<div class="fld"><label>Stats</label><div class="statbox" id="estats"></div></div>';
   h+='<div class="btns">';
   h+='<button class="btn primary" id="esave">'+(isNew?"Create":"Save")+'</button>';
@@ -154,6 +187,8 @@ function openEditor(id){
   renderAvSection();updatePreview();
   card.querySelector("#enm").addEventListener("input",updatePreview);
   if(!isNew)renderStats(card.querySelector("#estats"),p);
+  buildAbout();
+  card.querySelector("#econtoggle").onchange=function(){GN.people.setContactsOn(this.checked);buildAbout();};
   card.querySelector("#esave").onclick=saveEditor;
   card.querySelector("#ecancel").onclick=closeEditor;
   if(!isNew){
@@ -245,6 +280,11 @@ function firstFreeColorIdx(){
   const pal=GN.palette();for(let i=0;i<pal.length;i++)if(!used.has(pal[i].color))return i;
   return GN.profiles.list().length%pal.length;
 }
+let peoDraft={born:"",interests:[],notes:"",contact:{phone:"",email:""}};
+function buildAbout(){
+  const host=$("card").querySelector("#eabt"); if(!host)return;
+  GN.fields.build(host,GN.schema.get("people"),peoDraft,{gates:{contacts:GN.people.contactsOn()}});
+}
 function saveEditor(){
   const name=($("card").querySelector("#enm").value||"").trim();
   if(!name){$("card").querySelector("#enm").focus();return;}
@@ -252,12 +292,13 @@ function saveEditor(){
   if(id){GN.profiles.rename(id,name);GN.profiles.recolor(id,pickColor);}
   else{const np=GN.profiles.add(name,pickColor);if(!np){closeEditor();return;}id=np.id;GN.profiles.recolor(id,pickColor);}
   GN.profiles.setAvatar(id,pickAvatar||{kind:"color"});
+  GN.people.set(id,peoDraft);
   closeEditor();render();
 }
 function removeProfile(id,name){
   if(GN.profiles.list().length<=1){alert("You need at least one player.");return;}
   if(confirm("Remove "+name+"? Their stats will be deleted. This can\u2019t be undone."))
-    {GN.profiles.remove(id);closeEditor();render();}
+    {GN.people.forget(id);GN.profiles.remove(id);closeEditor();render();}
 }
 function closeEditor(){$("ov").classList.remove("show");editId=null;}
 $("addBtn").onclick=()=>openEditor(null);

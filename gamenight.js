@@ -105,6 +105,236 @@ function profLoad(){
 }
 function mirrorProfiles(l){mirror(()=>_db.doc("households/"+_hh+"/state/profiles").set({list:l}));}
 function applyOwnerPrefs(){/* Phase 3 wires Easy View / sound / TV to the owner's prefs */}
+
+/* ---------- PEOPLE (device-local only - NEVER mirrored to cloud) ----------
+   Deliberately a SEPARATE store from gn_profiles. Profiles are whole-list set()
+   to Firestore on every write, so ANY field living on the profile object syncs by
+   construction. People data (birthdays, interests, notes, contacts) must not, and
+   keeping it in its own key means it cannot leak into the mirror by accident later.
+   Keyed by profile id. There is no mirror() call anywhere in this block on purpose. */
+const PEOPLEKEY="gn_people", CONTACTKEY="gn_contacts_on";
+/* [name, glyph, month, lastDayOfThatSign] indexed by month-1 */
+const ZSIGNS=[["Capricorn","♑",1,19],["Aquarius","♒",2,18],["Pisces","♓",3,20],
+  ["Aries","♈",4,19],["Taurus","♉",5,20],["Gemini","♊",6,20],
+  ["Cancer","♋",7,22],["Leo","♌",8,22],["Virgo","♍",9,22],
+  ["Libra","♎",10,22],["Scorpio","♏",11,21],["Sagittarius","♐",12,21]];
+const CZODIAC=["Rat","Ox","Tiger","Rabbit","Dragon","Snake","Horse","Goat","Monkey","Rooster","Dog","Pig"];
+function peopleLoad(){try{return JSON.parse(localStorage.getItem(PEOPLEKEY))||{};}catch(e){return {};}}
+function peopleSave(o){try{localStorage.setItem(PEOPLEKEY,JSON.stringify(o));}catch(e){}}
+function blankPerson(){return {born:"",interests:[],notes:"",rel:[],contact:{phone:"",email:""}};}
+function parseBorn(b){
+  if(!b||!/^\d{4}-\d{2}-\d{2}$/.test(b))return null;
+  const y=+b.slice(0,4),m=+b.slice(5,7),d=+b.slice(8,10);
+  const dt=new Date(y,m-1,d);
+  if(dt.getFullYear()!==y||dt.getMonth()!==m-1||dt.getDate()!==d)return null;
+  return {y:y,m:m,d:d};
+}
+function normTag(t){return (t||"").trim().replace(/\s+/g," ").slice(0,24);}
+GN.people={
+  get:function(id){const o=peopleLoad();const p=Object.assign(blankPerson(),o[id]||{});
+    p.contact=Object.assign({phone:"",email:""},p.contact||{});
+    if(!Array.isArray(p.interests))p.interests=[];
+    if(!Array.isArray(p.rel))p.rel=[];
+    return p;},
+  set:function(id,patch){if(!id)return null;const o=peopleLoad();
+    const cur=Object.assign(blankPerson(),o[id]||{});
+    o[id]=Object.assign(cur,patch||{});peopleSave(o);return o[id];},
+  all:function(){return peopleLoad();},
+  forget:function(id){const o=peopleLoad();delete o[id];peopleSave(o);},
+  zodiac:function(born){const p=parseBorn(born);if(!p)return null;
+    const i=p.m-1,row=ZSIGNS[i];
+    if(p.d<=row[3])return {name:row[0],glyph:row[1]};
+    const n=ZSIGNS[(i+1)%12];return {name:n[0],glyph:n[1]};},
+  chineseSign:function(born){const p=parseBorn(born);if(!p)return null;
+    /* by birth YEAR - the real lunar new year falls in Jan/Feb, so this is approximate near the turn of the year */
+    return CZODIAC[(((p.y-2020)%12)+12)%12];},
+  age:function(born){const p=parseBorn(born);if(!p)return null;
+    const t=new Date();let a=t.getFullYear()-p.y;
+    const had=(t.getMonth()+1>p.m)||(t.getMonth()+1===p.m&&t.getDate()>=p.d);
+    if(!had)a--;return a<0?null:a;},
+  daysToBirthday:function(born){const p=parseBorn(born);if(!p)return null;
+    const t=new Date();const today=new Date(t.getFullYear(),t.getMonth(),t.getDate());
+    let n=new Date(t.getFullYear(),p.m-1,p.d);
+    if(n<today)n=new Date(t.getFullYear()+1,p.m-1,p.d);
+    return Math.round((n-today)/86400000);},
+  addInterest:function(id,tag){tag=normTag(tag);if(!tag)return null;
+    const p=this.get(id);const low=p.interests.map(function(x){return x.toLowerCase();});
+    if(low.indexOf(tag.toLowerCase())<0)p.interests.push(tag);
+    return this.set(id,{interests:p.interests});},
+  removeInterest:function(id,tag){const p=this.get(id);
+    return this.set(id,{interests:p.interests.filter(function(x){return x.toLowerCase()!==(tag||"").toLowerCase();})});},
+  /* tag -> [profileId] across everyone, for the interest graph */
+  interestIndex:function(){const o=peopleLoad(),ix={};
+    Object.keys(o).forEach(function(id){(o[id].interests||[]).forEach(function(t){
+      const k=t.toLowerCase();(ix[k]=ix[k]||{tag:t,ids:[]}).ids.push(id);});});
+    return ix;},
+  shared:function(a,b){const A=this.get(a).interests.map(function(x){return x.toLowerCase();});
+    return this.get(b).interests.filter(function(x){return A.indexOf(x.toLowerCase())>=0;});},
+  contactsOn:function(){try{return localStorage.getItem(CONTACTKEY)==="1";}catch(e){return false;}},
+  setContactsOn:function(v){try{localStorage.setItem(CONTACTKEY,v?"1":"0");}catch(e){}}
+};
+
+
+/* ---------- SCHEMA + FIELD ENGINE (generic; profiles is just instance #1) ----------
+   Depth is DATA, not hardcoded markup. A schema is a list of LAYERS, each with fields.
+   The editor renders whatever schema you hand it, so the dollhouse character/creature
+   creator and future creator games register their own schema and reuse this renderer
+   instead of growing a second bespoke form.
+   Field types: text | longtext | date | tags | choice | number
+   Layer shape:  {id, label, hint, gate?, fields:[{k,label,type,ph?,help?,opts?,live?}]}
+   `gate` names a boolean the host must approve (e.g. "contacts") before the layer shows.
+   `live(value)` returns a string rendered under the input - used for the star-sign readout. */
+GN.schema=(function(){
+  const reg={};
+  return {
+    register:function(id,def){reg[id]=def;return def;},
+    get:function(id){return reg[id]||null;},
+    list:function(){return Object.keys(reg);}
+  };
+})();
+
+GN.fields=(function(){
+  function el(tag,cls,txt){const e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e;}
+  function val(rec,k){const v=rec[k];return v==null?"":v;}
+  function isFilled(f,rec){const v=rec[f.k];
+    if(Array.isArray(v))return v.length>0;
+    return v!=null&&String(v).trim()!=="";}
+  function filledCount(layer,rec){let n=0;layer.fields.forEach(function(f){if(isFilled(f,rec))n++;});return n;}
+
+  function tagsInput(f,rec,onChange){
+    const wrap=el("div");
+    const row=el("div","rowin");
+    const inp=el("input");inp.placeholder=f.ph||"Add one\u2026";inp.maxLength=24;
+    const btn=el("button","btn","Add");btn.type="button";
+    row.appendChild(inp);row.appendChild(btn);wrap.appendChild(row);
+    const chips=el("div","chips");wrap.appendChild(chips);
+    if(!Array.isArray(rec[f.k]))rec[f.k]=[];
+    function draw(){
+      chips.innerHTML="";
+      rec[f.k].forEach(function(t){
+        const c=el("span","chip");c.appendChild(document.createTextNode(t));
+        const x=el("b",null,"\u00d7");
+        x.onclick=function(){rec[f.k]=rec[f.k].filter(function(v){return v!==t;});draw();onChange&&onChange();};
+        c.appendChild(x);chips.appendChild(c);
+      });
+    }
+    function add(){
+      const v=(inp.value||"").trim().replace(/\s+/g," ").slice(0,24);
+      if(!v){inp.focus();return;}
+      const low=rec[f.k].map(function(x){return x.toLowerCase();});
+      if(low.indexOf(v.toLowerCase())<0)rec[f.k].push(v);
+      inp.value="";draw();onChange&&onChange();inp.focus();
+    }
+    btn.onclick=add;
+    inp.addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();add();}});
+    draw();
+    return wrap;
+  }
+
+  function fieldBox(f,rec,onChange){
+    const box=el("div","fld");
+    box.appendChild(el("label",null,f.label));
+    let live=null;
+    if(f.type==="tags"){ box.appendChild(tagsInput(f,rec,onChange)); }
+    else if(f.type==="longtext"){
+      const t=el("textarea");t.rows=3;if(f.ph)t.placeholder=f.ph;t.value=val(rec,f.k);
+      t.addEventListener("input",function(){rec[f.k]=this.value;onChange&&onChange();});
+      box.appendChild(t);
+    } else if(f.type==="choice"){
+      const sel=el("select");
+      (f.opts||[]).forEach(function(o){const op=el("option",null,o);op.value=o;sel.appendChild(op);});
+      sel.value=val(rec,f.k);
+      sel.addEventListener("change",function(){rec[f.k]=this.value;onChange&&onChange();});
+      box.appendChild(sel);
+    } else {
+      const i=el("input");
+      i.type=f.type==="date"?"date":(f.type==="number"?"number":"text");
+      if(f.ph)i.placeholder=f.ph;
+      if(f.max)i.maxLength=f.max;
+      i.value=val(rec,f.k);
+      i.addEventListener("input",function(){rec[f.k]=this.value;if(live)live();onChange&&onChange();});
+      box.appendChild(i);
+    }
+    if(f.live){
+      const out=el("div","zod");box.appendChild(out);
+      live=function(){out.textContent=f.live(rec[f.k],rec)||"";};
+      live();
+    }
+    if(f.help)box.appendChild(el("div","note",f.help));
+    return box;
+  }
+
+  function layerBox(layer,rec,onChange,openFirst){
+    const d=el("details","layer");
+    if(openFirst)d.open=true;
+    const sum=el("summary");
+    const t=el("span","lyt",layer.label);
+    const c=el("span","lyc");
+    sum.appendChild(t);sum.appendChild(c);
+    d.appendChild(sum);
+    function stamp(){
+      const n=filledCount(layer,rec),tot=layer.fields.length;
+      c.textContent=n?(n+" of "+tot):(layer.hint||"");
+      c.className="lyc"+(n?" on":"");
+    }
+    const body=el("div","lyb");
+    layer.fields.forEach(function(f){body.appendChild(fieldBox(f,rec,function(){stamp();onChange&&onChange();}));});
+    d.appendChild(body);stamp();
+    return d;
+  }
+
+  return {
+    build:function(host,schema,rec,opts){
+      opts=opts||{};
+      host.innerHTML="";
+      (schema.layers||[]).forEach(function(layer,i){
+        if(layer.gate&&!(opts.gates&&opts.gates[layer.gate]))return;
+        host.appendChild(layerBox(layer,rec,opts.onChange,i===0&&opts.openFirst!==false));
+      });
+    },
+    filledCount:filledCount,
+    isFilled:isFilled
+  };
+})();
+
+/* the people schema - depth ladder: nothing is required, each layer is an offer */
+GN.schema.register("people",{
+  layers:[
+    {id:"about",label:"About them",hint:"birthday, what they like",fields:[
+      {k:"born",label:"Birthday",type:"date",live:function(v){
+        const z=GN.people.zodiac(v);
+        if(!z)return v?"Enter a full date to see their star sign.":"";
+        const cz=GN.people.chineseSign(v),a=GN.people.age(v),d=GN.people.daysToBirthday(v);
+        let t=z.glyph+" "+z.name;
+        if(cz)t+=" \u00b7 year of the "+cz;
+        if(a!=null)t+=" \u00b7 "+a+(a===1?" year old":" years old");
+        if(d===0)t+=" \u00b7 birthday is today!";else if(d!=null)t+=" \u00b7 birthday in "+d+(d===1?" day":" days");
+        return t;}},
+      {k:"interests",label:"Likes",type:"tags",ph:"dinosaurs, minecraft\u2026"}
+    ]},
+    {id:"favs",label:"Favourites",hint:"food, colour, animal",fields:[
+      {k:"favFood",label:"Favourite food",type:"text",max:40},
+      {k:"favColor",label:"Favourite colour",type:"text",max:24},
+      {k:"favAnimal",label:"Favourite animal",type:"text",max:24},
+      {k:"favDo",label:"Favourite thing to do",type:"text",max:60}
+    ]},
+    {id:"story",label:"Their story",hint:"where they're from",fields:[
+      {k:"grewUp",label:"Where they grew up",type:"text",max:60},
+      {k:"livesIn",label:"Where they live now",type:"text",max:60},
+      {k:"work",label:"Work or school",type:"text",max:60}
+    ]},
+    {id:"more",label:"More about them",hint:"dislikes, how you met",fields:[
+      {k:"dislikes",label:"Not a fan of",type:"tags",ph:"mushrooms\u2026"},
+      {k:"howKnow",label:"How you know them",type:"text",max:60},
+      {k:"notes",label:"Notes",type:"longtext",ph:"Anything worth remembering"}
+    ]},
+    {id:"contact",label:"Contact",hint:"phone, email",gate:"contacts",fields:[
+      {k:"phone",label:"Phone",type:"text",max:32},
+      {k:"email",label:"Email",type:"text",max:64}
+    ]}
+  ]
+});
+
 GN.profiles={
   list:function(){return profLoad();},
   get:function(id){return profLoad().find(p=>p.id===id)||null;},
