@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#1b1a24">
+<title>Jigsaw · make a puzzle</title>
+<style>
+  :root{
+    --bg:#1b1a24; --panel:#252433; --line:rgba(255,255,255,.14);
+    --txt:#f2efe9; --dim:#a49fb5; --accent:#ffb34d; --accent2:#7ecfff; --good:#8bd76b;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0;height:100%;background:var(--bg);color:var(--txt);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overscroll-behavior:none}
+  body{display:flex;flex-direction:column;height:100vh;height:100svh;max-height:100svh;overflow:hidden}
+
+  #top{display:flex;align-items:center;gap:9px;padding:calc(7px + env(safe-area-inset-top)) 11px 7px;
+       flex:0 0 auto;border-bottom:1px solid var(--line)}
+  #wordmark{font-weight:800;font-size:17px;letter-spacing:.3px}
+  #wordmark span{color:var(--accent)}
+  #ver{margin-left:auto;font-size:11px;color:var(--dim);background:none;border:1px solid var(--line);
+       border-radius:999px;padding:5px 9px;font-family:inherit}
+
+  main{flex:1;min-height:0;position:relative}
+  .screen{position:absolute;inset:0;display:none;flex-direction:column;overflow-y:auto;
+          -webkit-overflow-scrolling:touch;padding:14px 13px calc(18px + env(safe-area-inset-bottom))}
+  .screen.on{display:flex}
+
+  h2{font-size:17px;margin:2px 0 10px}
+  .sub{font-size:13px;color:var(--dim);line-height:1.45;margin:0 0 14px}
+
+  .btn{font:600 14px/1 inherit;color:var(--txt);background:var(--panel);border:1px solid var(--line);
+       border-radius:12px;padding:13px 15px;cursor:pointer;display:inline-flex;align-items:center;
+       justify-content:center;gap:8px;min-height:46px}
+  .btn:active{transform:translateY(1px)}
+  .btn.big{width:100%;margin-bottom:9px;font-size:15px}
+  .btn.go{background:var(--accent);border-color:var(--accent);color:#241a06;font-weight:800}
+  .btn.ghost{background:transparent}
+  .row{display:flex;gap:8px;flex-wrap:wrap}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:13px;margin-bottom:12px}
+  .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--dim);margin-bottom:8px}
+
+  .chips{display:flex;gap:7px;flex-wrap:wrap}
+  .chip{border:1px solid var(--line);background:rgba(255,255,255,.05);border-radius:999px;
+        padding:9px 13px;font-size:13px;font-weight:600;cursor:pointer;min-height:40px;
+        display:inline-flex;align-items:center}
+  .chip.sel{background:var(--accent);color:#241a06;border-color:var(--accent)}
+  .chip.cut{flex-direction:column;gap:4px;padding:8px 10px;border-radius:12px}
+  .chip.cut canvas{display:block;border-radius:4px}
+  .chip.cut span{font-size:11px}
+
+  #prevWrap{position:relative;border-radius:12px;overflow:hidden;border:1px solid var(--line);
+            background:#0e0d15;margin-bottom:12px;min-height:120px;display:flex;align-items:center;justify-content:center}
+  #prev{max-width:100%;max-height:34svh;display:block}
+  .empty{color:var(--dim);font-size:13px;padding:34px 12px;text-align:center;line-height:1.5}
+
+  #libGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:8px}
+  .libItem{position:relative;border:1px solid var(--line);border-radius:10px;overflow:hidden;
+           background:#0e0d15;aspect-ratio:1;cursor:pointer}
+  .libItem img{width:100%;height:100%;object-fit:cover;display:block}
+  .libItem b{position:absolute;top:3px;right:3px;background:rgba(0,0,0,.65);color:#fff;
+             border-radius:999px;width:22px;height:22px;display:flex;align-items:center;
+             justify-content:center;font-size:13px}
+
+  /* draw-your-own piece shape */
+  #drawWrap{display:none}
+  #drawWrap.on{display:block}
+  #drawCv{width:100%;height:130px;background:#0e0d15;border:1px solid var(--line);
+          border-radius:10px;display:block;touch-action:none}
+
+  /* play */
+  #playTop{display:flex;align-items:center;gap:8px;padding:8px 11px;flex:0 0 auto;border-bottom:1px solid var(--line)}
+  #prog{font-size:13px;font-weight:700;color:var(--accent2)}
+  #boardWrap{flex:1;min-height:0;position:relative;overflow:hidden;background:#141320}
+  #board{display:block;touch-action:none}
+  #playBot{display:flex;gap:8px;padding:9px 11px calc(9px + env(safe-area-inset-bottom));
+           flex:0 0 auto;border-top:1px solid var(--line);overflow-x:auto}
+  #playBot .btn{padding:10px 12px;font-size:13px;min-height:42px;white-space:nowrap}
+  #s-play{padding:0;overflow:hidden}
+  #s-play.on{display:flex}
+
+  #done{position:absolute;inset:0;display:none;align-items:center;justify-content:center;
+        background:rgba(10,9,16,.82);z-index:5;padding:22px}
+  #done.on{display:flex}
+  #done .card{text-align:center;max-width:320px}
+  #done h3{margin:4px 0 8px;font-size:20px}
+
+  .note{font-size:12px;color:var(--dim);line-height:1.45;margin-top:8px}
+  input[type=file]{display:none}
+</style>
+</head>
+<body>
+
+<div id="top">
+  <a href="index.html" id="gsShelfBtn" aria-label="Back to the Game Shelf" style="pointer-events:auto;flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;background:rgba(127,127,127,.18);border:1px solid rgba(127,127,127,.42);color:inherit;font:600 12px/1 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;text-decoration:none;padding:10px 12px;border-radius:999px;white-space:nowrap">&#8962; Shelf</a>
+  <span id="wordmark">Jig<span>saw</span></span>
+  <button id="ver">v1.0</button>
+</div>
+
+<main>
+
+<section class="screen on" id="s-start">
+  <h2>Make a puzzle</h2>
+  <p class="sub">Use a photo from this device, or take a new one. Everything stays on this device.</p>
+  <button class="btn big" id="bUpload">&#128247;&nbsp; Choose a photo</button>
+  <button class="btn big" id="bCamera">&#128248;&nbsp; Take a picture</button>
+  <input type="file" id="fUpload" accept="image/*">
+  <input type="file" id="fCamera" accept="image/*" capture="environment">
+  <div class="card">
+    <div class="lbl">Saved pictures</div>
+    <div id="libGrid"></div>
+    <div class="empty" id="libEmpty">Nothing saved yet. Pick a photo and tap Save to keep it here.</div>
+  </div>
+</section>
+
+<section class="screen" id="s-setup">
+  <h2>Set it up</h2>
+  <div id="prevWrap"><img id="prev" alt=""></div>
+  <div class="card">
+    <div class="lbl">Pieces</div>
+    <div class="chips" id="pieceChips"></div>
+  </div>
+  <div class="card">
+    <div class="lbl">Piece shape</div>
+    <div class="chips" id="cutChips"></div>
+    <div id="drawWrap">
+      <div class="note" style="margin:10px 0 6px">Draw the bump shape from left to right. It gets stamped on every join, so a fish, a horse or a dinosaur back all work.</div>
+      <canvas id="drawCv"></canvas>
+      <div class="row" style="margin-top:8px">
+        <button class="btn ghost" id="bDrawClear">Clear</button>
+        <button class="btn ghost" id="bDrawUse">Use this shape</button>
+      </div>
+    </div>
+  </div>
+  <div class="row">
+    <button class="btn go" id="bStart" style="flex:1">Start puzzle</button>
+    <button class="btn ghost" id="bSaveLib">Save picture</button>
+  </div>
+  <button class="btn ghost big" id="bBack" style="margin-top:9px">Back</button>
+</section>
+
+<section class="screen" id="s-play">
+  <div id="playTop">
+    <span id="prog">0 / 0</span>
+    <button class="btn ghost" id="bPeek" style="margin-left:auto;padding:8px 11px;min-height:38px;font-size:13px">Peek</button>
+    <button class="btn ghost" id="bQuit" style="padding:8px 11px;min-height:38px;font-size:13px">Quit</button>
+  </div>
+  <div id="boardWrap"><canvas id="board"></canvas>
+    <div id="done"><div class="card">
+      <h3>&#127881; Finished!</h3>
+      <div class="sub" id="doneMsg" style="margin-bottom:12px"></div>
+      <button class="btn go big" id="bSaveShot">Save the picture</button>
+      <button class="btn ghost big" id="bAgain" style="margin-bottom:0">New puzzle</button>
+    </div></div>
+  </div>
+  <div id="playBot">
+    <button class="btn" id="bShuffle">Shuffle</button>
+    <button class="btn" id="bEdges">Edges first</button>
+    <button class="btn" id="bHint">Hint</button>
+  </div>
+</section>
+
+</main>
+
+<script>
+"use strict";
+var $=function(id){return document.getElementById(id);};
+var VERSION="v1.0 \u00b7 Jul 19";
+$("ver").textContent=VERSION.split(" ")[0];
+
+/* ---------- tiny IndexedDB store ----------
+   Photos go here, NOT localStorage: one phone photo is ~2.7MB once base64'd and
+   localStorage caps around 5MB, so two pictures would fill the whole budget. */
+var DB=(function(){
+  var _db=null;
+  function open(){
+    return new Promise(function(res,rej){
+      if(_db)return res(_db);
+      var r=indexedDB.open("jigsaw",1);
+      r.onupgradeneeded=function(e){
+        var d=e.target.result;
+        if(!d.objectStoreNames.contains("pics"))d.createObjectStore("pics",{keyPath:"id"});
+      };
+      r.onsuccess=function(){_db=r.result;res(_db);};
+      r.onerror=function(){rej(r.error);};
+    });
+  }
+  function tx(mode){return open().then(function(d){return d.transaction("pics",mode).objectStore("pics");});}
+  return {
+    put:function(rec){return tx("readwrite").then(function(s){return new Promise(function(res,rej){
+      var q=s.put(rec);q.onsuccess=function(){res(rec);};q.onerror=function(){rej(q.error);};});});},
+    all:function(){return tx("readonly").then(function(s){return new Promise(function(res,rej){
+      var q=s.getAll();q.onsuccess=function(){res(q.result||[]);};q.onerror=function(){rej(q.error);};});});},
+    del:function(id){return tx("readwrite").then(function(s){return new Promise(function(res){
+      var q=s.delete(id);q.onsuccess=function(){res();};q.onerror=function(){res();};});});}
+  };
+})();
+
+/* ---------- state ---------- */
+var S={img:null,imgURL:null,pieces:12,cut:"classic",customProfile:null,
+        cols:0,rows:0,list:[],placed:0,peek:false,scale:1};
+
+/* ---------- cut profiles ----------
+   A profile is a polyline of [t,o] along one edge. t runs 0..1 across the edge,
+   o is perpendicular offset in tab units. t is allowed to go BACKWARDS, which is
+   what gives a classic tab its neck - a plain height function can't overhang. */
+var PROFILES={
+  simple:[[0,0],[1,0]],
+  classic:[[0,0],[.34,0],[.36,.18],[.32,.45],[.35,.72],[.43,.9],[.5,.95],[.57,.9],[.65,.72],[.68,.45],[.64,.18],[.66,0],[1,0]],
+  wavy:(function(){var a=[],i;for(i=0;i<=24;i++){var t=i/24;a.push([t,Math.sin(t*Math.PI*2)*.55]);}return a;})(),
+  zigzag:[[0,0],[.2,.55],[.4,-.15],[.6,.55],[.8,-.15],[1,0]]
+};
+var CUTS=[["classic","Classic"],["simple","Straight"],["wavy","Wavy"],["zigzag","Zigzag"],["custom","Draw it"]];
+
+function profileFor(){
+  if(S.cut==="custom"&&S.customProfile&&S.customProfile.length>1)return S.customProfile;
+  return PROFILES[S.cut]||PROFILES.classic;
+}
+
+/* map a profile onto the edge A->B, offset perpendicular, append to ctx path */
+function edgeTo(ctx,ax,ay,bx,by,prof,dir,unit){
+  var dx=bx-ax, dy=by-ay, len=Math.hypot(dx,dy);
+  var ux=dx/len, uy=dy/len;         /* along */
+  var nx=-uy, ny=ux;                /* perpendicular */
+  for(var i=1;i<prof.length;i++){
+    var t=prof[i][0], o=prof[i][1]*dir*unit;
+    ctx.lineTo(ax+ux*len*t+nx*o, ay+uy*len*t+ny*o);
+  }
+}
+
+/* ---------- build pieces ---------- */
+function gridFor(n,w,h){
+  var best=null, ar=w/h;
+  for(var c=1;c<=n;c++){
+    var r=Math.round(n/c); if(r<1)continue;
+    var got=c*r; if(Math.abs(got-n)>Math.max(2,n*0.18))continue;
+    var pieceAr=(w/c)/(h/r);
+    var score=Math.abs(Math.log(pieceAr));
+    if(!best||score<best.score)best={c:c,r:r,score:score};
+  }
+  return best||{c:Math.round(Math.sqrt(n*ar)),r:Math.round(Math.sqrt(n/ar))};
+}
+
+function buildPuzzle(){
+  var wrap=$("boardWrap"), cv=$("board");
+  var W=wrap.clientWidth, H=wrap.clientHeight;
+  /* the board has no size until its screen is actually laid out; retry rather than
+     building zero-sized piece canvases, which throws on drawImage */
+  if(W<40||H<40){ if(S.img)setTimeout(buildPuzzle,60); return; }
+  var dpr=Math.min(2,window.devicePixelRatio||1);
+  cv.width=W*dpr; cv.height=H*dpr; cv.style.width=W+"px"; cv.style.height=H+"px";
+  var ctx=cv.getContext("2d"); ctx.setTransform(dpr,0,0,dpr,0,0);
+  S.ctx=ctx; S.W=W; S.H=H;
+
+  var im=S.img;
+  var g=gridFor(S.pieces,im.width,im.height);
+  S.cols=g.c; S.rows=g.r;
+
+  /* board fits the canvas with room around it for loose pieces */
+  var pad=Math.min(W,H)*0.10;
+  var availW=W-pad*2, availH=H-pad*2;
+  var sc=Math.min(availW/im.width, availH/im.height);
+  var bw=im.width*sc, bh=im.height*sc;
+  S.bx=(W-bw)/2; S.by=(H-bh)/2; S.bw=bw; S.bh=bh;
+
+  var cw=bw/S.cols, ch=bh/S.rows;
+  var unit=Math.min(cw,ch)*0.22;
+  S.unit=unit;
+  var prof=profileFor();
+
+  /* one shared random direction per internal edge so neighbours interlock */
+  var hEdge=[],vEdge=[],i,j;
+  for(i=0;i<=S.rows;i++){hEdge[i]=[];for(j=0;j<S.cols;j++)hEdge[i][j]=(Math.random()<.5?-1:1);}
+  for(i=0;i<S.rows;i++){vEdge[i]=[];for(j=0;j<=S.cols;j++)vEdge[i][j]=(Math.random()<.5?-1:1);}
+
+  S.list=[];
+  var pad2=unit*1.6;
+  for(i=0;i<S.rows;i++)for(j=0;j<S.cols;j++){
+    var x0=j*cw, y0=i*ch, x1=x0+cw, y1=y0+ch;
+    var pc=document.createElement("canvas");
+    pc.width=Math.max(1,Math.ceil((cw+pad2*2)*dpr)); pc.height=Math.max(1,Math.ceil((ch+pad2*2)*dpr));
+    var pctx=pc.getContext("2d");
+    pctx.setTransform(dpr,0,0,dpr,0,0);
+    pctx.translate(pad2-x0, pad2-y0);
+
+    pctx.beginPath();
+    pctx.moveTo(x0,y0);
+    if(i===0)pctx.lineTo(x1,y0); else edgeTo(pctx,x0,y0,x1,y0,prof,hEdge[i][j],unit);
+    if(j===S.cols-1)pctx.lineTo(x1,y1); else edgeTo(pctx,x1,y0,x1,y1,prof,vEdge[i][j+1],unit);
+    if(i===S.rows-1)pctx.lineTo(x0,y1); else edgeTo(pctx,x1,y1,x0,y1,prof,-hEdge[i+1][j],unit);
+    if(j===0)pctx.lineTo(x0,y0); else edgeTo(pctx,x0,y1,x0,y0,prof,-vEdge[i][j],unit);
+    pctx.closePath();
+
+    pctx.save(); pctx.clip();
+    pctx.drawImage(im,0,0,im.width,im.height,0,0,bw,bh);
+    pctx.restore();
+    pctx.lineWidth=1.1; pctx.strokeStyle="rgba(0,0,0,.5)"; pctx.stroke();
+    pctx.lineWidth=.6; pctx.strokeStyle="rgba(255,255,255,.25)"; pctx.stroke();
+
+    S.list.push({cv:pc, w:cw+pad2*2, h:ch+pad2*2,
+      tx:S.bx+x0-pad2, ty:S.by+y0-pad2,
+      x:0, y:0, placed:false, edge:(i===0||j===0||i===S.rows-1||j===S.cols-1)});
+  }
+  S.placed=0;
+  scatter();
+  draw();
+  updProg();
+}
+
+function scatter(){
+  var m=14;
+  S.list.forEach(function(p){
+    if(p.placed)return;
+    p.x=m+Math.random()*Math.max(1,S.W-p.w-m*2);
+    p.y=m+Math.random()*Math.max(1,S.H-p.h-m*2);
+  });
+  /* keep draw order stable but put unplaced on top */
+  S.list.sort(function(a,b){return (a.placed?0:1)-(b.placed?0:1);});
+}
+
+function draw(){
+  var ctx=S.ctx; if(!ctx)return;
+  ctx.clearRect(0,0,S.W,S.H);
+  /* board outline */
+  ctx.save();
+  ctx.strokeStyle="rgba(255,255,255,.18)"; ctx.lineWidth=2;
+  ctx.strokeRect(S.bx,S.by,S.bw,S.bh);
+  if(S.peek&&S.img){ctx.globalAlpha=.26;ctx.drawImage(S.img,S.bx,S.by,S.bw,S.bh);ctx.globalAlpha=1;}
+  ctx.restore();
+  S.list.forEach(function(p){ ctx.drawImage(p.cv,p.x,p.y,p.w,p.h); });
+}
+
+function updProg(){ $("prog").textContent=S.placed+" / "+S.list.length; }
+
+/* ---------- dragging ---------- */
+var drag=null;
+function ptFromEvt(e){
+  var r=$("board").getBoundingClientRect();
+  var t=e.touches?e.touches[0]:e;
+  return {x:t.clientX-r.left, y:t.clientY-r.top};
+}
+function hit(pt){
+  for(var i=S.list.length-1;i>=0;i--){
+    var p=S.list[i];
+    if(p.placed)continue;
+    if(pt.x>=p.x&&pt.x<=p.x+p.w&&pt.y>=p.y&&pt.y<=p.y+p.h)return p;
+  }
+  return null;
+}
+function onDown(e){
+  var pt=ptFromEvt(e), p=hit(pt);
+  if(!p)return;
+  e.preventDefault();
+  drag={p:p, dx:pt.x-p.x, dy:pt.y-p.y};
+  S.list.splice(S.list.indexOf(p),1); S.list.push(p);
+  draw();
+}
+function onMove(e){
+  if(!drag)return;
+  e.preventDefault();
+  var pt=ptFromEvt(e);
+  drag.p.x=pt.x-drag.dx; drag.p.y=pt.y-drag.dy;
+  draw();
+}
+function onUp(){
+  if(!drag)return;
+  var p=drag.p, tol=Math.max(16,Math.min(S.bw/S.cols,S.bh/S.rows)*0.38);
+  if(Math.abs(p.x-p.tx)<tol&&Math.abs(p.y-p.ty)<tol){
+    p.x=p.tx; p.y=p.ty; p.placed=true; S.placed++;
+    S.list.splice(S.list.indexOf(p),1); S.list.unshift(p);
+    updProg();
+    if(S.placed===S.list.length)finish();
+  }
+  drag=null; draw();
+}
+function finish(){
+  $("doneMsg").textContent=S.list.length+" pieces, back together.";
+  $("done").classList.add("on");
+}
+
+/* ---------- image loading ---------- */
+function loadFile(file){
+  if(!file)return;
+  var fr=new FileReader();
+  fr.onload=function(){ loadURL(fr.result); };
+  fr.readAsDataURL(file);
+}
+function loadURL(url){
+  var im=new Image();
+  im.onload=function(){
+    /* downscale: a 12MP camera shot would otherwise sit in memory at full size */
+    var MAX=1600, w=im.width, h=im.height;
+    if(Math.max(w,h)>MAX){ var k=MAX/Math.max(w,h); w=Math.round(w*k); h=Math.round(h*k); }
+    var c=document.createElement("canvas"); c.width=w; c.height=h;
+    c.getContext("2d").drawImage(im,0,0,w,h);
+    S.img=c;
+    S.imgURL=c.toDataURL("image/jpeg",0.85);
+    $("prev").src=S.imgURL;
+    show("s-setup");
+  };
+  im.onerror=function(){ alert("That file could not be opened as a picture."); };
+  im.src=url;
+}
+
+/* ---------- library ---------- */
+function refreshLib(){
+  DB.all().then(function(rows){
+    var g=$("libGrid"); g.innerHTML="";
+    $("libEmpty").style.display=rows.length?"none":"block";
+    rows.sort(function(a,b){return b.ts-a.ts;}).forEach(function(r){
+      var d=document.createElement("div"); d.className="libItem";
+      var im=document.createElement("img"); im.src=r.thumb; im.alt="";
+      var x=document.createElement("b"); x.textContent="\u00d7";
+      d.appendChild(im); d.appendChild(x);
+      d.onclick=function(ev){ if(ev.target===x)return; loadURL(r.full); };
+      x.onclick=function(){ DB.del(r.id).then(refreshLib); };
+      g.appendChild(d);
+    });
+  }).catch(function(){ $("libEmpty").textContent="Saved pictures are unavailable on this device."; });
+}
+function saveToLib(){
+  if(!S.img)return;
+  var t=document.createElement("canvas"); var k=200/Math.max(S.img.width,S.img.height);
+  t.width=Math.round(S.img.width*k); t.height=Math.round(S.img.height*k);
+  t.getContext("2d").drawImage(S.img,0,0,t.width,t.height);
+  DB.put({id:"p"+Date.now(), ts:Date.now(), thumb:t.toDataURL("image/jpeg",.7), full:S.imgURL})
+    .then(function(){ flash($("bSaveLib"),"Saved"); refreshLib(); })
+    .catch(function(){ alert("Could not save on this device."); });
+}
+function flash(btn,txt){ var o=btn.textContent; btn.textContent=txt; setTimeout(function(){btn.textContent=o;},1200); }
+
+/* save the picture out to the device */
+function savePicture(){
+  if(!S.img)return;
+  S.img.toBlob(function(b){
+    var u=URL.createObjectURL(b);
+    var a=document.createElement("a"); a.href=u; a.download="jigsaw-"+Date.now()+".jpg";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){URL.revokeObjectURL(u);},4000);
+  },"image/jpeg",0.92);
+}
+
+/* ---------- draw-your-own piece shape ---------- */
+var dcv=$("drawCv"), dctx=null, dpts=[], ddrawing=false;
+function initDraw(){
+  var w=dcv.clientWidth||300, h=130, dpr=Math.min(2,window.devicePixelRatio||1);
+  dcv.width=w*dpr; dcv.height=h*dpr;
+  dctx=dcv.getContext("2d"); dctx.setTransform(dpr,0,0,dpr,0,0);
+  dctx.__w=w; dctx.__h=h;
+  drawPad();
+}
+function drawPad(){
+  if(!dctx)return;
+  var w=dctx.__w,h=dctx.__h;
+  dctx.clearRect(0,0,w,h);
+  dctx.strokeStyle="rgba(255,255,255,.2)"; dctx.setLineDash([5,5]);
+  dctx.beginPath(); dctx.moveTo(0,h/2); dctx.lineTo(w,h/2); dctx.stroke();
+  dctx.setLineDash([]);
+  if(dpts.length>1){
+    dctx.strokeStyle="#ffb34d"; dctx.lineWidth=3; dctx.lineJoin="round";
+    dctx.beginPath(); dctx.moveTo(dpts[0].x,dpts[0].y);
+    for(var i=1;i<dpts.length;i++)dctx.lineTo(dpts[i].x,dpts[i].y);
+    dctx.stroke();
+  }
+}
+function padPt(e){
+  var r=dcv.getBoundingClientRect(); var t=e.touches?e.touches[0]:e;
+  return {x:t.clientX-r.left, y:t.clientY-r.top};
+}
+dcv.addEventListener("pointerdown",function(e){ddrawing=true;dpts=[padPt(e)];drawPad();e.preventDefault();});
+dcv.addEventListener("pointermove",function(e){if(!ddrawing)return;dpts.push(padPt(e));drawPad();e.preventDefault();});
+dcv.addEventListener("pointerup",function(){ddrawing=false;});
+dcv.addEventListener("pointercancel",function(){ddrawing=false;});
+
+function useDrawing(){
+  if(dpts.length<2){alert("Draw a line across the box first.");return;}
+  var w=dctx.__w,h=dctx.__h;
+  var pts=dpts.slice().sort(function(a,b){return a.x-b.x;});
+  var prof=[[0,0]];
+  pts.forEach(function(p){
+    var t=Math.max(0,Math.min(1,p.x/w));
+    var o=((h/2)-p.y)/(h/2);          /* up = positive */
+    prof.push([t,Math.max(-1.1,Math.min(1.1,o))]);
+  });
+  prof.push([1,0]);
+  S.customProfile=prof;
+  S.cut="custom";
+  renderCuts();
+  flash($("bDrawUse"),"Shape set");
+}
+
+/* ---------- setup UI ---------- */
+function renderPieces(){
+  var box=$("pieceChips"); box.innerHTML="";
+  [6,12,25,50,100,200].forEach(function(n){
+    var b=document.createElement("div"); b.className="chip"+(S.pieces===n?" sel":"");
+    b.textContent=n; b.onclick=function(){S.pieces=n;renderPieces();};
+    box.appendChild(b);
+  });
+}
+function cutThumb(key){
+  var c=document.createElement("canvas"), w=54,h=30, dpr=2;
+  c.width=w*dpr; c.height=h*dpr; c.style.width=w+"px"; c.style.height=h+"px";
+  var x=c.getContext("2d"); x.setTransform(dpr,0,0,dpr,0,0);
+  x.strokeStyle="#f2efe9"; x.lineWidth=1.6;
+  var prof=(key==="custom")?(S.customProfile||PROFILES.simple):PROFILES[key];
+  x.beginPath(); x.moveTo(3,h/2);
+  edgeTo(x,3,h/2,w-3,h/2,prof,1,9);
+  x.stroke();
+  return c;
+}
+function renderCuts(){
+  var box=$("cutChips"); box.innerHTML="";
+  CUTS.forEach(function(pair){
+    var b=document.createElement("div"); b.className="chip cut"+(S.cut===pair[0]?" sel":"");
+    b.appendChild(cutThumb(pair[0]));
+    var s=document.createElement("span"); s.textContent=pair[1]; b.appendChild(s);
+    b.onclick=function(){
+      S.cut=pair[0]; renderCuts();
+      $("drawWrap").classList.toggle("on",S.cut==="custom");
+      if(S.cut==="custom")setTimeout(initDraw,30);
+    };
+    box.appendChild(b);
+  });
+  $("drawWrap").classList.toggle("on",S.cut==="custom");
+}
+
+/* ---------- nav ---------- */
+function show(id){
+  ["s-start","s-setup","s-play"].forEach(function(s){$(s).classList.toggle("on",s===id);});
+}
+
+$("bUpload").onclick=function(){$("fUpload").click();};
+$("bCamera").onclick=function(){$("fCamera").click();};
+$("fUpload").onchange=function(){loadFile(this.files[0]);this.value="";};
+$("fCamera").onchange=function(){loadFile(this.files[0]);this.value="";};
+$("bBack").onclick=function(){show("s-start");};
+$("bSaveLib").onclick=saveToLib;
+$("bDrawClear").onclick=function(){dpts=[];drawPad();};
+$("bDrawUse").onclick=useDrawing;
+$("bStart").onclick=function(){ if(!S.img)return; show("s-play"); setTimeout(buildPuzzle,40); };
+$("bQuit").onclick=function(){ $("done").classList.remove("on"); show("s-setup"); };
+$("bAgain").onclick=function(){ $("done").classList.remove("on"); show("s-start"); };
+$("bSaveShot").onclick=savePicture;
+$("bShuffle").onclick=function(){scatter();draw();};
+$("bPeek").onclick=function(){S.peek=!S.peek;draw();};
+$("bEdges").onclick=function(){
+  /* bring the border pieces to the front so they are easy to find */
+  var e=S.list.filter(function(p){return !p.placed&&p.edge;});
+  e.forEach(function(p){S.list.splice(S.list.indexOf(p),1);S.list.push(p);});
+  var m=14, i=0;
+  e.forEach(function(p){
+    var t=(i++)/Math.max(1,e.length-1);
+    p.x=m+t*Math.max(1,S.W-p.w-m*2);
+    p.y=(i%2?m:S.H-p.h-m);
+  });
+  draw();
+};
+$("bHint").onclick=function(){
+  var un=S.list.filter(function(p){return !p.placed;});
+  if(!un.length)return;
+  var p=un[Math.floor(Math.random()*un.length)];
+  p.x=p.tx; p.y=p.ty; p.placed=true; S.placed++;
+  S.list.splice(S.list.indexOf(p),1); S.list.unshift(p);
+  updProg(); draw();
+  if(S.placed===S.list.length)finish();
+};
+$("ver").onclick=function(){alert("Jigsaw "+VERSION+"\n\nPictures and puzzles stay on this device.");};
+
+var bd=$("board");
+bd.addEventListener("pointerdown",onDown);
+window.addEventListener("pointermove",onMove,{passive:false});
+window.addEventListener("pointerup",onUp);
+window.addEventListener("pointercancel",onUp);
+
+window.addEventListener("resize",function(){
+  if($("s-play").classList.contains("on")&&S.img)buildPuzzle();
+  if(S.cut==="custom")initDraw();
+});
+
+renderPieces(); renderCuts(); refreshLib();
+</script>
+</body>
+</html>
