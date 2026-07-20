@@ -337,8 +337,63 @@ function initAudio(){
 
   const recDest=ctx.createMediaStreamDestination();
   master.connect(ctx.destination); master.connect(recDest);
-  Object.assign(A,{master,RV,DL,dryBus,gFilter,gDrive,gOut,gRevSend,gDelaySend,recDest});
+  Object.assign(A,{master,RV,DL,fb,dryBus,gFilter,gDrive,gOut,gRevSend,gDelaySend,recDest});
+  A.fxOn=true;            // reverb + delay start wired up by the lines above
   setDrive(0);
+  fxRoute();              // ...and immediately unwire them, since every send defaults to 0
+}
+/* ---------- audio lifecycle ----------
+   Three problems this fixes:
+   1. stopAll only ever flipped UI flags, so "Stop All" never actually stopped audio,
+      contradicting the app's own rule that Stop kills sound before any UI work.
+   2. Nothing tore the audio down when the page was hidden. A backgrounded tab kept its
+      AudioContext (and therefore the iOS audio session) alive indefinitely, which is why
+      sound survived closing the app and even uninstalling it - the tab was a separate copy.
+   3. The 2.6s convolver and the self-feeding delay ran on the audio thread at all times,
+      even with every send at zero. */
+function fxWanted(){
+  if(!A.ctx||!A.gRevSend) return false;
+  if(A.gRevSend.gain.value>0.0005||A.gDelaySend.gain.value>0.0005) return true;
+  for(let i=0;i<pads.length;i++){
+    const p=pads[i];
+    if(p&&p.rs&&p.rs.gain.value>0.0005) return true;
+    if(p&&p.ds&&p.ds.gain.value>0.0005) return true;
+  }
+  return false;
+}
+function fxRoute(){
+  if(!A.ctx||!A.RV) return;
+  const want=fxWanted();
+  if(want===A.fxOn) return;
+  A.fxOn=want;
+  try{
+    if(want){
+      A.RV.connect(A.master);
+      A.DL.connect(A.fb); A.fb.connect(A.DL); A.DL.connect(A.master);
+    }else{
+      A.RV.disconnect(); A.DL.disconnect(); A.fb.disconnect();
+    }
+  }catch(e){}
+}
+function hardSilence(){
+  const c=A.ctx; if(!c) return;
+  try{
+    if(A.master){
+      A.master.gain.cancelScheduledValues(c.currentTime);
+      A.master.gain.setValueAtTime(0,c.currentTime);
+    }
+    if(c.state==='running'&&c.suspend) c.suspend();
+  }catch(e){}
+}
+function audioWake(){
+  const c=A.ctx; if(!c) return;
+  try{
+    if(c.state==='suspended'&&c.resume) c.resume();
+    if(A.master){
+      A.master.gain.cancelScheduledValues(c.currentTime);
+      A.master.gain.setValueAtTime(0.9,c.currentTime);
+    }
+  }catch(e){}
 }
 function makeCurve(a){ const k=a*100,n=22050,c=new Float32Array(n),deg=Math.PI/180;
   for(let i=0;i<n;i++){const x=i*2/n-1;c[i]=(3+k)*x*20*deg/(Math.PI+k*Math.abs(x));} return c; }
@@ -694,8 +749,8 @@ function tfxApply(){
   p.fx.delay=+document.getElementById('tfx-delay').value;
   p.filt.frequency.value=p.fx.filter;
   p.drv.curve=p.fx.drive>0?makeCurve(p.fx.drive/100):null;
-  p.rs.gain.value=sendScale('reverb',p.fx.reverb);
-  p.ds.gain.value=sendScale('delay',p.fx.delay);
+  p.rs.gain.value=sendScale('reverb',p.fx.reverb); fxRoute();
+  p.ds.gain.value=sendScale('delay',p.fx.delay); fxRoute();
   if(tfxBtn) tfxBtn.classList.toggle('on',fxActive(p));
 }
 function tfxReset(){
@@ -723,6 +778,9 @@ function toggleDemo(){
   toast('Demo loaded — tap pads to remix it');
 }
 function stopAll(keepFlag){
+  if(!keepFlag) hardSilence();   // a real Stop kills audio first, before any UI work.
+                                 // stopAll(true) is toggleDemo's internal clear right
+                                 // before it relaunches, so it must NOT tear down.
   pads.forEach(p=>{ if(p.on){ p.on=false; p.el.classList.remove('live'); if(p.mixDot)p.mixDot.style.opacity=.35; } });
   if(!keepFlag){ demoActive=false; updateDemoBtn(); }
 }
@@ -799,8 +857,8 @@ function applyFX(){ if(!A.ctx)return;
   const on=k=>document.querySelector('.toggle[data-toggle="'+k+'"]').classList.contains('on');
   const v=id=>+document.getElementById('fx-'+id).value;
   A.gFilter.frequency.value=on('filter')?v('filter'):14000;
-  A.gDelaySend.gain.value=on('delay')?v('delay')/100:0;
-  A.gRevSend.gain.value=on('reverb')?v('reverb')/100:0;
+  A.gDelaySend.gain.value=on('delay')?v('delay')/100:0; fxRoute();
+  A.gRevSend.gain.value=on('reverb')?v('reverb')/100:0; fxRoute();
   setDrive(on('crush')?v('crush')/100:0);
 }
 
@@ -825,7 +883,7 @@ function setView(v){
   document.getElementById('fx').style.display=v==='fx'?'flex':'none';
   document.querySelectorAll('nav button[data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===v));
 }
-function startAudio(){ initAudio(); if(A.ctx.state==='suspended')A.ctx.resume();
+function startAudio(){ initAudio(); audioWake();
   if(!A.started){ A.started=true; loadSamples(); } }
 
 let toastT=null;
@@ -914,6 +972,14 @@ function boot(){
   if(!seen) setTimeout(()=>showTour(0),450);
 }
 boot();
+
+/* a hidden page must not hold the audio session open */
+document.addEventListener('visibilitychange',function(){ if(document.hidden) hardSilence(); });
+window.addEventListener('pagehide',hardSilence);
+window.addEventListener('freeze',hardSilence);
+['pointerdown','keydown'].forEach(function(ev){
+  document.addEventListener(ev,function(){ if(A.ctx) audioWake(); },{capture:true,passive:true});
+});
 </script>
 </body>
 </html>

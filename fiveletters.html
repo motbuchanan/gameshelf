@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#12141a">
+<title>Five Letters</title>
+<style>
+  :root{
+    --bg:#12141a; --tile:#2b2f3a; --line:#3b4150; --txt:#f2f4f8; --dim:#98a0b4;
+    --hit:#63a84f; --near:#c9a227; --miss:#3a4050; --accent:#7ecfff;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0;height:100%;background:var(--bg);color:var(--txt);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overscroll-behavior:none}
+  body{display:flex;flex-direction:column;height:100vh;height:100svh;max-height:100svh;overflow:hidden}
+
+  #top{display:flex;align-items:center;gap:9px;padding:calc(7px + env(safe-area-inset-top)) 11px 7px;
+       flex:0 0 auto;border-bottom:1px solid var(--line)}
+  #wordmark{font-weight:800;font-size:16px;letter-spacing:.4px}
+  #wordmark span{color:var(--accent)}
+  .tbtn{margin-left:auto;font:600 12px/1 inherit;color:var(--dim);background:none;
+        border:1px solid var(--line);border-radius:999px;padding:8px 11px;cursor:pointer}
+  .tbtn+.tbtn{margin-left:6px}
+
+  #modebar{display:flex;gap:6px;padding:8px 11px 4px;flex:0 0 auto;justify-content:center}
+  .mode{font:700 12px/1 inherit;color:var(--dim);background:none;border:1px solid var(--line);
+        border-radius:999px;padding:9px 14px;cursor:pointer}
+  .mode.on{background:var(--accent);border-color:var(--accent);color:#0a1620}
+
+  main{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;
+       justify-content:center;padding:6px 10px;gap:6px}
+  #grid{display:grid;gap:6px}
+  .row{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+  .cell{aspect-ratio:1;border:2px solid var(--line);border-radius:6px;display:flex;
+        align-items:center;justify-content:center;font-weight:800;font-size:26px;
+        text-transform:uppercase;background:transparent;transition:transform .12s}
+  .cell.filled{border-color:#5a6274}
+  .cell.pop{transform:scale(1.08)}
+  .cell.hit{background:var(--hit);border-color:var(--hit)}
+  .cell.near{background:var(--near);border-color:var(--near);color:#221c00}
+  .cell.miss{background:var(--miss);border-color:var(--miss);color:#aeb6c6}
+  .row.shake{animation:sh .38s}
+  @keyframes sh{0%,100%{transform:translateX(0)}20%{transform:translateX(-7px)}
+    40%{transform:translateX(7px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+
+  #kb{flex:0 0 auto;padding:6px 5px calc(8px + env(safe-area-inset-bottom));display:flex;
+      flex-direction:column;gap:6px;align-items:center}
+  .krow{display:flex;gap:5px;justify-content:center;width:100%}
+  .key{flex:1;min-width:0;max-width:42px;height:52px;border-radius:6px;border:none;
+       background:#4a5163;color:var(--txt);font:800 14px/1 inherit;text-transform:uppercase;
+       cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .key.wide{max-width:64px;font-size:11px}
+  .key.hit{background:var(--hit)}
+  .key.near{background:var(--near);color:#221c00}
+  .key.miss{background:#2a2f3b;color:#6d7688}
+  .key:active{transform:translateY(1px)}
+
+  #toast{position:fixed;left:50%;top:78px;transform:translateX(-50%);background:#f2f4f8;color:#12141a;
+         font-weight:700;font-size:13px;padding:10px 16px;border-radius:10px;opacity:0;
+         pointer-events:none;transition:opacity .18s;z-index:40;max-width:80vw;text-align:center}
+  #toast.on{opacity:1}
+
+  .sheet{position:fixed;top:0;left:0;right:0;height:100svh;background:rgba(6,8,12,.72);
+         display:none;align-items:flex-end;justify-content:center;z-index:50}
+  .sheet.on{display:flex}
+  .sbox{background:#1b1f28;border:1px solid var(--line);border-radius:18px 18px 0 0;
+        width:100%;max-width:520px;padding:18px 16px calc(20px + env(safe-area-inset-bottom));
+        max-height:88svh;overflow-y:auto}
+  .sbox h3{margin:0 0 10px;font-size:18px}
+  .sbox p{font-size:14px;line-height:1.55;color:#cfd5e2;margin:0 0 12px}
+  .stats{display:flex;gap:8px;text-align:center;margin:4px 0 14px}
+  .stat{flex:1;background:#232833;border-radius:10px;padding:10px 4px}
+  .stat b{display:block;font-size:20px}
+  .stat span{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px}
+  .dist{margin-bottom:14px}
+  .drow{display:flex;align-items:center;gap:8px;font-size:12px;margin-bottom:4px}
+  .dbar{background:var(--miss);height:20px;border-radius:4px;min-width:18px;
+        display:flex;align-items:center;justify-content:flex-end;padding:0 6px;font-weight:700}
+  .dbar.cur{background:var(--hit)}
+  .btn{font:700 14px/1 inherit;color:#0a1620;background:var(--accent);border:none;
+       border-radius:12px;padding:14px;width:100%;cursor:pointer;margin-bottom:8px}
+  .btn.ghost{background:transparent;color:var(--txt);border:1px solid var(--line)}
+  .legend{display:flex;align-items:center;gap:9px;margin-bottom:9px;font-size:13px;color:#cfd5e2}
+  .swatch{width:26px;height:26px;border-radius:5px;flex:0 0 auto}
+</style>
+</head>
+<body>
+
+<div id="top">
+  <a href="index.html" id="gsShelfBtn" aria-label="Back to the Game Shelf" style="pointer-events:auto;flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;background:rgba(127,127,127,.18);border:1px solid rgba(127,127,127,.42);color:inherit;font:600 12px/1 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;text-decoration:none;padding:10px 12px;border-radius:999px;white-space:nowrap">&#8962; Shelf</a>
+  <span id="wordmark">Five<span>Letters</span></span>
+  <button class="tbtn" id="bHelp">?</button>
+  <button class="tbtn" id="bStats">&#9776;</button>
+</div>
+
+<div id="modebar">
+  <button class="mode on" id="mDaily">Today</button>
+  <button class="mode" id="mFree">Practice</button>
+</div>
+
+<main><div id="grid"></div></main>
+
+<div id="kb"></div>
+<div id="toast"></div>
+
+<div class="sheet" id="shHelp"><div class="sbox">
+  <h3>How to play</h3>
+  <p>Guess the five letter word in six tries. Every guess has to be a real word.</p>
+  <div class="legend"><span class="swatch" style="background:var(--hit)"></span> Right letter, right place</div>
+  <div class="legend"><span class="swatch" style="background:var(--near)"></span> Right letter, wrong place</div>
+  <div class="legend"><span class="swatch" style="background:var(--miss)"></span> Not in the word</div>
+  <p><b>Today</b> is the same word for everyone in the house, so you can compare. <b>Practice</b> gives you a new word whenever you like.</p>
+  <button class="btn" id="bHelpClose">Got it</button>
+</div></div>
+
+<div class="sheet" id="shStats"><div class="sbox">
+  <h3 id="stTitle">Your record</h3>
+  <div class="stats">
+    <div class="stat"><b id="stPlayed">0</b><span>Played</span></div>
+    <div class="stat"><b id="stWin">0%</b><span>Won</span></div>
+    <div class="stat"><b id="stStreak">0</b><span>Streak</span></div>
+    <div class="stat"><b id="stBest">0</b><span>Best</span></div>
+  </div>
+  <div class="dist" id="stDist"></div>
+  <button class="btn" id="bShare">Copy my result</button>
+  <button class="btn ghost" id="bStatsClose">Close</button>
+</div></div>
+
+<script src="words.js"></script>
+<script>
+"use strict";
+var $=function(i){return document.getElementById(i);};
+var VERSION="v1.0";
+
+/* Answer pool: hand-picked common words, every one verified against the shelf
+   dictionary at build time so an answer is always a legal guess too. Guesses are
+   validated against the full WORDS set from words.js (8,636 five-letter entries),
+   which is already precached for the other word games, so this adds no download. */
+var ANSWERS="about above abuse actor acute admit adopt adult after again agent agree ahead alarm album alert alike alive allow alone along alter amber among anger angle angry ankle apart apple apply arena argue arise armor array arrow aside asset attic audio avoid awake award aware awful bacon badge badly baker basic basil basin basis batch beach beard beast begin being belly below bench berry birch birth black blade blame bland blank blast blaze bleak blend bless blind blink block blood bloom blown blues bluff blunt blush board boast bonus boost booth bound brain brake brand brass brave bread break breed brick bride brief bring brisk broad broke brook broom brown brush buddy build built bunch bunny burnt burst buyer cabin cable camel canal candy canoe cargo carol carry carve catch cause cease chain chair chalk charm chart chase cheap cheat check cheek cheer chess chest chick chief child chill chime choir choke chord chose chunk cider cigar civic civil claim clamp clash class clean clear clerk click cliff climb cling cloak clock close cloth cloud clown coach coast cobra cocoa colon color comet comic coral couch cough could count court cover crack craft crane crash crate crawl crazy cream creek creep crest crime crisp crook cross crowd crown crude cruel crumb crush crust curly curve cycle daily dairy daisy dance dated dealt death debut decay decoy delay dense depth devil diary dimly diner dirty ditch diver dizzy dodge doing donor doubt dough dozen draft drain drama drank drawn dread dream dress dried drift drill drink drive drone drove drown drunk dryer dusty dwarf dwell eager eagle early earth easel eaten ebony eight elbow elder elect elite empty enemy enjoy enter entry equal erase error essay event every exact exist extra fable faced faint fairy faith false fancy fatal fault favor feast fence ferry fetch fever fewer fiber field fiery fifth fifty fight final finch first flame flash fleet flesh flick fling float flock flood floor flour flown fluid flush focus foggy force forge forth forty forum found frame fraud fresh fried frost frown fruit fudge fully funny gauge geese ghost giant given giver glade gland glare glass gleam globe gloom glory glove going goose grace grade grain grand grant grape graph grasp grass grave gravy graze great greed green greet grief grill grind groan groom group grove growl grown guard guess guest guide guilt habit hairy handy happy hardy harsh haste hatch haunt heart heavy hedge hello hence hobby holly honey honor horse hotel hound house hover human humid humor hurry husky ideal image imply index inner input irony issue ivory jeans jelly jewel joint jolly judge juice juicy jumbo karma kayak kneel knife knock known koala label labor laden lance large larva later laugh layer learn lease leash least leave ledge legal lemon level lever light liked limit linen liver llama lobby local lodge logic loose loser lousy lover lower loyal lucky lunar lunch lying lyric magic maize major maker mango maple march marsh match maybe mayor meant medal media melon mercy merge merit merry metal meter midst might mimic mince minor minus mixed model moist money month moral motel motor mound mount mourn mouse mouth movie mower muddy mummy mural music naive naked nasty naval needy nerve never newly night noble noise noisy north notch noted novel nurse nutty nylon oasis occur ocean offer often olive onion opera orbit order organ other otter ought ounce outer owner oxide ozone paint panel panic paper party pasta paste patch pause peace peach pearl pedal penny perch peril petal phase phone photo piano picky piece piggy pilot pinch pitch pixel pizza place plaid plain plane plank plant plate plaza plead pluck plumb plume plush point polar pooch porch pound power press price pride prime print prior prize probe prone proof proud prove prune pulse punch pupil puppy purse quack quail quake quart queen query quest queue quick quiet quilt quirk quite quota quote radar radio raise rally ranch range rapid ratio raven reach react ready realm rebel refer reign relax relay renew repay reply reset resin reuse rhino rhyme rider ridge rifle right rigid rinse risky rival river roast robin robot rocky rogue roman roost rough round route royal rugby ruler rumor rural rusty saint salad salon salty sandy sauce scale scalp scare scarf scene scent scoop scope score scout scrap screw scrub seize sense serve seven shade shady shaft shake shall shame shape share shark sharp shave sheep sheer sheet shelf shell shift shine shiny shirt shock shoot shore short shout shove shown shrub shrug sight silly since siren sixth sixty skate skill skirt skull slate sleek sleep slice slide slime slope small smart smash smell smile smoke snack snail snake sneak sniff snowy soapy sober solar solid solve sonic sorry sound south space spare spark speak spear speed spell spend spice spicy spike spill spine spite split spoil spoke spoon sport spray spree squad squat stack staff stage stain stair stake stale stall stamp stand stare stark start state steak steal steam steel steep steer stern stick stiff still sting stock stole stone stood stool store storm story stout stove strap straw strip stuck study stuff stump stung style sugar suite sunny super surge sushi swamp swarm sweat sweep sweet swell swept swift swing swirl sword syrup table taken tally tango taper tasty teach teeth tempo tenor tense tenth thank theft their theme there these thick thief thigh thing think third thorn those three threw throw thumb tidal tiger tight timer tired title toast today token tonic tooth topic torch total touch tough towel tower toxic trace track trade trail train trait tramp trash treat trend trial tribe trick tried tries troop trout truck truly trunk trust truth tulip tunic turbo tutor twice twist ultra uncle under union unite unity until upper upset urban usage usual utter vague valid value valve vapor vault venue verse video vigor villa vinyl viola viral virus visit vital vivid vocal voice voter vowel wagon waist waste watch water weary weave wedge weigh weird whale wheat wheel where which while whirl white whole whose widow width windy wiser witch woman women world worry worse worst worth would wound woven wrist write wrong wrote yacht yeast yield young yours youth yummy zebra zesty".split(" ");
+
+var ROWS=6, COLS=5;
+var state={mode:"daily",answer:"",row:0,col:0,grid:[],done:false,keys:{}};
+
+function validWord(w){
+  w=w.toUpperCase();
+  if(typeof WORDS!=="undefined"&&WORDS&&WORDS.has)return WORDS.has(w);
+  return ANSWERS.indexOf(w.toLowerCase())>=0;  /* fallback if words.js failed */
+}
+
+/* deterministic daily index so everyone in the house gets the same word */
+function daySeed(){
+  var d=new Date();
+  var key=d.getFullYear()*10000+(d.getMonth()+1)*100+d.getDate();
+  var h=key%2147483647;
+  h=(h*48271)%2147483647;
+  return h;
+}
+function todayKey(){
+  var d=new Date();
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+
+/* ---------- stats ---------- */
+var SKEY="fiveletters_stats_v1", DKEY="fiveletters_daily_v1";
+function loadStats(){
+  try{return JSON.parse(localStorage.getItem(SKEY))||{played:0,won:0,streak:0,best:0,dist:[0,0,0,0,0,0]};}
+  catch(e){return {played:0,won:0,streak:0,best:0,dist:[0,0,0,0,0,0]};}
+}
+function saveStats(s){try{localStorage.setItem(SKEY,JSON.stringify(s));}catch(e){}}
+function loadDaily(){try{return JSON.parse(localStorage.getItem(DKEY))||{};}catch(e){return {};}}
+function saveDaily(o){try{localStorage.setItem(DKEY,JSON.stringify(o));}catch(e){}}
+
+/* ---------- board ---------- */
+function buildGrid(){
+  var g=$("grid"); g.innerHTML="";
+  state.grid=[];
+  for(var r=0;r<ROWS;r++){
+    var row=document.createElement("div"); row.className="row"; row.dataset.r=r;
+    var cells=[];
+    for(var c=0;c<COLS;c++){
+      var cell=document.createElement("div"); cell.className="cell";
+      row.appendChild(cell); cells.push(cell);
+    }
+    g.appendChild(row); state.grid.push(cells);
+  }
+  /* size the grid so six rows always fit the space available */
+  var m=document.querySelector("main");
+  var avail=Math.min(m.clientWidth-20, (m.clientHeight-20-5*6)/6*5);
+  g.style.width=Math.max(180,Math.min(340,avail))+"px";
+}
+
+var KROWS=["QWERTYUIOP","ASDFGHJKL","\u21B5ZXCVBNM\u232B"];
+function buildKeys(){
+  var kb=$("kb"); kb.innerHTML="";
+  KROWS.forEach(function(rowStr){
+    var r=document.createElement("div"); r.className="krow";
+    rowStr.split("").forEach(function(ch){
+      var b=document.createElement("button"); b.className="key";
+      if(ch==="\u21B5"){b.classList.add("wide");b.textContent="Enter";b.dataset.k="enter";}
+      else if(ch==="\u232B"){b.classList.add("wide");b.textContent="Del";b.dataset.k="del";}
+      else {b.textContent=ch;b.dataset.k=ch;}
+      b.onclick=function(){press(b.dataset.k);};
+      r.appendChild(b);
+    });
+    kb.appendChild(r);
+  });
+}
+function keyEl(ch){
+  var all=document.querySelectorAll(".key");
+  for(var i=0;i<all.length;i++) if(all[i].dataset.k===ch)return all[i];
+  return null;
+}
+
+function toast(msg){
+  var t=$("toast"); t.textContent=msg; t.classList.add("on");
+  clearTimeout(toast._t); toast._t=setTimeout(function(){t.classList.remove("on");},1500);
+}
+
+/* ---------- play ---------- */
+function newGame(mode){
+  state.mode=mode; state.row=0; state.col=0; state.done=false; state.keys={};
+  if(mode==="daily"){
+    state.answer=ANSWERS[daySeed()%ANSWERS.length];
+  } else {
+    state.answer=ANSWERS[Math.floor(Math.random()*ANSWERS.length)];
+  }
+  buildGrid(); buildKeys();
+  $("mDaily").classList.toggle("on",mode==="daily");
+  $("mFree").classList.toggle("on",mode!=="daily");
+  if(mode==="daily"){
+    var d=loadDaily();
+    if(d.date===todayKey()&&d.rows&&d.rows.length){ replay(d.rows); }
+  }
+}
+function replay(rows){
+  rows.forEach(function(w){
+    for(var i=0;i<COLS;i++){state.grid[state.row][i].textContent=w[i];}
+    scoreRow(w,true);
+    state.row++; state.col=0;
+  });
+  if(state.row>0){
+    var last=rows[rows.length-1];
+    if(last===state.answer){state.done=true;toast("Already solved today");}
+    else if(state.row>=ROWS){state.done=true;toast("Today's word was "+state.answer.toUpperCase());}
+  }
+}
+
+function press(k){
+  if(state.done)return;
+  if(k==="enter")return submit();
+  if(k==="del"){
+    if(state.col>0){state.col--;var c=state.grid[state.row][state.col];c.textContent="";c.classList.remove("filled");}
+    return;
+  }
+  if(!/^[A-Z]$/.test(k))return;
+  if(state.col>=COLS)return;
+  var cell=state.grid[state.row][state.col];
+  cell.textContent=k; cell.classList.add("filled","pop");
+  setTimeout(function(){cell.classList.remove("pop");},110);
+  state.col++;
+}
+
+function scoreRow(guess,instant){
+  var ans=state.answer.toUpperCase(); guess=guess.toUpperCase();
+  var res=new Array(COLS).fill("miss");
+  var pool={};
+  for(var i=0;i<COLS;i++) if(guess[i]!==ans[i]) pool[ans[i]]=(pool[ans[i]]||0)+1;
+  for(i=0;i<COLS;i++) if(guess[i]===ans[i]) res[i]="hit";
+  for(i=0;i<COLS;i++){
+    if(res[i]==="hit")continue;
+    var ch=guess[i];
+    if(pool[ch]>0){res[i]="near";pool[ch]--;}
+  }
+  var rowEls=state.grid[state.row];
+  res.forEach(function(kind,idx){
+    var apply=function(){
+      rowEls[idx].classList.remove("filled");
+      rowEls[idx].classList.add(kind);
+      var ch=guess[idx], ke=keyEl(ch);
+      var rank={miss:0,near:1,hit:2};
+      if(ke&&(rank[kind]>=(rank[state.keys[ch]]||0))){
+        ke.classList.remove("hit","near","miss"); ke.classList.add(kind); state.keys[ch]=kind;
+      }
+    };
+    if(instant)apply(); else setTimeout(apply,idx*190);
+  });
+  return res;
+}
+
+function submit(){
+  if(state.col<COLS){shake();toast("Not enough letters");return;}
+  var guess=""; for(var i=0;i<COLS;i++)guess+=state.grid[state.row][i].textContent;
+  if(!validWord(guess)){shake();toast("Not in the word list");return;}
+  var res=scoreRow(guess,false);
+  var won=res.every(function(r){return r==="hit";});
+  var rowUsed=state.row;
+  state.row++; state.col=0;
+
+  if(state.mode==="daily"){
+    var d=loadDaily();
+    if(d.date!==todayKey())d={date:todayKey(),rows:[]};
+    d.rows=d.rows||[]; d.rows.push(guess.toUpperCase()); saveDaily(d);
+  }
+  if(won||state.row>=ROWS){
+    state.done=true;
+    var delay=COLS*190+260;
+    setTimeout(function(){
+      recordResult(won,rowUsed+1);
+      if(won)toast(["Genius","Great","Nice","Good","Phew","Made it"][Math.min(rowUsed,5)]);
+      else toast("The word was "+state.answer.toUpperCase());
+      setTimeout(openStats,700);
+    },delay);
+  }
+}
+function shake(){
+  var r=$("grid").children[state.row]; if(!r)return;
+  r.classList.add("shake"); setTimeout(function(){r.classList.remove("shake");},400);
+}
+
+function recordResult(won,tries){
+  /* only the daily counts towards the record, so practice can't inflate a streak */
+  if(state.mode!=="daily")return;
+  var d=loadDaily();
+  if(d.scored===todayKey())return;
+  d.scored=todayKey(); saveDaily(d);
+  var s=loadStats();
+  s.played++;
+  if(won){s.won++;s.streak++;s.dist[tries-1]++;if(s.streak>s.best)s.best=s.streak;}
+  else s.streak=0;
+  saveStats(s);
+  state.lastTries=won?tries:0;
+}
+
+/* ---------- stats sheet ---------- */
+function openStats(){
+  var s=loadStats();
+  $("stPlayed").textContent=s.played;
+  $("stWin").textContent=s.played?Math.round(s.won/s.played*100)+"%":"0%";
+  $("stStreak").textContent=s.streak;
+  $("stBest").textContent=s.best;
+  var max=Math.max.apply(null,s.dist.concat([1]));
+  var h="";
+  for(var i=0;i<6;i++){
+    var w=Math.round(s.dist[i]/max*100);
+    var cur=(state.lastTries===i+1)?" cur":"";
+    h+='<div class="drow"><span>'+(i+1)+'</span><div class="dbar'+cur+'" style="width:'+Math.max(10,w)+'%">'+s.dist[i]+'</div></div>';
+  }
+  $("stDist").innerHTML=h;
+  $("shStats").classList.add("on");
+}
+function shareText(){
+  var d=loadDaily();
+  if(!d.rows||!d.rows.length)return "";
+  var ans=state.answer.toUpperCase();
+  var lines=d.rows.map(function(g){
+    var res=new Array(COLS).fill("\u2b1b"), pool={};
+    for(var i=0;i<COLS;i++) if(g[i]!==ans[i]) pool[ans[i]]=(pool[ans[i]]||0)+1;
+    for(i=0;i<COLS;i++) if(g[i]===ans[i]) res[i]="\uD83D\uDFE9";
+    for(i=0;i<COLS;i++){ if(res[i]!=="\u2b1b")continue;
+      if(pool[g[i]]>0){res[i]="\uD83D\uDFE8";pool[g[i]]--;} }
+    return res.join("");
+  });
+  var solved=d.rows[d.rows.length-1]===ans;
+  return "Five Letters "+todayKey()+"  "+(solved?d.rows.length:"X")+"/6\n"+lines.join("\n");
+}
+
+/* ---------- wiring ---------- */
+$("mDaily").onclick=function(){newGame("daily");};
+$("mFree").onclick=function(){newGame("free");};
+$("bHelp").onclick=function(){$("shHelp").classList.add("on");};
+$("bHelpClose").onclick=function(){$("shHelp").classList.remove("on");};
+$("bStats").onclick=openStats;
+$("bStatsClose").onclick=function(){$("shStats").classList.remove("on");};
+$("bShare").onclick=function(){
+  var t=shareText();
+  if(!t){toast("Play today's word first");return;}
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(t).then(function(){toast("Copied");},function(){toast("Could not copy");});
+  } else toast("Copying is not available here");
+};
+[$("shHelp"),$("shStats")].forEach(function(sh){
+  sh.addEventListener("click",function(e){if(e.target===sh)sh.classList.remove("on");});
+});
+window.addEventListener("keydown",function(e){
+  if($("shHelp").classList.contains("on")||$("shStats").classList.contains("on"))return;
+  if(e.key==="Enter")press("enter");
+  else if(e.key==="Backspace")press("del");
+  else if(/^[a-zA-Z]$/.test(e.key))press(e.key.toUpperCase());
+});
+window.addEventListener("resize",function(){
+  var g=$("grid"); if(!g.children.length)return;
+  var m=document.querySelector("main");
+  var avail=Math.min(m.clientWidth-20,(m.clientHeight-20-5*6)/6*5);
+  g.style.width=Math.max(180,Math.min(340,avail))+"px";
+});
+
+newGame("daily");
+if(!loadStats().played)setTimeout(function(){$("shHelp").classList.add("on");},420);
+</script>
+</body>
+</html>
