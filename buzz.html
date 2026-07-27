@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Buzz Sync Toy</title>
+<style>
+  :root{ --ink:#1c1f26; --bg:#f2f0ea; --accent:#e0533d; --ok:#2f9e6f; --line:#cdd3da; }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%}
+  body{background:var(--bg);color:var(--ink);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:24px;text-align:center;gap:18px}
+  h1{font-size:17px;font-weight:800;letter-spacing:.02em;margin:0}
+  .sub{font-size:13px;color:#5a636e;max-width:320px;line-height:1.4;margin:0}
+  #num{font-size:96px;font-weight:900;line-height:1;font-variant-numeric:tabular-nums;
+    min-width:2ch}
+  #bump{border:none;border-radius:18px;background:var(--ink);color:#fff;
+    font-size:22px;font-weight:800;padding:20px 46px;cursor:pointer;
+    box-shadow:0 8px 22px #0002}
+  #bump:active{transform:translateY(2px)}
+  #status{font-size:12.5px;color:#5a636e;max-width:340px;line-height:1.4;min-height:34px}
+  #status.ok{color:var(--ok);font-weight:600}
+  #status.err{color:var(--accent);font-weight:600}
+  #ver{position:fixed;top:10px;right:10px;font-size:11px;font-weight:700;color:#8a919b;
+    background:#fff;border:1px solid var(--line);border-radius:999px;padding:4px 9px;cursor:pointer}
+  .hint{font-size:11px;color:#8a919b;max-width:320px;line-height:1.4}
+</style>
+</head>
+<body>
+  <div id="ver">Buzz sync toy v0.2</div>
+  <h1>THE SYNC TOY</h1>
+  <p class="sub">One number, shared by every device on this link. If it moves on both phones at once, the hard part is done and the buzzer is easy.</p>
+  <div id="num">0</div>
+  <button id="bump">+1</button>
+  <div id="status">Loading...</div>
+  <p class="hint">Open this same link on two phones (or two tabs). Tap +1 on one. It should jump on the other.</p>
+
+<script type="module">
+  // ============================================================
+  //  Buzz Sync Toy - the five concepts, on one shared number.
+  //  1. config      -> which Firebase project this talks to
+  //  2. auth         -> sign in (anonymously) so the rules trust us
+  //  3. write        -> change the number in the cloud
+  //  4. read/listen  -> hear the change the instant it happens
+  //  5. data model   -> one document at toy/counter holding { value }
+  // ============================================================
+
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getAuth, signInAnonymously, onAuthStateChanged }
+    from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import { getFirestore, doc, setDoc, updateDoc, onSnapshot, increment }
+    from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  // ============================================================
+  //  >>> PASTE YOUR FIREBASE CONFIG BETWEEN THE BRACES BELOW <<<
+  //  You get this in the console, Phase 2 (Register a web app).
+  //  It looks like: apiKey, authDomain, projectId, ... etc.
+  //  These values are NOT secret. They are meant to live in the page.
+  // ============================================================
+  const firebaseConfig = {
+    apiKey: "AIzaSyDcpaqD2ea9djDSlj4EHUXkbYlglklUn5E",
+    authDomain: "buzz-836cf.firebaseapp.com",
+    projectId: "buzz-836cf",
+    storageBucket: "buzz-836cf.firebasestorage.app",
+    messagingSenderId: "256049583657",
+    appId: "1:256049583657:web:460a83b22eb02380edee38"
+  };
+  // ============================================================
+
+  const numEl = document.getElementById("num");
+  const btn   = document.getElementById("bump");
+  const statusEl = document.getElementById("status");
+  function setStatus(msg, kind){ statusEl.textContent = msg; statusEl.className = kind || ""; }
+
+  document.getElementById("ver").addEventListener("click", function(){
+    setStatus("Buzz sync toy v0.2 \u00b7 the plumbing before the game");
+  });
+
+  // Guard: don't try to connect until the config is pasted in.
+  if(!firebaseConfig.apiKey){
+    setStatus("No config yet. Paste your Firebase config into this file (the marked block in the code), then reload.", "err");
+    btn.disabled = true;
+  } else {
+    start();
+  }
+
+  function start(){
+    // 1 + init
+    const app  = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db   = getFirestore(app);
+
+    // 5 - the data model: one document, one field
+    const counterRef = doc(db, "toy", "counter");
+
+    setStatus("Connecting to Firebase...");
+
+    // 2 - auth: sign in anonymously (no email, just a trusted session)
+    signInAnonymously(auth).catch(function(e){
+      setStatus("Sign-in failed: " + e.message + "  (is Anonymous auth turned on? Phase 3)", "err");
+    });
+
+    // auth is async - wait until we actually have a user before touching data
+    onAuthStateChanged(auth, async function(user){
+      if(!user) return;
+      setStatus("Signed in. Making sure the counter exists...");
+
+      // 3 - write: create the doc if it's missing, leave it alone if it's there
+      try{
+        await setDoc(counterRef, { value: 0 }, { merge: true });
+      }catch(e){
+        setStatus("Write blocked: " + e.message + "  (check your Firestore rules, Phase 4)", "err");
+        return;
+      }
+
+      setStatus("Listening...");
+
+      // 4 - read/listen: this fires now AND every time the number changes, on every device
+      onSnapshot(counterRef, function(snap){
+        const data = snap.data();
+        numEl.textContent = data ? data.value : 0;
+        setStatus("Live. This number is shared across every device on this link.", "ok");
+      }, function(err){
+        setStatus("Listener error: " + err.message, "err");
+      });
+    });
+
+    // tapping +1 does an atomic increment - the correct way, no races
+    btn.addEventListener("click", async function(){
+      try{
+        await updateDoc(counterRef, { value: increment(1) });
+      }catch(e){
+        setStatus("Bump failed: " + e.message, "err");
+      }
+    });
+  }
+</script>
+</body>
+</html>
