@@ -157,7 +157,7 @@
   <button class="act ghost" id="coachBtn">&#127891; Coach</button>
   <button class="act ghost" id="hintBtn" style="display:none;">&#128161; Hint</button>
   <button class="act ghost" id="backBtn" style="display:none;">&#8617; Takeback</button>
-  <button class="act" id="learnBtn">&#128214; Learn</button><button class="act ghost" id="themeBtn">&#127912; Theme</button>
+  <button class="act" id="learnBtn">&#128214; Learn</button><button class="act" id="puzzleBtn">&#129513; Daily Puzzle</button><button class="act ghost" id="themeBtn">&#127912; Theme</button>
 <div style="width:100%;text-align:center;color:#6a5f50;font-size:.68rem;letter-spacing:.14em;margin-top:8px;">KNIGHT SCHOOL · V1</div></div>
 <div class="ov" id="learnOv"><h1>Learn chess</h1>
   <div style="max-height:56vh;overflow:auto;width:min(88vw,420px);" id="lsList"></div>
@@ -394,156 +394,9 @@ window.GN=(function(){
 </script>
 <script>
 /* Chess engine core — 0x88 board. White pawns move toward rank index 0. */
-const CH=(function(){
-const N_OFF=[-33,-31,-18,-14,14,18,31,33];
-const K_OFF=[-17,-16,-15,-1,1,15,16,17];
-const B_OFF=[-17,-15,15,17];
-const R_OFF=[-16,-1,1,16];
-function sq(r,f){return r*16+f;}
-function on(s){return !(s&0x88);}
-function rankOf(s){return s>>4;}
-function fileOf(s){return s&15;}
-function isW(p){return p&&p===p.toUpperCase();}
-function colorOf(p){return isW(p)?"w":"b";}
-function fresh(){return load("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");}
-function load(fen){
-  const st={b:new Array(128).fill(null),turn:"w",castle:{K:false,Q:false,k:false,q:false},
-    ep:-1,half:0,full:1,hist:[],reps:{}};
-  const parts=fen.split(" ");
-  let r=0,f=0;
-  for(const ch of parts[0]){
-    if(ch==="/"){r++;f=0;}
-    else if(/\d/.test(ch))f+=+ch;
-    else{st.b[sq(r,f)]=ch;f++;}}
-  st.turn=parts[1];
-  if(parts[2]!=="-")for(const c of parts[2])st.castle[c]=true;
-  st.ep=parts[3]&&parts[3]!=="-"?sq(8-+parts[3][1],parts[3].charCodeAt(0)-97):-1;
-  st.half=parts[4]?+parts[4]:0;st.full=parts[5]?+parts[5]:1;
-  st.reps[posKey(st)]=1;
-  return st;}
-function posKey(st){let k="";
-  for(let r=0;r<8;r++)for(let f=0;f<8;f++){const p=st.b[sq(r,f)];k+=p||".";}
-  return k+st.turn+(st.castle.K?"K":"")+(st.castle.Q?"Q":"")+(st.castle.k?"k":"")+(st.castle.q?"q":"")+st.ep;}
-function kingSq(st,c){const k=c==="w"?"K":"k";
-  for(let r=0;r<8;r++)for(let f=0;f<8;f++){const s=sq(r,f);if(st.b[s]===k)return s;}
-  return -1;}
-function attacked(st,s,by){ // is square s attacked by color `by`
-  const b=st.b;
-  // pawns: white attacks "upward" (toward rank 0): from s, a white pawn sits at s+15/s+17
-  if(by==="w"){if(on(s+15)&&b[s+15]==="P")return true;if(on(s+17)&&b[s+17]==="P")return true;}
-  else{if(on(s-15)&&b[s-15]==="p")return true;if(on(s-17)&&b[s-17]==="p")return true;}
-  for(const o of N_OFF){const t=s+o;if(on(t)&&b[t]&&colorOf(b[t])===by&&b[t].toLowerCase()==="n")return true;}
-  for(const o of K_OFF){const t=s+o;if(on(t)&&b[t]&&colorOf(b[t])===by&&b[t].toLowerCase()==="k")return true;}
-  for(const o of B_OFF){let t=s+o;while(on(t)){const p=b[t];
-    if(p){if(colorOf(p)===by&&(p.toLowerCase()==="b"||p.toLowerCase()==="q"))return true;break;}t+=o;}}
-  for(const o of R_OFF){let t=s+o;while(on(t)){const p=b[t];
-    if(p){if(colorOf(p)===by&&(p.toLowerCase()==="r"||p.toLowerCase()==="q"))return true;break;}t+=o;}}
-  return false;}
-function inCheck(st,c){return attacked(st,kingSq(st,c),c==="w"?"b":"w");}
-function pseudo(st){
-  const out=[],b=st.b,c=st.turn,fw=c==="w"?-16:16,home=c==="w"?6:1,promo=c==="w"?0:7;
-  for(let r=0;r<8;r++)for(let f=0;f<8;f++){const s=sq(r,f),p=b[s];
-    if(!p||colorOf(p)!==c)continue;
-    const lo=p.toLowerCase();
-    if(lo==="p"){
-      const one=s+fw;
-      if(on(one)&&!b[one]){
-        if(rankOf(one)===promo)for(const pr of["q","r","b","n"])out.push({from:s,to:one,promo:pr});
-        else{out.push({from:s,to:one});
-          const two=s+2*fw;
-          if(rankOf(s)===home&&!b[two])out.push({from:s,to:two,double:true});}}
-      for(const d of[fw-1,fw+1]){const t=s+d;if(!on(t))continue;
-        if(b[t]&&colorOf(b[t])!==c){
-          if(rankOf(t)===promo)for(const pr of["q","r","b","n"])out.push({from:s,to:t,promo:pr});
-          else out.push({from:s,to:t});}
-        else if(t===st.ep)out.push({from:s,to:t,ep:true});}}
-    else if(lo==="n"){for(const o of N_OFF){const t=s+o;
-      if(on(t)&&(!b[t]||colorOf(b[t])!==c))out.push({from:s,to:t});}}
-    else if(lo==="k"){for(const o of K_OFF){const t=s+o;
-      if(on(t)&&(!b[t]||colorOf(b[t])!==c))out.push({from:s,to:t});}
-      // castling: rights + empty path + not through check
-      const opp=c==="w"?"b":"w";
-      if(c==="w"&&s===sq(7,4)){
-        if(st.castle.K&&!b[sq(7,5)]&&!b[sq(7,6)]&&b[sq(7,7)]==="R"&&
-          !attacked(st,s,opp)&&!attacked(st,sq(7,5),opp)&&!attacked(st,sq(7,6),opp))
-          out.push({from:s,to:sq(7,6),castle:"K"});
-        if(st.castle.Q&&!b[sq(7,3)]&&!b[sq(7,2)]&&!b[sq(7,1)]&&b[sq(7,0)]==="R"&&
-          !attacked(st,s,opp)&&!attacked(st,sq(7,3),opp)&&!attacked(st,sq(7,2),opp))
-          out.push({from:s,to:sq(7,2),castle:"Q"});}
-      if(c==="b"&&s===sq(0,4)){
-        if(st.castle.k&&!b[sq(0,5)]&&!b[sq(0,6)]&&b[sq(0,7)]==="r"&&
-          !attacked(st,s,opp)&&!attacked(st,sq(0,5),opp)&&!attacked(st,sq(0,6),opp))
-          out.push({from:s,to:sq(0,6),castle:"k"});
-        if(st.castle.q&&!b[sq(0,3)]&&!b[sq(0,2)]&&!b[sq(0,1)]&&b[sq(0,0)]==="r"&&
-          !attacked(st,s,opp)&&!attacked(st,sq(0,3),opp)&&!attacked(st,sq(0,2),opp))
-          out.push({from:s,to:sq(0,2),castle:"q"});}}
-    else{const offs=lo==="b"?B_OFF:lo==="r"?R_OFF:K_OFF; // q uses K_OFF rays
-      for(const o of offs){let t=s+o;
-        while(on(t)){if(!b[t])out.push({from:s,to:t});
-          else{if(colorOf(b[t])!==c)out.push({from:s,to:t});break;}
-          t+=o;}}}}
-  return out;}
-function make(st,m){
-  const b=st.b,p=b[m.from],c=st.turn;
-  const u={m,p,capt:b[m.to],captSq:m.to,ep:st.ep,castle:{...st.castle},half:st.half,key:null};
-  if(m.ep){u.captSq=m.to+(c==="w"?16:-16);u.capt=b[u.captSq];b[u.captSq]=null;}
-  b[m.to]=m.promo?(c==="w"?m.promo.toUpperCase():m.promo):p;
-  b[m.from]=null;
-  if(m.castle){const r=c==="w"?7:0;
-    if(m.castle.toLowerCase()==="k"){b[sq(r,5)]=b[sq(r,7)];b[sq(r,7)]=null;}
-    else{b[sq(r,3)]=b[sq(r,0)];b[sq(r,0)]=null;}}
-  // rights
-  if(p==="K"){st.castle.K=st.castle.Q=false;}
-  if(p==="k"){st.castle.k=st.castle.q=false;}
-  if(m.from===sq(7,7)||m.to===sq(7,7))st.castle.K=false;
-  if(m.from===sq(7,0)||m.to===sq(7,0))st.castle.Q=false;
-  if(m.from===sq(0,7)||m.to===sq(0,7))st.castle.k=false;
-  if(m.from===sq(0,0)||m.to===sq(0,0))st.castle.q=false;
-  st.ep=m.double?(m.from+(c==="w"?-16:16)):-1;
-  st.half=(p.toLowerCase()==="p"||u.capt)?0:st.half+1;
-  if(c==="b")st.full++;
-  st.turn=c==="w"?"b":"w";
-  st.hist.push(u);
-  const k=posKey(st);u.key=k;st.reps[k]=(st.reps[k]||0)+1;
-  return u;}
-function unmake(st){
-  const u=st.hist.pop();if(!u)return;
-  st.reps[u.key]--;
-  const m=u.m,b=st.b;
-  st.turn=st.turn==="w"?"b":"w";
-  const c=st.turn;
-  if(c==="b")st.full--;
-  b[m.from]=u.p;b[m.to]=null;
-  if(u.capt)b[u.captSq]=u.capt;
-  if(m.castle){const r=c==="w"?7:0;
-    if(m.castle.toLowerCase()==="k"){b[sq(r,7)]=b[sq(r,5)];b[sq(r,5)]=null;}
-    else{b[sq(r,0)]=b[sq(r,3)];b[sq(r,3)]=null;}}
-  st.castle=u.castle;st.ep=u.ep;st.half=u.half;}
-function legal(st){
-  const out=[],c=st.turn;
-  for(const m of pseudo(st)){make(st,m);
-    if(!inCheck(st,c))out.push(m);
-    unmake(st);}
-  return out;}
-function status(st){ // "play" | "mate" | "stale" | "fifty" | "rep" | "material"
-  if(st.half>=100)return "fifty";
-  if(st.reps[posKey(st)]>=3)return "rep";
-  // insufficient material: K vs K, K+minor vs K, K+B vs K+B same color bishops
-  const pcs=[];for(let r=0;r<8;r++)for(let f=0;f<8;f++){const p=st.b[sq(r,f)];
-    if(p&&p.toLowerCase()!=="k")pcs.push({p:p.toLowerCase(),s:sq(r,f)});}
-  if(pcs.length===0)return "material";
-  if(pcs.length===1&&(pcs[0].p==="n"||pcs[0].p==="b"))return "material";
-  if(pcs.length===2&&pcs[0].p==="b"&&pcs[1].p==="b"&&
-     ((rankOf(pcs[0].s)+fileOf(pcs[0].s))%2)===((rankOf(pcs[1].s)+fileOf(pcs[1].s))%2)&&
-     colorOf(st.b[pcs[0].s])!==colorOf(st.b[pcs[1].s]))return "material";
-  if(legal(st).length)return "play";
-  return inCheck(st,st.turn)?"mate":"stale";}
-function alg(s){return String.fromCharCode(97+fileOf(s))+(8-rankOf(s));}
-function perft(st,d){if(d===0)return 1;
-  let n=0;for(const m of legal(st)){make(st,m);n+=perft(st,d-1);unmake(st);}
-  return n;}
-return{fresh,load,legal,make,unmake,status,inCheck,attacked,kingSq,alg,sq,on,rankOf,fileOf,isW,colorOf,perft,pseudo,posKey};
-})();
+</script>
+<script src="chess-engine.js"></script>
+<script>
 
 
 /* Chess AI: iterative-deepening alpha-beta + quiescence + TT + PSTs. Levels 1-10. */
@@ -1250,7 +1103,7 @@ const LESSONS=[
    fen:"7k/5Q2/6K1/8/8/8/8/8 b - - 0 1",sandbox:true},
   {say:"When you're winning big, watch out: trapping the enemy king with no safe square but no check throws away the whole game. Leave the king one square to breathe until you're ready for checkmate.",done:true}
  ]},
- {id:"values",tier:3,title:"What pieces are worth",steps:[
+ {id:"values",tier:4,title:"What pieces are worth",steps:[
   {say:"Pieces have rough values. A pawn is 1. A knight or bishop is about 3. A rook is 5. The queen is a mighty 9. The king is priceless \u2014 lose it and the game's over.",
    fen:"4k3/8/8/8/8/8/8/4K3 w - - 0 1",sandbox:true},
   {say:"Here you can grab a whole rook for free with your bishop. Rook is worth 5, so take it!",
@@ -1258,7 +1111,7 @@ const LESSONS=[
    oops:"Slide the bishop up the diagonal to c3 and take the rook."},
   {say:"Winning a bigger piece for a smaller one is how games are quietly won. Count before you trade.",done:true}
  ]},
- {id:"trades",tier:3,title:"Fair trades, silly trades",steps:[
+ {id:"trades",tier:4,title:"Fair trades, silly trades",steps:[
   {say:"A trade is swapping a piece for one of the enemy's. Trading your bishop (3) for their queen (9)? Wonderful. Take the queen.",
    fen:"7k/8/8/5q2/8/3B4/8/7K w - - 0 1",task:{from:"d3",to:"f5"},target:"f5",
    oops:"Bishop takes queen on f5 \u2014 follow the diagonal."},
@@ -1266,25 +1119,25 @@ const LESSONS=[
    fen:"7k/8/8/5B2/8/8/8/7K w - - 0 1",sandbox:true},
   {say:"Good players trade when it wins material or when they're ahead and want fewer pieces on the board.",done:true}
  ]},
- {id:"hang",tier:3,title:"Don't hang your pieces",steps:[
+ {id:"hang",tier:4,title:"Don't hang your pieces",steps:[
   {say:"A piece is \u201changing\u201d when the enemy can take it for free. Your knight is about to be grabbed by that pawn \u2014 move it somewhere safe.",
    fen:"7k/8/8/8/3p4/8/4N3/7K w - - 0 1",task:{from:"e2",to:"g3"},target:"g3",
    oops:"Hop the knight to safety \u2014 g3 works. Anywhere the pawn can't reach."},
   {say:"Before you let go of a piece, glance around: can anything capture it for free next turn? That one habit wins more games than any fancy trick.",done:true}
  ]},
- {id:"develop",tier:3,title:"Wake up your pieces",steps:[
+ {id:"develop",tier:4,title:"Wake up your pieces",steps:[
   {say:"At the start, your pieces are asleep on the back row. \u201cDeveloping\u201d means bringing them out. Jump a knight toward the middle.",
    fen:"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",task:{from:"g1",to:"f3"},target:"f3",
    oops:"Knight from g1 to f3 \u2014 out toward the center."},
   {say:"Knights and bishops out early, castle your king to safety, and don't move the same piece twice for no reason. Do that and you'll already be playing like a club player.",done:true}
  ]},
- {id:"threats",tier:4,title:"Seeing threats",steps:[
+ {id:"threats",tier:6,title:"Seeing threats",steps:[
   {say:"Before you move, always ask: what is the enemy about to do to ME? That black rook is aimed straight at your bishop. Move the bishop out of the line of fire.",
    fen:"7k/8/8/8/8/2r5/8/2B4K w - - 0 1",task:{from:"c1",to:"e3"},target:"e3",
    oops:"Slide the bishop off the c-file so the rook can't reach it. e3 is safe."},
   {say:"Half of chess is just noticing threats before they land. Every turn, look at what your opponent wants. Then stop it.",done:true}
  ]},
- {id:"fork",tier:4,title:"The fork \u2014 two at once",steps:[
+ {id:"fork",tier:5,title:"The fork \u2014 two at once",steps:[
   {say:"A fork attacks two pieces on the same move. Knights are the champion forkers. Jump your knight to hit the king AND the rook at the same time.",
    fen:"r6k/8/8/4N3/8/8/8/7K w - - 0 1",task:{from:"e5",to:"g6"},target:"g6",
    oops:"Find the square that checks the king and eyes the rook too \u2014 g6."},
@@ -1292,7 +1145,7 @@ const LESSONS=[
    fen:"r6k/8/6N1/8/8/8/8/7K b - - 0 1",sandbox:true},
   {say:"Whenever your knight can hit two things at once, look hard \u2014 forks win pieces out of nowhere.",done:true}
  ]},
- {id:"pin",tier:4,title:"The pin \u2014 stuck in place",steps:[
+ {id:"pin",tier:5,title:"The pin \u2014 stuck in place",steps:[
   {say:"A pin freezes a piece because moving it would expose something worse behind it. Aim your bishop down the diagonal at that knight \u2014 the king is right behind it.",
    fen:"6k1/5n2/8/8/2B5/8/8/7K w - - 0 1",task:{from:"c4",to:"e6"},target:"e6",
    oops:"Line the bishop up on the knight with the king behind it. e6 does it."},
@@ -1300,31 +1153,31 @@ const LESSONS=[
    fen:"6k1/5n2/4B3/8/8/8/8/7K b - - 0 1",sandbox:true},
   {say:"Pin a defender in place, then attack it with everything. It can't run.",done:true}
  ]},
- {id:"counting",tier:4,title:"Counting attackers",steps:[
+ {id:"counting",tier:6,title:"Counting attackers",steps:[
   {say:"Before grabbing a piece, count. How many of your pieces attack that square, and how many of theirs defend it? Your rook and bishop both hit this pawn, and only one piece guards it. Take it with the rook.",
    fen:"7k/8/8/8/8/2p5/2R5/B6K w - - 0 1",task:{from:"c2",to:"c3"},target:"c3",
    oops:"Rook takes the pawn on c3 \u2014 you have two attackers to their one defender."},
   {say:"Two attackers beat one defender, so the capture wins. Counting attackers and defenders keeps you from throwing pieces away. Do it every time.",done:true}
  ]},
- {id:"mateqk",tier:5,title:"Checkmate with a queen",steps:[
+ {id:"mateqk",tier:7,title:"Checkmate with a queen",steps:[
   {say:"Time to finish games. A lone king can be checkmated by a queen with your king's help. Bring the queen in close to trap the black king on the edge. Deliver mate.",
    fen:"7k/5Q2/6K1/8/8/8/8/8 w - - 0 1",task:{from:"f7",to:"g7"},target:"g7",
    oops:"Queen to g7 \u2014 right next to the enemy king, guarded by your own king. That's mate."},
   {say:"Checkmate! The queen gives check, the black king has no escape, and your king guards the queen so it can't be taken. Queen plus king is the easiest mate to learn.",done:true}
  ]},
- {id:"materk",tier:5,title:"Checkmate with a rook",steps:[
+ {id:"materk",tier:7,title:"Checkmate with a rook",steps:[
   {say:"A rook can mate too, but it needs your king marching up to help box the enemy in. The black king is trapped on the back row. Slide the rook across to give check with no escape.",
    fen:"6k1/8/6K1/8/8/8/8/R7 w - - 0 1",task:{from:"a1",to:"a8"},target:"a8",
    oops:"Rook to a8 delivers check along the back row \u2014 and your king covers the escape squares."},
   {say:"Mate! The rook checks along the edge and your king takes away the squares in front. The rook mate is a must-know \u2014 it turns an extra rook into a win every time.",done:true}
  ]},
- {id:"queenrace",tier:5,title:"Racing a pawn home",steps:[
+ {id:"queenrace",tier:7,title:"Racing a pawn home",steps:[
   {say:"An extra pawn wins games if you can promote it. Escort this one to the last row and make a queen. March it forward.",
    fen:"8/2P4k/8/8/8/8/8/6K1 w - - 0 1",task:{from:"c7",to:"c8"},target:"c8",
    oops:"Push the pawn to c8 \u2014 the far row \u2014 and it becomes a queen."},
   {say:"A new queen out of a pawn usually ends the game. When you're ahead, trade pieces, keep pawns, and run one home.",done:true}
  ]},
- {id:"openrules",tier:6,title:"How to start a game",steps:[
+ {id:"openrules",tier:9,title:"How to start a game",steps:[
   {say:"A quick refresher on good openings. First move: grab the center with a pawn. Push the king's pawn two squares.",
    fen:"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",task:{from:"e2",to:"e4"},target:"e4",
    oops:"Push the e-pawn two squares to e4 \u2014 straight for the center."},
@@ -1333,13 +1186,166 @@ const LESSONS=[
    oops:"Knight to f3 \u2014 out and pointing at the center."},
   {say:"Center, then knights and bishops, then castle your king safe. Do those three things and you've survived every opening.",done:true}
  ]},
- {id:"endrules",tier:6,title:"Rules of thumb for endings",steps:[
+ {id:"develop2",tier:9,title:"Get everybody out",steps:[
+  {say:"A good opening wakes up ALL your pieces, not just one. You've pushed a center pawn already \u2014 now bring a bishop into the game.",
+   fen:"rnbqk1nr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 0 1",task:{from:"f1",to:"c4"},target:"c4",
+   oops:"Bishop out to c4, aiming at the center and the enemy's weak spot."},
+  {say:"Knight and bishop both out, eyeing the middle. Three or four quick developing moves like this and your army is ready. Lazy pieces lose games.",done:true}
+ ]},
+ {id:"castleopen",tier:9,title:"Castle early",steps:[
+  {say:"Once your knight and bishop are out, tuck your king away. You're all set up \u2014 castle now.",
+   fen:"rnbqk2r/pppp1ppp/5n2/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 1",task:{from:"e1",to:"g1"},target:"g1",
+   oops:"King two squares toward the rook, e1 to g1 \u2014 castle to safety."},
+  {say:"Center, develop, castle: do those three and you'll leave the opening in good shape almost every game. That's all the opening theory a beginner needs.",done:true}
+ ]},
+ {id:"endrules",tier:8,title:"Rules of thumb for endings",steps:[
   {say:"When few pieces are left, the rules change. Now the king becomes a fighter \u2014 march it toward the action instead of hiding. Step your king up the board.",
    fen:"8/8/8/4k3/8/8/4K3/8 w - - 0 1",task:{from:"e2",to:"e3"},target:"e3",
    oops:"Walk the king forward to e3 \u2014 in the endgame the king leads."},
   {say:"Three endgame habits: use your king, push passed pawns toward promotion, and put your rook behind a running pawn. Remember those and your wins will actually finish.",done:true}
+ ]},
+ {id:"check",tier:3,title:"Check \u2014 the king in danger",steps:[
+  {say:"When a piece attacks the king, that's called check. The king must get out of it right now. Move your rook so it attacks the black king along the row.",
+   fen:"4k3/8/8/8/8/8/8/R6K w - - 0 1",task:{from:"a1",to:"a8"},target:"a8",
+   oops:"Slide the rook up to a8 so it points across at the king \u2014 that's check."},
+  {say:"You just gave check. The black king isn't captured \u2014 in chess you never actually take the king, you just force it out of danger. Tap Next.",
+   fen:"R3k3/8/8/8/8/8/8/7K b - - 0 1",sandbox:true},
+  {say:"There are exactly three ways to answer a check, and we'll learn them next. But first: you can never leave your OWN king in check. That move is simply illegal.",done:true}
+ ]},
+ {id:"escape",tier:3,title:"The three escapes",steps:[
+  {say:"Your king is in check from that rook. Escape #1: move the king off the attacked line. Step the king aside.",
+   fen:"8/8/8/8/8/8/r7/K6k w - - 0 1",task:{from:"a1",to:"b1"},target:"b1",
+   oops:"Walk the king off the a-file to b1, out of the rook's line."},
+  {say:"Escape #2: block the check by putting a piece in the way. That rook checks down the file — your bishop can jump in between. Block the check.",
+   fen:"4r2k/8/8/8/8/8/8/2B1K3 w - - 0 1",task:{from:"c1",to:"e3"},target:"e3",
+   oops:"Slide the bishop to e3, right between your king and the rook."},
+  {say:"Escape #3: capture the checker. That knight is giving check \u2014 take it with your rook.",
+   fen:"7k/8/8/8/8/8/1n6/R5K1 w - - 0 1",task:{from:"a1",to:"b1"},target:"b1",
+   oops:"Rook takes the knight on b1 and the check is over."},
+  {say:"Move away, block, or capture \u2014 those are the only three answers to a check. If none of them is possible... that's checkmate.",done:true}
+ ]},
+ {id:"whatmate",tier:3,title:"What checkmate really is",steps:[
+  {say:"Checkmate is simply a check with no escape. The black king is in check from the queen. It can't run, can't block, can't capture the queen. Look it over, then tap Next \u2014 this is a finished game.",
+   fen:"7k/5Q2/6K1/8/8/8/8/8 b - - 0 1",sandbox:true},
+  {say:"No move away, no block, no capture: that's mate, and the game is won. Every checkmate you'll ever see is just this idea. Now you know what you're aiming for.",done:true}
+ ]},
+ {id:"skewer",tier:5,title:"The skewer \u2014 pin's big brother",steps:[
+  {say:"A skewer is a pin flipped around: the big piece is in front, and when it moves, you win what's behind it. Check the king so it must step aside and leave the rook exposed.",
+   fen:"3r3k/8/8/8/8/8/8/3R2QK w - - 0 1",task:{from:"g1",to:"g8"},target:"g8",
+   oops:"Queen to g8 gives check along the file \u2014 the king must move and the rook behind it falls."},
+  {say:"The king has to move out of check, and then your queen gobbles the rook behind it. Skewer the valuable piece in front, win the one behind.",done:true}
+ ]},
+ {id:"discover",tier:6,title:"Discovered attack",steps:[
+  {say:"Sometimes moving one piece uncovers an attack from another behind it. Move your knight out of the way \u2014 your rook behind it suddenly attacks the black queen.",
+   fen:"3q3k/8/8/8/8/8/3N4/3R3K w - - 0 1",task:{from:"d2",to:"f3"},target:"f3",
+   oops:"Hop the knight to f3. That clears the file so your rook attacks the queen."},
+  {say:"That's a discovered attack: the piece that moves and the piece it reveals both make threats at once. Doubly nasty when the moving piece gives check itself.",done:true}
+ ]},
+ {id:"tworooks",tier:7,title:"The two-rook staircase",steps:[
+  {say:"Two rooks can checkmate all by themselves, no king needed. They work in a ladder. First rook cuts off a row \u2014 give check and push the king to the edge.",
+   fen:"4k3/8/8/8/8/R7/1R6/7K w - - 0 1",task:{from:"b2",to:"b7"},target:"b7",
+   oops:"Rook to b7 boxes the king into the top two rows."},
+  {say:"Now the other rook delivers mate on the last row while the first one stops the king coming back. Deliver checkmate.",
+   fen:"4k3/1R6/R7/8/8/8/8/7K w - - 0 1",task:{from:"a6",to:"a8"},target:"a8",
+   oops:"Rook to a8 \u2014 check on the back row, and the b-rook covers the escape. Mate."},
+  {say:"That's the rook roller: one rook fences the king in, the other checks, then they leapfrog. Two rooks beat a lone king every time.",done:true}
+ ]},
+ {id:"opposition",tier:8,title:"The opposition",steps:[
+  {say:"In king-and-pawn endings, a trick called the opposition decides who wins. Kings can't stand next to each other, so standing directly facing the enemy king, one square apart, forces IT to give way. Step your king up to face the black king.",
+   fen:"4k3/8/4K3/4P3/8/8/8/8 w - - 0 1",sandbox:true},
+  {say:"With your king in front of your pawn and the opposition in hand, the black king is squeezed backward and your pawn marches through to promote. Opposition is the key that unlocks these endings.",done:true}
+ ]},
+ {id:"passed",tier:8,title:"Push the passed pawn",steps:[
+  {say:"A passed pawn has no enemy pawns able to stop it. It's precious \u2014 race it forward. Push this one toward the finish.",
+   fen:"7k/8/8/3P4/8/8/8/7K w - - 0 1",task:{from:"d5",to:"d6"},target:"d6",
+   oops:"Just push it: d5 to d6, one step closer to a new queen."},
+  {say:"\u201cPassed pawns must be pushed.\u201d Every square it advances drags the enemy king toward panic. In the endgame, a passed pawn is often the whole game.",done:true}
+ ]},
+ {id:"rookbehind",tier:8,title:"Rook behind the pawn",steps:[
+  {say:"Here's a golden endgame rule: put your rook BEHIND a passed pawn, so it pushes the pawn forward and stays out of its way. Drop your rook behind this pawn.",
+   fen:"7k/8/8/8/8/3P4/8/3R3K w - - 0 1",task:{from:"d1",to:"d2"},target:"d2",
+   oops:"Rook to d2, right behind the pawn, ready to shepherd it up the board."},
+  {say:"Behind your own passed pawn, a rook is at its strongest \u2014 it gains power as the pawn advances. Remember it: rooks belong behind passed pawns.",done:true}
+ ]},
+ {id:"mix1",tier:10,title:"Put it together: win a piece",steps:[
+  {say:"No hand-holding now \u2014 you spot it. White to move. There's a knight fork that wins the rook. Find it.",
+   fen:"r6k/8/8/3N4/8/8/8/7K w - - 0 1",task:{from:"d5",to:"f6"},target:"f6",
+   oops:"Which knight jump hits the king and the rook at once? f6 \u2014 check, and the rook is next."},
+  {say:"You found the fork on your own. That's the whole point of everything you've learned: look for the move that does two jobs.",done:true}
+ ]},
+ {id:"mix2",tier:10,title:"Put it together: finish the game",steps:[
+  {say:"White to move and checkmate in one. You have a queen and your king is close. End it.",
+   fen:"7k/5Q2/6K1/8/8/8/8/8 w - - 0 1",task:{from:"f7",to:"g7"},target:"g7",
+   oops:"Queen to g7, guarded by your king, no escape for the black king. That's mate."},
+  {say:"Rules, tactics, endings, openings \u2014 and now you can finish. You've been through the whole school. Time to play, and try the Daily Puzzle.",done:true}
  ]}
 ];
+
+/* ---------- Daily Puzzle ----------
+   Curated, engine-verified positions (white to move and win). The date picks the
+   puzzle so the whole house gets the same one, like Five Letters. Difficulty is
+   tier-matched: the more lesson tiers you've finished, the harder the band you're
+   shown. Each puzzle runs through the very same lesson runner (learnStart) by
+   wrapping it as a one-step lesson - no separate solver to keep correct. */
+const PUZZLES=[
+ {fen:"7k/5Q2/6K1/8/8/8/8/8 w - - 0 1",f:"f7",t:"g7",tip:"Queen delivers mate, guarded by your king.",band:1,idea:"mate"},
+ {fen:"6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1",f:"a1",t:"a8",tip:"Back-rank mate: the rook slips behind the pawns.",band:1,idea:"mate"},
+ {fen:"4k3/R7/1R6/8/8/8/8/7K w - - 0 1",f:"b6",t:"b8",tip:"Two rooks, ladder mate on the back row.",band:1,idea:"mate"},
+ {fen:"k7/8/1K6/8/8/8/8/7R w - - 0 1",f:"h1",t:"h8",tip:"Rook mate with your king cutting off escape.",band:1,idea:"mate"},
+ {fen:"6rk/8/8/8/8/8/8/1Q5K w - - 0 1",f:"b1",t:"b8",tip:"Skewer the rook: check on the file wins it.",band:2,idea:"skewer"},
+ {fen:"r6k/8/8/3N4/8/8/8/7K w - - 0 1",f:"d5",t:"f6",tip:"Knight fork: check the king and hit the rook.",band:2,idea:"fork"},
+ {fen:"3q3k/8/8/4N3/8/8/8/7K w - - 0 1",f:"e5",t:"f7",tip:"Knight fork: check the king and win the queen.",band:2,idea:"fork"},
+ {fen:"3r3k/8/8/8/8/8/8/3R2QK w - - 0 1",f:"g1",t:"g8",tip:"Skewer: check drives the king off the rook.",band:2,idea:"skewer"},
+ {fen:"6k1/5n2/8/8/2B5/8/8/7K w - - 0 1",f:"c4",t:"e6",tip:"Pin the knight against the king, then win it.",band:2,idea:"pin"},
+ {fen:"2r4k/8/8/8/8/8/8/1R2Q2K w - - 0 1",f:"e1",t:"e8",tip:"Skewer down the file wins the rook.",band:2,idea:"skewer"},
+ {fen:"5rk1/5ppp/8/8/8/8/8/R6K w - - 0 1",f:"a1",t:"a8",tip:"Rook to the open file, back-rank pressure.",band:3,idea:"backrank"},
+ {fen:"6k1/6pp/8/8/8/8/6PP/3R2K1 w - - 0 1",f:"d1",t:"d8",tip:"Rook to the back rank with mate threats.",band:3,idea:"backrank"},
+ {fen:"8/P6k/8/8/8/8/8/7K w - - 0 1",f:"a7",t:"a8",tip:"Promote: a new queen wins.",band:4,idea:"promo"},
+ {fen:"8/1P5k/8/8/8/8/8/6K1 w - - 0 1",f:"b7",t:"b8",tip:"Queen the pawn to win.",band:4,idea:"promo"}
+];
+function ksTiersDone(){
+  const prog=learnProgress();
+  const done={};
+  for(const L of LESSONS){ if(prog[L.id]){done[L.tier]=(done[L.tier]||0);} }
+  // count a tier "done" only if every lesson in it is complete
+  const byTier={};
+  for(const L of LESSONS){(byTier[L.tier]=byTier[L.tier]||[]).push(L.id);}
+  let n=0;
+  for(const t of Object.keys(byTier)){
+    if(byTier[t].every(id=>prog[id])) n++;
+  }
+  return n;
+}
+function ksMaxBand(){
+  const t=ksTiersDone();
+  if(t>=8)return 4; if(t>=5)return 3; if(t>=3)return 2; return 1;
+}
+function puzzleForToday(){
+  const cap=ksMaxBand();
+  const pool=PUZZLES.filter(p=>p.band<=cap);
+  const d=new Date();
+  const key=d.getFullYear()*10000+(d.getMonth()+1)*100+d.getDate();
+  let h=key%2147483647; h=(h*48271)%2147483647;
+  return {pz:pool[h%pool.length], cap, poolSize:pool.length};
+}
+function ksPuzzleKey(){const d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function startDailyPuzzle(){
+  const {pz,cap}=puzzleForToday();
+  const already=(()=>{try{return JSON.parse(localStorage.getItem('ks_puzzle')||'{}');}catch(e){return{};}})();
+  const solvedToday=already.date===ksPuzzleKey();
+  const L={id:'__puzzle',tier:0,title:'Daily Puzzle',steps:[
+    {say:(solvedToday?'You already solved today\u2019s puzzle \u2014 here it is again. ':'White to move and win. ')+pz.tip,
+     fen:pz.fen,task:{from:pz.f,to:pz.t},target:pz.t,
+     oops:'Look for the winning move. Hint: '+pz.idea+'.'},
+    {say:'Solved! Come back tomorrow for a new one. As you finish more lesson tiers, the puzzles get tougher.',done:true}
+  ]};
+  document.getElementById('learnOv').classList.remove('show');
+  // record the solve when they land the move: hook via a wrapper on learnMark
+  L._onSolve=function(){try{localStorage.setItem('ks_puzzle',JSON.stringify({date:ksPuzzleKey()}));}catch(e){}};
+  learnStart(L);
+}
+
 
 const LEARN_TIERS_SOON=[];  /* all six tiers are live */
 
@@ -1349,9 +1355,10 @@ function learnMark(id){const p=learnProgress();p[id]=true;try{localStorage.setIt
 function learnOpenList(){
   const box=document.getElementById("lsList");box.innerHTML="";
   const prog=learnProgress();
-  const TIER_NAMES={1:"Tier 1 \u2014 The Pieces",2:"Tier 2 \u2014 The Tricky Rules",3:"Tier 3 \u2014 First Skills",4:"Tier 4 \u2014 Seeing the Board",5:"Tier 5 \u2014 Winning Won Games",6:"Tier 6 \u2014 Brush-Up"};
+  const TIER_NAMES={1:"Tier 1 \u2014 The Pieces",2:"Tier 2 \u2014 The Tricky Rules",3:"Tier 3 \u2014 Check & Checkmate",4:"Tier 4 \u2014 First Skills",5:"Tier 5 \u2014 Basic Tactics",6:"Tier 6 \u2014 Seeing the Board",7:"Tier 7 \u2014 Winning Won Games",8:"Tier 8 \u2014 Endgame Know-How",9:"Tier 9 \u2014 Opening Principles",10:"Tier 10 \u2014 Put It Together"};
   let curTier=null;
-  for(const L of LESSONS){
+  const _ordered=LESSONS.slice().sort((a,b)=>(a.tier||1)-(b.tier||1));
+  for(const L of _ordered){
     const tr=L.tier||1;
     if(tr!==curTier){curTier=tr;
       const t=document.createElement("div");t.className="lsTier";
@@ -1397,7 +1404,7 @@ function learnLoadStep(){
 
 function learnAdvance(){
   const L=LEARN.lesson;
-  if(LEARN.step>=L.steps.length-1){learnMark(L.id);GNS.play&&GNS.play("fanfare");learnExit();learnOpenList();return;}
+  if(LEARN.step>=L.steps.length-1){if(!L._onSolve)learnMark(L.id);GNS.play&&GNS.play("fanfare");learnExit();learnOpenList();return;}
   LEARN.step++;learnLoadStep();
 }
 
@@ -1421,6 +1428,7 @@ LEARN.tryMove=function(m){
   if(s.task){
     if(ok(s.task,m)){
       LEARN.solved=true;
+      if(LEARN.lesson&&LEARN.lesson._onSolve){LEARN.lesson._onSolve();}
       CH.make(st,m);lastMv={from:m.from,to:m.to};sel=-1;legalNow=[];LEARN.target=-1;render();
       GNS.play&&GNS.play("chime");
       document.getElementById("lsOops").textContent="";
@@ -1438,6 +1446,7 @@ LEARN.tryMove=function(m){
 };
 
 document.getElementById("learnBtn").addEventListener("click",learnOpenList);
+document.getElementById("puzzleBtn").addEventListener("click",startDailyPuzzle);
 document.getElementById("lsClose").addEventListener("click",()=>document.getElementById("learnOv").classList.remove("show"));
 document.getElementById("lsExit").addEventListener("click",learnExit);
 document.getElementById("lsBack").addEventListener("click",()=>{if(LEARN.step>0){LEARN.step--;learnLoadStep();}});
