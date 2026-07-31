@@ -1238,7 +1238,7 @@ function loadScript(u){return new Promise((res,rej)=>{const s=document.createEle
   s.src=u;s.onload=res;s.onerror=rej;document.head.appendChild(s);});}
 // PWA: register the service worker (network-first; see sw.js).
 if("serviceWorker" in navigator){try{navigator.serviceWorker.register("sw.js");}catch(e){}}
-const GAME_KEYS=["chess_games","ur_games","sorry_games","checkers_games","c4_games","trouble_games","mancala_games",
+const GAME_KEYS=["marble_arcade_games","chess_games","ur_games","sorry_games","checkers_games","c4_games","trouble_games","mancala_games",
   "dom_games","yahtzee_games","bs_games","cc_games","bg_games",
   "war_games","sb_games","sl_games","uttt_games",
   "gomoku_games","dots_games","hex_games","cb_games","scrabble_games",

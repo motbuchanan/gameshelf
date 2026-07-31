@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#171423">
+<title>Bag of Marbles</title>
+<style>
+  :root{
+    --bg:#171423; --panel:#221f30; --line:rgba(255,255,255,.14);
+    --txt:#f3eff7; --dim:#a79fbd; --accent:#ffc25c; --felt:#243b2e;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0;height:100%;background:var(--bg);color:var(--txt);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overscroll-behavior:none}
+  body{display:flex;flex-direction:column;height:100vh;height:100svh;max-height:100svh;overflow:hidden}
+
+  #top{display:flex;align-items:center;gap:9px;padding:calc(7px + env(safe-area-inset-top)) 11px 7px;
+       flex:0 0 auto;border-bottom:1px solid var(--line)}
+  #wordmark{font-weight:800;font-size:16px;letter-spacing:.3px}
+  #wordmark span{color:var(--accent)}
+  .tbtn{font:600 12px/1 inherit;color:var(--dim);background:none;border:1px solid var(--line);
+        border-radius:999px;padding:8px 11px;cursor:pointer;min-height:36px}
+  #ver{margin-left:auto}
+
+  #tabs{display:flex;gap:6px;padding:8px 11px 4px;flex:0 0 auto;justify-content:center}
+  .tab{font:700 12px/1 inherit;color:var(--dim);background:none;border:1px solid var(--line);
+       border-radius:999px;padding:9px 15px;cursor:pointer;min-height:40px}
+  .tab.on{background:var(--accent);border-color:var(--accent);color:#241a06}
+
+  main{flex:1;min-height:0;position:relative}
+  .screen{position:absolute;inset:0;display:none;flex-direction:column;overflow:hidden}
+  .screen.on{display:flex}
+
+  /* felt play surface where marbles land */
+  #feltWrap{flex:1;min-height:0;position:relative;overflow:hidden;
+    background:radial-gradient(120% 90% at 50% 20%,#2c4a39,#1c3025 70%,#152318)}
+  #felt{display:block;touch-action:none}
+  #bagHint{position:absolute;left:0;right:0;bottom:14px;text-align:center;color:#bfe3cf;
+    font-size:13px;opacity:.85;pointer-events:none;text-shadow:0 1px 3px rgba(0,0,0,.5)}
+
+  /* the closed bag */
+  #bagStage{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px}
+  #bagStage.hidden{display:none}
+  #bagSvg{width:min(64vw,240px);height:auto;cursor:pointer;filter:drop-shadow(0 12px 18px rgba(0,0,0,.45))}
+  #bagSvg:active{transform:translateY(2px)}
+  .bagLabel{color:#e7dcc4;font-weight:700;font-size:15px;text-shadow:0 1px 3px rgba(0,0,0,.5)}
+
+  #controls{flex:0 0 auto;display:flex;gap:8px;padding:9px 11px calc(9px + env(safe-area-inset-bottom));
+    border-top:1px solid var(--line);overflow-x:auto}
+  .btn{font:600 13px/1 inherit;color:var(--txt);background:var(--panel);border:1px solid var(--line);
+    border-radius:11px;padding:11px 13px;cursor:pointer;min-height:44px;white-space:nowrap;
+    display:inline-flex;align-items:center;gap:6px}
+  .btn:active{transform:translateY(1px)}
+  .btn.go{background:var(--accent);border-color:var(--accent);color:#241a06;font-weight:800}
+
+  /* collection screen */
+  #collectWrap{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;
+    padding:14px 13px calc(18px + env(safe-area-inset-bottom))}
+  .cGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:12px}
+  .cCell{display:flex;flex-direction:column;align-items:center;gap:5px}
+  .cCell canvas{border-radius:50%;display:block;filter:drop-shadow(0 3px 4px rgba(0,0,0,.4))}
+  .cName{font-size:11px;color:var(--dim);text-align:center;line-height:1.2}
+  .cCount{font-size:10px;color:var(--accent);font-weight:700}
+  h2{font-size:16px;margin:2px 0 4px}
+  .sub{font-size:12px;color:var(--dim);margin:0 0 14px;line-height:1.45}
+</style>
+</head>
+<body>
+
+<div id="top">
+  <a href="index.html" id="gsShelfBtn" aria-label="Back to the Game Shelf" style="pointer-events:auto;flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;background:rgba(127,127,127,.18);border:1px solid rgba(127,127,127,.42);color:inherit;font:600 12px/1 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;text-decoration:none;padding:10px 12px;border-radius:999px;white-space:nowrap">&#8962; Shelf</a>
+  <span id="wordmark">Bag of <span>Marbles</span></span>
+  <button class="tbtn" id="ver" style="margin-left:auto">v1.0</button>
+</div>
+
+<div id="tabs">
+  <button class="tab on" id="tPlay">The Bag</button>
+  <button class="tab" id="tCollect">Collection</button>
+</div>
+
+<main>
+  <section class="screen on" id="s-play">
+    <div id="feltWrap">
+      <canvas id="felt"></canvas>
+      <div id="bagStage">
+        <svg id="bagSvg" viewBox="0 0 200 220" aria-label="A drawstring bag of marbles"></svg>
+        <div class="bagLabel">Tap the bag to pour them out</div>
+      </div>
+      <div id="bagHint" style="display:none">Pull back from a marble to aim, then release to shoot.</div>
+    </div>
+    <div id="controls">
+      <button class="btn go" id="bPour">Pour out</button>
+      <button class="btn" id="bScoop">Scoop back</button>
+      <button class="btn" id="bShake">Shake</button>
+      <button class="btn" id="bAdd">Add a marble</button>
+    </div>
+  </section>
+
+  <section class="screen" id="s-collect">
+    <div id="collectWrap">
+      <h2>Your marbles</h2>
+      <p class="sub">Every kind of marble in your bag. Tap one to add another like it.</p>
+      <div class="cGrid" id="cGrid"></div>
+    </div>
+  </section>
+</main>
+
+<script>
+"use strict";
+var $=function(i){return document.getElementById(i);};
+var VERSION="v1.2 \u00b7 Jul 31";
+$("ver").textContent=VERSION.split(" ")[0];
+
+/* ---------- marble types ----------
+   Each marble is drawn as layered radial gradients so it reads as glass: a body
+   tint, a swirl or cat's-eye core, a soft inner shadow at the base, and a bright
+   specular highlight up-left. This is what separates a marble from a flat dot. */
+var TYPES=[
+  {id:"cats_blue", name:"Blue Cat's-Eye", base:"#eaf3ff", vane:"#2f7ff0", kind:"cateye"},
+  {id:"cats_green",name:"Green Cat's-Eye",base:"#eafff0", vane:"#25b552", kind:"cateye"},
+  {id:"cats_amber",name:"Amber Cat's-Eye",base:"#fff6e6", vane:"#f0a52f", kind:"cateye"},
+  {id:"swirl_red", name:"Red Swirl",      base:"#fff2f2", vane:"#e23b3b", kind:"swirl"},
+  {id:"swirl_purple",name:"Purple Swirl", base:"#f6f0ff", vane:"#8a4fe0", kind:"swirl"},
+  {id:"swirl_teal",name:"Teal Swirl",     base:"#eefeff", vane:"#1fb6c9", kind:"swirl"},
+  {id:"clearie",   name:"Clearie",        base:"#eef6ff", vane:"#bcd6f2", kind:"clear"},
+  {id:"steelie",   name:"Steelie",        base:"#e9edf2", vane:"#7c8794", kind:"steel"},
+  {id:"galaxy",    name:"Galaxy",         base:"#1a1030", vane:"#c58bff", kind:"galaxy"},
+  {id:"pearl",     name:"Milky Pearl",    base:"#fffdf7", vane:"#ffe6a8", kind:"pearl"}
+];
+function typeById(id){for(var i=0;i<TYPES.length;i++)if(TYPES[i].id===id)return TYPES[i];return TYPES[0];}
+
+/* draw one marble of radius r centred at (0,0) into ctx (already translated + rotated) */
+function paintMarble(ctx,r,t){
+  ctx.save();
+  // body
+  var body=ctx.createRadialGradient(-r*0.3,-r*0.35,r*0.15, 0,0,r);
+  if(t.kind==="steel"){
+    body.addColorStop(0,"#ffffff"); body.addColorStop(.35,t.vane);
+    body.addColorStop(.8,"#4a525c"); body.addColorStop(1,"#2a2f36");
+  }else if(t.kind==="galaxy"){
+    body.addColorStop(0,"#3a2560"); body.addColorStop(.6,t.base); body.addColorStop(1,"#0a0618");
+  }else{
+    body.addColorStop(0,t.base); body.addColorStop(.75,t.base);
+    body.addColorStop(1, t.kind==="clear"?"#9fc0e6":shade(t.vane,-0.1));
+  }
+  ctx.beginPath();ctx.arc(0,0,r,0,7);ctx.fillStyle=body;ctx.fill();
+
+  // interior pattern
+  ctx.save();ctx.beginPath();ctx.arc(0,0,r*0.98,0,7);ctx.clip();
+  if(t.kind==="cateye"){
+    // two crossed translucent vanes
+    for(var a=0;a<2;a++){
+      ctx.save();ctx.rotate(a?Math.PI/2:0);
+      var g=ctx.createLinearGradient(0,-r,0,r);
+      g.addColorStop(0,"rgba(255,255,255,0)");g.addColorStop(.5,t.vane);g.addColorStop(1,"rgba(255,255,255,0)");
+      ctx.fillStyle=g;ctx.beginPath();
+      ctx.moveTo(-r*0.14,-r);ctx.quadraticCurveTo(r*0.16,0,-r*0.14,r);
+      ctx.quadraticCurveTo(-r*0.02,0,-r*0.14,-r);ctx.fill();ctx.restore();
+    }
+  }else if(t.kind==="swirl"){
+    ctx.lineWidth=r*0.16;ctx.lineCap="round";ctx.strokeStyle=t.vane;
+    ctx.beginPath();
+    for(var i2=0;i2<=40;i2++){var th=i2/40*Math.PI*2.4; var rr=r*0.12+ i2/40*r*0.7;
+      var x=Math.cos(th)*rr, y=Math.sin(th)*rr; if(i2===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);}
+    ctx.stroke();
+    ctx.globalAlpha=.5;ctx.strokeStyle=shade(t.vane,0.25);ctx.lineWidth=r*0.07;ctx.stroke();ctx.globalAlpha=1;
+  }else if(t.kind==="galaxy"){
+    for(var s=0;s<26;s++){var rx=(Math.random()*2-1)*r*0.8, ry=(Math.random()*2-1)*r*0.8;
+      if(rx*rx+ry*ry>r*r*0.7)continue;
+      ctx.fillStyle=s%4?"rgba(255,255,255,.8)":shade(t.vane,0.2);
+      ctx.beginPath();ctx.arc(rx,ry,Math.random()*r*0.05+0.4,0,7);ctx.fill();}
+  }else if(t.kind==="pearl"){
+    var pg=ctx.createRadialGradient(r*0.2,r*0.2,0, 0,0,r);
+    pg.addColorStop(0,"rgba(255,255,255,0)");pg.addColorStop(.7,"rgba(255,230,168,.5)");pg.addColorStop(1,"rgba(255,200,120,.7)");
+    ctx.fillStyle=pg;ctx.beginPath();ctx.arc(0,0,r,0,7);ctx.fill();
+  }else if(t.kind==="clear"){
+    ctx.fillStyle="rgba(120,170,230,.28)";ctx.beginPath();ctx.arc(r*0.1,r*0.15,r*0.6,0,7);ctx.fill();
+  }
+  ctx.restore();
+
+  // base inner shadow for roundness
+  var sh=ctx.createRadialGradient(r*0.25,r*0.4,r*0.2, 0,0,r);
+  sh.addColorStop(0,"rgba(0,0,0,0)");sh.addColorStop(1,"rgba(0,0,0,.32)");
+  ctx.fillStyle=sh;ctx.beginPath();ctx.arc(0,0,r,0,7);ctx.fill();
+
+  // rim
+  ctx.lineWidth=Math.max(1,r*0.05);ctx.strokeStyle="rgba(255,255,255,.16)";
+  ctx.beginPath();ctx.arc(0,0,r*0.97,0,7);ctx.stroke();
+
+  // specular highlight
+  var hl=ctx.createRadialGradient(-r*0.34,-r*0.4,0, -r*0.34,-r*0.4,r*0.6);
+  hl.addColorStop(0,"rgba(255,255,255,.95)");hl.addColorStop(.4,"rgba(255,255,255,.25)");hl.addColorStop(1,"rgba(255,255,255,0)");
+  ctx.fillStyle=hl;ctx.beginPath();ctx.arc(-r*0.34,-r*0.4,r*0.55,0,7);ctx.fill();
+  // tiny sparkle
+  ctx.fillStyle="rgba(255,255,255,.9)";ctx.beginPath();ctx.arc(r*0.28,-r*0.2,r*0.07,0,7);ctx.fill();
+  ctx.restore();
+}
+function shade(hex,amt){
+  var c=hex.replace("#","");var n=parseInt(c,16);
+  var r=(n>>16)&255,g=(n>>8)&255,b=n&255;
+  r=Math.max(0,Math.min(255,Math.round(r+255*amt)));
+  g=Math.max(0,Math.min(255,Math.round(g+255*amt)));
+  b=Math.max(0,Math.min(255,Math.round(b+255*amt)));
+  return "rgb("+r+","+g+","+b+")";
+}
+
+/* ---------- persisted bag ---------- */
+var BKEY="marbles_bag_v1";
+function loadBag(){
+  try{var b=JSON.parse(localStorage.getItem(BKEY));if(b&&b.length)return b;}catch(e){}
+  // starter bag: a nice mixed handful
+  var start=[];
+  ["cats_blue","cats_green","swirl_red","swirl_purple","clearie","steelie",
+   "cats_amber","swirl_teal","galaxy","pearl","cats_blue","swirl_red","clearie","steelie"]
+   .forEach(function(id){start.push(id);});
+  saveBag(start);return start;
+}
+function saveBag(b){try{localStorage.setItem(BKEY,JSON.stringify(b));}catch(e){}}
+var bag=loadBag();
+
+/* ---------- 2D top-down marble sim on the felt ----------
+   This is the toy's simple physics: equal-radius circles, wall bounce, and pairwise
+   collision with position-split + velocity exchange. It's the same collision math the
+   full 3D game will use, kept 2D here so the bag is light and instant. */
+var felt=$("felt"), fctx=felt.getContext("2d");
+var W=0,H=0,R=0, marbles=[], tilt={x:0,y:0}, running=false, poured=false;
+
+function sizeFelt(){
+  var wrap=$("feltWrap"); W=wrap.clientWidth; H=wrap.clientHeight;
+  var dpr=Math.min(2,window.devicePixelRatio||1);
+  felt.width=W*dpr; felt.height=H*dpr; felt.style.width=W+"px"; felt.style.height=H+"px";
+  fctx.setTransform(dpr,0,0,dpr,0,0);
+  R=Math.max(13,Math.min(W,H)*0.045);
+}
+
+function buildBagSvg(){
+  // a cloth drawstring bag, cinched at the neck, with a couple of marbles peeking out
+  var s='<defs>'
+   +'<radialGradient id="cloth" cx="42%" cy="34%" r="72%">'
+   +'<stop offset="0%" stop-color="#8a5cff"/><stop offset="55%" stop-color="#5a34c8"/><stop offset="100%" stop-color="#37207e"/>'
+   +'</radialGradient></defs>'
+   +'<ellipse cx="100" cy="205" rx="58" ry="10" fill="rgba(0,0,0,.35)"/>'
+   // body
+   +'<path d="M52 96 q-14 60 12 92 q36 26 72 0 q26-32 12-92 q-48 26-96 0 z" fill="url(#cloth)" stroke="#2a1860" stroke-width="3"/>'
+   // cloth folds
+   +'<path d="M74 108 q6 46 -2 78" stroke="rgba(0,0,0,.18)" stroke-width="4" fill="none"/>'
+   +'<path d="M126 108 q-6 46 2 78" stroke="rgba(0,0,0,.18)" stroke-width="4" fill="none"/>'
+   +'<path d="M100 110 v76" stroke="rgba(255,255,255,.1)" stroke-width="3" fill="none"/>'
+   // gathered neck
+   +'<path d="M52 96 q48 26 96 0 l-6-16 q-42 20 -84 0 z" fill="#6a44d8" stroke="#2a1860" stroke-width="3"/>'
+   // drawstring
+   +'<path d="M42 80 q58 24 116 0" stroke="#e8c987" stroke-width="5" fill="none" stroke-linecap="round"/>'
+   +'<circle cx="42" cy="80" r="6" fill="#e8c987"/><circle cx="158" cy="80" r="6" fill="#e8c987"/>'
+   // marbles peeking from the top
+   +'<circle cx="86" cy="74" r="13" fill="#3f8ef0"/><circle cx="82" cy="70" r="4" fill="rgba(255,255,255,.85)"/>'
+   +'<circle cx="112" cy="72" r="12" fill="#e23b3b"/><circle cx="108" cy="68" r="3.5" fill="rgba(255,255,255,.85)"/>';
+  $("bagSvg").innerHTML=s;
+}
+
+function pour(){
+  sizeFelt();
+  marbles=[];
+  bag.forEach(function(id,i){
+    var t=typeById(id);
+    marbles.push({t:t, x:W*0.5+(Math.random()*2-1)*W*0.16,
+      y:H*0.28+(Math.random()*2-1)*H*0.10,
+      vx:(Math.random()*2-1)*1.6, vy:Math.random()*1.2+0.6,
+      rot:Math.random()*6, vr:(Math.random()*2-1)*0.2});
+  });
+  poured=true; running=true;
+  $("bagStage").classList.add("hidden");
+  $("bagHint").style.display="block";
+  loop();
+}
+function scoop(){
+  running=false; poured=false; marbles=[];
+  $("bagStage").classList.remove("hidden");
+  $("bagHint").style.display="none";
+  fctx.clearRect(0,0,W,H);
+}
+function shake(){
+  if(!poured)return;
+  marbles.forEach(function(m){m.vx+=(Math.random()*2-1)*2.6;m.vy+=(Math.random()*2-1)*2.6;m.vr+=(Math.random()*2-1)*0.15;});
+  running=true; loop();
+}
+
+function step(){
+  // Tuned for heavy glass on felt: rolling resistance kills speed quickly, walls
+  // barely give back, and a small static-friction floor makes them actually STOP
+  // instead of drifting forever. This is what separates "marbles" from "air hockey".
+  var roll=0.978;     // per-frame speed kept - glass glides, then friction wins
+  var wall=0.42;      // energy kept on a bounce (was 0.72 - that was the pinball)
+  var stop=0.18;      // only genuinely-slow marbles get dragged to rest
+  for(var i=0;i<marbles.length;i++){
+    var m=marbles[i];
+    m.vx+=tilt.x*0.22; m.vy+=tilt.y*0.22;
+    m.vx*=roll; m.vy*=roll;
+    var sp=Math.hypot(m.vx,m.vy);
+    if(sp<stop && (tilt.x||tilt.y)===0){ m.vx*=0.82; m.vy*=0.82; }  // ease to rest
+    m.x+=m.vx; m.y+=m.vy;
+    // spin tracks actual travel so a marble looks like it's rolling, not spinning in place
+    m.rot+=(m.vx+m.vy)*0.045;
+    // walls: thud, don't ping
+    if(m.x<R){m.x=R;m.vx=-m.vx*wall;}
+    if(m.x>W-R){m.x=W-R;m.vx=-m.vx*wall;}
+    if(m.y<R){m.y=R;m.vy=-m.vy*wall;}
+    if(m.y>H-R){m.y=H-R;m.vy=-m.vy*wall;}
+  }
+  // pairwise collisions (equal radius -> clean velocity swap along normal)
+  for(var a=0;a<marbles.length;a++)for(var b=a+1;b<marbles.length;b++){
+    var p=marbles[a],q=marbles[b];
+    var dx=q.x-p.x, dy=q.y-p.y, d2=dx*dx+dy*dy, min=R*2;
+    if(d2<min*min && d2>0.0001){
+      var d=Math.sqrt(d2), nx=dx/d, ny=dy/d, overlap=(min-d)/2;
+      p.x-=nx*overlap; p.y-=ny*overlap; q.x+=nx*overlap; q.y+=ny*overlap;
+      var pv=p.vx*nx+p.vy*ny, qv=q.vx*nx+q.vy*ny, diff=(qv-pv)*0.9;  // 0.9 = slight energy loss
+      p.vx+=diff*nx; p.vy+=diff*ny; q.vx-=diff*nx; q.vy-=diff*ny;
+    }
+  }
+  // settle check
+  var moving=false;
+  for(var k=0;k<marbles.length;k++){if(Math.hypot(marbles[k].vx,marbles[k].vy)>0.08){moving=true;break;}}
+  if(!moving && tilt.x===0 && tilt.y===0) running=false;
+}
+
+function render(){
+  fctx.clearRect(0,0,W,H);
+  // soft contact shadows first
+  marbles.forEach(function(m){
+    fctx.save();fctx.globalAlpha=.3;fctx.fillStyle="#000";
+    fctx.beginPath();fctx.ellipse(m.x+2,m.y+R*0.5,R*0.92,R*0.5,0,0,7);fctx.fill();fctx.restore();
+  });
+  marbles.forEach(function(m){
+    fctx.save();fctx.translate(m.x,m.y);fctx.rotate(m.rot);paintMarble(fctx,R,m.t);fctx.restore();
+  });
+  drawAim();
+}
+function loop(){
+  if(aim){ render(); requestAnimationFrame(loop); return; }   // aiming: redraw overlay, no physics
+  if(!running){render();return;}
+  step(); render();
+  requestAnimationFrame(loop);
+}
+
+/* ---------- slingshot aim (pool/billiards style) ----------
+   Press a marble, pull AWAY from it. The marble stays put while an aim line and a
+   pull-back indicator show direction and power. The further you pull, the more force.
+   Release to fire in the OPPOSITE direction of the pull, like drawing back a cue.
+   Reference behaviour: shot power is proportional to pull distance, scaled down and
+   capped so a big drag doesn't send it across the felt in one frame. */
+var aim=null;                 // {m, sx,sy (marble anchor), px,py (current pointer)}
+var MAXPULL, POWER;           // set from felt size so it feels the same on any screen
+function calibrateAim(){ MAXPULL=Math.min(W,H)*0.42; POWER=13/MAXPULL; }  // cap ~13 px/frame
+function pt(e){var r=felt.getBoundingClientRect();var t=e.touches?e.touches[0]:e;return{x:t.clientX-r.left,y:t.clientY-r.top};}
+
+felt.addEventListener("pointerdown",function(e){
+  if(!poured)return;
+  var p=pt(e);
+  for(var i=marbles.length-1;i>=0;i--){var m=marbles[i];
+    if((m.x-p.x)*(m.x-p.x)+(m.y-p.y)*(m.y-p.y)<R*R*2.2){   // generous grab radius for fingers
+      calibrateAim();
+      aim={m:m, sx:m.x, sy:m.y, px:p.x, py:p.y};
+      m.vx=0; m.vy=0; running=true; loop();
+      e.preventDefault(); break;}}
+},{passive:false});
+
+window.addEventListener("pointermove",function(e){
+  if(!aim)return; var p=pt(e);
+  aim.px=p.x; aim.py=p.y;
+  render();                    // redraw with the live aim overlay; marble does NOT move
+  e.preventDefault();
+},{passive:false});
+
+window.addEventListener("pointerup",function(){
+  if(!aim)return;
+  // pull vector = from pointer back to marble anchor; clamp to MAXPULL
+  var dx=aim.sx-aim.px, dy=aim.sy-aim.py;
+  var dist=Math.hypot(dx,dy);
+  if(dist>4){                  // ignore a tap with no real pull
+    var clamped=Math.min(dist,MAXPULL);
+    var ux=dx/dist, uy=dy/dist;
+    aim.m.vx=ux*clamped*POWER;
+    aim.m.vy=uy*clamped*POWER;
+  }
+  aim=null; running=true; loop();
+});
+
+/* draw the aiming overlay: a guide line through the marble + a pull band behind it */
+function drawAim(){
+  if(!aim)return;
+  var m=aim.m;
+  var dx=m.x-aim.px, dy=m.y-aim.py;      // pull direction (pointer -> marble = shot dir)
+  var dist=Math.hypot(dx,dy); if(dist<1)return;
+  var clamped=Math.min(dist,MAXPULL), frac=clamped/MAXPULL;
+  var ux=dx/dist, uy=dy/dist;
+  // power colour: green -> amber -> red as you pull harder
+  var col = frac<0.5 ? "#7ee06a" : frac<0.8 ? "#ffc25c" : "#ff6a5c";
+  fctx.save();
+  // forward guide line (where it will go), dashed
+  fctx.strokeStyle="rgba(255,255,255,.6)"; fctx.lineWidth=2; fctx.setLineDash([7,7]);
+  fctx.beginPath(); fctx.moveTo(m.x,m.y);
+  fctx.lineTo(m.x+ux*(clamped+R*4), m.y+uy*(clamped+R*4)); fctx.stroke();
+  fctx.setLineDash([]);
+  // pull-back band behind the marble (the "cue")
+  fctx.strokeStyle=col; fctx.lineWidth=Math.max(4,R*0.35); fctx.lineCap="round";
+  fctx.beginPath(); fctx.moveTo(m.x,m.y);
+  fctx.lineTo(m.x-ux*clamped, m.y-uy*clamped); fctx.stroke();
+  // power pip at the pulled-back end
+  fctx.fillStyle=col; fctx.beginPath();
+  fctx.arc(m.x-ux*clamped, m.y-uy*clamped, R*0.4, 0, 7); fctx.fill();
+  fctx.restore();
+}
+
+/* device tilt (https only), falls back to buttons */
+window.addEventListener("deviceorientation",function(e){
+  if(e.gamma==null)return;
+  tilt.x=Math.max(-1,Math.min(1,e.gamma/45));
+  tilt.y=Math.max(-1,Math.min(1,e.beta>90?1:(e.beta-40)/45));
+  if(poured){running=true;if(!drag)loop();}
+});
+
+/* ---------- collection ---------- */
+function renderCollection(){
+  var counts={};bag.forEach(function(id){counts[id]=(counts[id]||0)+1;});
+  var g=$("cGrid");g.innerHTML="";
+  TYPES.forEach(function(t){
+    var n=counts[t.id]||0;
+    var cell=document.createElement("div");cell.className="cCell";
+    var c=document.createElement("canvas");var sz=64,dpr=2;
+    c.width=sz*dpr;c.height=sz*dpr;c.style.width=sz+"px";c.style.height=sz+"px";
+    var cx=c.getContext("2d");cx.setTransform(dpr,0,0,dpr,0,0);
+    cx.translate(sz/2,sz/2);paintMarble(cx,sz/2-3,t);
+    if(!n){c.style.filter="grayscale(1)";c.style.opacity=".35";}
+    var name=document.createElement("div");name.className="cName";name.textContent=t.name;
+    var cnt=document.createElement("div");cnt.className="cCount";cnt.textContent=n?("\u00d7"+n):"\u2014";
+    cell.appendChild(c);cell.appendChild(name);cell.appendChild(cnt);
+    cell.onclick=function(){bag.push(t.id);saveBag(bag);renderCollection();};
+    g.appendChild(cell);
+  });
+}
+
+/* ---------- nav + controls ---------- */
+function showTab(which){
+  $("tPlay").classList.toggle("on",which==="play");
+  $("tCollect").classList.toggle("on",which==="collect");
+  $("s-play").classList.toggle("on",which==="play");
+  $("s-collect").classList.toggle("on",which==="collect");
+  if(which==="play"){sizeFelt();if(poured){running=true;loop();}}
+  else renderCollection();
+}
+$("tPlay").onclick=function(){showTab("play");};
+$("tCollect").onclick=function(){showTab("collect");};
+$("bagSvg").onclick=pour;
+$("bPour").onclick=pour;
+$("bScoop").onclick=scoop;
+$("bShake").onclick=shake;
+$("bAdd").onclick=function(){
+  var id=TYPES[Math.floor(Math.random()*TYPES.length)].id;
+  bag.push(id);saveBag(bag);
+  if(poured){var t=typeById(id);marbles.push({t:t,x:W*0.5,y:R*1.5,vx:(Math.random()*2-1)*1.2,vy:1,rot:0,vr:0});running=true;loop();}
+};
+$("ver").onclick=function(){alert("Bag of Marbles "+VERSION+"\n\n"+bag.length+" marbles in your bag.\nEverything stays on this device.");};
+
+window.addEventListener("resize",function(){sizeFelt();if(poured)render();});
+
+buildBagSvg();
+sizeFelt();
+render();
+</script>
+</body>
+</html>

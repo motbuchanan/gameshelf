@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#171423">
+<title>Marble Arcade</title>
+<style>
+  :root{
+    --bg:#171423; --panel:#221f30; --line:rgba(255,255,255,.14);
+    --txt:#f3eff7; --dim:#a79fbd; --accent:#ffc25c; --gold:#ffd76a;
+    --ring:#e8dcc0;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0;height:100%;background:var(--bg);color:var(--txt);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overscroll-behavior:none}
+  body{display:flex;flex-direction:column;height:100vh;height:100svh;max-height:100svh;overflow:hidden}
+
+  #top{display:flex;align-items:center;gap:9px;padding:calc(7px + env(safe-area-inset-top)) 11px 7px;
+       flex:0 0 auto;border-bottom:1px solid var(--line)}
+  #wordmark{font-weight:800;font-size:16px}
+  #wordmark span{color:var(--accent)}
+  #coins{margin-left:auto;display:inline-flex;align-items:center;gap:5px;background:rgba(255,215,106,.14);
+    border:1px solid rgba(255,215,106,.4);border-radius:999px;padding:7px 12px;font-weight:800;font-size:13px;color:var(--gold)}
+  .tbtn{font:600 12px/1 inherit;color:var(--dim);background:none;border:1px solid var(--line);
+        border-radius:999px;padding:9px 11px;cursor:pointer;min-height:36px}
+
+  main{flex:1;min-height:0;position:relative}
+  .screen{position:absolute;inset:0;display:none;flex-direction:column;overflow:hidden}
+  .screen.on{display:flex}
+
+  /* felt play surface, shared by all modes */
+  .feltWrap{flex:1;min-height:0;position:relative;overflow:hidden;
+    background:radial-gradient(120% 90% at 50% 20%,#2c4a39,#1c3025 70%,#152318)}
+  canvas.felt{display:block;touch-action:none}
+  .hint{position:absolute;left:0;right:0;bottom:12px;text-align:center;color:#bfe3cf;
+    font-size:13px;opacity:.9;pointer-events:none;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+  .hud{position:absolute;top:10px;left:11px;right:11px;display:flex;gap:8px;align-items:center;
+    pointer-events:none;font-size:13px;font-weight:700;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+  .hud .pill{background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.14);border-radius:999px;padding:6px 11px}
+
+  .bar{flex:0 0 auto;display:flex;gap:8px;padding:9px 11px calc(9px + env(safe-area-inset-bottom));
+    border-top:1px solid var(--line);overflow-x:auto}
+  .btn{font:600 13px/1 inherit;color:var(--txt);background:var(--panel);border:1px solid var(--line);
+    border-radius:11px;padding:11px 14px;cursor:pointer;min-height:44px;white-space:nowrap;
+    display:inline-flex;align-items:center;gap:6px}
+  .btn:active{transform:translateY(1px)}
+  .btn.go{background:var(--accent);border-color:var(--accent);color:#241a06;font-weight:800}
+  .btn.big{width:100%;justify-content:center;font-size:15px;margin-bottom:9px}
+
+  /* ---- title screen ---- */
+  #s-title .feltWrap{background:radial-gradient(130% 100% at 50% 0%,#3a2b66,#1c1636 65%,#120e26)}
+  #titleCard{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+    justify-content:center;gap:6px;padding:20px;pointer-events:none}
+  #bigTitle{font-size:min(13vw,54px);font-weight:900;letter-spacing:1px;line-height:1;
+    text-shadow:0 4px 20px rgba(0,0,0,.5);text-align:center}
+  #bigTitle b{color:var(--accent)}
+  #titleSub{color:#d8cdf0;font-size:15px;margin-top:4px}
+  #titleBtns{position:absolute;left:0;right:0;bottom:calc(26px + env(safe-area-inset-bottom));
+    display:flex;flex-direction:column;align-items:center;gap:10px;padding:0 26px;pointer-events:auto}
+  #titleBtns .btn{width:100%;max-width:320px;justify-content:center;font-size:16px;padding:15px}
+
+  /* ---- mode picker ---- */
+  #s-menu{padding:18px 16px;overflow-y:auto}
+  .modeCard{display:flex;align-items:center;gap:14px;background:var(--panel);border:1px solid var(--line);
+    border-radius:16px;padding:15px;margin-bottom:12px;cursor:pointer;width:100%;text-align:left;color:inherit;font:inherit}
+  .modeCard:active{transform:translateY(1px)}
+  .modeCard canvas{flex:0 0 auto;border-radius:10px}
+  .modeCard h3{margin:0 0 3px;font-size:17px}
+  .modeCard p{margin:0;font-size:12.5px;color:var(--dim);line-height:1.4}
+  .menuHead{font-size:22px;font-weight:800;margin:2px 0 4px}
+  .menuSub{font-size:13px;color:var(--dim);margin:0 0 16px}
+
+  /* ---- gumball machine ---- */
+  #s-gum{padding:18px 16px;overflow-y:auto}
+  #gumStage{display:flex;flex-direction:column;align-items:center;gap:12px;margin-bottom:14px}
+  #gumSvg{width:min(60vw,220px);height:auto;filter:drop-shadow(0 12px 18px rgba(0,0,0,.45))}
+  #gumRow{display:flex;gap:10px;width:100%;max-width:360px}
+  #newMarbles{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;min-height:10px;margin-top:6px}
+  .prizePop{animation:pop .5s ease}
+  @keyframes pop{0%{transform:scale(0);opacity:0}70%{transform:scale(1.15)}100%{transform:scale(1);opacity:1}}
+
+  /* ---- collection ---- */
+  #s-collect{padding:16px 13px;overflow-y:auto}
+  .cGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:12px}
+  .cCell{display:flex;flex-direction:column;align-items:center;gap:5px}
+  .cCell canvas{border-radius:50%;display:block;filter:drop-shadow(0 3px 4px rgba(0,0,0,.4))}
+  .cName{font-size:11px;color:var(--dim);text-align:center;line-height:1.2}
+  .cCount{font-size:10px;color:var(--gold);font-weight:700}
+  h2{font-size:18px;margin:2px 0 4px}
+  .sub{font-size:12px;color:var(--dim);margin:0 0 14px;line-height:1.45}
+
+  #toast{position:fixed;left:50%;top:70px;transform:translateX(-50%);background:#fff;color:#171423;
+    font-weight:700;font-size:13px;padding:10px 16px;border-radius:10px;opacity:0;pointer-events:none;
+    transition:opacity .2s;z-index:60;text-align:center;max-width:82vw}
+  #toast.on{opacity:1}
+
+  #win{position:absolute;inset:0;display:none;align-items:center;justify-content:center;
+    background:rgba(10,8,18,.82);z-index:20;padding:24px}
+  #win.on{display:flex}
+  #win .card{background:#1f1b2e;border:1px solid var(--line);border-radius:18px;padding:22px;
+    text-align:center;max-width:320px;width:100%}
+  #win h3{margin:2px 0 6px;font-size:22px}
+  #win .coinsWon{color:var(--gold);font-weight:800;font-size:16px;margin:8px 0 14px}
+</style>
+</head>
+<body>
+
+<div id="top">
+  <a href="index.html" id="gsShelfBtn" aria-label="Back to the Game Shelf" style="pointer-events:auto;flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;background:rgba(127,127,127,.18);border:1px solid rgba(127,127,127,.42);color:inherit;font:600 12px/1 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;text-decoration:none;padding:10px 12px;border-radius:999px;white-space:nowrap">&#8962; Shelf</a>
+  <span id="wordmark">Marble <span>Arcade</span></span>
+  <span id="coins">&#128176; <span id="coinN">0</span></span>
+</div>
+
+<main>
+  <!-- TITLE -->
+  <section class="screen on" id="s-title">
+    <div class="feltWrap">
+      <canvas class="felt" id="titleFelt"></canvas>
+      <div id="titleCard">
+        <div id="bigTitle">MARBLE<br><b>ARCADE</b></div>
+        <div id="titleSub">shoot &middot; win &middot; collect</div>
+        <div style="color:#c9bff0;font-size:12px;margin-top:2px;pointer-events:none">tap a marble and pull back to shoot it around</div>
+      </div>
+      <div id="titleBtns">
+        <button class="btn go" id="bPlay">Play</button>
+        <button class="btn" id="bGum2">&#127855; Gumball Machine</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- MODE PICKER -->
+  <section class="screen" id="s-menu">
+    <div class="menuHead">Pick a game</div>
+    <p class="menuSub">Every mode uses your marbles. Earn coins, then spend them on more.</p>
+    <button class="modeCard" id="mRinger"><canvas width="60" height="60" data-mode="ringer"></canvas>
+      <div><h3>Ringer</h3><p>Knock the other marbles out of the ring. Classic playground rules.</p></div></button>
+    <button class="modeCard" id="mGolf"><canvas width="60" height="60" data-mode="golf"></canvas>
+      <div><h3>Marble Golf</h3><p>Roll your marble into the holes in as few shots as you can.</p></div></button>
+    <button class="modeCard" id="mSandbox"><canvas width="60" height="60" data-mode="sandbox"></canvas>
+      <div><h3>Sandbox</h3><p>No rules. Just shoot marbles around and watch them collide.</p></div></button>
+    <button class="btn big" id="bGum" style="margin-top:6px">&#127855; Gumball Machine</button>
+    <button class="btn big" id="bCollect2">&#128142; Your Collection</button>
+  </section>
+
+  <!-- RINGER -->
+  <section class="screen" id="s-ringer">
+    <div class="feltWrap"><canvas class="felt" id="ringerFelt"></canvas>
+      <div class="hud"><span class="pill" id="ringerTurn">Your turn</span>
+        <span class="pill" id="ringerScore" style="margin-left:auto">You 0 &middot; Rival 0</span></div>
+      <div class="hint">Pull back from your marble to aim, release to shoot.</div>
+      <div id="win"><div class="card"><h3 id="winTitle">You win!</h3>
+        <div class="coinsWon" id="winCoins">+0 coins</div>
+        <button class="btn go big" id="winAgain">Play again</button>
+        <button class="btn big" id="winMenu" style="margin-bottom:0">Back to menu</button></div></div>
+    </div>
+    <div class="bar">
+      <button class="btn" id="ringerMenu">Menu</button>
+      <button class="btn" id="ringerNew">New game</button>
+      <span class="pill" id="ringerOpp" style="margin-left:auto;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:11px 13px;cursor:pointer">Rival: AI</span>
+    </div>
+  </section>
+
+  <!-- GOLF -->
+  <section class="screen" id="s-golf">
+    <div class="feltWrap"><canvas class="felt" id="golfFelt"></canvas>
+      <div class="hud"><span class="pill" id="golfShots">Shots: 0</span>
+        <span class="pill" id="golfHoles" style="margin-left:auto">Holes: 0 / 3</span></div>
+      <div class="hint">Pull back to aim. Sink your marble in the dark holes.</div>
+    </div>
+    <div class="bar">
+      <button class="btn" id="golfMenu">Menu</button>
+      <button class="btn" id="golfNew">New course</button>
+    </div>
+  </section>
+
+  <!-- SANDBOX -->
+  <section class="screen" id="s-sandbox">
+    <div class="feltWrap"><canvas class="felt" id="sandFelt"></canvas>
+      <div class="hint">Pull back from any marble to shoot. No rules here.</div>
+    </div>
+    <div class="bar">
+      <button class="btn" id="sandMenu">Menu</button>
+      <button class="btn" id="sandMore">Add marble</button>
+      <button class="btn" id="sandShake">Shake</button>
+    </div>
+  </section>
+
+  <!-- GUMBALL -->
+  <section class="screen" id="s-gum">
+    <div class="menuHead">Gumball Machine</div>
+    <p class="menuSub">Turn coins into marbles. You never know what you'll get.</p>
+    <div id="gumStage">
+      <svg id="gumSvg" viewBox="0 0 200 260" aria-label="A gumball machine full of marbles"></svg>
+      <div id="newMarbles"></div>
+    </div>
+    <div id="gumRow" style="margin:0 auto 10px">
+      <button class="btn go" id="bCrank" style="flex:2;justify-content:center">Crank &middot; 10 &#128176;</button>
+      <button class="btn" id="bCrank5" style="flex:3;justify-content:center">Handful (5) &middot; 45 &#128176;</button>
+    </div>
+    <button class="btn big" id="gumMenu" style="max-width:360px;margin:0 auto">Back to menu</button>
+    <button class="btn big" id="gumCollect" style="max-width:360px;margin:0 auto">Your Collection</button>
+  </section>
+
+  <!-- COLLECTION -->
+  <section class="screen" id="s-collect">
+    <h2>Your marbles</h2>
+    <p class="sub">Everything in your bag. Win games and crank the machine to collect them all.</p>
+    <div class="cGrid" id="cGrid"></div>
+    <button class="btn big" id="collectMenu" style="margin-top:14px;max-width:360px">Back to menu</button>
+  </section>
+</main>
+
+<div id="toast"></div>
+
+<script>
+"use strict";
+var $=function(i){return document.getElementById(i);};
+var VERSION="v1.2 \u00b7 Jul 31";
+
+/* ============================================================
+   SHARED MARBLE MODEL (same as the Bag toy - same localStorage keys,
+   so coins earned here buy marbles that appear in the bag and vice versa)
+   ============================================================ */
+var TYPES=[
+  {id:"cats_blue", name:"Blue Cat's-Eye", base:"#eaf3ff", vane:"#2f7ff0", kind:"cateye", rare:1},
+  {id:"cats_green",name:"Green Cat's-Eye",base:"#eafff0", vane:"#25b552", kind:"cateye", rare:1},
+  {id:"cats_amber",name:"Amber Cat's-Eye",base:"#fff6e6", vane:"#f0a52f", kind:"cateye", rare:1},
+  {id:"swirl_red", name:"Red Swirl",      base:"#fff2f2", vane:"#e23b3b", kind:"swirl",  rare:1},
+  {id:"swirl_purple",name:"Purple Swirl", base:"#f6f0ff", vane:"#8a4fe0", kind:"swirl",  rare:2},
+  {id:"swirl_teal",name:"Teal Swirl",     base:"#eefeff", vane:"#1fb6c9", kind:"swirl",  rare:2},
+  {id:"clearie",   name:"Clearie",        base:"#eef6ff", vane:"#bcd6f2", kind:"clear",  rare:2},
+  {id:"steelie",   name:"Steelie",        base:"#e9edf2", vane:"#7c8794", kind:"steel",  rare:3},
+  {id:"galaxy",    name:"Galaxy",         base:"#1a1030", vane:"#c58bff", kind:"galaxy", rare:4},
+  {id:"pearl",     name:"Milky Pearl",    base:"#fffdf7", vane:"#ffe6a8", kind:"pearl",  rare:3}
+];
+function typeById(id){for(var i=0;i<TYPES.length;i++)if(TYPES[i].id===id)return TYPES[i];return TYPES[0];}
+function weightedType(){
+  // rarer marbles show up less often from the machine
+  var pool=[];TYPES.forEach(function(t){var w=5-t.rare;for(var i=0;i<w;i++)pool.push(t);});
+  return pool[Math.floor(Math.random()*pool.length)];
+}
+
+function paintMarble(ctx,r,t){
+  ctx.save();
+  var body=ctx.createRadialGradient(-r*0.3,-r*0.35,r*0.15, 0,0,r);
+  if(t.kind==="steel"){body.addColorStop(0,"#ffffff");body.addColorStop(.35,t.vane);body.addColorStop(.8,"#4a525c");body.addColorStop(1,"#2a2f36");}
+  else if(t.kind==="galaxy"){body.addColorStop(0,"#3a2560");body.addColorStop(.6,t.base);body.addColorStop(1,"#0a0618");}
+  else{body.addColorStop(0,t.base);body.addColorStop(.75,t.base);body.addColorStop(1,t.kind==="clear"?"#9fc0e6":shade(t.vane,-0.1));}
+  ctx.beginPath();ctx.arc(0,0,r,0,7);ctx.fillStyle=body;ctx.fill();
+  ctx.save();ctx.beginPath();ctx.arc(0,0,r*0.98,0,7);ctx.clip();
+  if(t.kind==="cateye"){for(var a=0;a<2;a++){ctx.save();ctx.rotate(a?Math.PI/2:0);
+    var g=ctx.createLinearGradient(0,-r,0,r);g.addColorStop(0,"rgba(255,255,255,0)");g.addColorStop(.5,t.vane);g.addColorStop(1,"rgba(255,255,255,0)");
+    ctx.fillStyle=g;ctx.beginPath();ctx.moveTo(-r*0.14,-r);ctx.quadraticCurveTo(r*0.16,0,-r*0.14,r);ctx.quadraticCurveTo(-r*0.02,0,-r*0.14,-r);ctx.fill();ctx.restore();}}
+  else if(t.kind==="swirl"){ctx.lineWidth=r*0.16;ctx.lineCap="round";ctx.strokeStyle=t.vane;ctx.beginPath();
+    for(var i2=0;i2<=40;i2++){var th=i2/40*Math.PI*2.4;var rr=r*0.12+i2/40*r*0.7;var x=Math.cos(th)*rr,y=Math.sin(th)*rr;if(i2===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);}
+    ctx.stroke();ctx.globalAlpha=.5;ctx.strokeStyle=shade(t.vane,0.25);ctx.lineWidth=r*0.07;ctx.stroke();ctx.globalAlpha=1;}
+  else if(t.kind==="galaxy"){for(var s=0;s<26;s++){var rx=(Math.random()*2-1)*r*0.8,ry=(Math.random()*2-1)*r*0.8;if(rx*rx+ry*ry>r*r*0.7)continue;
+    ctx.fillStyle=s%4?"rgba(255,255,255,.8)":shade(t.vane,0.2);ctx.beginPath();ctx.arc(rx,ry,Math.random()*r*0.05+0.4,0,7);ctx.fill();}}
+  else if(t.kind==="pearl"){var pg=ctx.createRadialGradient(r*0.2,r*0.2,0,0,0,r);pg.addColorStop(0,"rgba(255,255,255,0)");pg.addColorStop(.7,"rgba(255,230,168,.5)");pg.addColorStop(1,"rgba(255,200,120,.7)");
+    ctx.fillStyle=pg;ctx.beginPath();ctx.arc(0,0,r,0,7);ctx.fill();}
+  else if(t.kind==="clear"){ctx.fillStyle="rgba(120,170,230,.28)";ctx.beginPath();ctx.arc(r*0.1,r*0.15,r*0.6,0,7);ctx.fill();}
+  ctx.restore();
+  var sh=ctx.createRadialGradient(r*0.25,r*0.4,r*0.2,0,0,r);sh.addColorStop(0,"rgba(0,0,0,0)");sh.addColorStop(1,"rgba(0,0,0,.32)");
+  ctx.fillStyle=sh;ctx.beginPath();ctx.arc(0,0,r,0,7);ctx.fill();
+  ctx.lineWidth=Math.max(1,r*0.05);ctx.strokeStyle="rgba(255,255,255,.16)";ctx.beginPath();ctx.arc(0,0,r*0.97,0,7);ctx.stroke();
+  var hl=ctx.createRadialGradient(-r*0.34,-r*0.4,0,-r*0.34,-r*0.4,r*0.6);hl.addColorStop(0,"rgba(255,255,255,.95)");hl.addColorStop(.4,"rgba(255,255,255,.25)");hl.addColorStop(1,"rgba(255,255,255,0)");
+  ctx.fillStyle=hl;ctx.beginPath();ctx.arc(-r*0.34,-r*0.4,r*0.55,0,7);ctx.fill();
+  ctx.fillStyle="rgba(255,255,255,.9)";ctx.beginPath();ctx.arc(r*0.28,-r*0.2,r*0.07,0,7);ctx.fill();
+  ctx.restore();
+}
+function shade(hex,amt){var c=hex.replace("#","");var n=parseInt(c,16);var r=(n>>16)&255,g=(n>>8)&255,b=n&255;
+  r=Math.max(0,Math.min(255,Math.round(r+255*amt)));g=Math.max(0,Math.min(255,Math.round(g+255*amt)));b=Math.max(0,Math.min(255,Math.round(b+255*amt)));
+  return "rgb("+r+","+g+","+b+")";}
+
+/* ---------- persisted bag + coins (shared with the Bag toy) ---------- */
+var BKEY="marbles_bag_v1", CKEY="marbles_coins_v1";
+function loadBag(){try{var b=JSON.parse(localStorage.getItem(BKEY));if(b&&b.length)return b;}catch(e){}
+  var start=["cats_blue","cats_green","swirl_red","swirl_purple","clearie","steelie","cats_amber","swirl_teal","galaxy","pearl","cats_blue","swirl_red","clearie","steelie"];
+  saveBag(start);return start;}
+function saveBag(b){try{localStorage.setItem(BKEY,JSON.stringify(b));}catch(e){}}
+function loadCoins(){try{var c=parseInt(localStorage.getItem(CKEY),10);return isNaN(c)?0:c;}catch(e){return 0;}}
+function saveCoins(c){try{localStorage.setItem(CKEY,String(c));}catch(e){}}
+var bag=loadBag(), coins=loadCoins();
+function addCoins(n){coins+=n;saveCoins(coins);refreshCoins();}
+function refreshCoins(){$("coinN").textContent=coins;}
+function addMarbleToBag(id){bag.push(id);saveBag(bag);}
+
+function toast(msg){var t=$("toast");t.textContent=msg;t.classList.add("on");clearTimeout(toast._t);toast._t=setTimeout(function(){t.classList.remove("on");},1600);}
+
+/* ============================================================
+   PHYSICS CORE (from the Bag toy, extracted so all modes share it)
+   Equal-radius circles: rolling friction, dead-ish walls, collision by
+   position-split + velocity exchange. Slingshot aim = pull back, release.
+   ============================================================ */
+function makeSim(canvas, opts){
+  opts=opts||{};
+  var ctx=canvas.getContext("2d");
+  var S={ctx:ctx, cv:canvas, W:0,H:0,R:0, balls:[], walls:opts.walls!==false,
+         holes:[], ring:null, aim:null, running:false, MAXPULL:0, POWER:0,
+         gx:0, gy:(opts.gravity||0), useTilt:!!opts.useTilt,
+         onRest:opts.onRest, onSink:opts.onSink, onOut:opts.onOut, aimable:opts.aimable,
+         raf:null};
+  function size(){
+    var wrap=canvas.parentElement; S.W=wrap.clientWidth; S.H=wrap.clientHeight;
+    var dpr=Math.min(2,window.devicePixelRatio||1);
+    canvas.width=S.W*dpr; canvas.height=S.H*dpr; canvas.style.width=S.W+"px"; canvas.style.height=S.H+"px";
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    S.R=Math.max(12,Math.min(S.W,S.H)*(opts.rScale||0.042));
+    S.MAXPULL=Math.min(S.W,S.H)*0.42; S.POWER=13/S.MAXPULL;
+  }
+  S.size=size;
+
+  function step(){
+    var roll=0.978, wall=0.42, stop=0.18;
+    var grav=(S.gx||S.gy);   // any gravity present?
+    for(var i=0;i<S.balls.length;i++){var m=S.balls[i]; if(m.sunk)continue;
+      m.vx+=S.gx; m.vy+=S.gy;                 // gravity pulls every frame
+      m.vx*=roll; m.vy*=roll;
+      // terminal speed so a settled pile can't keep accelerating into the wall
+      var tsp=Math.hypot(m.vx,m.vy), TMAX=6;
+      if(tsp>TMAX){m.vx*=TMAX/tsp;m.vy*=TMAX/tsp;}
+      // static friction only kicks in when there's no gravity to fight (otherwise
+      // marbles would freeze mid-slope); with gravity they always keep creeping
+      var sp=Math.hypot(m.vx,m.vy); if(sp<stop && !grav){m.vx*=0.82;m.vy*=0.82;}
+      m.x+=m.vx; m.y+=m.vy; m.rot+=(m.vx+m.vy)*0.045;
+      if(S.walls){
+        // lower bounce when gravity is on, so a pile settling against a wall goes calm
+        var wb=grav?0.15:wall;
+        if(m.x<S.R){m.x=S.R;m.vx=-m.vx*wb; if(grav)m.vy*=0.9;}
+        if(m.x>S.W-S.R){m.x=S.W-S.R;m.vx=-m.vx*wb; if(grav)m.vy*=0.9;}
+        if(m.y<S.R){m.y=S.R;m.vy=-m.vy*wb; if(grav)m.vx*=0.9;}
+        if(m.y>S.H-S.R){m.y=S.H-S.R;m.vy=-m.vy*wb; if(grav)m.vx*=0.9;}
+      }
+    }
+    // collisions
+    for(var a=0;a<S.balls.length;a++){var p=S.balls[a];if(p.sunk)continue;
+      for(var b=a+1;b<S.balls.length;b++){var q=S.balls[b];if(q.sunk)continue;
+        var dx=q.x-p.x,dy=q.y-p.y,d2=dx*dx+dy*dy,min=S.R*2;
+        if(d2<min*min&&d2>0.0001){var d=Math.sqrt(d2),nx=dx/d,ny=dy/d,ov=(min-d)/2;
+          p.x-=nx*ov;p.y-=ny*ov;q.x+=nx*ov;q.y+=ny*ov;
+          var pv=p.vx*nx+p.vy*ny,qv=q.vx*nx+q.vy*ny,diff=(qv-pv)*0.92;
+          p.vx+=diff*nx;p.vy+=diff*ny;q.vx-=diff*nx;q.vy-=diff*ny;}}}
+    // holes (golf): a slow marble over a hole drops in
+    if(S.holes.length){
+      for(var h=0;h<S.holes.length;h++){var ho=S.holes[h];
+        for(var k=0;k<S.balls.length;k++){var m2=S.balls[k];if(m2.sunk)continue;
+          var hd=Math.hypot(m2.x-ho.x,m2.y-ho.y);
+          if(hd<ho.r*0.7 && Math.hypot(m2.vx,m2.vy)<3.2){m2.sunk=true;ho.filled=true;
+            if(S.onSink)S.onSink(m2,ho);}}}
+    }
+    // ring (ringer): a marble whose center leaves the ring is out
+    if(S.ring){
+      for(var r2=0;r2<S.balls.length;r2++){var m3=S.balls[r2];if(m3.sunk||m3.out)continue;
+        if(Math.hypot(m3.x-S.ring.x,m3.y-S.ring.y)>S.ring.r){m3.out=true;
+          if(S.onOut)S.onOut(m3);}}
+    }
+    // rest? Gravity/tilt modes stay awake so tilt keeps working; flat modes settle.
+    if(grav){ return; }
+    var moving=false;
+    for(var z=0;z<S.balls.length;z++){var mm=S.balls[z];if(mm.sunk)continue;if(Math.hypot(mm.vx,mm.vy)>0.08){moving=true;break;}}
+    if(!moving){S.running=false; if(S.onRest)S.onRest();}
+  }
+  S.step=step;
+
+  function draw(){
+    ctx.clearRect(0,0,S.W,S.H);
+    // ring
+    if(S.ring){ctx.save();ctx.strokeStyle="rgba(232,220,192,.85)";ctx.lineWidth=Math.max(3,S.R*0.28);
+      ctx.setLineDash([S.R*0.7,S.R*0.5]);ctx.beginPath();ctx.arc(S.ring.x,S.ring.y,S.ring.r,0,7);ctx.stroke();ctx.restore();}
+    // holes
+    S.holes.forEach(function(ho){ctx.save();
+      var g=ctx.createRadialGradient(ho.x,ho.y,ho.r*0.2,ho.x,ho.y,ho.r);
+      g.addColorStop(0,"#000");g.addColorStop(.75,"#0b0b0f");g.addColorStop(1,"rgba(11,11,15,0)");
+      ctx.fillStyle=g;ctx.beginPath();ctx.arc(ho.x,ho.y,ho.r,0,7);ctx.fill();
+      ctx.strokeStyle=ho.filled?"rgba(126,224,106,.7)":"rgba(255,255,255,.18)";ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(ho.x,ho.y,ho.r,0,7);ctx.stroke();ctx.restore();});
+    // contact shadows
+    S.balls.forEach(function(m){if(m.sunk||m.out)return;ctx.save();ctx.globalAlpha=.3;ctx.fillStyle="#000";
+      ctx.beginPath();ctx.ellipse(m.x+2,m.y+S.R*0.5,S.R*0.92,S.R*0.5,0,0,7);ctx.fill();ctx.restore();});
+    // marbles
+    S.balls.forEach(function(m){if(m.sunk)return;ctx.save();
+      if(m.out)ctx.globalAlpha=.35;
+      ctx.translate(m.x,m.y);ctx.rotate(m.rot);
+      var rr=m.cue?S.R*1.06:S.R; paintMarble(ctx,rr,m.t);
+      if(m.cue){ctx.strokeStyle="rgba(255,255,255,.9)";ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,rr+2,0,7);ctx.stroke();}
+      ctx.restore();});
+    drawAim();
+  }
+  S.draw=draw;
+
+  function drawAim(){
+    if(!S.aim)return; var m=S.aim.m;
+    var dx=m.x-S.aim.px, dy=m.y-S.aim.py, dist=Math.hypot(dx,dy); if(dist<1)return;
+    var clamped=Math.min(dist,S.MAXPULL), frac=clamped/S.MAXPULL, ux=dx/dist, uy=dy/dist;
+    var col=frac<0.5?"#7ee06a":frac<0.8?"#ffc25c":"#ff6a5c";
+    ctx.save();
+    ctx.strokeStyle="rgba(255,255,255,.6)";ctx.lineWidth=2;ctx.setLineDash([7,7]);
+    ctx.beginPath();ctx.moveTo(m.x,m.y);ctx.lineTo(m.x+ux*(clamped+S.R*4),m.y+uy*(clamped+S.R*4));ctx.stroke();ctx.setLineDash([]);
+    ctx.strokeStyle=col;ctx.lineWidth=Math.max(4,S.R*0.35);ctx.lineCap="round";
+    ctx.beginPath();ctx.moveTo(m.x,m.y);ctx.lineTo(m.x-ux*clamped,m.y-uy*clamped);ctx.stroke();
+    ctx.fillStyle=col;ctx.beginPath();ctx.arc(m.x-ux*clamped,m.y-uy*clamped,S.R*0.4,0,7);ctx.fill();
+    ctx.restore();
+  }
+
+  function loop(){
+    if(S.aim){draw();S.raf=requestAnimationFrame(loop);return;}
+    if(!S.running){draw();return;}
+    step();draw();S.raf=requestAnimationFrame(loop);
+  }
+  S.loop=loop;
+  S.kick=function(){S.running=true;if(!S.raf)loop();else{cancelAnimationFrame(S.raf);S.raf=requestAnimationFrame(loop);}};
+
+  // aim input
+  function pt(e){var r=canvas.getBoundingClientRect();var t=e.touches?e.touches[0]:e;return{x:t.clientX-r.left,y:t.clientY-r.top};}
+  canvas.addEventListener("pointerdown",function(e){
+    if(!S.aimEnabled)return; var p=pt(e);
+    // only aimable balls (cue-controlled) respond
+    for(var i=S.balls.length-1;i>=0;i--){var m=S.balls[i];
+      if(m.sunk||m.out||m.locked)continue;
+      if(S.aimable && !S.aimable(m))continue;
+      if((m.x-p.x)*(m.x-p.x)+(m.y-p.y)*(m.y-p.y)<S.R*S.R*2.4){
+        S.aim={m:m,px:p.x,py:p.y};m.vx=0;m.vy=0;S.kick();e.preventDefault();break;}}
+  },{passive:false});
+  function move(e){if(!S.aim)return;var p=pt(e);S.aim.px=p.x;S.aim.py=p.y;draw();e.preventDefault();}
+  function up(){
+    if(!S.aim)return; var m=S.aim.m;
+    var dx=m.x-S.aim.px, dy=m.y-S.aim.py, dist=Math.hypot(dx,dy);
+    if(dist>4){var cl=Math.min(dist,S.MAXPULL),ux=dx/dist,uy=dy/dist;m.vx=ux*cl*S.POWER;m.vy=uy*cl*S.POWER;
+      if(S.onShoot)S.onShoot();}
+    S.aim=null;S.kick();
+  }
+  canvas.addEventListener("pointermove",move,{passive:false});
+  window.addEventListener("pointerup",up);
+  window.addEventListener("pointercancel",function(){S.aim=null;});
+
+  size();
+  return S;
+}
+function newBall(x,y,t,extra){var b={x:x,y:y,vx:0,vy:0,rot:Math.random()*6,t:t,sunk:false,out:false};
+  if(extra)for(var k in extra)b[k]=extra[k];return b;}
+
+/* ============================================================
+   NAVIGATION
+   ============================================================ */
+var SCREENS=["s-title","s-menu","s-ringer","s-golf","s-sandbox","s-gum","s-collect"];
+function show(id){SCREENS.forEach(function(s){$(s).classList.toggle("on",s===id);});
+  if(id==="s-title")startTitle();
+  if(id==="s-gum")buildGum();
+  if(id==="s-collect")renderCollection();
+}
+
+/* ============================================================
+   TITLE SCREEN - marbles pour from the top, tumble, settle
+   ============================================================ */
+var titleSim=null;
+function startTitle(){
+  var cv=$("titleFelt");
+  // playable title: no gravity, marbles are grab-and-shoot just like the games
+  if(!titleSim)titleSim=makeSim(cv,{aimable:function(){return true;},rScale:0.05});
+  titleSim.aimEnabled=true; titleSim.size();
+  titleSim.gx=0; titleSim.gy=0; titleSim.useTilt=false;
+  titleSim.balls=[];
+  var n=Math.min(bag.length,14);
+  // scatter them across the felt with a soft initial drift so it feels alive on load
+  for(var i=0;i<n;i++){var t=typeById(bag[i%bag.length]);
+    titleSim.balls.push(newBall(
+      titleSim.W*(0.12+0.76*Math.random()),
+      titleSim.H*(0.12+0.5*Math.random()),   // upper-ish so they don't sit under the buttons
+      t, {vx:(Math.random()*2-1)*2.2, vy:(Math.random()*2-1)*2.2}));}
+  titleSim.walls=true; titleSim.kick();
+}
+
+/* ============================================================
+   RINGER
+   ============================================================ */
+var ringer={sim:null, opp:"ai", turn:"you", yourOut:0, rivalOut:0, shooting:false};
+function initRinger(){
+  var cv=$("ringerFelt");
+  ringer.sim=makeSim(cv,{
+    aimable:function(m){return ringer.turn==="you"?m.cue:(ringer.opp==="ai"?false:m.rivalCue);},
+    onRest:ringerRest, onOut:ringerOut, rScale:0.038});
+  ringer.sim.onShoot=function(){ringer.shooting=true;};
+  ringer.sim.aimEnabled=true;
+  $("ringerNew").onclick=newRinger;
+  $("ringerMenu").onclick=function(){show("s-menu");};
+  $("ringerOpp").onclick=cycleOpp;
+  $("winAgain").onclick=function(){$("win").classList.remove("on");newRinger();};
+  $("winMenu").onclick=function(){$("win").classList.remove("on");show("s-menu");};
+}
+function cycleOpp(){ringer.opp=ringer.opp==="ai"?"solo":ringer.opp==="solo"?"two":"ai";
+  $("ringerOpp").textContent="Rival: "+(ringer.opp==="ai"?"AI":ringer.opp==="solo"?"Solo":"2P");
+  newRinger();}
+function newRinger(){
+  var S=ringer.sim; S.size(); S.balls=[]; ringer.yourOut=0; ringer.rivalOut=0; ringer.turn="you"; ringer.shooting=false;
+  $("win").classList.remove("on");
+  S.ring={x:S.W/2,y:S.H*0.46,r:Math.min(S.W,S.H)*0.36};
+  // target marbles clustered in the ring center (the "mibs")
+  var mibs=7, ang;
+  for(var i=0;i<mibs;i++){ang=i/mibs*Math.PI*2; var rr=(i===0?0:S.R*2.1);
+    S.balls.push(newBall(S.ring.x+Math.cos(ang)*rr, S.ring.y+Math.sin(ang)*rr,
+      typeById(bag[(i+2)%bag.length]||"clearie"), {target:true}));}
+  // your shooter at the bottom edge of the ring
+  S.balls.push(newBall(S.ring.x, S.ring.y+S.ring.r+S.R*1.2, typeById("steelie"), {cue:true}));
+  // rival shooter (only used in 2P) at the top
+  if(ringer.opp==="two")
+    S.balls.push(newBall(S.ring.x, S.ring.y-S.ring.r-S.R*1.2, typeById("galaxy"), {rivalCue:true}));
+  updRingerHud(); S.kick();
+}
+function ringerOut(m){
+  if(m.target){ if(ringer.turn==="you"){ringer.yourOut++; addCoins(2);} else ringer.rivalOut++; }
+  updRingerHud();
+}
+function updRingerHud(){
+  $("ringerScore").textContent="You "+ringer.yourOut+" \u00b7 Rival "+ringer.rivalOut;
+  $("ringerTurn").textContent=ringer.turn==="you"?"Your turn":"Rival's turn";
+}
+function targetsLeft(){var S=ringer.sim,n=0;S.balls.forEach(function(b){if(b.target&&!b.out&&!b.sunk)n++;});return n;}
+function ringerRest(){
+  if(!ringer.shooting){return;} ringer.shooting=false;
+  // return any shooter that flew out, back to the edge
+  var S=ringer.sim;
+  S.balls.forEach(function(b){if((b.cue||b.rivalCue)&&b.out){b.out=false;
+    b.x=S.ring.x;b.y=b.cue?S.ring.y+S.ring.r+S.R*1.2:S.ring.y-S.ring.r-S.R*1.2;b.vx=b.vy=0;}});
+  if(targetsLeft()===0){return finishRinger();}
+  // switch turns
+  if(ringer.opp==="two"){ ringer.turn=ringer.turn==="you"?"rival":"you"; updRingerHud();
+  } else if(ringer.opp==="ai"){
+    if(ringer.turn==="you"){ ringer.turn="rival"; updRingerHud(); setTimeout(aiShot,700); }
+    else { ringer.turn="you"; updRingerHud(); }
+  } // solo: always your turn
+}
+function aiShot(){
+  var S=ringer.sim;
+  // AI shooter appears at top, aims at the nearest target with some inaccuracy
+  var shooter=newBall(S.ring.x+(Math.random()*2-1)*S.ring.r*0.5, S.ring.y-S.ring.r-S.R*1.2, typeById("galaxy"), {aiCue:true});
+  S.balls.push(shooter);
+  var tgt=null,best=1e9;
+  S.balls.forEach(function(b){if(b.target&&!b.out){var d=Math.hypot(b.x-shooter.x,b.y-shooter.y);if(d<best){best=d;tgt=b;}}});
+  if(tgt){var ang=Math.atan2(tgt.y-shooter.y,tgt.x-shooter.x)+(Math.random()*2-1)*0.18;
+    var pw=9+Math.random()*3; shooter.vx=Math.cos(ang)*pw; shooter.vy=Math.sin(ang)*pw;}
+  ringer.shooting=true; S.kick();
+  // clean the temp AI shooter after it settles
+  ringer._aiClean=true;
+}
+function finishRinger(){
+  var you=ringer.yourOut, rival=ringer.rivalOut, win;
+  if(ringer.opp==="solo"){win=true;}
+  else win=you>=rival;
+  var bonus=win?15:0; if(bonus)addCoins(bonus);
+  $("winTitle").textContent=win?(ringer.opp==="solo"?"Ring cleared!":"You win!"):"Rival wins";
+  $("winCoins").textContent="+"+(you*2+bonus)+" coins  (\ud83e\ude99 in the bag)";
+  $("win").classList.add("on");
+}
+
+/* ============================================================
+   GOLF
+   ============================================================ */
+var golf={sim:null, shots:0, holes:3};
+function initGolf(){
+  var cv=$("golfFelt");
+  golf.sim=makeSim(cv,{aimable:function(m){return m.cue;}, onSink:golfSink, onRest:function(){}, rScale:0.04});
+  golf.sim.onShoot=function(){golf.shots++;updGolfHud();};
+  golf.sim.aimEnabled=true;
+  $("golfNew").onclick=newGolf; $("golfMenu").onclick=function(){show("s-menu");};
+}
+function newGolf(){
+  var S=golf.sim; S.size(); S.balls=[]; S.holes=[]; golf.shots=0;
+  var n=3;
+  for(var i=0;i<n;i++){S.holes.push({x:S.W*(0.25+0.5*Math.random()),y:S.H*(0.15+0.25*Math.random()),r:S.R*1.35,filled:false});}
+  S.balls.push(newBall(S.W/2,S.H*0.82,typeById(bag[0]||"cats_blue"),{cue:true}));
+  golf.holes=n; updGolfHud(); S.kick();
+}
+function golfSink(m,ho){ if(m.cue){ addCoins(3);
+    // respawn cue for next hole if any remain
+    var S=golf.sim, remaining=S.holes.filter(function(h){return !h.filled;}).length;
+    updGolfHud();
+    if(remaining===0){ var bonus=Math.max(5,20-golf.shots*2); addCoins(bonus);
+      toast("Course done! +"+bonus+" bonus"); setTimeout(newGolf,1400);
+    } else {
+      m.sunk=false; m.x=S.W/2; m.y=S.H*0.82; m.vx=m.vy=0;
+    }
+  }
+}
+function updGolfHud(){var S=golf.sim; var filled=S?S.holes.filter(function(h){return h.filled;}).length:0;
+  $("golfShots").textContent="Shots: "+golf.shots; $("golfHoles").textContent="Holes: "+filled+" / "+golf.holes;}
+
+/* ============================================================
+   SANDBOX
+   ============================================================ */
+var sand={sim:null};
+function initSandbox(){
+  var cv=$("sandFelt");
+  sand.sim=makeSim(cv,{aimable:function(){return true;}, rScale:0.042, useTilt:true});
+  sand.sim.aimEnabled=true;
+  $("sandMenu").onclick=function(){show("s-menu");};
+  $("sandMore").onclick=function(){var S=sand.sim;S.balls.push(newBall(S.W/2,S.R*1.5,weightedType(),{vx:(Math.random()*2-1)*1.2,vy:1}));S.kick();};
+  $("sandShake").onclick=function(){var S=sand.sim;S.balls.forEach(function(m){m.vx+=(Math.random()*2-1)*2.6;m.vy+=(Math.random()*2-1)*2.6;});S.kick();};
+}
+function newSandbox(){var S=sand.sim;S.size();S.balls=[];
+  var n=Math.min(bag.length,12);
+  for(var i=0;i<n;i++)S.balls.push(newBall(S.W*(0.2+0.6*Math.random()),S.H*(0.2+0.5*Math.random()),typeById(bag[i%bag.length])));
+  S.kick();}
+
+/* ============================================================
+   GUMBALL MACHINE
+   ============================================================ */
+function buildGum(){
+  var s='<defs><radialGradient id="glass" cx="42%" cy="34%" r="70%"><stop offset="0%" stop-color="rgba(255,255,255,.5)"/><stop offset="60%" stop-color="rgba(255,255,255,.08)"/><stop offset="100%" stop-color="rgba(255,255,255,0)"/></radialGradient></defs>'
+   +'<ellipse cx="100" cy="248" rx="52" ry="8" fill="rgba(0,0,0,.35)"/>'
+   // base
+   +'<rect x="60" y="180" width="80" height="60" rx="8" fill="#c23b3b" stroke="#7a1f1f" stroke-width="3"/>'
+   +'<rect x="82" y="212" width="36" height="20" rx="3" fill="#3a1010"/>'  // coin slot / chute
+   // globe
+   +'<circle cx="100" cy="110" r="72" fill="#20304a" stroke="#8895ad" stroke-width="4"/>';
+  // marbles inside the globe = a sample of the bag
+  var cx=100,cy=110,rad=62;
+  var sample=bag.slice(0,26);
+  for(var i=0;i<sample.length;i++){var t=typeById(sample[i]);
+    var a=Math.random()*Math.PI*2, rr=Math.random()*rad*0.82;
+    var mx=cx+Math.cos(a)*rr, my=cy+Math.sin(a)*rr*0.9+8;
+    var col=t.kind==="steel"?"#8892a0":t.kind==="galaxy"?"#4a2f7a":t.vane;
+    s+='<circle cx="'+mx.toFixed(1)+'" cy="'+my.toFixed(1)+'" r="9" fill="'+col+'"/>'
+      +'<circle cx="'+(mx-3).toFixed(1)+'" cy="'+(my-3).toFixed(1)+'" r="2.6" fill="rgba(255,255,255,.8)"/>';
+  }
+  s+='<circle cx="100" cy="110" r="72" fill="url(#glass)"/>'
+   // lid + knob
+   +'<rect x="86" y="30" width="28" height="14" rx="4" fill="#c23b3b" stroke="#7a1f1f" stroke-width="2"/>'
+   // crank knob
+   +'<circle cx="140" cy="210" r="10" fill="#e8c987" stroke="#7a5a1f" stroke-width="2"/><rect x="138" y="200" width="4" height="12" fill="#7a5a1f"/>';
+  $("gumSvg").innerHTML=s;
+  $("newMarbles").innerHTML="";
+}
+function crank(count,cost){
+  if(coins<cost){toast("Need "+cost+" coins \u2014 go win some marbles!");return;}
+  addCoins(-cost);
+  var box=$("newMarbles"); box.innerHTML="";
+  var got=[];
+  for(var i=0;i<count;i++){var t=weightedType();addMarbleToBag(t.id);got.push(t);}
+  got.forEach(function(t,idx){
+    var c=document.createElement("canvas");var sz=54,dpr=2;
+    c.width=sz*dpr;c.height=sz*dpr;c.style.width=sz+"px";c.style.height=sz+"px";
+    c.className="prizePop";c.style.animationDelay=(idx*0.08)+"s";
+    var cx=c.getContext("2d");cx.setTransform(dpr,0,0,dpr,0,0);cx.translate(sz/2,sz/2);paintMarble(cx,sz/2-3,t);
+    box.appendChild(c);
+  });
+  buildGumRefill();
+  toast(count===1?("You got a "+got[0].name+"!"):("Got "+count+" marbles!"));
+}
+function buildGumRefill(){
+  // just refresh the globe contents to reflect the new bag, keep the prize row
+  var saved=$("newMarbles").innerHTML; buildGum(); $("newMarbles").innerHTML=saved;
+}
+
+/* ============================================================
+   COLLECTION
+   ============================================================ */
+function renderCollection(){
+  var counts={};bag.forEach(function(id){counts[id]=(counts[id]||0)+1;});
+  var g=$("cGrid");g.innerHTML="";
+  TYPES.forEach(function(t){var n=counts[t.id]||0;
+    var cell=document.createElement("div");cell.className="cCell";
+    var c=document.createElement("canvas");var sz=64,dpr=2;c.width=sz*dpr;c.height=sz*dpr;c.style.width=sz+"px";c.style.height=sz+"px";
+    var cx=c.getContext("2d");cx.setTransform(dpr,0,0,dpr,0,0);cx.translate(sz/2,sz/2);paintMarble(cx,sz/2-3,t);
+    if(!n){c.style.filter="grayscale(1)";c.style.opacity=".35";}
+    var name=document.createElement("div");name.className="cName";name.textContent=t.name;
+    var cnt=document.createElement("div");cnt.className="cCount";cnt.textContent=n?("\u00d7"+n):"\u2014";
+    cell.appendChild(c);cell.appendChild(name);cell.appendChild(cnt);g.appendChild(cell);});
+}
+
+/* mode-card thumbnails */
+function drawModeThumbs(){
+  document.querySelectorAll(".modeCard canvas").forEach(function(c){
+    var dpr=2;c.width=60*dpr;c.height=60*dpr;var x=c.getContext("2d");x.setTransform(dpr,0,0,dpr,0,0);
+    x.fillStyle="#233b2e";x.fillRect(0,0,60,60);
+    var mode=c.dataset.mode;
+    if(mode==="ringer"){x.strokeStyle="#e8dcc0";x.lineWidth=2.5;x.setLineDash([4,3]);x.beginPath();x.arc(30,30,20,0,7);x.stroke();x.setLineDash([]);
+      [[30,30],[22,26],[38,26],[26,36],[34,36]].forEach(function(p,i){x.save();x.translate(p[0],p[1]);paintMarble(x,6,TYPES[i%TYPES.length]);x.restore();});}
+    else if(mode==="golf"){var g=x.createRadialGradient(20,20,1,20,20,9);g.addColorStop(0,"#000");g.addColorStop(1,"rgba(0,0,0,0)");x.fillStyle=g;x.beginPath();x.arc(20,20,9,0,7);x.fill();
+      x.save();x.translate(42,42);paintMarble(x,8,typeById("cats_blue"));x.restore();
+      x.strokeStyle="rgba(255,255,255,.5)";x.setLineDash([3,3]);x.beginPath();x.moveTo(42,42);x.lineTo(22,22);x.stroke();x.setLineDash([]);}
+    else{[[20,24],[38,22],[28,38],[44,40],[16,42]].forEach(function(p,i){x.save();x.translate(p[0],p[1]);paintMarble(x,7,TYPES[(i*2)%TYPES.length]);x.restore();});}
+  });
+}
+
+/* ============================================================
+   WIRE UP
+   ============================================================ */
+$("bPlay").onclick=function(){show("s-menu");};
+$("bGum2").onclick=function(){show("s-gum");};
+$("mRinger").onclick=function(){show("s-ringer");if(!ringer.sim)initRinger();newRinger();};
+$("mGolf").onclick=function(){show("s-golf");if(!golf.sim)initGolf();newGolf();};
+$("mSandbox").onclick=function(){show("s-sandbox");if(!sand.sim)initSandbox();newSandbox();};
+$("bGum").onclick=function(){show("s-gum");};
+$("bCollect2").onclick=function(){show("s-collect");};
+$("bCrank").onclick=function(){crank(1,10);};
+$("bCrank5").onclick=function(){crank(5,45);};
+$("gumMenu").onclick=function(){show("s-menu");};
+$("gumCollect").onclick=function(){show("s-collect");};
+$("collectMenu").onclick=function(){show("s-menu");};
+$("coins").addEventListener("click",function(){toast(coins+" coins \u00b7 win games and crank the machine");});
+
+window.addEventListener("resize",function(){
+  [titleSim,ringer.sim,golf.sim,sand.sim].forEach(function(s){if(s){s.size();s.draw();}});
+});
+
+/* device tilt -> gravity, for any sim with useTilt. https only; falls back to
+   the gentle default downward gravity when no sensor is available. */
+var TILT={gx:0, gy:0, have:false};
+window.addEventListener("deviceorientation",function(e){
+  if(e.gamma==null && e.beta==null)return;
+  TILT.have=true;
+  // gamma = left/right tilt (-90..90), beta = front/back (-180..180)
+  TILT.gx=Math.max(-1,Math.min(1,(e.gamma||0)/40))*0.5;
+  TILT.gy=Math.max(-1,Math.min(1,((e.beta||0)-25)/40))*0.5;
+  [titleSim, sand.sim].forEach(function(S){
+    if(S&&S.useTilt){ S.gx=TILT.gx; S.gy=Math.max(0.06,TILT.gy); S.kick(); }
+  });
+});
+// iOS 13+ needs a permission tap for motion; ask on first interaction
+function askMotion(){
+  try{
+    if(typeof DeviceOrientationEvent!=="undefined" &&
+       typeof DeviceOrientationEvent.requestPermission==="function"){
+      DeviceOrientationEvent.requestPermission().catch(function(){});
+    }
+  }catch(e){}
+}
+document.addEventListener("pointerdown",askMotion,{once:true});
+
+refreshCoins();
+drawModeThumbs();
+startTitle();
+</script>
+</body>
+</html>

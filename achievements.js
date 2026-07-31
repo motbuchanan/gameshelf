@@ -22,6 +22,7 @@ var TIER_NAMES   =["Newcomer","Regular","Veteran","Devotee","Legend"];
 
 /* storage key -> display name (any game that records can live here) */
 var NAMES={
+  marble_arcade_games:"Marble Arcade",
   bg_games:"Backgammon", bs_games:"Battleship", blocks_games:"Blocks", thumbstack_games:"Thumbstack", ks_games:"Knight School",
   brickbreak_games:"Brick Break", bridge_games:"Bridge", checkers_games:"Checkers",
   chess_games:"Chess", cc_games:"Chinese Checkers", cb_games:"Code Breaker",
