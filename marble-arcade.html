@@ -291,7 +291,7 @@
 "use strict";
 var $=function(i){return document.getElementById(i);};
 var MAX_ACTIVE=18;  // physics is O(n^2) pairwise; cap on-screen marbles for smooth play
-var VERSION="v1.6 \u00b7 Jul 31";
+var VERSION="v1.7 \u00b7 Aug 1";
 
 /* ============================================================
    SHARED MARBLE MODEL (same as the Bag toy - same localStorage keys,
@@ -705,7 +705,23 @@ function initSandbox(){
     if(live>=MAX_ACTIVE){toast("Table's full - "+MAX_ACTIVE+" marbles keeps it smooth");return;}
     S.balls.push(newBall(S.W/2,S.R*1.5,weightedType(),{vx:(Math.random()*2-1)*1.2,vy:1}));S.kick();};
   $("sandShake").onclick=function(){var S=sand.sim;S.balls.forEach(function(m){m.vx+=(Math.random()*2-1)*2.6;m.vy+=(Math.random()*2-1)*2.6;});S.kick();};
-  $("sandLevel").onclick=function(){ if(!TILT.have){toast("Tilt needs the online version + a one-time motion tap");return;} recalibrateTilt(); };
+  $("sandLevel").onclick=function(){
+    // if we already have live orientation data, just set the level now
+    if(TILT.have){ recalibrateTilt(); return; }
+    // otherwise ask for motion permission (this tap is the user gesture iOS needs)
+    toast("Allow motion so tilting works...");
+    requestMotion().then(function(state){
+      if(state==="unsupported"){ toast("This device has no tilt sensor"); return; }
+      if(state==="denied"){ toast("Motion is off. Turn it on in Settings > Safari > Motion & Orientation Access"); return; }
+      // granted - give the sensor a moment to deliver the first reading, then level
+      var waited=0, iv=setInterval(function(){
+        waited+=100;
+        if(TILT.have){ clearInterval(iv); recalibrateTilt(); }
+        else if(waited>=1500){ clearInterval(iv);
+          toast("Tilt needs the live web page (not a saved file) to read motion"); }
+      },100);
+    });
+  };
 }
 function newSandbox(){var S=sand.sim;S.size();S.balls=[];
   var ab=activeBag(); var n=ab.length;
@@ -1023,16 +1039,25 @@ window.addEventListener("deviceorientation",function(e){
     if(S&&S.useTilt){ S.gx=gx; S.gy=gy; if(Math.abs(gx)+Math.abs(gy)>0.02)S.kick(); }
   });
 });
-// iOS 13+ needs a permission tap for motion; ask on first interaction
-function askMotion(){
-  try{
-    if(typeof DeviceOrientationEvent!=="undefined" &&
-       typeof DeviceOrientationEvent.requestPermission==="function"){
-      DeviceOrientationEvent.requestPermission().catch(function(){});
+// iOS 13+ gates motion behind a permission prompt that MUST be triggered from a real
+// user tap (like the Set level button) and MUST be awaited. Returns a promise that
+// resolves "granted" | "denied" | "unsupported".
+var motionAsked=false;
+function requestMotion(){
+  return new Promise(function(resolve){
+    var DOE=window.DeviceOrientationEvent;
+    if(typeof DOE==="undefined"){resolve("unsupported");return;}
+    if(typeof DOE.requestPermission==="function"){
+      // iOS Safari path - shows the system dialog; must be inside a user gesture
+      DOE.requestPermission().then(function(state){
+        motionAsked=true; resolve(state==="granted"?"granted":"denied");
+      }).catch(function(){ resolve("denied"); });
+    } else {
+      // non-iOS (or older iOS): no prompt needed, motion just works if the sensor exists
+      motionAsked=true; resolve("granted");
     }
-  }catch(e){}
+  });
 }
-document.addEventListener("pointerdown",askMotion,{once:true});
 
 refreshCoins();
 drawModeThumbs();

@@ -62,6 +62,11 @@
   .cCell canvas{border-radius:50%;display:block;filter:drop-shadow(0 3px 4px rgba(0,0,0,.4))}
   .cName{font-size:11px;color:var(--dim);text-align:center;line-height:1.2}
   .cCount{font-size:10px;color:var(--accent);font-weight:700}
+  .cBtns{display:flex;gap:6px;margin-top:2px}
+  .cAdj{width:30px;height:30px;border-radius:8px;border:1px solid var(--line);background:var(--panel);
+    color:var(--txt);font:800 16px/1 inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+  .cAdj:active{transform:translateY(1px)}
+  #collectStatus{color:var(--accent)}
   h2{font-size:16px;margin:2px 0 4px}
   .sub{font-size:12px;color:var(--dim);margin:0 0 14px;line-height:1.45}
 </style>
@@ -100,7 +105,7 @@
   <section class="screen" id="s-collect">
     <div id="collectWrap">
       <h2>Your marbles</h2>
-      <p class="sub">Every kind of marble in your bag. Tap one to add another like it.</p>
+      <p class="sub">Tap <b>+</b> to add a marble or <b>\u2212</b> to remove one. <b id="collectStatus"></b></p>
       <div class="cGrid" id="cGrid"></div>
     </div>
   </section>
@@ -109,7 +114,8 @@
 <script>
 "use strict";
 var $=function(i){return document.getElementById(i);};
-var VERSION="v1.2 \u00b7 Jul 31";
+var MAX_POUR=18;  // collision is O(n^2); cap how many pour onto the felt so it stays smooth
+var VERSION="v1.3 \u00b7 Aug 1";
 $("ver").textContent=VERSION.split(" ")[0];
 
 /* ---------- marble types ----------
@@ -261,7 +267,9 @@ function buildBagSvg(){
 function pour(){
   sizeFelt();
   marbles=[];
-  bag.forEach(function(id,i){
+  // pour only up to MAX_POUR so a huge bag doesn't lag; the rest stay safely in the bag
+  var pourList=bag.slice(0,MAX_POUR);
+  pourList.forEach(function(id,i){
     var t=typeById(id);
     marbles.push({t:t, x:W*0.5+(Math.random()*2-1)*W*0.16,
       y:H*0.28+(Math.random()*2-1)*H*0.10,
@@ -270,7 +278,11 @@ function pour(){
   });
   poured=true; running=true;
   $("bagStage").classList.add("hidden");
-  $("bagHint").style.display="block";
+  $("bagHint").style.display=(bag.length>MAX_POUR)?"none":"block";
+  if(bag.length>MAX_POUR){
+    var h=$("bagHint"); h.style.display="block";
+    h.textContent="Poured "+MAX_POUR+" of your "+bag.length+" marbles (keeps it smooth). Drag one to roll it.";
+  }
   loop();
 }
 function scoop(){
@@ -421,21 +433,36 @@ window.addEventListener("deviceorientation",function(e){
 });
 
 /* ---------- collection ---------- */
+function removeOne(id){
+  var i=bag.lastIndexOf(id);
+  if(i>=0){bag.splice(i,1);saveBag(bag);}
+}
+function addOne(id){bag.push(id);saveBag(bag);}
 function renderCollection(){
   var counts={};bag.forEach(function(id){counts[id]=(counts[id]||0)+1;});
   var g=$("cGrid");g.innerHTML="";
+  var total=bag.length;
+  var st=$("collectStatus");
+  if(st)st.textContent=total+" marbles in your bag"+(total>MAX_POUR?" \u00b7 "+MAX_POUR+" pour out at a time":"");
   TYPES.forEach(function(t){
     var n=counts[t.id]||0;
     var cell=document.createElement("div");cell.className="cCell";
-    var c=document.createElement("canvas");var sz=64,dpr=2;
+    var c=document.createElement("canvas");var sz=60,dpr=2;
     c.width=sz*dpr;c.height=sz*dpr;c.style.width=sz+"px";c.style.height=sz+"px";
     var cx=c.getContext("2d");cx.setTransform(dpr,0,0,dpr,0,0);
     cx.translate(sz/2,sz/2);paintMarble(cx,sz/2-3,t);
     if(!n){c.style.filter="grayscale(1)";c.style.opacity=".35";}
     var name=document.createElement("div");name.className="cName";name.textContent=t.name;
     var cnt=document.createElement("div");cnt.className="cCount";cnt.textContent=n?("\u00d7"+n):"\u2014";
-    cell.appendChild(c);cell.appendChild(name);cell.appendChild(cnt);
-    cell.onclick=function(){bag.push(t.id);saveBag(bag);renderCollection();};
+    // +/- row: minus removes one of this type, plus adds one
+    var row=document.createElement("div");row.className="cBtns";
+    var minus=document.createElement("button");minus.className="cAdj";minus.textContent="\u2212";
+    minus.disabled=!n; if(!n)minus.style.opacity=".3";
+    minus.onclick=function(e){e.stopPropagation();removeOne(t.id);renderCollection();};
+    var plus=document.createElement("button");plus.className="cAdj";plus.textContent="+";
+    plus.onclick=function(e){e.stopPropagation();addOne(t.id);renderCollection();};
+    row.appendChild(minus);row.appendChild(plus);
+    cell.appendChild(c);cell.appendChild(name);cell.appendChild(cnt);cell.appendChild(row);
     g.appendChild(cell);
   });
 }
