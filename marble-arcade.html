@@ -82,6 +82,7 @@
 
   /* ---- collection ---- */
   #s-collect{padding:16px 13px;overflow-y:auto}
+  #s-designer{padding:16px 14px calc(24px + env(safe-area-inset-bottom));overflow-y:auto;-webkit-overflow-scrolling:touch}
   .cGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:12px}
   .cCell{display:flex;flex-direction:column;align-items:center;gap:5px}
   .cCell canvas{border-radius:50%;display:block;filter:drop-shadow(0 3px 4px rgba(0,0,0,.4))}
@@ -102,6 +103,41 @@
     text-align:center;max-width:320px;width:100%}
   #win h3{margin:2px 0 6px;font-size:22px}
   #win .coinsWon{color:var(--gold);font-weight:800;font-size:16px;margin:8px 0 14px}
+
+  #tut{position:absolute;inset:0;display:none;align-items:center;justify-content:center;
+    background:rgba(10,8,18,.86);z-index:40;padding:22px}
+  #tut.on{display:flex}
+  .tutCard{background:#1f1b2e;border:1px solid var(--line);border-radius:20px;padding:22px 20px;
+    max-width:360px;width:100%;text-align:center;max-height:86%;overflow-y:auto}
+  .tutCard h3{margin:6px 0 12px;font-size:22px}
+  .tutLizardRow{display:flex;align-items:center;gap:10px;margin:0 0 10px;text-align:left}
+  #tutLizard{flex:0 0 auto;width:72px;height:72px}
+  .tutBubble{position:relative;background:#2b2740;border:1px solid var(--line);border-radius:14px;
+    padding:10px 12px;font-size:13.5px;line-height:1.4;color:#eee}
+  .tutBubble:before{content:"";position:absolute;left:-7px;top:22px;width:0;height:0;
+    border-top:7px solid transparent;border-bottom:7px solid transparent;border-right:7px solid #2b2740}
+  .tutIcon{width:96px;height:96px;margin:0 auto 4px}
+  .tutStep{display:flex;align-items:flex-start;gap:10px;text-align:left;margin:11px 0;font-size:14.5px;line-height:1.45}
+  .tutStep .n{flex:0 0 auto;width:26px;height:26px;border-radius:50%;background:var(--accent);
+    color:#241a06;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center}
+  .tutStep b{color:var(--accent)}
+  .tutCoin{margin-top:10px;font-size:13px;color:var(--gold);background:rgba(255,215,106,.12);
+    border:1px solid rgba(255,215,106,.35);border-radius:10px;padding:9px 11px}
+  .helpBtn{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:11px 14px;
+    cursor:pointer;color:var(--txt);font:800 15px/1 inherit;min-height:44px}
+
+  #shooterPreview{display:flex;justify-content:center;margin:6px auto 14px}
+  #shooterPreview canvas{border-radius:50%;filter:drop-shadow(0 6px 10px rgba(0,0,0,.5));background:radial-gradient(circle at 50% 40%,#2c4a39,#152318);padding:12px}
+  .dsGroup{max-width:420px;margin:0 auto 14px;width:100%}
+  .dsLabel{font-size:13px;font-weight:700;color:var(--dim);margin:0 0 7px;text-align:center}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+  .chip{font:700 13px/1 inherit;color:var(--dim);background:var(--panel);border:1px solid var(--line);
+    border-radius:999px;padding:10px 14px;cursor:pointer;min-height:40px}
+  .chip.on{background:var(--accent);border-color:var(--accent);color:#241a06}
+  .swatches{display:flex;flex-wrap:wrap;gap:9px;justify-content:center}
+  .sw{width:40px;height:40px;border-radius:50%;cursor:pointer;border:3px solid transparent;
+    box-shadow:0 2px 5px rgba(0,0,0,.4)}
+  .sw.on{border-color:#fff}
 </style>
 </head>
 <body>
@@ -157,6 +193,7 @@
     <div class="bar">
       <button class="btn" id="ringerMenu">Menu</button>
       <button class="btn" id="ringerNew">New game</button>
+      <button class="helpBtn" id="ringerHelp" aria-label="How to play">?</button>
       <span class="pill" id="ringerOpp" style="margin-left:auto;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:11px 13px;cursor:pointer">Rival: AI</span>
     </div>
   </section>
@@ -171,6 +208,7 @@
     <div class="bar">
       <button class="btn" id="golfMenu">Menu</button>
       <button class="btn" id="golfNew">New course</button>
+      <button class="helpBtn" id="golfHelp" aria-label="How to play">?</button>
     </div>
   </section>
 
@@ -181,8 +219,10 @@
     </div>
     <div class="bar">
       <button class="btn" id="sandMenu">Menu</button>
+      <button class="helpBtn" id="sandHelp" aria-label="How to play">?</button>
       <button class="btn" id="sandMore">Add marble</button>
       <button class="btn" id="sandShake">Shake</button>
+      <button class="btn" id="sandLevel">&#127777; Set level</button>
     </div>
   </section>
 
@@ -205,10 +245,44 @@
   <!-- COLLECTION -->
   <section class="screen" id="s-collect">
     <h2>Your marbles</h2>
-    <p class="sub">Everything in your bag. Win games and crank the machine to collect them all.</p>
+    <p class="sub">Everything you own. Bench a type to keep it in your collection but out of play, so the table stays smooth. <b id="collectStatus"></b></p>
+    <button class="btn go big" id="openDesigner" style="max-width:360px;margin:0 auto 14px">🎨 Design your shooter</button>
     <div class="cGrid" id="cGrid"></div>
     <button class="btn big" id="collectMenu" style="margin-top:14px;max-width:360px">Back to menu</button>
   </section>
+
+  <!-- SHOOTER DESIGNER -->
+  <section class="screen" id="s-designer">
+    <h2>Design your shooter</h2>
+    <p class="sub">Make your own shooter marble. This is the one you fire in Ringer and roll in Golf.</p>
+    <div id="shooterPreview"><canvas id="dsPreview" width="180" height="180"></canvas></div>
+    <div class="dsGroup">
+      <div class="dsLabel">Style</div>
+      <div class="chips" id="dsKinds"></div>
+    </div>
+    <div class="dsGroup">
+      <div class="dsLabel">Main colour</div>
+      <div class="swatches" id="dsBase"></div>
+    </div>
+    <div class="dsGroup" id="dsAccentGroup">
+      <div class="dsLabel">Pattern colour</div>
+      <div class="swatches" id="dsVane"></div>
+    </div>
+    <button class="btn go big" id="dsSave" style="max-width:360px;margin:8px auto 0">Save my shooter</button>
+    <button class="btn big" id="dsBack" style="max-width:360px;margin:0 auto">Back to collection</button>
+  </section>
+
+  <!-- TUTORIAL OVERLAY (shared by all modes) -->
+  <div id="tut"><div class="tutCard">
+    <div class="tutLizardRow">
+      <canvas id="tutLizard" width="72" height="72"></canvas>
+      <div class="tutBubble" id="tutBubble">Hi! I'm Gil. Let me show you how this one works.</div>
+    </div>
+    <div class="tutIcon" id="tutIcon"></div>
+    <h3 id="tutTitle">How to play</h3>
+    <div id="tutBody"></div>
+    <button class="btn go big" id="tutGo" style="margin-top:6px">Got it, let's play</button>
+  </div></div>
 </main>
 
 <div id="toast"></div>
@@ -216,7 +290,8 @@
 <script>
 "use strict";
 var $=function(i){return document.getElementById(i);};
-var VERSION="v1.2 \u00b7 Jul 31";
+var MAX_ACTIVE=18;  // physics is O(n^2) pairwise; cap on-screen marbles for smooth play
+var VERSION="v1.6 \u00b7 Jul 31";
 
 /* ============================================================
    SHARED MARBLE MODEL (same as the Bag toy - same localStorage keys,
@@ -241,6 +316,17 @@ function weightedType(){
   return pool[Math.floor(Math.random()*pool.length)];
 }
 
+var _galaxyCache=null;
+function galaxyStars(t){
+  if(_galaxyCache)return _galaxyCache;
+  // a small deterministic PRNG so the field is identical every session
+  var seed=1337, rnd=function(){seed=(seed*1103515245+12345)&0x7fffffff;return seed/0x7fffffff;};
+  var out=[];
+  for(var i=0;i<26;i++){var x=(rnd()*2-1)*0.8,y=(rnd()*2-1)*0.8;
+    if(x*x+y*y>0.7)continue;
+    out.push({x:x,y:y,s:rnd()*0.05+0.02,w:i%4!==0});}
+  _galaxyCache=out; return out;
+}
 function paintMarble(ctx,r,t){
   ctx.save();
   var body=ctx.createRadialGradient(-r*0.3,-r*0.35,r*0.15, 0,0,r);
@@ -255,8 +341,13 @@ function paintMarble(ctx,r,t){
   else if(t.kind==="swirl"){ctx.lineWidth=r*0.16;ctx.lineCap="round";ctx.strokeStyle=t.vane;ctx.beginPath();
     for(var i2=0;i2<=40;i2++){var th=i2/40*Math.PI*2.4;var rr=r*0.12+i2/40*r*0.7;var x=Math.cos(th)*rr,y=Math.sin(th)*rr;if(i2===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);}
     ctx.stroke();ctx.globalAlpha=.5;ctx.strokeStyle=shade(t.vane,0.25);ctx.lineWidth=r*0.07;ctx.stroke();ctx.globalAlpha=1;}
-  else if(t.kind==="galaxy"){for(var s=0;s<26;s++){var rx=(Math.random()*2-1)*r*0.8,ry=(Math.random()*2-1)*r*0.8;if(rx*rx+ry*ry>r*r*0.7)continue;
-    ctx.fillStyle=s%4?"rgba(255,255,255,.8)":shade(t.vane,0.2);ctx.beginPath();ctx.arc(rx,ry,Math.random()*r*0.05+0.4,0,7);ctx.fill();}}
+  else if(t.kind==="galaxy"){
+    // fixed star field: computed ONCE per type and cached, so stars don't flicker
+    // when the marble is redrawn every frame (a rotating marble already spins them)
+    var stars=galaxyStars(t);
+    for(var s=0;s<stars.length;s++){var st2=stars[s];
+      ctx.fillStyle=st2.w?"rgba(255,255,255,.85)":shade(t.vane,0.2);
+      ctx.beginPath();ctx.arc(st2.x*r,st2.y*r,st2.s*r,0,7);ctx.fill();}}
   else if(t.kind==="pearl"){var pg=ctx.createRadialGradient(r*0.2,r*0.2,0,0,0,r);pg.addColorStop(0,"rgba(255,255,255,0)");pg.addColorStop(.7,"rgba(255,230,168,.5)");pg.addColorStop(1,"rgba(255,200,120,.7)");
     ctx.fillStyle=pg;ctx.beginPath();ctx.arc(0,0,r,0,7);ctx.fill();}
   else if(t.kind==="clear"){ctx.fillStyle="rgba(120,170,230,.28)";ctx.beginPath();ctx.arc(r*0.1,r*0.15,r*0.6,0,7);ctx.fill();}
@@ -274,14 +365,24 @@ function shade(hex,amt){var c=hex.replace("#","");var n=parseInt(c,16);var r=(n>
   return "rgb("+r+","+g+","+b+")";}
 
 /* ---------- persisted bag + coins (shared with the Bag toy) ---------- */
-var BKEY="marbles_bag_v1", CKEY="marbles_coins_v1";
+var BKEY="marbles_bag_v1", CKEY="marbles_coins_v1", XKEY="marbles_benched_v1";
 function loadBag(){try{var b=JSON.parse(localStorage.getItem(BKEY));if(b&&b.length)return b;}catch(e){}
   var start=["cats_blue","cats_green","swirl_red","swirl_purple","clearie","steelie","cats_amber","swirl_teal","galaxy","pearl","cats_blue","swirl_red","clearie","steelie"];
   saveBag(start);return start;}
 function saveBag(b){try{localStorage.setItem(BKEY,JSON.stringify(b));}catch(e){}}
 function loadCoins(){try{var c=parseInt(localStorage.getItem(CKEY),10);return isNaN(c)?0:c;}catch(e){return 0;}}
 function saveCoins(c){try{localStorage.setItem(CKEY,String(c));}catch(e){}}
-var bag=loadBag(), coins=loadCoins();
+function loadBenched(){try{return JSON.parse(localStorage.getItem(XKEY))||{};}catch(e){return {};}}
+function saveBenched(b){try{localStorage.setItem(XKEY,JSON.stringify(b));}catch(e){}}
+var bag=loadBag(), coins=loadCoins(), benched=loadBenched();
+/* the marbles actually put IN PLAY: full bag minus benched types, capped so the
+   O(n^2) physics stays smooth. Benched marbles are still OWNED, just on the shelf. */
+function activeBag(){
+  var out=bag.filter(function(id){return !benched[id];});
+  return out.slice(0,MAX_ACTIVE);
+}
+function benchType(id){benched[id]=true;saveBenched(benched);}
+function unbenchType(id){delete benched[id];saveBenched(benched);}
 function addCoins(n){coins+=n;saveCoins(coins);refreshCoins();}
 function refreshCoins(){$("coinN").textContent=coins;}
 function addMarbleToBag(id){bag.push(id);saveBag(bag);}
@@ -349,9 +450,12 @@ function makeSim(canvas, opts){
           if(hd<ho.r*0.7 && Math.hypot(m2.vx,m2.vy)<3.2){m2.sunk=true;ho.filled=true;
             if(S.onSink)S.onSink(m2,ho);}}}
     }
-    // ring (ringer): a marble whose center leaves the ring is out
+    // ring (ringer): only TARGET marbles get knocked out. Shooters live outside the
+    // ring by design, so they must be exempt or they'd be flagged out and become
+    // ungrabbable ghosts the instant the game starts.
     if(S.ring){
       for(var r2=0;r2<S.balls.length;r2++){var m3=S.balls[r2];if(m3.sunk||m3.out)continue;
+        if(!m3.target)continue;   // shooters never count as "out"
         if(Math.hypot(m3.x-S.ring.x,m3.y-S.ring.y)>S.ring.r){m3.out=true;
           if(S.onOut)S.onOut(m3);}}
     }
@@ -443,11 +547,12 @@ function newBall(x,y,t,extra){var b={x:x,y:y,vx:0,vy:0,rot:Math.random()*6,t:t,s
 /* ============================================================
    NAVIGATION
    ============================================================ */
-var SCREENS=["s-title","s-menu","s-ringer","s-golf","s-sandbox","s-gum","s-collect"];
+var SCREENS=["s-title","s-menu","s-ringer","s-golf","s-sandbox","s-gum","s-collect","s-designer"];
 function show(id){SCREENS.forEach(function(s){$(s).classList.toggle("on",s===id);});
   if(id==="s-title")startTitle();
   if(id==="s-gum")buildGum();
   if(id==="s-collect")renderCollection();
+  if(id==="s-designer")openDesigner();
 }
 
 /* ============================================================
@@ -461,9 +566,9 @@ function startTitle(){
   titleSim.aimEnabled=true; titleSim.size();
   titleSim.gx=0; titleSim.gy=0; titleSim.useTilt=false;
   titleSim.balls=[];
-  var n=Math.min(bag.length,14);
+  var ab=activeBag(); var n=ab.length;
   // scatter them across the felt with a soft initial drift so it feels alive on load
-  for(var i=0;i<n;i++){var t=typeById(bag[i%bag.length]);
+  for(var i=0;i<n;i++){var t=typeById(ab[i]);
     titleSim.balls.push(newBall(
       titleSim.W*(0.12+0.76*Math.random()),
       titleSim.H*(0.12+0.5*Math.random()),   // upper-ish so they don't sit under the buttons
@@ -494,14 +599,15 @@ function cycleOpp(){ringer.opp=ringer.opp==="ai"?"solo":ringer.opp==="solo"?"two
 function newRinger(){
   var S=ringer.sim; S.size(); S.balls=[]; ringer.yourOut=0; ringer.rivalOut=0; ringer.turn="you"; ringer.shooting=false;
   $("win").classList.remove("on");
-  S.ring={x:S.W/2,y:S.H*0.46,r:Math.min(S.W,S.H)*0.36};
-  // target marbles clustered in the ring center (the "mibs")
+  S.ring={x:S.W/2,y:S.H*0.46,r:Math.min(S.W,S.H)*0.26};
+  // target marbles ("mibs") arranged as a small cluster that sits well inside the ring
+  // but close enough to the edge that a solid hit knocks one out
   var mibs=7, ang;
-  for(var i=0;i<mibs;i++){ang=i/mibs*Math.PI*2; var rr=(i===0?0:S.R*2.1);
+  for(var i=0;i<mibs;i++){ang=i/mibs*Math.PI*2; var rr=(i===0?0:S.R*2.3);
     S.balls.push(newBall(S.ring.x+Math.cos(ang)*rr, S.ring.y+Math.sin(ang)*rr,
-      typeById(bag[(i+2)%bag.length]||"clearie"), {target:true}));}
+      typeById((activeBag()[(i+2)%Math.max(1,activeBag().length)])||"clearie"), {target:true}));}
   // your shooter at the bottom edge of the ring
-  S.balls.push(newBall(S.ring.x, S.ring.y+S.ring.r+S.R*1.2, typeById("steelie"), {cue:true}));
+  S.balls.push(newBall(S.ring.x, S.ring.y+S.ring.r+S.R*1.2, shooterType(), {cue:true}));
   // rival shooter (only used in 2P) at the top
   if(ringer.opp==="two")
     S.balls.push(newBall(S.ring.x, S.ring.y-S.ring.r-S.R*1.2, typeById("galaxy"), {rivalCue:true}));
@@ -568,7 +674,7 @@ function newGolf(){
   var S=golf.sim; S.size(); S.balls=[]; S.holes=[]; golf.shots=0;
   var n=3;
   for(var i=0;i<n;i++){S.holes.push({x:S.W*(0.25+0.5*Math.random()),y:S.H*(0.15+0.25*Math.random()),r:S.R*1.35,filled:false});}
-  S.balls.push(newBall(S.W/2,S.H*0.82,typeById(bag[0]||"cats_blue"),{cue:true}));
+  S.balls.push(newBall(S.W/2,S.H*0.82,shooterType(),{cue:true}));
   golf.holes=n; updGolfHud(); S.kick();
 }
 function golfSink(m,ho){ if(m.cue){ addCoins(3);
@@ -594,12 +700,16 @@ function initSandbox(){
   sand.sim=makeSim(cv,{aimable:function(){return true;}, rScale:0.042, useTilt:true});
   sand.sim.aimEnabled=true;
   $("sandMenu").onclick=function(){show("s-menu");};
-  $("sandMore").onclick=function(){var S=sand.sim;S.balls.push(newBall(S.W/2,S.R*1.5,weightedType(),{vx:(Math.random()*2-1)*1.2,vy:1}));S.kick();};
+  $("sandMore").onclick=function(){var S=sand.sim;
+    var live=S.balls.filter(function(b){return !b.sunk;}).length;
+    if(live>=MAX_ACTIVE){toast("Table's full - "+MAX_ACTIVE+" marbles keeps it smooth");return;}
+    S.balls.push(newBall(S.W/2,S.R*1.5,weightedType(),{vx:(Math.random()*2-1)*1.2,vy:1}));S.kick();};
   $("sandShake").onclick=function(){var S=sand.sim;S.balls.forEach(function(m){m.vx+=(Math.random()*2-1)*2.6;m.vy+=(Math.random()*2-1)*2.6;});S.kick();};
+  $("sandLevel").onclick=function(){ if(!TILT.have){toast("Tilt needs the online version + a one-time motion tap");return;} recalibrateTilt(); };
 }
 function newSandbox(){var S=sand.sim;S.size();S.balls=[];
-  var n=Math.min(bag.length,12);
-  for(var i=0;i<n;i++)S.balls.push(newBall(S.W*(0.2+0.6*Math.random()),S.H*(0.2+0.5*Math.random()),typeById(bag[i%bag.length])));
+  var ab=activeBag(); var n=ab.length;
+  for(var i=0;i<n;i++)S.balls.push(newBall(S.W*(0.2+0.6*Math.random()),S.H*(0.2+0.5*Math.random()),typeById(ab[i])));
   S.kick();}
 
 /* ============================================================
@@ -658,14 +768,28 @@ function buildGumRefill(){
 function renderCollection(){
   var counts={};bag.forEach(function(id){counts[id]=(counts[id]||0)+1;});
   var g=$("cGrid");g.innerHTML="";
+  var activeCount=activeBag().length;
+  $("collectStatus").textContent=activeCount+" of up to "+MAX_ACTIVE+" marbles in play";
   TYPES.forEach(function(t){var n=counts[t.id]||0;
     var cell=document.createElement("div");cell.className="cCell";
     var c=document.createElement("canvas");var sz=64,dpr=2;c.width=sz*dpr;c.height=sz*dpr;c.style.width=sz+"px";c.style.height=sz+"px";
     var cx=c.getContext("2d");cx.setTransform(dpr,0,0,dpr,0,0);cx.translate(sz/2,sz/2);paintMarble(cx,sz/2-3,t);
+    var isBenched=!!benched[t.id];
     if(!n){c.style.filter="grayscale(1)";c.style.opacity=".35";}
+    else if(isBenched){c.style.opacity=".4";}
     var name=document.createElement("div");name.className="cName";name.textContent=t.name;
     var cnt=document.createElement("div");cnt.className="cCount";cnt.textContent=n?("\u00d7"+n):"\u2014";
-    cell.appendChild(c);cell.appendChild(name);cell.appendChild(cnt);g.appendChild(cell);});
+    cell.appendChild(c);cell.appendChild(name);cell.appendChild(cnt);
+    if(n){
+      // tap to bench/unbench this type: benched = owned but not put in play
+      var tog=document.createElement("button");tog.className="benchBtn";
+      tog.textContent=isBenched?"Play":"Bench";
+      tog.style.cssText="font:700 10px/1 inherit;border-radius:999px;padding:5px 9px;margin-top:2px;cursor:pointer;border:1px solid "+
+        (isBenched?"rgba(126,224,106,.5);background:rgba(126,224,106,.15);color:#7ee06a":"rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:#a79fbd");
+      tog.onclick=function(){ if(benched[t.id])unbenchType(t.id); else benchType(t.id); renderCollection(); };
+      cell.appendChild(tog);
+    }
+    g.appendChild(cell);});
 }
 
 /* mode-card thumbnails */
@@ -684,13 +808,187 @@ function drawModeThumbs(){
 }
 
 /* ============================================================
+   TUTORIALS - one per mode, shown on first entry + via the ? button
+   ============================================================ */
+var TUT={
+  ringer:{
+    title:"Ringer",
+    draw:function(cx){
+      cx.strokeStyle="#e8dcc0";cx.lineWidth=3;cx.setLineDash([6,4]);
+      cx.beginPath();cx.arc(48,40,26,0,7);cx.stroke();cx.setLineDash([]);
+      [[48,40],[40,34],[56,34],[42,48],[54,48]].forEach(function(p,i){marbleMini(cx,p[0],p[1],7,i);});
+      marbleMini(cx,48,84,8,7);
+      cx.strokeStyle="rgba(255,255,255,.5)";cx.setLineDash([3,3]);
+      cx.beginPath();cx.moveTo(48,76);cx.lineTo(48,58);cx.stroke();cx.setLineDash([]);
+    },
+    steps:[
+      "Your <b>shooter</b> is the marble just <b>below the ring</b>. The marbles inside the ring are the targets.",
+      "<b>Press your shooter</b> and <b>pull back</b> away from it. A line shows your aim, and the colour shows your power.",
+      "<b>Let go</b> to fire it into the ring and knock the target marbles <b>out past the dashed line</b>.",
+      "Clear all the targets to win. Your shooter always comes back to its spot after each shot."
+    ],
+    coin:"You earn 2 coins for every marble you knock out, plus 15 for winning."
+  },
+  golf:{
+    title:"Marble Golf",
+    draw:function(cx){
+      var g=cx.createRadialGradient(34,32,2,34,32,11);g.addColorStop(0,"#000");g.addColorStop(1,"rgba(0,0,0,0)");
+      cx.fillStyle=g;cx.beginPath();cx.arc(34,32,11,0,7);cx.fill();
+      marbleMini(cx,64,74,9,0);
+      cx.strokeStyle="rgba(255,255,255,.55)";cx.setLineDash([4,4]);
+      cx.beginPath();cx.moveTo(64,74);cx.lineTo(34,32);cx.stroke();cx.setLineDash([]);
+    },
+    steps:[
+      "You have <b>one marble</b> and some <b>dark holes</b> on the felt.",
+      "<b>Press your marble</b> and <b>pull back</b> to aim, just like a slingshot.",
+      "<b>Let go</b> to roll it. Guide it into a hole. It needs to be rolling slowly to drop in.",
+      "Sink all the holes in as <b>few shots</b> as you can. Fewer shots means a bigger coin bonus."
+    ],
+    coin:"You earn 3 coins per hole, plus up to 20 more for finishing quickly."
+  },
+  sandbox:{
+    title:"Sandbox",
+    draw:function(cx){
+      [[30,36],[54,30],[42,54],[68,58],[24,60]].forEach(function(p,i){marbleMini(cx,p[0],p[1],8,i*2);});
+    },
+    steps:[
+      "This is <b>free play</b> \u2014 no rules, no score.",
+      "<b>Press any marble</b> and <b>pull back</b> to shoot it around.",
+      "Use <b>Add marble</b> for more, <b>Shake</b> to stir them up, and <b>Set level</b> to steer by tilting the tablet.",
+      "Just a calm place to knock marbles around."
+    ],
+    coin:null
+  }
+};
+function marbleMini(cx,x,y,r,i){
+  // reuse the real marble renderer so tutorial marbles match the game exactly
+  cx.save();cx.translate(x,y);paintMarble(cx,r,TYPES[i%TYPES.length]);cx.restore();
+}
+var TUTSEEN_KEY="marble_tut_seen_v1";
+function tutSeen(){try{return JSON.parse(localStorage.getItem(TUTSEEN_KEY))||{};}catch(e){return {};}}
+function markTutSeen(mode){var t=tutSeen();t[mode]=true;try{localStorage.setItem(TUTSEEN_KEY,JSON.stringify(t));}catch(e){}}
+function drawLizard(cx){
+  // Gil the marble coach - a friendly green lizard, drawn on canvas (no image files)
+  cx.clearRect(0,0,72,72);
+  cx.save();cx.translate(36,38);
+  // tail
+  cx.fillStyle="#3fae5a";cx.beginPath();
+  cx.moveTo(-14,10);cx.quadraticCurveTo(-30,14,-26,-2);cx.quadraticCurveTo(-22,6,-12,4);cx.fill();
+  // back legs
+  cx.fillStyle="#2f9048";
+  cx.beginPath();cx.ellipse(-10,18,6,4,0.4,0,7);cx.fill();
+  cx.beginPath();cx.ellipse(12,18,6,4,-0.4,0,7);cx.fill();
+  // body
+  var bg=cx.createRadialGradient(-4,-6,3,0,0,24);bg.addColorStop(0,"#6fd486");bg.addColorStop(1,"#3fae5a");
+  cx.fillStyle=bg;cx.beginPath();cx.ellipse(0,2,18,20,0,0,7);cx.fill();
+  // belly
+  cx.fillStyle="#cdeecb";cx.beginPath();cx.ellipse(0,7,10,12,0,0,7);cx.fill();
+  // little arms
+  cx.fillStyle="#3fae5a";
+  cx.beginPath();cx.ellipse(-16,2,5,3.5,0.5,0,7);cx.fill();
+  cx.beginPath();cx.ellipse(16,2,5,3.5,-0.5,0,7);cx.fill();
+  // head
+  var hg=cx.createRadialGradient(-4,-16,2,0,-12,18);hg.addColorStop(0,"#6fd486");hg.addColorStop(1,"#3fae5a");
+  cx.fillStyle=hg;cx.beginPath();cx.ellipse(0,-14,16,13,0,0,7);cx.fill();
+  // cheeks
+  cx.fillStyle="rgba(255,150,160,.4)";
+  cx.beginPath();cx.arc(-9,-9,3.2,0,7);cx.fill();cx.beginPath();cx.arc(9,-9,3.2,0,7);cx.fill();
+  // eyes (big friendly)
+  cx.fillStyle="#fff";cx.beginPath();cx.arc(-6,-17,5,0,7);cx.fill();cx.beginPath();cx.arc(6,-17,5,0,7);cx.fill();
+  cx.fillStyle="#1a2b1e";cx.beginPath();cx.arc(-5,-16,2.4,0,7);cx.fill();cx.beginPath();cx.arc(7,-16,2.4,0,7);cx.fill();
+  cx.fillStyle="#fff";cx.beginPath();cx.arc(-5.8,-17,0.9,0,7);cx.fill();cx.beginPath();cx.arc(6.2,-17,0.9,0,7);cx.fill();
+  // smile
+  cx.strokeStyle="#1a2b1e";cx.lineWidth=1.6;cx.lineCap="round";
+  cx.beginPath();cx.arc(0,-9,5,0.15*Math.PI,0.85*Math.PI);cx.stroke();
+  // head spikes
+  cx.fillStyle="#2f9048";
+  [-8,0,8].forEach(function(dx){cx.beginPath();cx.moveTo(dx-3,-25);cx.lineTo(dx,-31);cx.lineTo(dx+3,-25);cx.fill();});
+  cx.restore();
+}
+var GIL_LINES={
+  ringer:"Knock the marbles out of the ring! Pull your shooter back and let go.",
+  golf:"Roll your marble into the dark holes. Fewer tries, more coins!",
+  sandbox:"No rules here - just pull back and shoot marbles around. Have fun!"
+};
+
+function showTutorial(mode){
+  var t=TUT[mode];if(!t)return;
+  $("tutTitle").textContent=t.title;
+  // draw Gil the lizard coach + his line for this mode
+  var lz=$("tutLizard");var ldpr=2;lz.width=72*ldpr;lz.height=72*ldpr;lz.style.width="72px";lz.style.height="72px";
+  var lcx=lz.getContext("2d");lcx.setTransform(ldpr,0,0,ldpr,0,0);drawLizard(lcx);
+  $("tutBubble").textContent=GIL_LINES[mode]||"Let me show you how this works!";
+  var ic=$("tutIcon");ic.innerHTML="";
+  var cnv=document.createElement("canvas");var sz=96,dpr=2;cnv.width=sz*dpr;cnv.height=sz*dpr;
+  cnv.style.width=sz+"px";cnv.style.height=sz+"px";var cx=cnv.getContext("2d");cx.setTransform(dpr,0,0,dpr,0,0);
+  t.draw(cx);ic.appendChild(cnv);
+  var body=$("tutBody");body.innerHTML="";
+  t.steps.forEach(function(st,i){var d=document.createElement("div");d.className="tutStep";
+    d.innerHTML='<span class="n">'+(i+1)+'</span><div>'+st+'</div>';body.appendChild(d);});
+  if(t.coin){var c=document.createElement("div");c.className="tutCoin";c.textContent="💰 "+t.coin;body.appendChild(c);}
+  $("tut").classList.add("on");
+  $("tutGo").onclick=function(){$("tut").classList.remove("on");markTutSeen(mode);};
+}
+function maybeTutorial(mode){ if(!tutSeen()[mode]) showTutorial(mode); }
+
+/* ============================================================
+   SHOOTER DESIGNER - build a custom {base,vane,kind} marble, saved and
+   used as the cue in Ringer + Golf. Rendered with the real paintMarble.
+   ============================================================ */
+var SHOOTER_KEY="marbles_shooter_v1";
+var DS_KINDS=[
+  {kind:"steel", label:"Steelie"},
+  {kind:"cateye",label:"Cat's-Eye"},
+  {kind:"swirl", label:"Swirl"},
+  {kind:"clear", label:"Clearie"},
+  {kind:"galaxy",label:"Galaxy"},
+  {kind:"pearl", label:"Pearl"}
+];
+var DS_BASE=["#eaf3ff","#eafff0","#fff2f2","#f6f0ff","#fff6e6","#eefeff","#e9edf2","#1a1030","#ffe9c7","#e7f0ff"];
+var DS_VANE=["#2f7ff0","#25b552","#e23b3b","#8a4fe0","#f0a52f","#1fb6c9","#7c8794","#c58bff","#ff6a9d","#ffd34d"];
+function defaultShooter(){return {base:"#e9edf2", vane:"#7c8794", kind:"steel"};}
+function loadShooter(){try{var v=JSON.parse(localStorage.getItem(SHOOTER_KEY));if(v&&v.kind)return v;}catch(e){}return defaultShooter();}
+function saveShooter(sh){try{localStorage.setItem(SHOOTER_KEY,JSON.stringify(sh));}catch(e){}}
+var shooterDraft=null;   // being edited in the designer
+function shooterType(){var sh=loadShooter();return {id:"shooter",name:"Your Shooter",base:sh.base,vane:sh.vane,kind:sh.kind,rare:1};}
+
+function openDesigner(){ shooterDraft=loadShooter(); renderDesigner(); }
+function renderDesigner(){
+  if(!shooterDraft)shooterDraft=loadShooter();
+  drawShooterPreview();
+  // kinds
+  var kc=$("dsKinds");kc.innerHTML="";
+  DS_KINDS.forEach(function(k){var b=document.createElement("button");b.className="chip"+(k.kind===shooterDraft.kind?" on":"");
+    b.textContent=k.label;b.onclick=function(){shooterDraft.kind=k.kind;renderDesigner();};kc.appendChild(b);});
+  // base swatches
+  var bc=$("dsBase");bc.innerHTML="";
+  DS_BASE.forEach(function(col){var d=document.createElement("div");d.className="sw"+(col.toLowerCase()===shooterDraft.base.toLowerCase()?" on":"");
+    d.style.background=col;d.onclick=function(){shooterDraft.base=col;renderDesigner();};bc.appendChild(d);});
+  // vane swatches (hidden for kinds that don't use a pattern colour much)
+  var showVane=(shooterDraft.kind!=="clear");
+  $("dsAccentGroup").style.display=showVane?"":"none";
+  var vc=$("dsVane");vc.innerHTML="";
+  DS_VANE.forEach(function(col){var d=document.createElement("div");d.className="sw"+(col.toLowerCase()===shooterDraft.vane.toLowerCase()?" on":"");
+    d.style.background=col;d.onclick=function(){shooterDraft.vane=col;renderDesigner();};vc.appendChild(d);});
+}
+function drawShooterPreview(){
+  var c=$("dsPreview");var dpr=2;c.width=180*dpr;c.height=180*dpr;c.style.width="180px";c.style.height="180px";
+  var cx=c.getContext("2d");cx.setTransform(dpr,0,0,dpr,0,0);cx.clearRect(0,0,180,180);
+  cx.translate(90,90);
+  paintMarble(cx,72,{id:"draft",name:"",base:shooterDraft.base,vane:shooterDraft.vane,kind:shooterDraft.kind,rare:1});
+}
+
+/* ============================================================
    WIRE UP
    ============================================================ */
 $("bPlay").onclick=function(){show("s-menu");};
 $("bGum2").onclick=function(){show("s-gum");};
-$("mRinger").onclick=function(){show("s-ringer");if(!ringer.sim)initRinger();newRinger();};
-$("mGolf").onclick=function(){show("s-golf");if(!golf.sim)initGolf();newGolf();};
-$("mSandbox").onclick=function(){show("s-sandbox");if(!sand.sim)initSandbox();newSandbox();};
+$("mRinger").onclick=function(){show("s-ringer");if(!ringer.sim)initRinger();newRinger();maybeTutorial("ringer");};
+$("mGolf").onclick=function(){show("s-golf");if(!golf.sim)initGolf();newGolf();maybeTutorial("golf");};
+$("mSandbox").onclick=function(){show("s-sandbox");if(!sand.sim)initSandbox();newSandbox();maybeTutorial("sandbox");};
+$("ringerHelp").onclick=function(){showTutorial("ringer");};
+$("golfHelp").onclick=function(){showTutorial("golf");};
+$("sandHelp").onclick=function(){showTutorial("sandbox");};
 $("bGum").onclick=function(){show("s-gum");};
 $("bCollect2").onclick=function(){show("s-collect");};
 $("bCrank").onclick=function(){crank(1,10);};
@@ -698,23 +996,31 @@ $("bCrank5").onclick=function(){crank(5,45);};
 $("gumMenu").onclick=function(){show("s-menu");};
 $("gumCollect").onclick=function(){show("s-collect");};
 $("collectMenu").onclick=function(){show("s-menu");};
+$("openDesigner").onclick=function(){show("s-designer");openDesigner();};
+$("dsBack").onclick=function(){show("s-collect");renderCollection();};
+$("dsSave").onclick=function(){saveShooter(shooterDraft);toast("Shooter saved! You'll use it in Ringer and Golf.");show("s-collect");renderCollection();};
 $("coins").addEventListener("click",function(){toast(coins+" coins \u00b7 win games and crank the machine");});
 
 window.addEventListener("resize",function(){
   [titleSim,ringer.sim,golf.sim,sand.sim].forEach(function(s){if(s){s.size();s.draw();}});
 });
 
-/* device tilt -> gravity, for any sim with useTilt. https only; falls back to
-   the gentle default downward gravity when no sensor is available. */
-var TILT={gx:0, gy:0, have:false};
+/* device tilt -> gravity, for any sim with useTilt (https only).
+   The "horizon" is the neutral orientation: hold the device however you like, tap
+   Set level, and THAT becomes zero. Tilting away from it pulls the marbles. This is
+   what lets Mot pick his own comfortable holding angle instead of a hardcoded one. */
+var TILT={gamma:0, beta:0, zeroG:0, zeroB:0, have:false, strength:0.55};
+function recalibrateTilt(){ TILT.zeroG=TILT.gamma; TILT.zeroB=TILT.beta;
+  toast("Level set - tilt from here to steer"); }
 window.addEventListener("deviceorientation",function(e){
   if(e.gamma==null && e.beta==null)return;
-  TILT.have=true;
-  // gamma = left/right tilt (-90..90), beta = front/back (-180..180)
-  TILT.gx=Math.max(-1,Math.min(1,(e.gamma||0)/40))*0.5;
-  TILT.gy=Math.max(-1,Math.min(1,((e.beta||0)-25)/40))*0.5;
-  [titleSim, sand.sim].forEach(function(S){
-    if(S&&S.useTilt){ S.gx=TILT.gx; S.gy=Math.max(0.06,TILT.gy); S.kick(); }
+  TILT.have=true; TILT.gamma=e.gamma||0; TILT.beta=e.beta||0;
+  // offset from the captured horizon, mapped to a gravity vector
+  var dg=TILT.gamma-TILT.zeroG, db=TILT.beta-TILT.zeroB;
+  var gx=Math.max(-1,Math.min(1,dg/35))*TILT.strength;
+  var gy=Math.max(-1,Math.min(1,db/35))*TILT.strength;
+  [sand.sim].forEach(function(S){
+    if(S&&S.useTilt){ S.gx=gx; S.gy=gy; if(Math.abs(gx)+Math.abs(gy)>0.02)S.kick(); }
   });
 });
 // iOS 13+ needs a permission tap for motion; ask on first interaction
