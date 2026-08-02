@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Rock Paper Scissors</title>
+<style>
+  :root{ --ink:#1c1f26; --bg:#f2f0ea; --accent:#c14a33; --ok:#2f9e6f; --line:#cdd3da; --blue:#3f6fa5; }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+  html,body{margin:0;height:100%}
+  body{background:var(--bg);color:var(--ink);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:20px;text-align:center;gap:14px;overflow:hidden}
+  #ver{position:fixed;top:10px;right:10px;font-size:11px;font-weight:700;color:#8a919b;
+    background:#fff;border:1px solid var(--line);border-radius:999px;padding:4px 9px;cursor:pointer}
+  h1{font-size:15px;font-weight:800;letter-spacing:.22em;margin:0;color:#8a919b}
+
+  #nameScreen{display:flex;flex-direction:column;gap:15px;align-items:center;width:100%;max-width:320px}
+  #nameInput{font-size:20px;padding:14px 16px;border:2px solid var(--line);border-radius:14px;
+    width:100%;text-align:center;background:#fff;color:var(--ink)}
+  #joinBtn{border:none;border-radius:14px;background:var(--ink);color:#fff;font-size:19px;
+    font-weight:800;padding:16px 34px;cursor:pointer;width:100%}
+  .tip{font-size:12.5px;color:#5a636e;line-height:1.4}
+
+  #gameScreen{display:none;flex-direction:column;align-items:center;gap:16px;width:100%;max-width:360px}
+  #score{display:flex;gap:12px;align-items:stretch;width:100%;justify-content:center}
+  .scard{flex:1;max-width:150px;background:#fff;border:2px solid var(--line);border-radius:14px;padding:10px 8px}
+  .scard.me{border-color:var(--ink)}
+  .scard .nm{font-size:13px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .scard .pts{font-size:34px;font-weight:900;line-height:1;margin-top:2px}
+  #headline{font-size:24px;font-weight:900;min-height:30px;line-height:1.1}
+  #headline.win{color:var(--ok)} #headline.lose{color:var(--accent)} #headline.tie{color:var(--blue)}
+  #picks{display:flex;gap:12px;justify-content:center}
+  .pick{border:none;border-radius:18px;background:#fff;border:2px solid var(--ink);cursor:pointer;
+    width:98px;height:104px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
+  .pick:active{transform:scale(.95)}
+  .pick .em{font-size:40px;line-height:1}
+  .pick .art{position:relative;width:72px;height:72px;display:flex;align-items:center;justify-content:center}
+  .pick .art img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 2px 3px rgba(0,0,0,.28))}
+  .rvrow{display:flex;align-items:center;justify-content:center;gap:16px}
+  .rvrow .obj{width:78px;height:78px;position:relative;display:flex;align-items:center;justify-content:center}
+  .rvrow .obj img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 2px 4px rgba(0,0,0,.3))}
+  .rvrow .obj .em{font-size:46px}
+  .rvrow .vs{font-size:13px;font-weight:800;color:#8a919b;letter-spacing:.12em}
+  .rvname{font-size:11px;font-weight:700;color:#8a919b;margin-top:2px;text-align:center}
+  .pick .lb{font-size:12px;font-weight:800;letter-spacing:.04em}
+  #reveal{font-size:16px;font-weight:700;min-height:24px;color:#5a636e}
+  #actionBtn{border:none;border-radius:14px;background:var(--ink);color:#fff;font-size:18px;
+    font-weight:800;padding:14px 30px;cursor:pointer;display:none}
+  #status{font-size:12px;color:#8a919b;min-height:16px;line-height:1.35}
+  #status.err{color:var(--accent);font-weight:700}
+  #resetGame{font-size:12px;color:#8a919b;text-decoration:underline;background:none;border:none;cursor:pointer;margin-top:2px}
+  @media (prefers-reduced-motion: reduce){.pick:active{transform:none}}
+</style>
+</head>
+<body>
+  <div id="ver">RPS v0.5</div>
+  <h1>ROCK &middot; PAPER &middot; SCISSORS</h1>
+
+  <div id="nameScreen">
+    <div class="tip">Type your name, then Join. Do this on both phones.</div>
+    <input id="nameInput" placeholder="your name" maxlength="14" autocomplete="off">
+    <button id="joinBtn">Join</button>
+    <div class="tip">First to 3 wins the match.</div>
+  </div>
+
+  <div id="gameScreen">
+    <div id="score">
+      <div class="scard" id="c1"><div class="nm" id="n1">Player 1</div><div class="pts" id="s1">0</div></div>
+      <div class="scard" id="c2"><div class="nm" id="n2">Player 2</div><div class="pts" id="s2">0</div></div>
+    </div>
+    <div id="headline"></div>
+    <div id="picks">
+      <button class="pick" data-c="rock"><span class="art"><img src="rock.png" alt="rock" onload="this.parentElement.querySelector('.em').style.display='none'" onerror="this.remove()"><span class="em">&#129704;</span></span><span class="lb">ROCK</span></button>
+      <button class="pick" data-c="paper"><span class="art"><img src="paper.png" alt="paper" onload="this.parentElement.querySelector('.em').style.display='none'" onerror="this.remove()"><span class="em">&#128220;</span></span><span class="lb">PAPER</span></button>
+      <button class="pick" data-c="scissors"><span class="art"><img src="scissors.png" alt="scissors" onload="this.parentElement.querySelector('.em').style.display='none'" onerror="this.remove()"><span class="em">&#9986;</span></span><span class="lb">SCISSORS</span></button>
+    </div>
+    <div id="reveal"></div>
+    <button id="actionBtn"></button>
+    <div id="status">Connecting...</div>
+    <button id="resetGame">reset game</button>
+  </div>
+
+<script type="module">
+  // ============================================================
+  //  Rock Paper Scissors - the real multiplayer pattern:
+  //  both players choose in secret, then it reveals and scores.
+  //  Data model: one doc rps/room =
+  //    { round, resolvedRound, target,
+  //      p1:{uid,name,choice,score}, p2:{uid,name,choice,score} }
+  //  choice "" = not chosen yet. Two fixed slots so it can't grow
+  //  messy. Scoring runs in a transaction guarded by resolvedRound
+  //  so only ONE client applies each round's point, never double.
+  // ============================================================
+
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getAuth, signInAnonymously, onAuthStateChanged }
+    from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+  import { getFirestore, doc, updateDoc, onSnapshot, runTransaction }
+    from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDcpaqD2ea9djDSlj4EHUXkbYlglklUn5E",
+    authDomain: "buzz-836cf.firebaseapp.com",
+    projectId: "buzz-836cf",
+    storageBucket: "buzz-836cf.firebasestorage.app",
+    messagingSenderId: "256049583657",
+    appId: "1:256049583657:web:460a83b22eb02380edee38"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  const roomRef = doc(db, "rps", "room");
+  const TARGET = 3;
+  const EMPTY = { round:1, resolvedRound:0, target:TARGET,
+    p1:{uid:"",name:"",choice:"",score:0}, p2:{uid:"",name:"",choice:"",score:0} };
+
+  const el = id => document.getElementById(id);
+  const nameScreen=el("nameScreen"), gameScreen=el("gameScreen"), nameInput=el("nameInput");
+  const headline=el("headline"), picks=el("picks"), revealEl=el("reveal"), actionBtn=el("actionBtn"), statusEl=el("status");
+  function setStatus(m,k){ statusEl.textContent=m; statusEl.className=k||""; }
+  el("ver").addEventListener("click",()=>setStatus("RPS v0.5 \u00b7 secret pick, then reveal"));
+
+  let myUid="", myName="", authReady=false, claiming=false, resolving=false, lastData=null;
+
+  try{ const s=localStorage.getItem("rps_name"); if(s) nameInput.value=s; }catch(e){}
+
+  // sound: unlock on the Join tap (Safari needs a gesture)
+  let audioCtx=null;
+  function unlockAudio(){ try{ audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)(); if(audioCtx.state==="suspended")audioCtx.resume(); }catch(e){} }
+  function tone(f){ if(!audioCtx)return; try{ const o=audioCtx.createOscillator(),g=audioCtx.createGain(); o.type="triangle"; o.frequency.value=f; g.gain.value=0.13; o.connect(g);g.connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime+0.18);}catch(e){} }
+
+  // rock beats scissors, scissors beats paper, paper beats rock
+  function judge(a,b){ if(a===b) return 0; const beats={rock:"scissors",paper:"rock",scissors:"paper"}; return beats[a]===b?1:2; }
+
+  signInAnonymously(auth).catch(e=>setStatus("Sign-in failed: "+e.message,"err"));
+  onAuthStateChanged(auth, async user=>{
+    if(!user) return; myUid=user.uid;
+    // create the room once if it isn't there (never clobber existing play)
+    try{ await runTransaction(db, async tx=>{ const s=await tx.get(roomRef); if(!s.exists()) tx.set(roomRef, EMPTY); }); }
+    catch(e){ setStatus("Setup blocked: "+e.message+" (check rules)","err"); return; }
+    authReady=true; setStatus("Connected.");
+    onSnapshot(roomRef, s=>render(s.data()), err=>setStatus("Listener error: "+err.message,"err"));
+  });
+
+  function mySlot(d){ if(d.p1.uid===myUid) return "p1"; if(d.p2.uid===myUid) return "p2"; return null; }
+
+  async function claimSlot(d){
+    if(claiming) return; claiming=true;
+    try{
+      await runTransaction(db, async tx=>{
+        const s=await tx.get(roomRef); const x=s.data();
+        if(x.p1.uid===myUid||x.p2.uid===myUid) return;
+        if(!x.p1.uid) tx.update(roomRef,{ "p1.uid":myUid, "p1.name":myName });
+        else if(!x.p2.uid) tx.update(roomRef,{ "p2.uid":myUid, "p2.name":myName });
+      });
+    }catch(e){}
+    claiming=false;
+  }
+
+  async function resolveIfReady(d){
+    if(resolving) return;
+    if(d.p1.choice && d.p2.choice && d.resolvedRound < d.round){
+      resolving=true;
+      try{
+        await runTransaction(db, async tx=>{
+          const s=await tx.get(roomRef); const x=s.data();
+          if(x.p1.choice && x.p2.choice && x.resolvedRound < x.round){
+            const w=judge(x.p1.choice,x.p2.choice);
+            const patch={ resolvedRound:x.round };
+            if(w===1) patch["p1.score"]=x.p1.score+1;
+            if(w===2) patch["p2.score"]=x.p2.score+1;
+            tx.update(roomRef, patch);
+          }
+        });
+      }catch(e){}
+      resolving=false;
+    }
+  }
+
+  var GLYPH={rock:"&#129704;",paper:"&#128220;",scissors:"&#9986;"};
+  function esc(s){return String(s||"").replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+  function objHTML(choice){
+    return '<span class="obj"><img src="'+choice+'.png" alt="'+choice+'" '
+      + 'onload="this.parentElement.querySelector(\'.em\').style.display=\'none\'" '
+      + 'onerror="this.remove()"><span class="em">'+GLYPH[choice]+'</span></span>';
+  }
+  function render(d){
+    if(!d) return; lastData=d;
+    if(gameScreen.style.display!=="flex") return; // still on name screen
+
+    const slot=mySlot(d);
+    if(!slot && (!d.p1.uid || !d.p2.uid)){ claimSlot(d); }
+
+    el("n1").textContent=d.p1.name||"Player 1"; el("s1").textContent=d.p1.score;
+    el("n2").textContent=d.p2.name||"Player 2"; el("s2").textContent=d.p2.score;
+    el("c1").classList.toggle("me", slot==="p1"); el("c2").classList.toggle("me", slot==="p2");
+
+    resolveIfReady(d);
+
+    const me = slot? d[slot] : null;
+    const other = slot? d[slot==="p1"?"p2":"p1"] : null;
+    const bothIn = d.p1.choice && d.p2.choice;
+    const matchOver = d.p1.score>=d.target || d.p2.score>=d.target;
+
+    // default UI
+    picks.style.display="none"; actionBtn.style.display="none"; revealEl.textContent="";
+    headline.textContent=""; headline.className="";
+
+    if(!slot){ setStatus("Game full. Watching. Tap reset game to take a seat."); return; }
+
+    if(matchOver){
+      const iWon = me.score>=d.target;
+      headline.textContent = iWon? (myName+" wins the match!") : (other.name+" wins the match");
+      headline.className = iWon? "win":"lose";
+      actionBtn.textContent="New match"; actionBtn.style.display="inline-block";
+      actionBtn.onclick=newMatch;
+      setStatus("Match over.");
+      return;
+    }
+
+    if(!me.choice){
+      // my turn to pick, secretly
+      picks.style.display="flex";
+      setStatus(other.choice? (other.name+" has picked. Your move, in secret.") : "Both pick at the same time.");
+    } else if(!bothIn){
+      revealEl.innerHTML = '<div class="rvrow"><div>'+objHTML(me.choice)+'<div class="rvname">you</div></div></div>'
+        + '<div style="font-size:13px;color:#8a919b;margin-top:8px">Waiting for '+esc(other.name||"player 2")+'...</div>';
+      setStatus("Locked in.");
+    } else {
+      // both in -> reveal (computed locally, same on both screens)
+      const w=judge(me.choice, other.choice);
+      revealEl.innerHTML = '<div class="rvrow">'
+        + '<div>'+objHTML(me.choice)+'<div class="rvname">you</div></div>'
+        + '<span class="vs">VS</span>'
+        + '<div>'+objHTML(other.choice)+'<div class="rvname">'+esc(other.name)+'</div></div></div>';
+      if(w===0){ headline.textContent="Tie"; headline.className="tie"; }
+      else if((slot==="p1"&&w===1)||(slot==="p2"&&w===2)){ headline.textContent="You win!"; headline.className="win"; }
+      else { headline.textContent="You lose"; headline.className="lose"; }
+      if(revealEl.dataset.r !== String(d.round)){ revealEl.dataset.r=String(d.round); tone(w===0?330:( (headline.className==="win")?660:220)); }
+      actionBtn.textContent="Next round"; actionBtn.style.display="inline-block"; actionBtn.onclick=nextRound;
+      setStatus("Round "+d.round+" done.");
+    }
+  }
+
+  // pick a move
+  picks.querySelectorAll(".pick").forEach(b=>b.addEventListener("click", async ()=>{
+    const d=lastData; if(!d) return; const slot=mySlot(d); if(!slot||d[slot].choice) return;
+    unlockAudio();
+    try{ await updateDoc(roomRef,{ [slot+".choice"]: b.dataset.c }); }
+    catch(e){ setStatus("Pick failed: "+e.message,"err"); }
+  }));
+
+  async function nextRound(){
+    try{ await runTransaction(db, async tx=>{ const s=await tx.get(roomRef); const x=s.data();
+      if(x.resolvedRound===x.round){ tx.update(roomRef,{ round:x.round+1, "p1.choice":"", "p2.choice":"" }); } }); }
+    catch(e){ setStatus("Next round failed: "+e.message,"err"); }
+  }
+  async function newMatch(){
+    try{ await updateDoc(roomRef,{ round:1, resolvedRound:0, "p1.choice":"", "p2.choice":"", "p1.score":0, "p2.score":0 }); }
+    catch(e){ setStatus("New match failed: "+e.message,"err"); }
+  }
+  el("resetGame").addEventListener("click", async ()=>{
+    // full wipe incl. seats - use if slots got stuck to dead sessions
+    try{ await updateDoc(roomRef,{ round:1, resolvedRound:0,
+      "p1.uid":"", "p1.name":"", "p1.choice":"", "p1.score":0,
+      "p2.uid":"", "p2.name":"", "p2.choice":"", "p2.score":0 }); }
+    catch(e){ setStatus("Reset failed: "+e.message,"err"); }
+  });
+
+  // join
+  el("joinBtn").addEventListener("click", async ()=>{
+    const n=nameInput.value.trim(); if(!n){ nameInput.focus(); return; }
+    myName=n; try{ localStorage.setItem("rps_name",myName); }catch(e){}
+    unlockAudio();
+    nameScreen.style.display="none"; gameScreen.style.display="flex";
+    if(authReady && lastData){ await claimSlot(lastData); render(lastData); }
+    else setStatus("Connecting...");
+  });
+  nameInput.addEventListener("keydown", e=>{ if(e.key==="Enter") el("joinBtn").click(); });
+</script>
+</body>
+</html>
