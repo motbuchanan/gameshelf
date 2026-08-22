@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Measure Up">
-<title>Measure Up v0.18</title>
+<title>Measure Up v0.19</title>
 <style>
 :root{
   --bg:#0e0b1e; --panel:#1d1636; --panel2:#28204a; --ink:#f4f0ff; --dim:#a89cd8;
@@ -662,14 +662,14 @@ input.nm{
 
 <canvas id="fx"></canvas>
 <div id="toast"></div>
-<div id="vbadge">v0.18 · Aug 22</div>
+<div id="vbadge">v0.19 · Aug 22</div>
 
 <script>
 'use strict';
 /* ============ UTILS ============ */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const VERSION='v0.18 · Aug 22';
+const VERSION='v0.19 · Aug 22';
 const RM=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -682,7 +682,7 @@ function clearTimers(){TIMERS.forEach(clearTimeout);TIMERS=[];}
 const KEY='bq_save_v1';
 const DEF={
   v:1, creature:null, notes:0, gold:0,
-  skills:{add:1,sub:1,mul:1,frac:1,clock:1,cal:1,meas:1,div:1},
+  skills:{add:1,sub:1,mul:1,frac:1,clock:1,cal:1,meas:1,div:1,neg:1},
   auditioned:{}, band:{}, owned:[], proofs:{}, met:{}, plays:{}, memberNames:{},
   equipped:{drumskin:'classic'},
   flags:{soundcheckOffered:false,introDone:false,coach_kc:false,coach_arc:false,coach_rs:false,coach_gg:false,coach_tt:false,coach_st:false,coach_hp:false,coach_gig:false},
@@ -879,7 +879,7 @@ function creatureSVG(c,sz){
 
 /* ============ CUSTOM MEMBER ART (concept-driven silhouettes) ============ */
 let SVGID=0; function uid(){return 'bq'+(SVGID++);}
-const CONCEPT_COLOR={add:'#ff5d5d',sub:'#5d8bff',mul:'#ffb347',frac:'#7dff8a',clock:'#c58dff',cal:'#59e0d0',meas:'#ffdd57',div:'#ff8ad1'};
+const CONCEPT_COLOR={add:'#ff5d5d',sub:'#5d8bff',mul:'#ffb347',frac:'#7dff8a',clock:'#c58dff',cal:'#59e0d0',meas:'#ffdd57',div:'#ff8ad1',neg:'#4dd6ff'};
 function memberSVG(id,sz){
   sz=sz||120;
   let b='';
@@ -983,12 +983,27 @@ function memberSVG(id,sz){
     '<path d="M50 64 q6 -8 12 0" stroke="#221a44" stroke-width="5" fill="none" stroke-linecap="round"/>'+
     '<path d="M78 64 q6 -8 12 0" stroke="#221a44" stroke-width="5" fill="none" stroke-linecap="round"/>'+
     '<ellipse cx="70" cy="78" rx="7" ry="5" fill="#221a44"/>';
+  }else if(id==='gain'){ /* negative numbers: megaphone body, fader = number line with 0 mid */
+    b=feet('#4dd6ff')+
+    '<path d="M38 96 L38 60 L96 34 L96 122 Z" fill="#4dd6ff"/>'+
+    '<path d="M96 34 L112 26 L112 130 L96 122 Z" fill="#2fa8d8"/>'+
+    '<rect x="30" y="96" width="14" height="26" rx="6" fill="#2fa8d8"/>'+
+    '<line x1="122" y1="38" x2="122" y2="118" stroke="#bfefff" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="115" y1="78" x2="129" y2="78" stroke="#ffd158" stroke-width="4" stroke-linecap="round"/>'+
+    '<text x="131" y="52" font-size="12" font-weight="bold" fill="#bfefff">+</text>'+
+    '<text x="131" y="114" font-size="14" font-weight="bold" fill="#bfefff">&#8722;</text>'+
+    '<rect x="116" y="92" width="12" height="9" rx="3" fill="#ffd158"/>'+
+    '<path d="M52 42 Q70 26 88 34" stroke="#221a44" stroke-width="5" fill="none"/>'+
+    '<rect x="46" y="40" width="10" height="16" rx="4" fill="#221a44"/>'+
+    '<circle cx="60" cy="70" r="5" fill="#221a44"/><circle cx="80" cy="62" r="5" fill="#221a44"/>'+
+    '<circle cx="62" cy="68" r="1.8" fill="#ffffff"/><circle cx="82" cy="60" r="1.8" fill="#ffffff"/>'+
+    '<path d="M62 84 q9 6 18 -4" stroke="#221a44" stroke-width="4" fill="none" stroke-linecap="round"/>';
   }
   return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 140 140">'+b+'</svg>';
 }
 
 /* ============ BAND DATA ============ */
-const CONCEPT_NAMES={add:'Addition',sub:'Subtraction',mul:'Multiplication',frac:'Fractions',clock:'Clocks & Time',cal:'Days & Months',meas:'Measurement',div:'Division'};
+const CONCEPT_NAMES={add:'Addition',sub:'Subtraction',mul:'Multiplication',frac:'Fractions',clock:'Clocks & Time',cal:'Days & Months',meas:'Measurement',div:'Division',neg:'Negative Numbers'};
 const BAND=[
  {id:'boom',name:'Boom',emoji:'🥁',title:'Drummer',concept:'add',color:'#ff5d5d',
   cfg:{body:'round',col:'#ff5d5d',eyes:'dot',extra:'horns'},
@@ -1029,7 +1044,12 @@ const BAND=[
   cfg:{body:'round',col:'#ff8ad1',eyes:'happy',extra:'none'},
   bio:'One breath, split into equal notes. Twelve beats of air shared into notes of three? That is FOUR notes. Division is just fair sharing you can hear!',
   lines:['Doot doot! Horn section, reporting in!','Every breath gets shared. Every note gets its equal piece.','A solo means nothing until you pass it around.'],
-  dreams:['You shared the stage tonight. I clocked it.','My first band, one kid hogged every solo. I promised myself: never again.','I want a horn LINE someday. Four of us, one breath each, perfectly even.','Splitting things fair is not just math to me. It is how a band stays a band.','Whatever we earn, whatever we play... equal shares, forever. Doot doot!']}
+  dreams:['You shared the stage tonight. I clocked it.','My first band, one kid hogged every solo. I promised myself: never again.','I want a horn LINE someday. Four of us, one breath each, perfectly even.','Splitting things fair is not just math to me. It is how a band stays a band.','Whatever we earn, whatever we play... equal shares, forever. Doot doot!']},
+ {id:'gain',name:'Gain',emoji:'📣',title:'Sound & Lights',concept:'neg',color:'#4dd6ff',
+  cfg:{body:'tall',col:'#4dd6ff',eyes:'dot',extra:'antenna'},
+  bio:'I run the board at the back. Every fader has numbers ABOVE zero and BELOW zero. Zero is not nothing... on my board, zero is PERFECT.',
+  lines:['Gain here. Speak into the megaphone.','Too loud? Slide below zero. Too quiet? Come back up.','Nobody sees me back here. Everybody HEARS me.'],
+  dreams:['Levels were clean tonight. I noticed. I always notice.','People think the board is knobs. It is really a hundred little number lines.','My dream mix: every single fader resting at exactly zero. Perfect balance.','The crowd cheers for the band. The band cheers for me. That is enough.','Above zero, below zero... I live right in the middle. Come visit sometime.']}
 ];
 const BY_ID={}; BAND.forEach(m=>BY_ID[m.id]=m);
 /* Custom member names: every bandmate is renameable. mName() is the display
@@ -1144,7 +1164,10 @@ const WHY={
   cal:()=>'Luna: "A calendar row is 7 days. Drop one row, you jumped a whole week."',
   div:v=>(v&&v.m&&v.k)?
     'Doot: "'+(v.m*v.k)+' ÷ '+v.m+' = '+v.k+' and '+v.m+' × '+v.k+' = '+(v.m*v.k)+'. Same family, played backwards!"':
-    'Doot: "Dividing is dealing cards. One for you, one for you, till the pile is gone."'
+    'Doot: "Dividing is dealing cards. One for you, one for you, till the pile is gone."',
+  neg:v=>(v&&v.pair)?
+    'Gain: "'+(v.pair>0?'+'+v.pair:v.pair)+' and '+(-v.pair>0?'+'+(-v.pair):String(-v.pair))+' cancel out. Opposites always land you back at zero."':
+    'Gain: "Below zero is not broken. It is just the other half of the number line."'
 };
 function maybeWhy(concept,vars,chance){
   if(Math.random()>(chance===undefined?0.35:chance))return false;
@@ -1246,6 +1269,9 @@ function talkTo(id){
   if(id==='doot') btns+='<button class="btn wide" onclick="startMJ(\'longbreath\')">🎺 Long Breath</button>'+
     '<button class="btn wide ghost" onclick="startMJ(\'soloshare\')">🎷 Solo Share</button>'+
     '<button class="btn wide ghost" onclick="startMJ(\'lasttoot\')">💨 Last Toot</button>';
+  if(id==='gain') btns+='<button class="btn wide" onclick="startMJ(\'faderride\')">🎚️ Fader Ride</button>'+
+    '<button class="btn wide ghost" onclick="startMJ(\'zeroout\')">⚖️ Zero Out</button>'+
+    '<button class="btn wide ghost" onclick="startMJ(\'lightlevels\')">💡 Light Levels</button>';
   if(id==='luna') btns+='<button class="btn wide" onclick="startHP()">🐇 Jam: Calendar Hop</button>'+
     '<button class="btn wide ghost" onclick="startMJ(\'tourorder\')">🗺️ Tour Router</button>'+
     '<button class="btn wide ghost" onclick="startMJ(\'countdown\')">📆 Countdown</button>';
@@ -1335,6 +1361,25 @@ function numChoices(ans,spread){
   }
   while(set.size<4){set.add(ans+set.size);}
   return shuffle(Array.from(set).map(String));
+}
+function negChoices(ans,spread){ /* like numChoices but negatives allowed */
+  spread=spread||3;
+  const set=new Set([ans]); let g=0;
+  while(set.size<4&&g++<80){ const d=ans+R(-spread,spread); if(d!==ans)set.add(d); }
+  while(set.size<4)set.add(ans+set.size+1);
+  return shuffle(Array.from(set).map(String));
+}
+function faderHTML(val,lo,hi){
+  const H=150,top=12,h=H-24;
+  const y=v=>top+(hi-v)/(hi-lo)*h;
+  let t='';
+  for(let v=lo;v<=hi;v++){ const yy=y(v).toFixed(1), z=(v===0);
+    t+='<line x1="'+(z?26:32)+'" y1="'+yy+'" x2="'+(z?54:48)+'" y2="'+yy+'" stroke="'+(z?'#ffd158':'#4b3f86')+'" stroke-width="'+(z?4:2)+'"/>';
+    if(z||v===lo||v===hi)t+='<text x="6" y="'+(+yy+4)+'" font-size="12" font-weight="bold" fill="'+(z?'#ffd158':'#a89cd8')+'">'+(v>0?'+'+v:v)+'</text>';
+  }
+  return '<svg width="84" height="'+H+'" viewBox="0 0 84 '+H+'" style="vertical-align:middle">'+
+    '<line x1="40" y1="'+top+'" x2="40" y2="'+(top+h)+'" stroke="#241c48" stroke-width="8" stroke-linecap="round"/>'+t+
+    '<rect x="28" y="'+(y(val)-6).toFixed(1)+'" width="24" height="12" rx="4" fill="#4dd6ff" stroke="#0c5b78" stroke-width="2"/></svg>';
 }
 function pickChoices(ans,pool){
   const set=new Set([ans]);
@@ -1539,6 +1584,37 @@ const QG={
     const m=R(3,6),k=R(2,7),r=R(1,m-1),n=m*k+r;
     return {q:''+n+' beats of air, '+m+'-beat notes. How many FULL notes before the squeak?',
       vis:'',choices:numChoices(k,2),a:String(k)};
+  },
+  neg(L){
+    const F=v=>v>0?'+'+v:String(v);
+    if(L<3){
+      const t=R(1,2);
+      if(t===1){ const a=-R(1,6),b=R(0,5);
+        return {q:'Which fader is LOWER?',vis:faderHTML(a,-6,6),choices:shuffle([F(a),F(b)]),a:F(a)}; }
+      const v=-R(1,6);
+      return {q:'The fader shows '+v+'. Is that ABOVE or BELOW zero?',vis:faderHTML(v,-6,6),choices:shuffle(['ABOVE','BELOW']),a:'BELOW'};
+    }
+    if(L<5){ const d=R(1,6);
+      return {q:'The fader starts at 0 and slides DOWN '+d+'. Where is it now?',
+        vis:faderHTML(0,-7,7),choices:negChoices(-d,3),a:String(-d)}; }
+    if(L<7){
+      if(Math.random()<.5){ const a=-R(2,8),b=-R(2,8)===a?-R(2,8)-1:-R(2,8); const lo=Math.min(a,b===a?a-1:b), other=(lo===a?(b===a?a-1:b):a);
+        return {q:'Which is LOWER: '+lo+' or '+other+'?',vis:'',choices:shuffle([String(lo),String(other)]),a:String(lo)}; }
+      const st=R(1,5),d=st+R(1,5);
+      return {q:'The vocals sit at '+F(st)+'. Slide DOWN '+d+'. Where do they land?',
+        vis:faderHTML(st,-8,8),choices:negChoices(st-d,3),a:String(st-d)};
+    }
+    if(L<9){
+      if(Math.random()<.5){ const a=-R(1,7),b=R(2,9);
+        return {q:''+a+' + '+b+' = ?  (start below zero, slide UP '+b+')',vis:faderHTML(a,-9,9),choices:negChoices(a+b,3),a:String(a+b)}; }
+      const a=R(1,6),b=a+R(1,6);
+      return {q:''+a+' \u2212 '+b+' = ?  (slide down PAST zero)',vis:'',choices:negChoices(a-b,3),a:String(a-b)};
+    }
+    if(Math.random()<.5){ const v=pick([-1,1])*R(2,9);
+      return {q:'The drums are stuck at '+F(v)+'. What move brings them to EXACTLY zero?',
+        vis:faderHTML(v,-9,9),choices:negChoices(-v,3),a:String(-v)}; }
+    const v=-R(2,9);
+    return {q:'The bass fader is at '+v+'. How many steps from ZERO is that?',vis:faderHTML(v,-9,9),choices:numChoices(-v,3),a:String(-v)};
   },
   meas(L){
     const GEAR=['the amp','the drum riser','the speaker stack','the guitar case','the stage ramp','the merch table'];
@@ -3300,6 +3376,7 @@ const INTRO_MEETS=[
   ['gauge','Gauge the roadie. If it has a length, Gauge has measured it.'],
   ['luna','And Luna books the tour. Days, months, seasons... all her.'],
   ['doot','Doot on the horn! One breath, split into equal notes. Fairest player I know.'],
+  ['gain','And way in the back: Gain, on sound and lights. Faders go ABOVE zero and BELOW it. Wild, right?'],
   ['boom','Everyone here will jam with you ANYTIME. That is how you get good.'],
   ['boom','But first: warm up with ME. The crowd wants FIVE beats. Catch drums that add up to 5!']
 ];
@@ -3383,7 +3460,8 @@ const GIG_LINES={
   tock:'Tock taps a wrist. "Started on time, ended on time. Flawless."',
   gauge:'Gauge is already coiling cables. "Good show. I will have the gear loaded."',
   luna:'Luna circles a date on her calendar. "Booking the next one right now."',
-  doot:'Doot splits the applause into equal shares and hands you yours. "Fair is fair. Doot doot!"'
+  doot:'Doot splits the applause into equal shares and hands you yours. "Fair is fair. Doot doot!"',
+  gain:'From the back of the room, Gain slides one fader to exactly zero and nods. "Perfect balance. Perfect show."'
 };
 const GIG={on:false,teach:false,cues:[],idx:0,hype:0,maxHype:0,cueStart:0,busy:false,raf:0,combo:0,harmTarget:0,venue:null,members:[],_danceLead:1050,_harmNotes:null,_stationAns:null};
 
@@ -3594,7 +3672,13 @@ Object.assign(COACH,{
   soloshare:{member:'doot',verb:'TAP',hint:'tap',title:'🎷 Solo Share',
     lines:['The solo has bars. The horn section wants EQUAL turns.','TAP a horn player to hand them the next bar. Keep it fair!']},
   lasttoot:{member:'doot',verb:'TAP',hint:'tap',title:'💨 Last Toot',
-    lines:['Sometimes the air does not split evenly. The leftover SQUEAKS.','BLOW the full notes, then tap SQUEAK once for each leftover beat!']}
+    lines:['Sometimes the air does not split evenly. The leftover SQUEAKS.','BLOW the full notes, then tap SQUEAK once for each leftover beat!']},
+  faderride:{member:'gain',verb:'TAP',hint:'tap',title:'🎚️ Fader Ride',
+    lines:['Every fader is a number line. Zero sits in the middle.','TAP ▲ and ▼ to slide the fader to the level I call. Count every step, even below zero!']},
+  zeroout:{member:'gain',verb:'TAP',hint:'tap',title:'⚖️ Zero Out',
+    lines:['A channel at +3 needs a −3. Opposites CANCEL.','TAP the move that brings each channel back to exactly zero!']},
+  lightlevels:{member:'gain',verb:'TAP',hint:'tap',title:'💡 Light Levels',
+    lines:['Some lamps are dimmed BELOW zero, some boosted above.','TAP the dimmers lowest-first to line the board up. Careful: −7 is LOWER than −2!']}
 });
 function startMJ(id){
   closeModal();
@@ -4084,6 +4168,95 @@ setup(L,st){
         if(st.blown===st.k&&st.squeaks===st.r)mjOK(st.n+' ÷ '+st.m+' = '+st.k+' notes with '+st.r+' left over. THAT is the squeak!');
         else if(st.blown!==st.k)mjNo('That was '+st.blown+' full notes. '+st.n+' ÷ '+st.m+' fits '+st.k+'.');
         else mjNo('You squeaked '+st.squeaks+'. The leftover was '+st.r+' beat'+(st.r>1?'s':'')+'.'); });
+    }
+  };
+}};
+
+/* ---------- GAIN 1: FADER RIDE (the number line as movement) ---------- */
+MJGAMES.faderride={id:'faderride',name:'Fader Ride',emoji:'🎚️',member:'gain',concept:'neg',
+setup(L,st){
+  const lo=-8,hi=8;
+  if(L<3){ st.start=0; st.tgt=-R(1,5); }
+  else if(L<5){ st.start=R(1,5); st.tgt=st.start-R(st.start+1,st.start+5); }
+  else if(L<7){ st.start=-R(1,5); st.tgt=st.start+R(1,8); if(st.tgt===0)st.tgt=1; }
+  else { st.start=pick([-1,1])*R(2,6); st.tgt=pick([-1,1])*R(0,7); if(st.tgt===st.start)st.tgt=st.start>-7?st.start-2:st.start+2; }
+  st.cur=st.start; st.lo=lo; st.hi=hi;
+  const F=v=>v>0?'+'+v:String(v);
+  const dir=st.tgt<st.start?'DOWN':'UP', steps=Math.abs(st.tgt-st.start);
+  return {
+    call:'The mix sits at '+F(st.start)+'. Take it '+dir+' '+steps+'!',
+    sub:'Tap the arrows one step at a time. Say each number as you pass it!',
+    html:'<div class="center"><span id="mjFader">'+faderHTML(st.cur,lo,hi)+'</span></div>'+
+      '<div class="mjbig" style="font-size:34px" id="mjFv">'+F(st.cur)+'</div>'+
+      '<div class="row" style="justify-content:center;gap:14px">'+
+      '<button class="mjdrum" id="mjUp" style="font-size:30px">▲</button>'+
+      '<button class="mjdrum" id="mjDn" style="font-size:30px">▼</button>'+
+      '<button class="mjcymbal" id="mjLock">🎛️<br>SET</button></div>',
+    wire(){
+      const F2=v=>v>0?'+'+v:String(v);
+      const draw=()=>{ $('#mjFader').innerHTML=faderHTML(st.cur,st.lo,st.hi); $('#mjFv').textContent=F2(st.cur);
+        tone(440*Math.pow(2,st.cur/12),.12,'triangle',.22); };
+      $('#mjUp').addEventListener('click',()=>{ if(MJ.busy||st.cur>=st.hi)return; ac(); st.cur++; draw(); });
+      $('#mjDn').addEventListener('click',()=>{ if(MJ.busy||st.cur<=st.lo)return; ac(); st.cur--; draw(); });
+      $('#mjLock').addEventListener('click',()=>{ if(MJ.busy)return; ac(); drum('clap');
+        if(st.cur===st.tgt)mjOK(F2(st.start)+' to '+F2(st.tgt)+' is '+Math.abs(st.tgt-st.start)+' steps. Board is SET.');
+        else mjNo('The fader reads '+F2(st.cur)+'. Gain wanted '+F2(st.tgt)+'.'); });
+    }
+  };
+}};
+
+/* ---------- GAIN 2: ZERO OUT (additive inverses / zero pairs) ---------- */
+MJGAMES.zeroout={id:'zeroout',name:'Zero Out',emoji:'⚖️',member:'gain',concept:'neg',
+setup(L,st){
+  const F=v=>v>0?'+'+v:String(v);
+  const n=L<5?2:3;
+  st.chs=[]; while(st.chs.length<n){ const v=pick([-1,1])*R(1,L<3?4:8); if(!st.chs.some(c=>c.v===v))st.chs.push({v:v,done:false}); }
+  st.pair=st.chs[0].v; st.miss=false; st.left=n;
+  const NAMES=['🎸 Guitar','🥁 Drums','🎤 Vocals'];
+  let rows=''; st.chs.forEach((c,i)=>{
+    const opts=shuffle([-c.v, c.v, -c.v+(c.v>0?-1:1)]);
+    rows+='<div class="card" id="mjCh'+i+'" style="display:flex;align-items:center;gap:10px;justify-content:space-between">'+
+      '<b>'+NAMES[i]+'</b><span class="mjbig" style="font-size:26px;margin:0" id="mjChV'+i+'">'+F(c.v)+'</span>'+
+      '<span>'+opts.map(o=>'<button class="btn small ghost mjzo" data-i="'+i+'" data-o="'+o+'">'+F(o)+'</button>').join(' ')+'</span></div>';
+  });
+  return {
+    call:'ZERO the board!',
+    sub:'Each channel needs its OPPOSITE. +4 cancels with −4. Tap the right move!',
+    html:rows,
+    wire(){
+      $$('.mjzo').forEach(b=>b.addEventListener('click',()=>{ if(MJ.busy)return; const i=+b.dataset.i, o=+b.dataset.o, c=st.chs[i];
+        if(c.done)return; ac();
+        if(o===-c.v){ c.done=true; st.left--;
+          $('#mjChV'+i).textContent='0'; $('#mjCh'+i).style.borderColor='#8ef0c9'; drum('clap'); tone(523,.15,'triangle',.25);
+          if(st.left===0){ later(()=>{ st.miss?mjNo('Board is zeroed, but some moves missed. The opposite of +4 is always −4!'):mjOK('Every channel at ZERO. Opposites cancel. Perfect mix!'); },350); }
+        } else { st.miss=true; punch(b); tone(150,.14,'sine',.16); }
+      }));
+    }
+  };
+}};
+
+/* ---------- GAIN 3: LIGHT LEVELS (ordering negatives) ---------- */
+MJGAMES.lightlevels={id:'lightlevels',name:'Light Levels',emoji:'💡',member:'gain',concept:'neg',
+setup(L,st){
+  const F=v=>v>0?'+'+v:String(v);
+  const set=new Set(); const span=L<3?4:L<5?6:9;
+  while(set.size<4)set.add(pick([-1,1])*R(0,span));
+  st.vals=Array.from(set).sort((a,b)=>a-b);
+  st.nextIx=0; st.miss=false;
+  const shown=shuffle(st.vals.slice());
+  const lamps=shown.map(v=>'<button class="mjposter" data-v="'+v+'">💡<br><b>'+F(v)+'</b></button>').join('');
+  return {
+    call:'LINE UP THE LIGHTS, LOWEST FIRST!',
+    sub:'Below zero is LOWER than zero. −7 is lower than −2!',
+    html:'<div class="mjcards">'+lamps+'</div><div class="mjroute" id="mjRoute"></div>',
+    wire(){
+      $$('.mjposter').forEach(b=>b.addEventListener('click',()=>{ if(MJ.busy||b.disabled)return; ac();
+        const v=+b.dataset.v, want=st.vals[st.nextIx];
+        b.disabled=true;
+        if(v===want){ b.classList.add('good'); $('#mjRoute').appendChild(b); drum('clap'); tone(300+st.nextIx*70,.14,'triangle',.22); st.nextIx++;
+          if(st.nextIx===st.vals.length){ later(()=>{ st.miss?mjNo('Lights lined up, with a stumble. Remember: the MINUS numbers sit lowest!'):mjOK('Lowest to highest, straight across zero. Gain salutes the frontman.'); },350); }
+        } else { b.classList.add('badc'); st.miss=true; tone(150,.15,'sine',.16); later(()=>{b.disabled=false;b.classList.remove('badc');},600); }
+      }));
     }
   };
 }};
