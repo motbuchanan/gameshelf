@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Measure Up">
-<title>Measure Up v0.22</title>
+<title>Measure Up v0.24</title>
 <style>
 :root{
   --bg:#0e0b1e; --panel:#1d1636; --panel2:#28204a; --ink:#f4f0ff; --dim:#a89cd8;
@@ -408,7 +408,20 @@ input.nm{
 .mjbar.good{outline:3px solid #fff;filter:brightness(1.25)}
 .mjbar:active{transform:translateY(2px)}
 #showStage{display:flex;flex-wrap:wrap;justify-content:center;align-items:flex-end;gap:2px;min-height:120px;
-  background:linear-gradient(180deg,#1a1338,#241c48);border-radius:16px;padding:10px 4px;margin:10px 0}
+  background:linear-gradient(180deg,#1a1338,#241c48);border-radius:16px;padding:10px 4px;margin:10px 0;position:relative;overflow:hidden}
+#showBeams{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .6s}
+#showBeams.on{opacity:1}
+#showBeams .bm{position:absolute;top:-12px;width:26%;height:135%;mix-blend-mode:screen;opacity:.3;transform-origin:top center}
+#showBeams .b1{left:6%;background:linear-gradient(180deg,#ff5d5d,transparent 78%);animation:bmSway 2.3s ease-in-out infinite alternate}
+#showBeams .b2{left:37%;background:linear-gradient(180deg,#4dd6ff,transparent 78%);animation:bmSway 2.9s ease-in-out infinite alternate-reverse}
+#showBeams .b3{right:6%;background:linear-gradient(180deg,#ffd158,transparent 78%);animation:bmSway 3.5s ease-in-out infinite alternate}
+@keyframes bmSway{from{transform:rotate(-13deg)}to{transform:rotate(13deg)}}
+#showBeams.hue1 .bm{filter:hue-rotate(100deg)}
+#showBeams.hue2 .bm{filter:hue-rotate(210deg)}
+#showBeams.flash .bm{opacity:.55}
+#showStage.lightshow #showBeams .bm{opacity:.5}
+#showStage .perf{position:relative;z-index:1}
+@media (prefers-reduced-motion: reduce){ #showBeams .bm{animation:none;transform:none} }
 #showStage .perf{transition:transform .12s,filter .12s}
 #showStage .perf.hit{transform:translateY(-9px) scale(1.07);filter:brightness(1.35) drop-shadow(0 0 10px rgba(255,209,88,.6))}
 @media (prefers-reduced-motion: reduce){ #showStage .perf.hit{transform:none} }
@@ -676,6 +689,22 @@ input.nm{
   <div id="spBand"></div>
   <div class="spTap" id="spTap">👆 TAP TO PLAY</div>
 </div>
+<div class="scr" id="scr-lesson">
+  <div class="row" style="justify-content:space-between;align-items:center">
+    <button class="btn ghost small" onclick="LESSON.on=false;renderHub();show('scr-hub')">✕</button>
+    <div class="chip">📖 Gain&#8217;s Board Lesson</div>
+    <span></span>
+  </div>
+  <div class="center" style="margin-top:6px" id="lsGain"></div>
+  <div id="lsSay"></div>
+  <div class="center"><span id="lsFader"></span></div>
+  <div class="mjbig" style="font-size:34px;margin:4px 0" id="lsVal">0</div>
+  <div class="row" style="justify-content:center;gap:14px">
+    <button class="mjdrum" style="font-size:30px" onclick="lessonMove(1)">▲</button>
+    <button class="mjdrum" style="font-size:30px" onclick="lessonMove(-1)">▼</button>
+  </div>
+  <button class="btn wide" id="lsNext" style="margin-top:10px" onclick="lessonAdvance()">Next</button>
+</div>
 <div class="scr" id="scr-show">
   <div class="row" style="justify-content:space-between;align-items:center">
     <button class="btn ghost small" id="btnShowExit">✕</button>
@@ -713,14 +742,14 @@ input.nm{
 
 <canvas id="fx"></canvas>
 <div id="toast"></div>
-<div id="vbadge">v0.22 · Aug 22</div>
+<div id="vbadge">v0.24 · Aug 22</div>
 
 <script>
 'use strict';
 /* ============ UTILS ============ */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const VERSION='v0.22 · Aug 22';
+const VERSION='v0.24 · Aug 22';
 const RM=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -999,139 +1028,152 @@ function creatureSVG(c,sz){
 let SVGID=0; function uid(){return 'bq'+(SVGID++);}
 const CONCEPT_COLOR={add:'#ff5d5d',sub:'#5d8bff',mul:'#ffb347',frac:'#7dff8a',clock:'#c58dff',cal:'#59e0d0',meas:'#ffdd57',div:'#ff8ad1',neg:'#4dd6ff',skip:'#c0f24d'};
 function memberSVG(id,sz){
+  /* v0.24 character pass: everyone has arms, hands, legs, and visibly PLAYS their
+     instrument. Garrett's art direction: "how could they hug, let alone play?" */
   sz=sz||120;
+  const O='#221a44';
+  const arm=(x1,y1,qx,qy,x2,y2,c,w)=>'<path d="M'+x1+' '+y1+' Q'+qx+' '+qy+' '+x2+' '+y2+'" stroke="'+c+'" stroke-width="'+(w||9)+'" fill="none" stroke-linecap="round"/>';
+  const hand=(x,y,c)=>'<circle cx="'+x+'" cy="'+y+'" r="6.5" fill="'+c+'" stroke="'+O+'" stroke-width="2"/>';
+  const legs=(c,y)=>{y=y||112; return '<line x1="56" y1="'+y+'" x2="54" y2="124" stroke="'+c+'" stroke-width="9" stroke-linecap="round"/>'+
+    '<line x1="84" y1="'+y+'" x2="86" y2="124" stroke="'+c+'" stroke-width="9" stroke-linecap="round"/>'+
+    '<ellipse cx="52" cy="128" rx="12" ry="6.5" fill="'+c+'"/><ellipse cx="88" cy="128" rx="12" ry="6.5" fill="'+c+'"/>';};
+  const dotEyes=(x1,y1,x2,y2)=>'<circle cx="'+x1+'" cy="'+y1+'" r="5" fill="'+O+'"/><circle cx="'+x2+'" cy="'+y2+'" r="5" fill="'+O+'"/>'+
+    '<circle cx="'+(x1+2)+'" cy="'+(y1-2)+'" r="1.7" fill="#fff"/><circle cx="'+(x2+2)+'" cy="'+(y2-2)+'" r="1.7" fill="#fff"/>';
+  const happyEyes=(x1,x2,y)=>'<path d="M'+(x1-7)+' '+y+' q7 -8 14 0" stroke="'+O+'" stroke-width="4.5" fill="none" stroke-linecap="round"/>'+
+    '<path d="M'+(x2-7)+' '+y+' q7 -8 14 0" stroke="'+O+'" stroke-width="4.5" fill="none" stroke-linecap="round"/>';
+  const smile=(x,y,w)=>'<path d="M'+x+' '+y+' q'+(w/2)+' 7 '+w+' 0" stroke="'+O+'" stroke-width="4" fill="none" stroke-linecap="round"/>';
   let b='';
-  const feet=(c)=>'<ellipse cx="52" cy="128" rx="13" ry="7" fill="'+c+'"/><ellipse cx="88" cy="128" rx="13" ry="7" fill="'+c+'"/>';
-  if(id==='boom'){ /* addition: stacked tiers, drumsticks form a plus sign */
-    b=feet('#ff5d5d')+
-    '<rect x="26" y="88" width="88" height="38" rx="18" fill="#ff5d5d"/>'+
-    '<ellipse cx="70" cy="108" rx="26" ry="13" fill="#ffd1d1"/>'+
-    '<rect x="34" y="60" width="72" height="32" rx="16" fill="#ff7a7a"/>'+
-    '<rect x="42" y="28" width="56" height="38" rx="18" fill="#ff5d5d"/>'+
-    '<g stroke="#e8c48a" stroke-width="7" stroke-linecap="round"><line x1="70" y1="3" x2="70" y2="27"/><line x1="58" y1="15" x2="82" y2="15"/></g>'+
-    '<circle cx="58" cy="44" r="5" fill="#221a44"/><circle cx="82" cy="44" r="5" fill="#221a44"/>'+
-    '<circle cx="60" cy="42" r="1.8" fill="#ffffff"/><circle cx="84" cy="42" r="1.8" fill="#ffffff"/>'+
-    '<path d="M60 54 q10 9 20 0" stroke="#221a44" stroke-width="4" fill="none" stroke-linecap="round"/>';
-  }else if(id==='rumble'){ /* subtraction: a bite of negative space, minus-sign eyes */
-    const m=uid();
-    b='<defs><mask id="'+m+'"><rect x="0" y="0" width="140" height="140" fill="#ffffff"/><circle cx="110" cy="60" r="17" fill="#000000"/></mask></defs>'+
-    feet('#5d8bff')+
-    '<g mask="url(#'+m+')"><ellipse cx="70" cy="82" rx="41" ry="47" fill="#5d8bff"/>'+
-    '<circle cx="46" cy="36" r="13" fill="#5d8bff"/><circle cx="94" cy="36" r="13" fill="#5d8bff"/></g>'+
-    '<ellipse cx="70" cy="101" rx="23" ry="16" fill="#bcd2ff"/>'+
-    '<text x="122" y="52" font-size="20" font-weight="bold" fill="#8fb0ff">&#8722;</text>'+
-    '<line x1="49" y1="64" x2="63" y2="64" stroke="#221a44" stroke-width="5" stroke-linecap="round"/>'+
-    '<line x1="77" y1="64" x2="91" y2="64" stroke="#221a44" stroke-width="5" stroke-linecap="round"/>'+
-    '<path d="M62 76 q8 6 16 0" stroke="#221a44" stroke-width="4" fill="none" stroke-linecap="round"/>';
-  }else if(id==='combo'){ /* multiplication: echo copies, x pupils, waffle-grid belly */
-    b=feet('#ffb347')+
-    '<rect x="24" y="36" width="64" height="88" rx="28" fill="#ffb347" opacity="0.16"/>'+
-    '<rect x="31" y="33" width="64" height="90" rx="28" fill="#ffb347" opacity="0.3"/>'+
-    '<rect x="38" y="30" width="64" height="94" rx="28" fill="#ffb347"/>'+
-    '<line x1="56" y1="30" x2="48" y2="12" stroke="#ffb347" stroke-width="5"/><circle cx="47" cy="10" r="6" fill="#ffd158"/>'+
-    '<line x1="84" y1="30" x2="92" y2="12" stroke="#ffb347" stroke-width="5"/><circle cx="93" cy="10" r="6" fill="#ffd158"/>'+
-    '<rect x="50" y="80" width="40" height="34" rx="8" fill="#ffe0ae"/>'+
-    '<g stroke="#ffb347" stroke-width="3"><line x1="63" y1="80" x2="63" y2="114"/><line x1="77" y1="80" x2="77" y2="114"/><line x1="50" y1="91" x2="90" y2="91"/><line x1="50" y1="103" x2="90" y2="103"/></g>'+
-    '<g stroke="#221a44" stroke-width="4.5" stroke-linecap="round"><line x1="52" y1="52" x2="62" y2="62"/><line x1="62" y1="52" x2="52" y2="62"/><line x1="78" y1="52" x2="88" y2="62"/><line x1="88" y1="52" x2="78" y2="62"/></g>'+
-    '<path d="M60 70 q10 8 20 0" stroke="#221a44" stroke-width="4" fill="none" stroke-linecap="round"/>';
-  }else if(id==='slice'){ /* fractions: body split into segments, division strap */
-    const c=uid();
-    b='<defs><clipPath id="'+c+'"><ellipse cx="70" cy="82" rx="46" ry="45"/></clipPath></defs>'+
-    feet('#5cd96c')+
-    '<g clip-path="url(#'+c+')">'+
-    '<rect x="24" y="30" width="23" height="100" fill="#7dff8a"/><rect x="47" y="30" width="23" height="100" fill="#5cd96c"/>'+
-    '<rect x="70" y="30" width="23" height="100" fill="#7dff8a"/><rect x="93" y="30" width="23" height="100" fill="#5cd96c"/>'+
-    '</g>'+
-    '<line x1="70" y1="38" x2="70" y2="50" stroke="#3fae52" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="32" y1="62" x2="104" y2="98" stroke="#2f8f44" stroke-width="9" stroke-linecap="round"/>'+
-    '<text x="63" y="87" font-size="17" font-weight="bold" fill="#eafff0">&#247;</text>'+
-    '<circle cx="55" cy="64" r="5.5" fill="#221a44"/><circle cx="85" cy="64" r="5.5" fill="#221a44"/>'+
-    '<circle cx="57" cy="62" r="2" fill="#ffffff"/><circle cx="87" cy="62" r="2" fill="#ffffff"/>'+
-    '<path d="M61 74 q9 8 18 0" stroke="#221a44" stroke-width="4" fill="none" stroke-linecap="round"/>';
-  }else if(id==='tock'){ /* clocks: round tick-rim body, hour-arm short + minute-arm long */
-    let ticks='';
-    for(let i=0;i<12;i++){
-      const a=(i*30-90)*Math.PI/180;
-      const x1=70+38*Math.cos(a),y1=78+38*Math.sin(a),x2=70+44*Math.cos(a),y2=78+44*Math.sin(a);
-      ticks+='<line x1="'+x1.toFixed(1)+'" y1="'+y1.toFixed(1)+'" x2="'+x2.toFixed(1)+'" y2="'+y2.toFixed(1)+'" stroke="#e6d4ff" stroke-width="'+(i%3===0?4:2)+'"/>';
-    }
-    b=feet('#c58dff')+
-    '<line x1="30" y1="88" x2="12" y2="74" stroke="#a86fe0" stroke-width="9" stroke-linecap="round"/>'+
-    '<line x1="110" y1="88" x2="132" y2="52" stroke="#a86fe0" stroke-width="4.5" stroke-linecap="round"/>'+
-    '<circle cx="70" cy="78" r="46" fill="#c58dff"/>'+ticks+
-    '<path d="M32 56 Q70 20 108 56" stroke="#4a3b8e" stroke-width="8" fill="none"/>'+
-    '<rect x="26" y="52" width="13" height="22" rx="6" fill="#ffd158"/><rect x="101" y="52" width="13" height="22" rx="6" fill="#ffd158"/>'+
-    '<text x="55" y="78" font-size="17" text-anchor="middle" fill="#221a44">&#10022;</text><text x="85" y="78" font-size="17" text-anchor="middle" fill="#221a44">&#10022;</text>'+
-    '<path d="M61 90 q9 8 18 0" stroke="#221a44" stroke-width="4" fill="none" stroke-linecap="round"/>';
-  }else if(id==='luna'){ /* calendar: page body, ring binding, week-grid belly, moon */
-    let grid='';
-    for(let r=0;r<3;r++)for(let cxi=0;cxi<7;cxi++){
-      grid+='<circle cx="'+(46+cxi*8)+'" cy="'+(92+r*9)+'" r="2.4" fill="#d6f7f2"/>';
-    }
-    b=feet('#59e0d0')+
-    '<rect x="34" y="34" width="72" height="90" rx="20" fill="#59e0d0"/>'+
-    '<path d="M34 54 h72 v-8 a12 12 0 0 0 -12 -12 h-48 a12 12 0 0 0 -12 12 z" fill="#3aa79b"/>'+
-    '<line x1="52" y1="26" x2="52" y2="40" stroke="#241c48" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="88" y1="26" x2="88" y2="40" stroke="#241c48" stroke-width="4" stroke-linecap="round"/>'+
-    grid+
-    '<text x="106" y="32" font-size="17">&#127769;</text>'+
-    '<path d="M50 68 q6 -8 12 0" stroke="#221a44" stroke-width="5" fill="none" stroke-linecap="round"/>'+
-    '<path d="M78 68 q6 -8 12 0" stroke="#221a44" stroke-width="5" fill="none" stroke-linecap="round"/>'+
-    '<path d="M61 78 q9 8 18 0" stroke="#221a44" stroke-width="4" fill="none" stroke-linecap="round"/>';
-  }else if(id==='gauge'){ /* measurement: ruler body with ticks + tape measure */
-    let ticks='';
-    for(let i=0;i<10;i++){
-      const y=42+i*8, long=(i%3===0);
-      ticks+='<line x1="44" y1="'+y+'" x2="'+(long?56:51)+'" y2="'+y+'" stroke="#b89a1e" stroke-width="3"/>';
-    }
-    b=feet('#ffdd57')+
-    '<rect x="44" y="28" width="52" height="96" rx="18" fill="#ffdd57"/>'+ticks+
-    '<path d="M46 36 Q70 12 94 36" fill="#4a3b8e"/>'+
-    '<circle cx="102" cy="108" r="11" fill="#4a3b8e" stroke="#ffdd57" stroke-width="3"/><circle cx="102" cy="108" r="3.5" fill="#ffdd57"/>'+
-    '<line x1="113" y1="108" x2="133" y2="108" stroke="#f4f0ff" stroke-width="5"/><rect x="131" y="102" width="5" height="12" rx="2" fill="#f4f0ff"/>'+
-    '<circle cx="62" cy="52" r="5" fill="#221a44"/><circle cx="80" cy="52" r="5" fill="#221a44"/>'+
-    '<circle cx="64" cy="50" r="1.8" fill="#ffffff"/><circle cx="82" cy="50" r="1.8" fill="#ffffff"/>'+
-    '<path d="M63 62 q8 7 16 0" stroke="#221a44" stroke-width="4" fill="none" stroke-linecap="round"/>';
-  }else if(id==='doot'){ /* division: one tube coiled into EQUAL loops, bell flare, valve dots */
-    b=feet('#ff8ad1')+
-    '<path d="M96 40 Q124 30 128 14 L134 20 Q128 44 100 54 Z" fill="#ffb0dd" stroke="#c25b93" stroke-width="2"/>'+
-    '<ellipse cx="70" cy="84" rx="44" ry="46" fill="#ff8ad1"/>'+
-    '<g fill="none" stroke="#ffd9ee" stroke-width="5"><circle cx="52" cy="98" r="11"/><circle cx="70" cy="104" r="11"/><circle cx="88" cy="98" r="11"/></g>'+
-    '<g fill="#c25b93"><circle cx="58" cy="46" r="3.4"/><circle cx="70" cy="43" r="3.4"/><circle cx="82" cy="46" r="3.4"/></g>'+
-    '<path d="M50 64 q6 -8 12 0" stroke="#221a44" stroke-width="5" fill="none" stroke-linecap="round"/>'+
-    '<path d="M78 64 q6 -8 12 0" stroke="#221a44" stroke-width="5" fill="none" stroke-linecap="round"/>'+
-    '<ellipse cx="70" cy="78" rx="7" ry="5" fill="#221a44"/>';
-  }else if(id==='gain'){ /* negative numbers: megaphone body, fader = number line with 0 mid */
-    b=feet('#4dd6ff')+
-    '<path d="M38 96 L38 60 L96 34 L96 122 Z" fill="#4dd6ff"/>'+
-    '<path d="M96 34 L112 26 L112 130 L96 122 Z" fill="#2fa8d8"/>'+
-    '<rect x="30" y="96" width="14" height="26" rx="6" fill="#2fa8d8"/>'+
-    '<line x1="122" y1="38" x2="122" y2="118" stroke="#bfefff" stroke-width="4" stroke-linecap="round"/>'+
-    '<line x1="115" y1="78" x2="129" y2="78" stroke="#ffd158" stroke-width="4" stroke-linecap="round"/>'+
-    '<text x="131" y="52" font-size="12" font-weight="bold" fill="#bfefff">+</text>'+
-    '<text x="131" y="114" font-size="14" font-weight="bold" fill="#bfefff">&#8722;</text>'+
-    '<rect x="116" y="92" width="12" height="9" rx="3" fill="#ffd158"/>'+
-    '<path d="M52 42 Q70 26 88 34" stroke="#221a44" stroke-width="5" fill="none"/>'+
-    '<rect x="46" y="40" width="10" height="16" rx="4" fill="#221a44"/>'+
-    '<circle cx="60" cy="70" r="5" fill="#221a44"/><circle cx="80" cy="62" r="5" fill="#221a44"/>'+
-    '<circle cx="62" cy="68" r="1.8" fill="#ffffff"/><circle cx="82" cy="60" r="1.8" fill="#ffffff"/>'+
-    '<path d="M62 84 q9 6 18 -4" stroke="#221a44" stroke-width="4" fill="none" stroke-linecap="round"/>';
-  }else if(id==='plink'){ /* skip counting: rainbow bars in equal steps, mallets mid-hop */
-    b=feet('#c0f24d')+
-    '<rect x="30" y="56" width="80" height="58" rx="14" fill="#c0f24d"/>'+
-    '<g stroke="#5b7a1e" stroke-width="1.5">'+
-    '<rect x="38" y="64" width="12" height="44" rx="4" fill="#ff5d5d"/>'+
-    '<rect x="53" y="68" width="12" height="40" rx="4" fill="#ffb347"/>'+
-    '<rect x="68" y="72" width="12" height="36" rx="4" fill="#ffdd57"/>'+
-    '<rect x="83" y="76" width="12" height="32" rx="4" fill="#7dff8a"/>'+
-    '<rect x="98" y="80" width="8" height="28" rx="4" fill="#4dd6ff"/></g>'+
-    '<g stroke="#221a44" stroke-width="4" stroke-linecap="round"><line x1="48" y1="52" x2="62" y2="30"/><line x1="92" y1="52" x2="78" y2="30"/></g>'+
-    '<circle cx="63" cy="27" r="6" fill="#ff8ad1"/><circle cx="77" cy="27" r="6" fill="#4dd6ff"/>'+
-    '<circle cx="58" cy="44" r="4.5" fill="#221a44"/><circle cx="82" cy="44" r="4.5" fill="#221a44"/>'+
-    '<path d="M60 50 q10 8 20 0" stroke="#221a44" stroke-width="4" fill="none" stroke-linecap="round"/>';
+  if(id==='boom'){ const c='#ff5d5d',d='#d84b4b';
+    b=legs(c)+
+    '<rect x="42" y="58" width="56" height="56" rx="18" fill="'+c+'"/>'+
+    '<ellipse cx="70" cy="94" rx="20" ry="14" fill="#ffd9d9"/>'+
+    '<circle cx="70" cy="42" r="22" fill="'+c+'"/>'+
+    '<rect x="64" y="8" width="12" height="4.6" rx="2.3" fill="#ffd158"/><rect x="67.7" y="4.3" width="4.6" height="12" rx="2.3" fill="#ffd158"/>'+
+    arm(46,70,26,58,20,42,c)+hand(20,42,c)+
+    '<line x1="20" y1="42" x2="36" y2="20" stroke="#e0b98a" stroke-width="4.5" stroke-linecap="round"/><circle cx="36" cy="20" r="3.5" fill="#e0b98a"/>'+
+    arm(94,70,114,58,120,42,c)+hand(120,42,c)+
+    '<line x1="120" y1="42" x2="104" y2="20" stroke="#e0b98a" stroke-width="4.5" stroke-linecap="round"/><circle cx="104" cy="20" r="3.5" fill="#e0b98a"/>'+
+    dotEyes(62,40,80,40)+smile(62,50,16)+
+    '<path d="M50 30 a26 26 0 0 1 40 0" stroke="'+d+'" stroke-width="3" fill="none"/>';
+  }else if(id==='rumble'){ const c='#5d8bff',w='#3a5fc4';
+    b=legs(c)+
+    '<path d="M40 116 L40 56 Q40 30 70 30 Q100 30 100 56 L100 116 Z" fill="'+c+'"/>'+
+    '<circle cx="50" cy="30" r="9" fill="'+c+'"/><circle cx="90" cy="30" r="9" fill="'+c+'"/>'+
+    '<ellipse cx="70" cy="92" rx="19" ry="15" fill="#cfe0ff"/>'+
+    '<line x1="106" y1="26" x2="120" y2="26" stroke="'+c+'" stroke-width="6" stroke-linecap="round"/>'+
+    '<ellipse cx="46" cy="102" rx="14" ry="10" fill="#8a5a3a" transform="rotate(-25 46 102)"/>'+
+    '<line x1="52" y1="96" x2="106" y2="52" stroke="#8a5a3a" stroke-width="6" stroke-linecap="round"/>'+
+    '<rect x="102" y="42" width="12" height="12" rx="3" fill="#6f4527"/>'+
+    '<line x1="56" y1="92" x2="100" y2="56" stroke="#ffd158" stroke-width="1.6"/>'+
+    arm(46,66,36,84,52,96,c)+hand(52,96,c)+
+    arm(96,66,104,58,100,58,c)+hand(100,58,c)+
+    dotEyes(60,52,82,52)+smile(62,62,16);
+  }else if(id==='combo'){ const c='#ffb347';
+    b=legs(c)+
+    '<rect x="42" y="30" width="56" height="84" rx="24" fill="'+c+'"/>'+
+    '<line x1="58" y1="30" x2="52" y2="14" stroke="'+c+'" stroke-width="5" stroke-linecap="round"/><circle cx="51" cy="11" r="5.5" fill="#ffd158"/>'+
+    '<line x1="82" y1="30" x2="88" y2="14" stroke="'+c+'" stroke-width="5" stroke-linecap="round"/><circle cx="89" cy="11" r="5.5" fill="#ffd158"/>'+
+    '<rect x="50" y="76" width="40" height="26" rx="6" fill="#fff" stroke="'+O+'" stroke-width="2"/>'+
+    '<g stroke="'+O+'" stroke-width="2"><line x1="58" y1="76" x2="58" y2="92"/><line x1="66" y1="76" x2="66" y2="92"/><line x1="74" y1="76" x2="74" y2="92"/><line x1="82" y1="76" x2="82" y2="92"/></g>'+
+    arm(44,62,30,78,52,100,c)+hand(52,100,c)+
+    arm(96,62,110,78,88,100,c)+hand(88,100,c)+
+    '<path d="M55 48 l5 5 M60 48 l-5 5" stroke="'+O+'" stroke-width="3.6" stroke-linecap="round"/>'+
+    '<path d="M80 48 l5 5 M85 48 l-5 5" stroke="'+O+'" stroke-width="3.6" stroke-linecap="round"/>'+
+    smile(62,60,16);
+  }else if(id==='slice'){ const c='#7dff8a',st='#4ccf6a';
+    b=legs(c)+
+    '<circle cx="70" cy="76" r="38" fill="'+c+'"/>'+
+    '<line x1="44" y1="52" x2="98" y2="102" stroke="'+st+'" stroke-width="9" stroke-linecap="round"/>'+
+    '<ellipse cx="104" cy="106" rx="15" ry="11" fill="#e08a3c" transform="rotate(35 104 106)"/>'+
+    '<line x1="98" y1="100" x2="122" y2="70" stroke="#8a5a3a" stroke-width="5" stroke-linecap="round"/>'+
+    '<rect x="118" y="62" width="10" height="10" rx="2.5" fill="#6f4527"/>'+
+    arm(48,86,36,102,96,112,c)+hand(96,112,c)+
+    arm(94,66,116,62,118,72,c)+hand(118,72,c)+
+    dotEyes(58,64,80,60)+
+    '<path d="M58 78 q10 8 20 -2" stroke="'+O+'" stroke-width="4" fill="none" stroke-linecap="round"/>'+
+    '<rect x="66" y="78" width="6" height="6" rx="1" fill="#fff"/>';
+  }else if(id==='tock'){ const c='#c58dff',g='#ffd158';
+    b=legs(c)+
+    '<circle cx="70" cy="72" r="40" fill="'+c+'"/>'+
+    '<g stroke="#a26ae0" stroke-width="3"><line x1="70" y1="36" x2="70" y2="43"/><line x1="70" y1="101" x2="70" y2="108"/><line x1="34" y1="72" x2="41" y2="72"/><line x1="99" y1="72" x2="106" y2="72"/></g>'+
+    '<path d="M34 62 Q70 18 106 62" stroke="#8a5fc0" stroke-width="7" fill="none"/>'+
+    '<rect x="26" y="56" width="13" height="22" rx="6" fill="'+g+'"/><rect x="101" y="56" width="13" height="22" rx="6" fill="'+g+'"/>'+
+    '<ellipse cx="98" cy="116" rx="22" ry="9" fill="#4a4a6a"/><ellipse cx="98" cy="113" rx="17" ry="6.5" fill="#2e2e4a"/><circle cx="98" cy="113" r="2.6" fill="'+g+'"/>'+
+    arm(96,84,110,96,104,110,c)+hand(104,110,c)+
+    arm(44,84,26,74,30,54,c)+hand(30,54,c)+
+    dotEyes(58,64,82,64)+smile(62,78,16)+
+    '<line x1="70" y1="72" x2="70" y2="58" stroke="'+O+'" stroke-width="4" stroke-linecap="round"/><line x1="70" y1="72" x2="80" y2="76" stroke="'+O+'" stroke-width="4" stroke-linecap="round"/>';
+  }else if(id==='gauge'){ const c='#ffdd57',d='#d9b52e';
+    b=legs(c)+
+    '<rect x="46" y="26" width="48" height="88" rx="14" fill="'+c+'"/>'+
+    '<g stroke="'+d+'" stroke-width="3"><line x1="46" y1="40" x2="58" y2="40"/><line x1="46" y1="54" x2="66" y2="54"/><line x1="46" y1="68" x2="58" y2="68"/><line x1="46" y1="82" x2="66" y2="82"/><line x1="46" y1="96" x2="58" y2="96"/></g>'+
+    '<circle cx="30" cy="98" r="10" fill="#c9c9d9" stroke="'+O+'" stroke-width="2"/><circle cx="30" cy="98" r="3" fill="'+O+'"/>'+
+    '<line x1="38" y1="96" x2="110" y2="96" stroke="#efefef" stroke-width="6"/>'+
+    '<g stroke="'+O+'" stroke-width="1.6"><line x1="50" y1="93" x2="50" y2="99"/><line x1="64" y1="93" x2="64" y2="99"/><line x1="78" y1="93" x2="78" y2="99"/><line x1="92" y1="93" x2="92" y2="99"/></g>'+
+    arm(50,72,34,80,26,90,c)+hand(26,90,c)+
+    arm(90,72,108,82,110,94,c)+hand(110,94,c)+
+    dotEyes(60,44,80,44)+smile(62,56,16);
+  }else if(id==='luna'){ const c='#59e0d0',hd='#2fae9e';
+    b=legs(c)+
+    '<rect x="42" y="34" width="56" height="80" rx="12" fill="'+c+'"/>'+
+    '<rect x="42" y="34" width="56" height="18" rx="12" fill="'+hd+'"/>'+
+    '<circle cx="56" cy="34" r="4" fill="#eafffb" stroke="'+hd+'" stroke-width="2"/><circle cx="84" cy="34" r="4" fill="#eafffb" stroke="'+hd+'" stroke-width="2"/>'+
+    '<g fill="#bff2ec"><circle cx="54" cy="92" r="3"/><circle cx="64" cy="92" r="3"/><circle cx="74" cy="92" r="3"/><circle cx="84" cy="92" r="3"/><circle cx="54" cy="102" r="3"/><circle cx="64" cy="102" r="3"/><circle cx="74" cy="102" r="3"/></g>'+
+    '<path d="M104 18 a9 9 0 1 0 6 15 a7.5 7.5 0 1 1 -6 -15" fill="#ffd158"/>'+
+    '<rect x="98" y="52" width="22" height="28" rx="4" fill="#fff" stroke="'+O+'" stroke-width="2"/><rect x="98" y="52" width="22" height="8" rx="4" fill="#ff5d5d"/>'+
+    '<g stroke="#c9c9d9" stroke-width="2"><line x1="102" y1="66" x2="116" y2="66"/><line x1="102" y1="72" x2="116" y2="72"/></g>'+
+    arm(94,66,110,60,108,56,c)+hand(108,56,c)+
+    arm(46,66,28,60,30,48,c)+hand(30,48,c)+
+    dotEyes(60,64,80,64)+smile(62,74,16);
+  }else if(id==='doot'){ const c='#ff8ad1',bl='#ffb0dd',dk='#c25b93';
+    b=legs(c)+
+    '<ellipse cx="66" cy="80" rx="42" ry="44" fill="'+c+'"/>'+
+    '<g fill="none" stroke="#ffd9ee" stroke-width="5"><circle cx="50" cy="94" r="10"/><circle cx="66" cy="100" r="10"/><circle cx="82" cy="94" r="10"/></g>'+
+    '<path d="M96 56 Q118 48 124 30 L132 38 Q124 62 100 70 Z" fill="'+bl+'" stroke="'+dk+'" stroke-width="2"/>'+
+    '<line x1="84" y1="62" x2="98" y2="60" stroke="'+dk+'" stroke-width="4" stroke-linecap="round"/>'+
+    '<g fill="'+dk+'"><circle cx="102" cy="52" r="3.2"/><circle cx="110" cy="48" r="3.2"/><circle cx="118" cy="44" r="3.2"/></g>'+
+    arm(88,86,104,80,104,64,c)+hand(104,64,c)+
+    arm(44,86,30,72,42,60,c)+hand(42,60,c)+
+    '<path d="M46 54 q6 -8 12 0" stroke="'+O+'" stroke-width="5" fill="none" stroke-linecap="round"/>'+
+    '<path d="M68 52 q6 -8 12 0" stroke="'+O+'" stroke-width="5" fill="none" stroke-linecap="round"/>'+
+    '<ellipse cx="82" cy="63" rx="5.5" ry="4.5" fill="'+O+'"/>';
+  }else if(id==='gain'){ /* Garrett's redesign: faces LEFT, gray, the cone IS his mouth, red inside */
+    const g1='#9aa3b2',g2='#6f7887',red='#e34a4a',red2='#a92f2f',cy='#4dd6ff';
+    b=legs(g2,108)+
+    '<path d="M96 44 L30 24 L30 108 L96 88 Z" fill="'+g1+'"/>'+
+    '<path d="M96 44 L96 88 L112 84 L112 48 Z" fill="'+g2+'"/>'+
+    '<ellipse cx="30" cy="66" rx="12" ry="42" fill="'+red+'"/>'+
+    '<ellipse cx="30" cy="66" rx="7" ry="30" fill="'+red2+'"/>'+
+    '<path d="M30 24 a12 42 0 0 1 0 84" fill="none" stroke="'+red+'" stroke-width="4"/>'+
+    '<rect x="98" y="86" width="12" height="22" rx="5" fill="'+g2+'"/>'+
+    '<path d="M56 30 Q84 12 104 40" stroke="'+O+'" stroke-width="5" fill="none"/><rect x="100" y="38" width="9" height="14" rx="4" fill="#ffd158"/>'+
+    '<line x1="122" y1="40" x2="122" y2="96" stroke="'+cy+'" stroke-width="4" stroke-linecap="round"/>'+
+    '<line x1="116" y1="68" x2="128" y2="68" stroke="#ffd158" stroke-width="4" stroke-linecap="round"/>'+
+    '<rect x="117" y="50" width="10" height="8" rx="3" fill="'+cy+'"/>'+
+    '<text x="128" y="44" font-size="11" font-weight="bold" fill="'+cy+'">+</text>'+
+    '<text x="128" y="102" font-size="13" font-weight="bold" fill="'+cy+'">&#8722;</text>'+
+    arm(92,88,110,80,121,54,g2)+hand(121,54,g2)+
+    arm(60,96,44,112,34,116,g2)+hand(34,116,g2)+
+    dotEyes(60,42,78,46)+
+    '<path d="M52 56 q8 4 16 2" stroke="'+g2+'" stroke-width="2.5" fill="none"/>';
+  }else if(id==='plink'){ const c='#c0f24d',fr='#8fbb2e';
+    b=legs(c)+
+    '<rect x="34" y="58" width="72" height="54" rx="14" fill="'+c+'" stroke="'+fr+'" stroke-width="2"/>'+
+    '<g stroke="'+fr+'" stroke-width="1.5">'+
+    '<rect x="42" y="66" width="11" height="40" rx="4" fill="#ff5d5d"/>'+
+    '<rect x="56" y="69" width="11" height="37" rx="4" fill="#ffb347"/>'+
+    '<rect x="70" y="72" width="11" height="34" rx="4" fill="#ffdd57"/>'+
+    '<rect x="84" y="75" width="11" height="31" rx="4" fill="#7dff8a"/>'+
+    '<rect x="97" y="78" width="7" height="28" rx="3.5" fill="#4dd6ff"/></g>'+
+    '<circle cx="60" cy="24" r="5" fill="#ff8ad1"/><circle cx="80" cy="24" r="5" fill="#4dd6ff"/>'+
+    arm(38,74,20,58,44,40,c)+hand(44,40,c)+
+    '<line x1="44" y1="40" x2="58" y2="58" stroke="'+O+'" stroke-width="4" stroke-linecap="round"/><circle cx="44" cy="38" r="5.5" fill="#ff8ad1"/>'+
+    arm(102,74,120,58,96,40,c)+hand(96,40,c)+
+    '<line x1="96" y1="40" x2="82" y2="58" stroke="'+O+'" stroke-width="4" stroke-linecap="round"/><circle cx="96" cy="38" r="5.5" fill="#4dd6ff"/>'+
+    dotEyes(58,46,82,46)+smile(62,50,16);
   }
   const fl=(typeof S!=='undefined'&&S&&S.memberGear)?S.memberGear[id]:null;
-  if(fl)b+='<text x="104" y="34" font-size="27">'+fl+'</text>';
+  if(fl)b+='<text x="106" y="30" font-size="26">'+fl+'</text>';
   return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 140 140">'+b+'</svg>';
 }
 
@@ -1426,6 +1468,7 @@ function talkTo(id){
   if(id==='plink') btns+='<button class="btn wide" onclick="startMJ(\'hopbars\')">🐸 Hop the Bars</button>'+
     '<button class="btn wide ghost" onclick="startMJ(\'missingbar\')">🕳️ Missing Bar</button>'+
     '<button class="btn wide ghost" onclick="startMJ(\'echohops\')">🔁 Echo Hops</button>';
+  if(id==='gain') btns+='<button class="btn wide ghost" onclick="startLesson()">📖 Learn negatives with me!</button>';
   if(id==='gain') btns+='<button class="btn wide" onclick="startMJ(\'faderride\')">🎚️ Fader Ride</button>'+
     '<button class="btn wide ghost" onclick="startMJ(\'zeroout\')">⚖️ Zero Out</button>'+
     '<button class="btn wide ghost" onclick="startMJ(\'lightlevels\')">💡 Light Levels</button>';
@@ -1952,6 +1995,7 @@ $('#btnQuizExit').addEventListener('click',()=>{
 
 /* ============ AUDITIONS ============ */
 function startAudition(id){
+  if(id==='gain'&&gainLessonGate(function(){startAudition(id);}))return;
   closeModal();
   const m=BY_ID[id];
   runQuiz({mode:'audition',member:id,count:5,onDone(){
@@ -3899,6 +3943,7 @@ Object.assign(COACH,{
 function startMJ(id,practice){
   closeModal();
   const def=MJGAMES[id]; if(!def)return;
+  if(def.member==='gain'&&gainLessonGate(function(){startMJ(id,practice);}))return;
   if(coachGate(id,def.member,function(){startMJ(id);},function(){startMJ(id,true);}))return;
   MJ.id=id; MJ.def=def; MJ.round=0; MJ.score=0; MJ.on=true; MJ.practice=!!practice;
   if(MJ.practice)toast('🎓 Practice round: no score, no levels, all fun!');
@@ -4459,6 +4504,7 @@ MJGAMES.lightlevels={id:'lightlevels',name:'Light Levels',emoji:'💡',member:'g
 setup(L,st){
   const F=v=>v>0?'+'+v:String(v);
   const set=new Set(); const span=L<3?4:L<5?6:9;
+  set.add(-R(1,span)); /* the negative-numbers game always shows a negative */
   while(set.size<4)set.add(pick([-1,1])*R(0,span));
   st.vals=Array.from(set).sort((a,b)=>a-b);
   st.nextIx=0; st.miss=false;
@@ -4616,16 +4662,78 @@ const SONGS=[
   chords:[[4,[60,64,67]],[12,[60,64,67]],[20,[62,65,69]],[28,[62,65,69]]],
   fx:[[15,'scratch'],[31,'scratch']]}
 ];
+/* ---------- GAIN'S BOARD LESSON: a guided first meeting with negative numbers.
+   Tap-through, hands-on: the kid moves the fader and discovers below-zero.
+   Runs once before Gain's first game/audition; replayable from his card. ---------- */
+const LESSON={on:false,step:0,cur:0};
+const LESSON_STEPS=[
+ {say:'This is my fader. It is really a NUMBER LINE standing up. See the gold line? That is ZERO.',need:null,btn:'Got it!'},
+ {say:'Above zero: louder. +1, +2, +3. Tap ▲ twice and watch the numbers.',need:{dir:1,to:2}},
+ {say:'Nice. +2! Now here is my favorite trick. Tap ▼ and come back DOWN to zero.',need:{dir:-1,to:0}},
+ {say:'Zero. Now... keep going. Tap ▼ ONE more time. Do not be scared.',need:{dir:-1,to:-1}},
+ {say:'THAT is negative one! One step BELOW zero. The minus sign means \'below\'. Go down to −3!',need:{dir:-1,to:-3}},
+ {say:'−3. Three steps below zero. Quieter than quiet! Notice: −3 is LOWER than −1, because it is FARTHER below.',need:null,btn:'Whoa.'},
+ {say:'Now climb ALL the way back up to +2. Count every step out loud as you cross zero!',need:{dir:1,to:2}},
+ {say:'You just walked the whole number line: below zero, through zero, above zero. +2 and −2 are MIRROR twins: same distance, opposite sides.',need:null,btn:'I get it!'},
+ {say:'That is negative numbers. Not broken numbers. Just the other half of the line. Now come play my games!',need:null,btn:'🎛️ Let\u2019s go!'}
+];
+function startLesson(after){
+  LESSON.on=true; LESSON.step=0; LESSON.cur=0; LESSON.after=after||null;
+  closeModal(); $('#lsGain').innerHTML=memberSVG('gain',86); show('scr-lesson'); lessonDraw(); lessonSay();
+}
+function lessonDraw(){
+  $('#lsFader').innerHTML=faderHTML(LESSON.cur,-5,5);
+  $('#lsVal').textContent=LESSON.cur>0?'+'+LESSON.cur:String(LESSON.cur);
+  $('#lsVal').style.color=LESSON.cur<0?'#4dd6ff':(LESSON.cur>0?'#ffd158':'#f4f0ff');
+}
+function lessonSay(){
+  const st=LESSON_STEPS[LESSON.step];
+  $('#lsSay').innerHTML='<div class="speak">"'+nameify(st.say)+'"</div>';
+  $('#lsNext').style.display=st.need?'none':'';
+  $('#lsNext').textContent=st.btn||'Next';
+}
+function lessonMove(d){
+  if(!LESSON.on)return; const st=LESSON_STEPS[LESSON.step];
+  ac();
+  LESSON.cur=Math.max(-5,Math.min(5,LESSON.cur+d));
+  tone(440*Math.pow(2,LESSON.cur/12),.14,'triangle',.22);
+  lessonDraw();
+  if(st.need&&LESSON.cur===st.need.to){ drum('clap'); later(()=>lessonAdvance(),450); }
+}
+function lessonAdvance(){
+  if(LESSON.step>=LESSON_STEPS.length-1){ lessonEnd(); return; }
+  LESSON.step++; lessonSay();
+}
+function lessonEnd(){
+  LESSON.on=false; S.flags.lesson_gain=true; save(); sFanfare(); confetti(16);
+  const after=LESSON.after; LESSON.after=null;
+  renderHub(); show('scr-hub');
+  if(after)later(after,250);
+}
+function gainLessonGate(after){
+  if(S.flags.lesson_gain)return false;
+  startLesson(after);
+  return true;
+}
 const SHOW={on:false,timers:[]};
 function setStageBG(id){ S.equipped.stagebg=id||''; save(); applyStageBG(); sTap(); }
 function applyStageBG(){ const it=SHOP.find(x=>x.id===S.equipped.stagebg);
   $('#showStage').style.background=it?it.val:''; }
 function showLater(fn,ms){ const id=setTimeout(fn,ms); SHOW.timers.push(id); TIMERS.push(id); return id; }
 function showHit(id){ const el=$('#sm-'+id); if(!el)return; el.classList.add('hit'); showLater(()=>el.classList.remove('hit'),150); }
-function showStop(){ SHOW.on=false; SHOW.timers.forEach(clearTimeout); SHOW.timers=[]; const c=$('#showCap'); if(c)c.textContent='Pick a song. The band knows them all.'; }
+function showStop(){ SHOW.on=false; SHOW.timers.forEach(clearTimeout); SHOW.timers=[];
+  const c=$('#showCap'); if(c)c.textContent='Pick a song. The band knows them all.';
+  const bm=$('#showBeams'); if(bm){bm.classList.remove('on','hue1','hue2','flash'); SHOW.hue=0;} }
+function gainLights(){ const bm=$('#showBeams'); if(!bm)return;
+  SHOW.hue=((SHOW.hue||0)+1)%3;
+  bm.classList.remove('hue1','hue2');
+  if(SHOW.hue===1)bm.classList.add('hue1'); else if(SHOW.hue===2)bm.classList.add('hue2');
+  bm.classList.add('flash'); showLater(()=>bm.classList.remove('flash'),200);
+}
 function openShow(){
   showStop();
-  $('#showStage').innerHTML=BAND.map(m=>'<span class="perf" id="sm-'+m.id+'">'+memberSVG(m.id,54)+'</span>').join('');
+  $('#showStage').innerHTML='<div id="showBeams"><i class="bm b1"></i><i class="bm b2"></i><i class="bm b3"></i></div>'+
+    BAND.map(m=>'<span class="perf" id="sm-'+m.id+'">'+memberSVG(m.id,54)+'</span>').join('');
   $('#showTitle').textContent='🎶 Band Room';
   $('#showStyle').textContent='';
   const list=SONGS.filter(sg=>!sg.shopId||S.owned.includes(sg.shopId));
@@ -4644,7 +4752,8 @@ function showPlay(id){
   ac(); showStop(); SHOW.on=true;
   $('#showTitle').textContent='🎶 '+sg.title;
   $('#showStyle').textContent=sg.style;
-  $('#showCap').textContent='The band is ON! (tap another song anytime)';
+  $('#showCap').textContent=nameify('The band is ON! Gain has the lights. (tap another song anytime)');
+  const bm=$('#showBeams'); if(bm)bm.classList.add('on');
   const spb=60000/sg.bpm/4, barSteps=16, bars=sg.drums.length, total=bars*barSteps*(sg.loops||1);
   const DR={K:['kick','boom'],S:['snare','boom'],h:['hatc','boom'],H:['hato','boom'],C:['clap','luna'],'8':['b808','rumble'],c:['scratch','tock']};
   const evts=[];
@@ -4671,7 +4780,7 @@ function showPlay(id){
       else if(kind==='perc'){ if(e[1]==='block')tone(1250,.06,'sine',.3); else if(e[1]==='bell')V.bell(88); else {V.hat(true);V.bell(84);} }
       else if(kind==='fx'){ if(e[1]==='riser')V.sweep(true); else V.scratch(); }
       showHit(who);
-      if(who!=='gain'&&st%8===0)showHit('gain');
+      if(st%8===0){ if(who!=='gain')showHit('gain'); gainLights(); }
     },Math.round(st*spb));
   });
   showLater(()=>{ if(SHOW.on){ $('#showCap').textContent='🎉 '+nameify(pick(['Encore? Tap it again!','The garage goes wild!','Gain flashes the lights. Perfect set.']));
@@ -4740,7 +4849,7 @@ function openPlay(id){
 
 const MONTHS_MJ=['March','April','May','June','September','October'];
 
-Object.assign(window.BQ,{MJ:MJ,MJGAMES:MJGAMES,startMJ:startMJ,mjNext:mjNext,mjOK:mjOK,mjNo:mjNo,mName:mName,nameify:nameify,renameMember:renameMember,openPlay:openPlay,PLAY_RIGS:PLAY_RIGS,V:V,SONGS:SONGS,SHOW:SHOW,openShow:openShow,showPlay:showPlay,showStop:showStop,mjRetry:function(){if(MJ.on&&!MJ.busy){MJ.round--;mjNext();}}});
+Object.assign(window.BQ,{MJ:MJ,MJGAMES:MJGAMES,startMJ:startMJ,mjNext:mjNext,mjOK:mjOK,mjNo:mjNo,mName:mName,nameify:nameify,renameMember:renameMember,openPlay:openPlay,PLAY_RIGS:PLAY_RIGS,V:V,SONGS:SONGS,SHOW:SHOW,openShow:openShow,showPlay:showPlay,showStop:showStop,LESSON:LESSON,startLesson:startLesson,lessonMove:lessonMove,lessonAdvance:lessonAdvance,gainLessonGate:gainLessonGate,mjRetry:function(){if(MJ.on&&!MJ.busy){MJ.round--;mjNext();}}});
 </script>
 
 </body>
