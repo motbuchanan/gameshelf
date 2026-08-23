@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Measure Up">
-<title>Measure Up v0.24</title>
+<title>Measure Up v0.27</title>
 <style>
 :root{
   --bg:#0e0b1e; --panel:#1d1636; --panel2:#28204a; --ink:#f4f0ff; --dim:#a89cd8;
@@ -407,6 +407,24 @@ input.nm{
   display:flex;align-items:flex-end;justify-content:center;padding-bottom:5px;box-shadow:0 3px 0 rgba(0,0,0,.35);cursor:pointer}
 .mjbar.good{outline:3px solid #fff;filter:brightness(1.25)}
 .mjbar:active{transform:translateY(2px)}
+.coinrow{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:12px 0}
+.coinbtn{background:#241c48;border:2px solid #4b3f86;border-radius:12px;padding:8px 12px;color:#f4f0ff;font-size:22px;cursor:pointer;display:flex;flex-direction:column;align-items:center;line-height:1.1}
+.coinbtn b{font-size:12px;color:#a89cd8;margin-top:2px}
+.coinbtn.used{opacity:.4;border-color:#54d98b}
+.coinbtn:active{transform:translateY(2px)}
+.drawer{text-align:center;font-size:20px;font-weight:800;margin-top:6px;color:#54ff9a}
+.storycard{background:#241c48;border-left:4px solid #54d98b;border-radius:10px;padding:12px 14px;margin:10px 0;font-size:16px;line-height:1.4;color:#f4f0ff}
+.airtrack{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin:12px auto;max-width:320px;padding:10px;
+  background:#1a1338;border-radius:14px;cursor:pointer;min-height:44px}
+.airdot{font-size:24px;color:#4dd6ff;transition:all .18s;line-height:1}
+.airdot.used{color:#ff8ad1;transform:scale(1.15)}
+.airdot.leftover{color:#ffd158;animation:lopulse .8s infinite}
+@keyframes lopulse{0%,100%{opacity:.5}50%{opacity:1}}
+.notesmade{display:flex;flex-wrap:wrap;justify-content:center;gap:4px;min-height:30px;margin:4px 0}
+.madenote{font-size:22px;animation:notePop .3s}
+@keyframes notePop{from{transform:scale(0)}to{transform:scale(1)}}
+.mjmate .mateart{display:inline-block}
+@media (prefers-reduced-motion: reduce){ .airdot.leftover{animation:none} .madenote{animation:none} }
 #showStage{display:flex;flex-wrap:wrap;justify-content:center;align-items:flex-end;gap:2px;min-height:120px;
   background:linear-gradient(180deg,#1a1338,#241c48);border-radius:16px;padding:10px 4px;margin:10px 0;position:relative;overflow:hidden}
 #showBeams{position:absolute;inset:0;pointer-events:none;opacity:0;transition:opacity .6s}
@@ -427,6 +445,15 @@ input.nm{
 @media (prefers-reduced-motion: reduce){ #showStage .perf.hit{transform:none} }
 #showStage.lightshow .perf.hit{filter:brightness(1.7) drop-shadow(0 0 16px #4dd6ff) drop-shadow(0 0 8px #ff8ad1);transform:translateY(-12px) scale(1.12)}
 #showList .btn{margin-top:8px}
+.ellybar{display:flex;align-items:center;gap:10px;background:linear-gradient(90deg,#2a2358,#241c48);
+  border:1.5px solid #ffcf4d55;border-radius:14px;padding:8px 12px;margin:8px 0;cursor:pointer}
+.ellybar #ellyBarArt svg{width:44px;height:44px;flex:0 0 44px}
+.ellyspeak{color:#ffe9b0;font-weight:600;font-size:14px;line-height:1.25}
+.ellybar:active{transform:scale(.99)}
+@keyframes ellySway{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(4deg)}}
+#ellyBarArt{display:inline-block;transform-origin:top center;animation:ellySway 2.6s ease-in-out infinite}
+@media (prefers-reduced-motion: reduce){ #ellyBarArt{animation:none} }
+.ellymodal .ellyspeak{font-size:15px}
 #splash{position:fixed;inset:0;z-index:200;background:radial-gradient(circle at 50% 30%,#2b2158,#131022 70%);
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;transition:opacity .5s}
 #splash.bye{opacity:0;pointer-events:none}
@@ -487,6 +514,10 @@ input.nm{
     <button class="btn ghost small" id="btnEdit">🎨</button>
   </div>
   <div class="garagehead">🏠 The Garage · <span class="tierchip">Space Tier 1</span></div>
+  <div id="ellyBar" class="ellybar" onclick="ellyHint()">
+    <span id="ellyBarArt"></span>
+    <div class="ellyspeak" id="ellyBarText">Tap me any time you need a hint!</div>
+  </div>
   <div class="stage garage center">
     <div class="playerpad">
       <div id="hubPlayer" class="idle"></div>
@@ -742,14 +773,14 @@ input.nm{
 
 <canvas id="fx"></canvas>
 <div id="toast"></div>
-<div id="vbadge">v0.24 · Aug 22</div>
+<div id="vbadge">v0.27 · Aug 22</div>
 
 <script>
 'use strict';
 /* ============ UTILS ============ */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const VERSION='v0.24 · Aug 22';
+const VERSION='v0.27 · Aug 22';
 const RM=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -762,7 +793,7 @@ function clearTimers(){TIMERS.forEach(clearTimeout);TIMERS=[];}
 const KEY='bq_save_v1';
 const DEF={
   v:1, creature:null, notes:0, gold:0,
-  skills:{add:1,sub:1,mul:1,frac:1,clock:1,cal:1,meas:1,div:1,neg:1,skip:1},
+  skills:{add:1,sub:1,mul:1,frac:1,clock:1,cal:1,meas:1,div:1,neg:1,skip:1,money:1},
   auditioned:{}, band:{}, owned:[], proofs:{}, met:{}, plays:{}, memberNames:{}, memberGear:{},
   equipped:{drumskin:'classic'},
   flags:{soundcheckOffered:false,introDone:false,coach_kc:false,coach_arc:false,coach_rs:false,coach_gg:false,coach_tt:false,coach_st:false,coach_hp:false,coach_gig:false},
@@ -909,7 +940,59 @@ function sCorrect(streak){
   const i=Math.min(streak,7);
   tone(SCALE[i],.14,'triangle',.3); tone(SCALE[i]*1.25,.18,'triangle',.24,.09);
 }
-function sWrong(){ tone(150,.2,'sine',.2); }
+/* ---------- ELLY: the guide who breaks the fourth wall ---------- */
+const ELLY_HINTS={
+ 'scr-hub':'This is your Garage. Tap any bandmate to JAM (that is practice), take an AUDITION to find your level, or pass their PROOF to make them join. You do not need anyone to start!',
+ 'scr-show':'This is the Band Room. Pick a song and the whole crew plays it together. Gain runs the lights! Tap another song any time.',
+ 'scr-play':'Free play! No score, no rush. Just tap and make sounds. Every bandmate has their own instrument to mess around with.',
+ 'scr-shop':'The Gear Shop! Spend the 🎵 Notes you earn on flair, backdrops, new songs, and instrument add-ons. Nothing here is needed to play, it is all just for fun.',
+ 'scr-lesson':'Gain is teaching you negative numbers. Take your time and tap along, there is no wrong here.',
+ 'scr-mj':'A mini-game! Read what the bandmate asks at the top, then tap to answer. See the ↻ button? That gives you a fresh try. The ❓ replays how to play!',
+ 'scr-quiz':'Answer at your own pace. A wrong answer is never a big deal, you still earn Notes for trying. I will chime softly so you know to look again.'
+};
+function ellyTip(){
+  let id='scr-hub'; $$('.scr').forEach(sc=>{ if(sc.classList.contains('on'))id=sc.id; });
+  return ELLY_HINTS[id]||'Tap around and explore! I am always right here if you need me.';
+}
+function ellyHint(){
+  sTap(); ellyChime();
+  modal('<div class="center ellymodal">'+ellySVG(96)+'<h2>Elly</h2></div>'+
+    '<div class="ellyspeak" style="background:#241c48;padding:12px;border-radius:12px">"'+ellyTip()+'"</div>'+
+    '<button class="btn wide" onclick="closeModal()">Thanks, Elly! 🔔</button>'+
+    '<button class="btn wide ghost" onclick="ellyReplayIntro()">Show me the welcome tour again</button>');
+}
+const ELLY_INTRO=[
+ 'Hi hi! I am Elly, your guide. I am the little bell you will hear around here. Let me show you the ropes! (Tap to keep going.)',
+ 'This whole game is a BAND. Each bandmate teaches one kind of math, and YOU are the band leader. Pretty cool job, huh?',
+ 'To get better, you JAM with them. Jamming is just playing their games. Win or lose, you always earn 🎵 Notes to spend in the Shop.',
+ 'When you are ready, a bandmate gives you a PROOF, a little boss battle. Beat it and they officially JOIN your band!',
+ 'One promise from me: there is no way to lose this game. If you miss one, I chime softly like this, and you just try again. That is it!',
+ 'See me up top in the Garage? Tap me ANY time and I will explain whatever screen you are on. Now go make some music! 🔔'
+];
+function startEllyIntro(after){
+  ELLY.on=true; ELLY.step=0; ELLY.after=after||null;
+  closeModal(); ellyStep();
+}
+function ellyStep(){
+  ellyChime();
+  const last=ELLY.step>=ELLY_INTRO.length-1;
+  modal('<div class="center ellymodal">'+ellySVG(100)+'<h2>Elly</h2></div>'+
+    '<div class="ellyspeak" style="background:#241c48;padding:12px;border-radius:12px">"'+ELLY_INTRO[ELLY.step]+'"</div>'+
+    '<button class="btn wide" onclick="ellyNext()">'+(last?'Let\u2019s play! 🎸':'Next 🔔')+'</button>'+
+    (last?'':'<button class="btn wide ghost" onclick="ellyFinishIntro()">Skip the tour</button>'));
+}
+function ellyNext(){ if(ELLY.step>=ELLY_INTRO.length-1){ ellyFinishIntro(); return; } ELLY.step++; ellyStep(); }
+function ellyFinishIntro(){
+  ELLY.on=false; S.flags.ellyIntro=true; save();
+  const after=ELLY.after; ELLY.after=null; closeModal();
+  if(after)later(after,150);
+}
+function ellyReplayIntro(){ closeModal(); startEllyIntro(null); }
+function ellyChime(){ /* Elly's gentle wrong-answer cue: a soft two-note bell, never harsh */
+  if(typeof V!=='undefined'&&V.bell){ V.bell(72); later(()=>V.bell(67),90); }
+  else tone(523,.3,'sine',.18);
+}
+function sWrong(){ ellyChime(); }
 function sFanfare(){
   [0,2,4,7].forEach((st,i)=>{tone(261.63*Math.pow(2,st/12),.5,'triangle',.22,i*.12);});
   [0,2,4,7].forEach((st,i)=>{tone(523.25*Math.pow(2,st/12),.4,'square',.07,i*.12+.36);});
@@ -1026,7 +1109,25 @@ function creatureSVG(c,sz){
 
 /* ============ CUSTOM MEMBER ART (concept-driven silhouettes) ============ */
 let SVGID=0; function uid(){return 'bq'+(SVGID++);}
-const CONCEPT_COLOR={add:'#ff5d5d',sub:'#5d8bff',mul:'#ffb347',frac:'#7dff8a',clock:'#c58dff',cal:'#59e0d0',meas:'#ffdd57',div:'#ff8ad1',neg:'#4dd6ff',skip:'#c0f24d'};
+const CONCEPT_COLOR={add:'#ff5d5d',sub:'#5d8bff',mul:'#ffb347',frac:'#7dff8a',clock:'#c58dff',cal:'#59e0d0',meas:'#ffdd57',div:'#ff8ad1',neg:'#4dd6ff',skip:'#c0f24d',money:'#54d98b'};
+function regExtra(){ return ''; }
+function memberSVG_reg_placeholder(){}
+function ellySVG(sz){
+  sz=sz||120; const O='#221a44', g='#ffcf4d', g2='#e0a92e', rim='#b5851f';
+  return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 140 140">'+
+    '<line x1="70" y1="6" x2="70" y2="20" stroke="#8a8aa8" stroke-width="3"/><circle cx="70" cy="6" r="4" fill="#8a8aa8"/>'+
+    '<path d="M38 96 Q30 40 70 22 Q110 40 102 96 Z" fill="'+g+'"/>'+
+    '<path d="M38 96 Q30 40 70 22 Q86 34 88 62 Q86 84 70 96 Z" fill="#ffe08a" opacity=".55"/>'+
+    '<ellipse cx="70" cy="96" rx="34" ry="9" fill="'+g2+'"/>'+
+    '<ellipse cx="70" cy="96" rx="34" ry="5" fill="'+rim+'"/>'+
+    '<circle cx="70" cy="104" r="7" fill="'+g2+'" stroke="'+rim+'" stroke-width="2"/>'+
+    '<g><circle cx="58" cy="62" r="6" fill="'+O+'"/><circle cx="82" cy="62" r="6" fill="'+O+'"/>'+
+    '<circle cx="60" cy="60" r="2" fill="#fff"/><circle cx="84" cy="60" r="2" fill="#fff"/></g>'+
+    '<path d="M60 74 q10 8 20 0" stroke="'+O+'" stroke-width="4" fill="none" stroke-linecap="round"/>'+
+    '<circle cx="48" cy="52" r="5" fill="#ff9ec4" opacity=".5"/><circle cx="92" cy="52" r="5" fill="#ff9ec4" opacity=".5"/>'+
+    '<line x1="104" y1="70" x2="122" y2="58" stroke="#8a5a3a" stroke-width="4" stroke-linecap="round"/><circle cx="124" cy="56" r="6" fill="#c98a5a"/>'+
+    '</svg>';
+}
 function memberSVG(id,sz){
   /* v0.24 character pass: everyone has arms, hands, legs, and visibly PLAYS their
      instrument. Garrett's art direction: "how could they hug, let alone play?" */
@@ -1125,18 +1226,23 @@ function memberSVG(id,sz){
     arm(94,66,110,60,108,56,c)+hand(108,56,c)+
     arm(46,66,28,60,30,48,c)+hand(30,48,c)+
     dotEyes(60,64,80,64)+smile(62,74,16);
-  }else if(id==='doot'){ const c='#ff8ad1',bl='#ffb0dd',dk='#c25b93';
+  }else if(id==='doot'){ /* horn PLAYER: round pink body, cheeks puffed, holding a trumpet that flares out to the right */
+    const c='#ff8ad1',dk='#c25b93',br='#ffcf4d',br2='#e0a92e';
     b=legs(c)+
-    '<ellipse cx="66" cy="80" rx="42" ry="44" fill="'+c+'"/>'+
-    '<g fill="none" stroke="#ffd9ee" stroke-width="5"><circle cx="50" cy="94" r="10"/><circle cx="66" cy="100" r="10"/><circle cx="82" cy="94" r="10"/></g>'+
-    '<path d="M96 56 Q118 48 124 30 L132 38 Q124 62 100 70 Z" fill="'+bl+'" stroke="'+dk+'" stroke-width="2"/>'+
-    '<line x1="84" y1="62" x2="98" y2="60" stroke="'+dk+'" stroke-width="4" stroke-linecap="round"/>'+
-    '<g fill="'+dk+'"><circle cx="102" cy="52" r="3.2"/><circle cx="110" cy="48" r="3.2"/><circle cx="118" cy="44" r="3.2"/></g>'+
-    arm(88,86,104,80,104,64,c)+hand(104,64,c)+
-    arm(44,86,30,72,42,60,c)+hand(42,60,c)+
-    '<path d="M46 54 q6 -8 12 0" stroke="'+O+'" stroke-width="5" fill="none" stroke-linecap="round"/>'+
-    '<path d="M68 52 q6 -8 12 0" stroke="'+O+'" stroke-width="5" fill="none" stroke-linecap="round"/>'+
-    '<ellipse cx="82" cy="63" rx="5.5" ry="4.5" fill="'+O+'"/>';
+    '<circle cx="62" cy="76" r="36" fill="'+c+'"/>'+
+    '<circle cx="46" cy="86" r="12" fill="#ffa8d4"/><circle cx="78" cy="86" r="12" fill="#ffa8d4"/>'+   /* puffed cheeks */
+    '<ellipse cx="62" cy="58" rx="9" ry="7" fill="'+O+'"/>'+                                              /* blowing mouth (o-shape) */
+    '<circle cx="52" cy="46" r="5" fill="'+O+'"/><circle cx="72" cy="46" r="5" fill="'+O+'"/>'+
+    '<circle cx="54" cy="44" r="1.7" fill="#fff"/><circle cx="74" cy="44" r="1.7" fill="#fff"/>'+
+    '<path d="M46 34 q6 -5 12 -1 M66 33 q6 -4 12 1" stroke="'+dk+'" stroke-width="2.5" fill="none" stroke-linecap="round"/>'+  /* brows */
+    /* trumpet: mouthpiece at his lips, tube right, bell flare */
+    '<line x1="70" y1="60" x2="96" y2="60" stroke="'+br2+'" stroke-width="7" stroke-linecap="round"/>'+
+    '<path d="M96 48 L96 72 L118 82 L118 38 Z" fill="'+br+'" stroke="'+br2+'" stroke-width="2"/>'+
+    '<ellipse cx="118" cy="60" rx="4" ry="22" fill="'+br2+'"/>'+
+    '<g fill="'+br2+'"><circle cx="80" cy="60" r="3"/><circle cx="86" cy="60" r="3"/><circle cx="92" cy="60" r="3"/></g>'+   /* valves */
+    arm(40,86,26,74,58,62,c)+hand(58,62,c)+                                                              /* left hand to mouthpiece */
+    arm(84,90,96,86,92,74,c)+hand(92,74,c)+                                                              /* right hand on valves */
+    '<g fill="none" stroke="#ffd9ee" stroke-width="3" opacity=".8"><path d="M124 54 q6 -4 0 -8"/><path d="M128 62 q7 -2 2 -10"/></g>';  /* sound puffs */
   }else if(id==='gain'){ /* Garrett's redesign: faces LEFT, gray, the cone IS his mouth, red inside */
     const g1='#9aa3b2',g2='#6f7887',red='#e34a4a',red2='#a92f2f',cy='#4dd6ff';
     b=legs(g2,108)+
@@ -1172,13 +1278,29 @@ function memberSVG(id,sz){
     '<line x1="96" y1="40" x2="82" y2="58" stroke="'+O+'" stroke-width="4" stroke-linecap="round"/><circle cx="96" cy="38" r="5.5" fill="#4dd6ff"/>'+
     dotEyes(58,46,82,46)+smile(62,50,16);
   }
+  if(id==='reg'){ const c='#54d98b',d='#33b06a',scr='#123',k='#e8f7ee';
+    b=legs(c)+
+    '<rect x="34" y="52" width="72" height="60" rx="10" fill="'+c+'"/>'+
+    '<rect x="40" y="30" width="60" height="26" rx="6" fill="'+d+'"/>'+
+    '<rect x="46" y="34" width="48" height="16" rx="3" fill="'+scr+'"/>'+
+    '<text x="52" y="47" font-size="13" font-weight="bold" fill="#54ff9a">$1.00</text>'+
+    '<g fill="'+k+'"><circle cx="48" cy="70" r="5"/><circle cx="62" cy="70" r="5"/><circle cx="76" cy="70" r="5"/><circle cx="90" cy="70" r="5"/>'+
+    '<circle cx="48" cy="84" r="5"/><circle cx="62" cy="84" r="5"/><circle cx="76" cy="84" r="5"/><circle cx="90" cy="84" r="5"/></g>'+
+    '<rect x="44" y="98" width="52" height="7" rx="3" fill="'+d+'"/>'+                     /* coin slot = mouth */
+    '<circle cx="52" cy="44" r="0" fill="'+scr+'"/>'+
+    '<circle cx="26" cy="40" r="9" fill="#ffd158" stroke="#d9b52e" stroke-width="2"/><text x="22.5" y="44" font-size="10" font-weight="bold" fill="#a8801f">$</text>'+  /* a coin */
+    arm(38,64,24,52,26,44,c)+hand(26,44,c)+
+    arm(102,64,116,54,118,66,c)+hand(118,66,c)+
+    '<rect x="110" y="60" width="14" height="20" rx="2" fill="#fff" stroke="#c9c9d9" stroke-width="1.5"/>'+  /* receipt */
+    '<g stroke="#c9c9d9" stroke-width="1.4"><line x1="113" y1="66" x2="121" y2="66"/><line x1="113" y1="70" x2="121" y2="70"/><line x1="113" y1="74" x2="121" y2="74"/></g>';
+  }
   const fl=(typeof S!=='undefined'&&S&&S.memberGear)?S.memberGear[id]:null;
   if(fl)b+='<text x="106" y="30" font-size="26">'+fl+'</text>';
   return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 140 140">'+b+'</svg>';
 }
 
 /* ============ BAND DATA ============ */
-const CONCEPT_NAMES={add:'Addition',sub:'Subtraction',mul:'Multiplication',frac:'Fractions',clock:'Clocks & Time',cal:'Days & Months',meas:'Measurement',div:'Division',neg:'Negative Numbers',skip:'Skip Counting'};
+const CONCEPT_NAMES={add:'Addition',sub:'Subtraction',mul:'Multiplication',frac:'Fractions',clock:'Clocks & Time',cal:'Days & Months',meas:'Measurement',div:'Division',neg:'Negative Numbers',skip:'Skip Counting',money:'Money & Coins'};
 const BAND=[
  {id:'boom',name:'Boom',emoji:'🥁',title:'Drummer',concept:'add',color:'#ff5d5d',
   cfg:{body:'round',col:'#ff5d5d',eyes:'dot',extra:'horns'},
@@ -1229,7 +1351,12 @@ const BAND=[
   cfg:{body:'round',col:'#c0f24d',eyes:'happy',extra:'none'},
   bio:'I never play every bar. I HOP! 3... 6... 9... 12! Same-size jumps make the prettiest patterns. That is skip counting, and it is secretly multiplication warming up.',
   lines:['Plink plink PLINK! Watch me hop!','Why walk up the bars when you can JUMP by fives?','Every pattern I play, my mallets learn a times table.'],
-  dreams:['Nice hops out there today. Same-size jumps, every time.','When I was little I played every single bar. It took FOREVER.','My dream song is played only on the bars you land on counting by 7s. Nobody has ever done it.','Patterns are just promises the numbers keep. Hop by 4s and 12 is ALWAYS there.','One day you will hop by 3s and realize you already know your threes times table. I cannot wait to see your face.']}
+  dreams:['Nice hops out there today. Same-size jumps, every time.','When I was little I played every single bar. It took FOREVER.','My dream song is played only on the bars you land on counting by 7s. Nobody has ever done it.','Patterns are just promises the numbers keep. Hop by 4s and 12 is ALWAYS there.','One day you will hop by 3s and realize you already know your threes times table. I cannot wait to see your face.']},
+ {id:'reg',name:'Register',emoji:'💵',title:'Merch Table',concept:'money',color:'#54d98b',
+  cfg:{body:'round',col:'#54d98b',eyes:'happy',extra:'none'},
+  bio:'I run the merch table! T-shirts, stickers, tour buttons. Coins and bills, counting change, making sure everybody pays fair and gets the right money back. Cha-CHING!',
+  lines:['Step right up to the merch table!','A dime is ten cents, a nickel is five. I know every coin by heart.','Money is just counting with extra steps. And I LOVE counting.'],
+  dreams:['Sold out the whole merch table tonight. Every coin counted twice.','My first gig, I gave back the wrong change. Never again. Now I am the best there is.','My dream is a cash box so full it takes two hands to carry.','Every fan who leaves happy with the right change... that is my kind of music.','One day you will count change faster than me. That is the day I know I taught you right.']}
 ];
 const BY_ID={}; BAND.forEach(m=>BY_ID[m.id]=m);
 /* Custom member names: every bandmate is renameable. mName() is the display
@@ -1358,6 +1485,7 @@ const WHY={
   div:v=>(v&&v.m&&v.k)?
     'Doot: "'+(v.m*v.k)+' ÷ '+v.m+' = '+v.k+' and '+v.m+' × '+v.k+' = '+(v.m*v.k)+'. Same family, played backwards!"':
     'Doot: "Dividing is dealing cards. One for you, one for you, till the pile is gone."',
+  money:v=>'Register: "Count the big coins first, then the little ones. Quarters, dimes, nickels, pennies. Cha-ching!"',
   skip:v=>(v&&v.k&&v.h)?
     'Plink: "'+v.h+' hops of '+v.k+' lands on '+(v.k*v.h)+'... and '+v.h+' × '+v.k+' = '+(v.k*v.h)+'. Skip counting IS multiplication warming up!"':
     'Plink: "Same-size jumps! That is the whole secret. The pattern does the work."',
@@ -1418,6 +1546,8 @@ function renderHub(){
   $('#hubBandCount').textContent=n===0?'Solo act':'Band of '+(n+1);
   const st=$('#btnStation');
   st.style.display=S.band.boom?'':'none';
+  const eb=$('#ellyBarArt'); if(eb)eb.innerHTML=ellySVG(44);
+  const et=$('#ellyBarText'); if(et)et.textContent='Hi, I\u2019m Elly! Tap me for a hint any time. 🔔';
   const g=$('#bandGrid'); g.innerHTML='';
   BAND.forEach((m,i)=>{
     const inband=!!S.band[m.id];
@@ -1465,6 +1595,9 @@ function talkTo(id){
   if(id==='doot') btns+='<button class="btn wide" onclick="startMJ(\'longbreath\')">🎺 Long Breath</button>'+
     '<button class="btn wide ghost" onclick="startMJ(\'soloshare\')">🎷 Solo Share</button>'+
     '<button class="btn wide ghost" onclick="startMJ(\'lasttoot\')">💨 Last Toot</button>';
+  if(id==='reg') btns+='<button class="btn wide" onclick="startMJ(\'coincount\')">🪙 Coin Count</button>'+
+    '<button class="btn wide ghost" onclick="startMJ(\'makechange\')">💰 Make Change</button>'+
+    '<button class="btn wide ghost" onclick="startMJ(\'merchrun\')">🛍️ Merch Run</button>';
   if(id==='plink') btns+='<button class="btn wide" onclick="startMJ(\'hopbars\')">🐸 Hop the Bars</button>'+
     '<button class="btn wide ghost" onclick="startMJ(\'missingbar\')">🕳️ Missing Bar</button>'+
     '<button class="btn wide ghost" onclick="startMJ(\'echohops\')">🔁 Echo Hops</button>';
@@ -1478,19 +1611,16 @@ function talkTo(id){
   if(id==='boom'&&S.band.boom) btns+='<button class="btn wide ghost" onclick="closeModal();openStation()">🎧 Echo Beats</button>';
   btns+='<button class="btn wide ghost" onclick="openPlay(\''+id+'\')">🎵 Play my '+RIG_NAMES[id]+'</button>';
   btns+='<button class="btn wide '+((id==='boom'||id==='slice')?'ghost':'')+'" onclick="startAudition(\''+id+'\')">'+(S.auditioned[id]?'🎤 Play for me again! (re-place level)':'🎤 Placement audition')+'</button>';
-  if(id==='boom'){
-    const p=proofCount('add');
+  { const cc=m.concept, p=proofCount(cc);
     if(p<3){
       const need=[3,6,9][p];
-      if(Math.floor(lvlOf('add'))>=need)
-        btns+='<button class="btn wide" style="background:linear-gradient(180deg,#ff7a4d,#d84e2f);box-shadow:0 5px 0 #7e3218" onclick="startBattle(\'boom\')">⚡ Proof '+PROOF_NAMES[p]+'</button>';
+      if(Math.floor(lvlOf(cc))>=need)
+        btns+='<button class="btn wide" style="background:linear-gradient(180deg,#ff7a4d,#d84e2f);box-shadow:0 5px 0 #7e3218" onclick="startBattle(\''+id+'\')">⚡ Proof '+PROOF_NAMES[p]+'</button>';
       else
-        btns+='<button class="btn wide ghost" onclick="toast(\'Jam with Boom to reach Lvl '+need+' first!\')">🔒 Proof '+PROOF_NAMES[p]+' at Lvl '+need+'</button>';
+        btns+='<button class="btn wide ghost" onclick="toast(\''+nameify(mName(id))+': jam to Lvl '+need+' first!\')">🔒 Proof '+PROOF_NAMES[p]+' at Lvl '+need+'</button>';
     }else{
-      btns+='<button class="btn wide ghost" onclick="toast(\'💎 Addition: PLATINUM. Boom salutes you.\')">💎 All Proofs passed!</button>';
+      btns+='<button class="btn wide ghost" onclick="toast(\'💎 '+CONCEPT_NAMES[cc]+': PLATINUM!\')">💎 All Proofs passed!</button>';
     }
-  }else if(aud&&!inband){
-    btns+='<button class="btn wide ghost" onclick="toast(\'⚡ '+m.name+'&#39;s Proof arrives in a coming update!\')">⚡ Proof (soon!)</button>';
   }
   modal(
     '<div class="center">'+memberSVG(m.id,110)+'<h2 style="margin:4px 0">'+m.emoji+' '+mName(id)+' · '+m.title+' <button class="btn ghost small" style="padding:4px 8px;font-size:13px" onclick="renameMember(\''+id+'\')">✏️</button>'+(SHOP.some(it=>it.type==='flair'&&S.owned.includes(it.id))?'<button class="btn ghost small" style="padding:4px 8px;font-size:13px" onclick="flairPick(\''+id+'\')">🎽</button>':'')+'</h2></div>'+
@@ -1835,6 +1965,26 @@ const QG={
     const v=-R(2,9);
     return {q:'The bass fader is at '+v+'. How many steps from ZERO is that?',vis:faderHTML(v,-9,9),choices:numChoices(-v,3),a:String(-v)};
   },
+  money(L){
+    const cents=c=>c>=100?('$'+(c/100).toFixed(2)):(c+'¢');
+    const COINS=[['penny',1],['nickel',5],['dime',10],['quarter',25]];
+    if(L<3){ const coin=pick(COINS.slice(0,3));
+      return {q:'How many cents is ONE '+coin[0]+'?',vis:'',choices:numChoices(coin[1],3).map(String),a:String(coin[1])}; }
+    if(L<5){ const a=pick([1,5,10]),b=pick([1,5,10]),n1=R(1,3),n2=R(1,3);
+      return {q:'You have '+n1+' '+(a===1?'pennies':a===5?'nickels':'dimes')+' and '+n2+' '+(b===1?'pennies':b===5?'nickels':'dimes')+'. How many cents total?',
+        vis:'',choices:numChoices(n1*a+n2*b,5),a:String(n1*a+n2*b)}; }
+    if(L<7){ const price=R(2,9)*5, paid=10*Math.ceil(price/10)+ (Math.random()<.4?0:0);
+      const pay= price<=25?25:(price<=50?50:100);
+      return {q:'A sticker costs '+cents(price)+'. You pay with '+cents(pay)+'. How much change?',
+        vis:'',choices:numChoices(pay-price,10),a:String(pay-price)}; }
+    if(L<9){ const items=[['🎸 pick',15],['🎫 button',25],['📷 photo',40],['🧢 cap',60]];
+      const it1=pick(items),it2=pick(items.filter(x=>x!==it1));
+      return {q:'You buy a '+it1[0]+' ('+cents(it1[1])+') and a '+it2[0]+' ('+cents(it2[1])+'). Total cost?',
+        vis:'',choices:numChoices(it1[1]+it2[1],10),a:String(it1[1]+it2[1])}; }
+    const price=R(3,9)*25, pay=100;
+    return {q:'A T-shirt is '+cents(price)+'. You pay $1.00. What is your change?',
+      vis:'',choices:numChoices(pay-price,15),a:String(pay-price)};
+  },
   meas(L){
     const GEAR=['the amp','the drum riser','the speaker stack','the guitar case','the stage ramp','the merch table'];
     if(L<3){
@@ -2013,7 +2163,8 @@ function startAudition(id){
     );
   }});
 }
-function backToHub(){ closeModal(); renderHub(); show('scr-hub'); }
+function backToHub(){ closeModal(); renderHub(); show('scr-hub');
+  if(!S.flags.ellyIntro)later(()=>startEllyIntro(null),300); }
 
 /* ============ SOUNDCHECK (optional placement, all six, 3 Qs each) ============ */
 let SC=null;
@@ -2067,35 +2218,53 @@ const PROOF_WIN=[
  '"DOUBLE DRUMLINE, DEMOLISHED! Gold tier unlocked. My kit just got bigger and so did your sound!"',
  '"...I have no words. PLATINUM. You are officially better at this than me. Wear that crown, band leader!"'
 ];
+let BATTLE_ID='boom';
 function startBattle(id){
-  closeModal();
-  const p=proofCount('add');
+  closeModal(); BATTLE_ID=id;
+  const m=BY_ID[id], p=proofCount(m.concept);
+  const intro=(id==='boom')?PROOF_INTRO[p]:proofIntro(id,p);
   modal(
-    '<div class="center">'+memberSVG('boom',110)+'<h2>⚡ Proof '+PROOF_NAMES[p]+'</h2></div>'+
-    '<div class="speak">'+PROOF_INTRO[p]+'</div>'+
-    '<button class="btn wide" style="background:linear-gradient(180deg,#ff7a4d,#d84e2f);box-shadow:0 5px 0 #7e3218" onclick="battleGo()">🥁 Bring it, Boom!</button>'+
+    '<div class="center">'+memberSVG(id,110)+'<h2>⚡ Proof '+PROOF_NAMES[p]+'</h2></div>'+
+    '<div class="speak">'+nameify(intro)+'</div>'+
+    '<button class="btn wide" style="background:linear-gradient(180deg,#ff7a4d,#d84e2f);box-shadow:0 5px 0 #7e3218" onclick="battleGo()">⚡ Bring it, '+nameify(mName(id))+'!</button>'+
     '<button class="btn wide ghost" onclick="backToHub()">Maybe later</button>'
   );
 }
 function battleGo(){
   closeModal();
-  const p=proofCount('add');
-  runQuiz({mode:'battle',member:'boom',count:99,forceL:[0,7,9][p]});
+  const m=BY_ID[BATTLE_ID], p=proofCount(m.concept);
+  runQuiz({mode:'battle',member:BATTLE_ID,count:99,forceL:[0,7,9][p]});
+}
+/* generic proof flavor for the nine non-Boom members, in their own voice */
+function proofIntro(id,p){
+  const nm=mName(id), cc=BY_ID[id].concept, C=CONCEPT_NAMES[cc];
+  return ['"PROOF ONE! Fill my Respect bar with '+C+'. Right answers fill it fast, trying fills it a little. Beat this and I am officially IN!"',
+    '"You came back! PROOF TWO: the '+C+' gets HEAVIER now. Show me the big ones!"',
+    '"THE GRAND FINALE. Everything you know about '+C+'. Win this and there is nothing left for me to teach you!"'][p];
+}
+function proofWin(id,p){
+  const cc=BY_ID[id].concept, C=CONCEPT_NAMES[cc];
+  return ['"THAT WAS FIRE! You earned my respect AND my spot in the band! Silver tier unlocked, keep jamming!"',
+    '"'+C.toUpperCase()+', DEMOLISHED! Gold tier unlocked. Our sound just got bigger!"',
+    '"...PLATINUM. You are officially better at this than me. Wear that crown, band leader!"'][p];
 }
 function battleWin(){
   stopAll();
-  const p=(S.proofs.add||0); S.proofs.add=p+1;
+  const id=BATTLE_ID, m=BY_ID[id], cc=m.concept;
+  const p=(S.proofs[cc]||0); S.proofs[cc]=p+1;
   const first=(p===0);
-  if(first)S.band.boom=true;
+  if(first)S.band[id]=true;
   addGold(1); S.notes+=50; save();
   sFanfare(); confetti(60);
   renderHub(); show('scr-hub');
+  const winLine=(id==='boom')?PROOF_WIN[p]:proofWin(id,p);
+  const nm=nameify(mName(id));
   modal(
-    '<div class="center">'+memberSVG('boom',120)+'<h2>🏆 '+(first?'BOOM JOINS THE BAND!':'PROOF PASSED!')+'</h2></div>'+
-    '<div class="speak">'+PROOF_WIN[p]+'</div>'+
+    '<div class="center">'+memberSVG(id,120)+'<h2>🏆 '+(first?nm.toUpperCase()+' JOINS THE BAND!':'PROOF PASSED!')+'</h2></div>'+
+    '<div class="speak">'+nameify(winLine)+'</div>'+
     '<div class="card center"><b>Rewards</b><div style="margin-top:6px">📀 +1 Gold Record &nbsp; 🎵 +50 Notes<br>'+
-    (first?'🎧 <b>Echo Beats</b> unlocked!<br>':'')+
-    '🏅 '+TIER_NAME[Math.min(3,S.proofs.add)]+' medal stamped on Boom!</div></div>'+
+    (first&&id==='boom'?'🎧 <b>Echo Beats</b> unlocked!<br>':'')+
+    '🏅 '+TIER_NAME[Math.min(3,S.proofs[cc])]+' medal stamped on '+nm+'!</div></div>'+
     '<button class="btn wide" onclick="backToHub()">🤘 '+(first?'Welcome to the band!':'Rock on!')+'</button>'
   );
 }
@@ -3616,6 +3785,7 @@ const INTRO_MEETS=[
   ['doot','Doot on the horn! One breath, split into equal notes. Fairest player I know.'],
   ['gain','And way in the back: Gain, on sound and lights. Faders go ABOVE zero and BELOW it. Wild, right?'],
   ['plink','Plink hops the xylophone by 2s and 5s and 10s. Never plays a bar she does not need!'],
+  ['reg','And Register works the merch table! Coins, bills, and making change. Money math with a cash-register beat!'],
   ['boom','Everyone here will jam with you ANYTIME. That is how you get good.'],
   ['boom','But first: warm up with ME. The crowd wants FIVE beats. Catch drums that add up to 5!']
 ];
@@ -3701,7 +3871,8 @@ const GIG_LINES={
   luna:'Luna circles a date on her calendar. "Booking the next one right now."',
   doot:'Doot splits the applause into equal shares and hands you yours. "Fair is fair. Doot doot!"',
   gain:'From the back of the room, Gain slides one fader to exactly zero and nods. "Perfect balance. Perfect show."',
-  plink:'Plink hops the mallets down the bars in perfect threes. "Same-size jumps! Prettiest sound there is!"'
+  plink:'Plink hops the mallets down the bars in perfect threes. "Same-size jumps! Prettiest sound there is!"',
+  reg:'Register rings up the whole crowd and counts the drawer twice. "Every coin accounted for. Cha-CHING!"'
 };
 const GIG={on:false,teach:false,cues:[],idx:0,hype:0,maxHype:0,cueStart:0,busy:false,raf:0,combo:0,harmTarget:0,venue:null,members:[],_danceLead:1050,_harmNotes:null,_stationAns:null};
 
@@ -3799,7 +3970,7 @@ function gigStationAnswer(id,val,btn){
   const correct=String(val)===GIG._stationAns;
   $$('#gigPads .gigpad').forEach(b=>{ b.disabled=true; if(String(b.textContent)===GIG._stationAns)b.classList.add('good'); });
   if(correct){ if(btn)punch(btn); if(!GIG.teach)adjust(m.concept,true,false,false); tone(SCALE[Math.min(6,Math.max(0,Math.floor(lvlOf(m.concept))))],.16,'triangle',.28); drum('clap',.02); gigBounce(); $('#gigCap').textContent='🎶 '+mName(id)+' loves it!'; gigAddHype(16); maybeWhy(m.concept,{},0.25); }
-  else { if(btn)btn.classList.add('badc'); tone(150,.18,'sine',.18); $('#gigCap').textContent='"'+pick(['No sweat, keep the groove!','We got the next one!','Shake it off, frontman!'])+'"'; gigAddHype(0); }
+  else { if(btn)btn.classList.add('badc'); ellyChime(); $('#gigCap').textContent='"'+pick(['No sweat, keep the groove!','We got the next one!','Shake it off, frontman!'])+'"'; gigAddHype(0); }
   gigAdvance(1050);
 }
 /* HARMONIZE: match the note you hear (pick-from-3; pitch slider unlocks later) */
@@ -3823,7 +3994,7 @@ function gigHarmPick(i,btn){
   const correct=(i===GIG.harmTarget);
   $$('#orbRow .orb').forEach((b,idx)=>{ b.disabled=true; if(idx===GIG.harmTarget)b.classList.add('good'); });
   if(correct){ if(btn)punch(btn); const base=GIG._harmNotes[GIG.harmTarget]; tone(base*1.25,.5,'triangle',.22,.03); tone(base*1.5,.5,'triangle',.18,.06); gigBounce(); confetti(10); $('#gigCap').textContent='🎵 In harmony!'; gigAddHype(18); }
-  else { if(btn)btn.classList.add('badc'); tone(150,.18,'sine',.16); $('#gigCap').textContent='Close! The glowing one was the match.'; gigAddHype(0); }
+  else { if(btn)btn.classList.add('badc'); ellyChime(); $('#gigCap').textContent='Close! The glowing one was the match.'; gigAddHype(0); }
   gigAdvance(1150);
 }
 function gigSoundcheck(){
@@ -3886,7 +4057,7 @@ function splashDismiss(){
   later(()=>{ if(SPLASH_STATE===1){ SPLASH_STATE=2; const sp2=$('#splash'); if(sp2){sp2.classList.add('bye'); later(()=>sp2.remove(),550);} } },1900);
 }
 (function(){ const sp=$('#splash'); if(sp)sp.addEventListener('pointerdown',splashDismiss); })();
-window.BQ={splashDismiss:splashDismiss,dreamOutro:dreamOutro,BY_ID:BY_ID,WHY:WHY,maybeWhy:maybeWhy,capOf2:capOf,startAudition:startAudition,roundCall:roundCall,callKill:callKill,CALLB:CALLB,rampL:rampL,notePlay:notePlay,firstPlay:firstPlay,kcCfg:kcCfg,arcCfg2:arcCfg,COACH:COACH,GESTURE_EMOJI:GESTURE_EMOJI,coachGate:coachGate,showCoach:showCoach,gigSoundcheck:gigSoundcheck,GIG:GIG,startGig:startGig,gigBuildCues:gigBuildCues,gigJudgeDance:gigJudgeDance,gigDancePts:gigDancePts,gigResultTier:gigResultTier,gigReward:gigReward,gigCueMax:gigCueMax,VENUES:VENUES,GIG_LINES:GIG_LINES,get S(){return S;},QG:QG,adjust:adjust,creatureSVG:creatureSVG,lvlOf:lvlOf,capOf:capOf,tierOf:tierOf,proofCount:proofCount,save:save,load:load,BAND:BAND,SHOP:SHOP,runQuiz:runQuiz,show:show,BB:BB,NS:NS,bbTap:bbTap,nsTap:nsTap,startBB:startBB,startNS:startNS,ARC:ARC,startARC:startARC,sliceNote:sliceNote,tryCollect:tryCollect,arcStep:arcStep,arcNeeded:arcNeeded,arcMeasureDone:arcMeasureDone,arcSpawnOne:arcSpawnOne,arcCfg:arcCfg,drawGlyph:drawGlyph,GLYPH:GLYPH,KC:KC,kcCatch:kcCatch,kcStep:kcStep,startKC:startKC,RS:RS,rsTap:rsTap,startRS:startRS,GG:GG,ggStamp:ggStamp,startGG:startGG,TT:TT,ttDrop:ttDrop,ttTime:ttTime,startTT:startTT,ST2:ST2,st2Resolve:st2Resolve,startST:startST,HP:HP,hpTap:hpTap,startHP:startHP,INTRO:INTRO,startIntro:startIntro};
+window.BQ={get QZ(){return QZ;},splashDismiss:splashDismiss,dreamOutro:dreamOutro,BY_ID:BY_ID,WHY:WHY,maybeWhy:maybeWhy,capOf2:capOf,startAudition:startAudition,roundCall:roundCall,callKill:callKill,CALLB:CALLB,rampL:rampL,notePlay:notePlay,firstPlay:firstPlay,kcCfg:kcCfg,arcCfg2:arcCfg,COACH:COACH,GESTURE_EMOJI:GESTURE_EMOJI,coachGate:coachGate,showCoach:showCoach,gigSoundcheck:gigSoundcheck,GIG:GIG,startGig:startGig,gigBuildCues:gigBuildCues,gigJudgeDance:gigJudgeDance,gigDancePts:gigDancePts,gigResultTier:gigResultTier,gigReward:gigReward,gigCueMax:gigCueMax,VENUES:VENUES,GIG_LINES:GIG_LINES,get S(){return S;},QG:QG,adjust:adjust,creatureSVG:creatureSVG,lvlOf:lvlOf,capOf:capOf,tierOf:tierOf,proofCount:proofCount,save:save,load:load,BAND:BAND,SHOP:SHOP,runQuiz:runQuiz,show:show,BB:BB,NS:NS,bbTap:bbTap,nsTap:nsTap,startBB:startBB,startNS:startNS,ARC:ARC,startARC:startARC,sliceNote:sliceNote,tryCollect:tryCollect,arcStep:arcStep,arcNeeded:arcNeeded,arcMeasureDone:arcMeasureDone,arcSpawnOne:arcSpawnOne,arcCfg:arcCfg,drawGlyph:drawGlyph,GLYPH:GLYPH,KC:KC,kcCatch:kcCatch,kcStep:kcStep,startKC:startKC,RS:RS,rsTap:rsTap,startRS:startRS,GG:GG,ggStamp:ggStamp,startGG:startGG,TT:TT,ttDrop:ttDrop,ttTime:ttTime,startTT:startTT,ST2:ST2,st2Resolve:st2Resolve,startST:startST,HP:HP,hpTap:hpTap,startHP:startHP,INTRO:INTRO,startIntro:startIntro};
 </script>
 <script>
 /* ================= MINI JAMS (v0.15) =================
@@ -3921,12 +4092,12 @@ Object.assign(COACH,{
     lines:['Four shows, four dates. A tour goes in ORDER.','TAP the posters earliest-first to build the route!']},
   countdown:{member:'luna',verb:'TAP',hint:'hop',title:'📆 Countdown',
     lines:['How many sleeps until the big show?','TAP each day between today and gig day, counting as you go!']},
-  longbreath:{member:'doot',verb:'TAP',hint:'tap',title:'🎺 Long Breath',
-    lines:['One breath of air, split into EQUAL notes.','Set the dial to how many notes fit, then BLOW and watch the air share out!']},
+  longbreath:{member:'doot',verb:'TAP',hint:'tap',title:'🎺 Grouping Notes',
+    lines:['See the blue dots? That is my BREATH, one dot per beat.','Tap to wrap them into notes. Each note eats the same number of beats. Count how many notes you can make!']},
   soloshare:{member:'doot',verb:'TAP',hint:'tap',title:'🎷 Solo Share',
-    lines:['The solo has bars. The horn section wants EQUAL turns.','TAP a horn player to hand them the next bar. Keep it fair!']},
-  lasttoot:{member:'doot',verb:'TAP',hint:'tap',title:'💨 Last Toot',
-    lines:['Sometimes the air does not split evenly. The leftover SQUEAKS.','BLOW the full notes, then tap SQUEAK once for each leftover beat!']},
+    lines:['These solo bars go to my horn players. Everyone gets the SAME.','Tap a player to hand them ONE bar at a time. Watch "bars left" go down!']},
+  lasttoot:{member:'doot',verb:'TAP',hint:'tap',title:'💨 Leftovers',
+    lines:['Wrap the dots into notes, same as before.','When there are not enough dots left for a whole note, those are the LEFTOVER, they turn gold! Count them.']},
   faderride:{member:'gain',verb:'TAP',hint:'tap',title:'🎚️ Fader Ride',
     lines:['Every fader is a number line. Zero sits in the middle.','TAP ▲ and ▼ to slide the fader to the level I call. Count every step, even below zero!']},
   zeroout:{member:'gain',verb:'TAP',hint:'tap',title:'⚖️ Zero Out',
@@ -3938,7 +4109,13 @@ Object.assign(COACH,{
   missingbar:{member:'plink',verb:'TAP',hint:'tap',title:'🕳️ Missing Bar',
     lines:['My pattern has a HOLE in it. Listen close!','Watch the bars ring, find the one I skipped, and TAP it!']},
   echohops:{member:'plink',verb:'TAP',hint:'tap',title:'🔁 Echo Hops',
-    lines:['Watch my mallets hop. Remember the pattern!','Then play the SAME hops back, in order. Same-size jumps help you remember!']}
+    lines:['Watch my mallets hop. Remember the pattern!','Then play the SAME hops back, in order. Same-size jumps help you remember!']},
+  coincount:{member:'reg',verb:'TAP',hint:'tap',title:'🪙 Coin Count',
+    lines:['Fans pay with coins. Add them ALL up!','Tap the coins into the drawer and watch the total. Big coins first!']},
+  makechange:{member:'reg',verb:'TAP',hint:'tap',title:'💰 Make Change',
+    lines:['They paid too much! Give back the right change.','Tap coins until the change adds up EXACTLY. Not a penny more!']},
+  merchrun:{member:'reg',verb:'TAP',hint:'tap',title:'🛍️ Merch Run',
+    lines:['A fan wants to buy some stuff. Read what they ask!','Add up the prices, then tap the right total. You got this!']}
 });
 function startMJ(id,practice){
   closeModal();
@@ -3975,7 +4152,7 @@ function mjOK(detail){
 function mjNo(detail){
   if(MJ.busy||!MJ.on)return; MJ.busy=true;
   if(!MJ.practice)adjust(MJ.def.concept,false,false,false);
-  tone(150,.2,'sine',.18);
+  ellyChime();
   $('#mjMsg').textContent=detail||'Almost! Next one is yours.';
   later(()=>{ if(!MJ.on)return; if(MJ.round>=6)mjEnd(); else mjNext(); },1700);
 }
@@ -4334,104 +4511,119 @@ setup(L,st){
 }};
 
 /* ---------- DOOT 1: LONG BREATH (quotative division: predict, then hear it) ---------- */
-MJGAMES.longbreath={id:'longbreath',name:'Long Breath',emoji:'🎺',member:'doot',concept:'div',
+MJGAMES.longbreath={id:'longbreath',name:'Grouping Notes',emoji:'🎺',member:'doot',concept:'div',
 setup(L,st){
-  st.m=L<3?2:R(2,L<5?4:6);        /* beats per note */
-  st.k=R(2,L<3?4:L<5?5:7);        /* notes that fit */
-  st.n=st.m*st.k; st.dial=1;
+  st.m=L<3?2:R(2,L<5?3:5);        /* beats PER note */
+  st.k=R(2,L<3?4:L<5?5:6);        /* how many notes fit */
+  st.n=st.m*st.k; st.picked=0;
+  /* a visible row of air dots; the kid taps to wrap each GROUP of m into one note */
+  let dots=''; for(let i=0;i<st.n;i++)dots+='<span class="airdot" id="ad'+i+'">●</span>';
   return {
-    call:st.n+' beats of air ÷ '+st.m+'-beat notes = ?',
-    sub:'Set the dial to how many notes fit, then BLOW to hear the air share out!',
-    html:'<div class="mjbig"><span id="mjAir">'+st.n+'</span> 💨</div>'+
-      '<div class="mjriff" id="mjNotesOut"></div>'+
-      '<div class="mjbig" style="font-size:34px"><span id="mjDialN">1</span> notes</div>'+
-      '<div class="row" style="justify-content:center;gap:10px">'+
-      '<button class="mjdrum" id="mjMinus" style="font-size:26px">−</button>'+
-      '<button class="mjdrum" id="mjPlus" style="font-size:26px">+</button>'+
-      '<button class="mjcymbal" id="mjLock">🎺<br>BLOW</button></div>',
+    call:'Wrap the air into notes of '+st.m+'!',
+    sub:'Doot has '+st.n+' beats of air. Each note uses '+st.m+' beats. Tap '+st.m+' dots to make ONE note. How many notes can he play?',
+    html:'<div class="airtrack" id="airTrack">'+dots+'</div>'+
+      '<div class="notesmade" id="notesMade"></div>'+
+      '<div class="mjbig" style="font-size:22px;margin-top:6px">Notes made: <b id="mjNoteCount">0</b></div>',
     wire(){
-      const set=v=>{ st.dial=Math.max(1,Math.min(9,v)); $('#mjDialN').textContent=st.dial; tone(220+st.dial*30,.1,'triangle',.2); };
-      $('#mjMinus').addEventListener('click',()=>{ if(!MJ.busy){ac();set(st.dial-1);} });
-      $('#mjPlus').addEventListener('click',()=>{ if(!MJ.busy){ac();set(st.dial+1);} });
-      $('#mjLock').addEventListener('click',()=>{ if(MJ.busy)return; ac();
-        const notes=Math.min(st.dial,st.k+2);
-        let i=0;
-        const t=setInterval(()=>{ tone(330+i*40,.24,'sawtooth',.2);
-          const air=Math.max(0,st.n-(i+1)*st.m); $('#mjAir').textContent=air;
-          const el=document.createElement('span'); el.className='mjnote'; el.textContent='♪'; $('#mjNotesOut').appendChild(el);
-          i++; if(i>=notes)clearInterval(t);
-        },320);
-        later(()=>{ if(st.dial===st.k)mjOK(st.n+' ÷ '+st.m+' = '+st.k+'. Every note got its equal share!');
-          else if(st.dial<st.k)mjNo('Air left over! '+st.n+' ÷ '+st.m+' = '+st.k+' notes, not '+st.dial+'.');
-          else mjNo('Ran out of breath! '+st.n+' ÷ '+st.m+' = '+st.k+' notes.'); },notes*320+300);
+      const wrap=()=>{
+        // wrap the next m unused dots into a note
+        const start=st.picked*st.m;
+        for(let j=start;j<start+st.m;j++){ const d=$('#ad'+j); if(d){ d.classList.add('used'); } }
+        st.picked++;
+        const el=document.createElement('span'); el.className='madenote'; el.textContent='🎵'; $('#notesMade').appendChild(el);
+        $('#mjNoteCount').textContent=st.picked;
+        V.horn(60+st.picked*2,.3);
+      };
+      // tapping any unused dot wraps the next full group
+      $('#airTrack').addEventListener('click',()=>{ if(MJ.busy)return;
+        const remaining=st.n-st.picked*st.m;
+        if(remaining>=st.m){ ac(); wrap();
+          if(st.n-st.picked*st.m<st.m){ /* no full group left: auto-finish prompt */ } }
+      });
+      // DONE button appears via the shared lock; use a lock button row
+      const bar=document.createElement('div'); bar.className='row'; bar.style.cssText='justify-content:center;margin-top:10px';
+      bar.innerHTML='<button class="mjcymbal" id="mjLock">🎺<br>THAT\u2019S ALL!</button>';
+      $('#mjZone').appendChild(bar);
+      $('#mjLock').addEventListener('click',()=>{ if(MJ.busy)return; ac(); drum('clap');
+        const leftover=st.n-st.picked*st.m;
+        if(st.picked===st.k)mjOK(st.n+' \u00f7 '+st.m+' = '+st.k+' notes! Every beat found a note.');
+        else if(st.picked<st.k)mjNo('There is still enough air for more! '+st.n+' \u00f7 '+st.m+' = '+st.k+' notes.');
+        else mjNo('That is more notes than there is air for. '+st.n+' \u00f7 '+st.m+' = '+st.k+'.');
       });
     }
   };
 }};
 
-/* ---------- DOOT 2: SOLO SHARE (partitive division: deal bars evenly) ---------- */
+/* ---------- DOOT 2: SOLO SHARE (partitive: deal bars evenly, now with a running check) ---------- */
 MJGAMES.soloshare={id:'soloshare',name:'Solo Share',emoji:'🎷',member:'doot',concept:'div',
 setup(L,st){
   st.m=L<3?2:pick([2,3,4]);
-  st.k=R(2,L<3?3:L<5?4:6);
+  st.k=R(2,L<3?3:L<5?4:5);
   st.n=st.m*st.k; st.left=st.n; st.given=new Array(st.m).fill(0);
-  let horns=''; for(let i=0;i<st.m;i++)horns+='<button class="mjmate" data-i="'+i+'">'+memberSVG('doot',52)+'<b class="mjplate" id="mjPlate'+i+'">0</b></button>';
+  let horns=''; for(let i=0;i<st.m;i++)horns+='<button class="mjmate" data-i="'+i+'"><span class="mateart">'+memberSVG('doot',48)+'</span><b class="mjplate" id="mjPlate'+i+'">0</b></button>';
   let bars=''; for(let i=0;i<st.n;i++)bars+='<span class="mjnote" id="mjBar'+i+'">🎵</span>';
   return {
-    call:st.n+' SOLO BARS ÷ '+st.m+' HORN PLAYERS',
-    sub:'Everyone gets an EQUAL turn. Tap a horn player to hand them the next bar!',
-    html:'<div class="mjriff" style="flex-wrap:wrap">'+bars+'</div><div class="mjmates">'+horns+'</div>',
+    call:'Share '+st.n+' solo bars with '+st.m+' players',
+    sub:'Tap each horn player to hand them ONE bar. Give everyone the SAME number. How many does each get?',
+    html:'<div class="mjriff" style="flex-wrap:wrap" id="barRow">'+bars+'</div>'+
+      '<div class="mjbig" style="font-size:20px">Bars left: <b id="barsLeft">'+st.n+'</b></div>'+
+      '<div class="mjmates">'+horns+'</div>',
     wire(){
       $$('.mjmate').forEach(b=>b.addEventListener('click',()=>{ if(MJ.busy||st.left<=0)return; ac();
         const i=+b.dataset.i;
         const bar=$('#mjBar'+(st.n-st.left)); if(bar)bar.style.opacity=.15;
         st.left--; st.given[i]++;
         $('#mjPlate'+i).textContent=st.given[i];
-        tone(392+i*60,.18,'sawtooth',.2); punch(b);
+        $('#barsLeft').textContent=st.left;
+        V.horn(64+i*3,.25); punch(b);
         if(st.left===0){
           const even=st.given.every(g=>g===st.given[0]);
-          later(()=>{ if(even)mjOK(st.n+' ÷ '+st.m+' = '+st.k+' bars each. The section sounds TIGHT.');
-            else mjNo('Turns came out '+st.given.join(', ')+'. Fair share is '+st.k+' each.'); },300);
+          later(()=>{ if(even)mjOK(st.n+' \u00f7 '+st.m+' = '+st.k+' bars each. The section is TIGHT!');
+            else mjNo('Not even yet: '+st.given.join(', ')+'. Fair share is '+st.k+' each. Try again with \u21bb!'); },300);
         }
       }));
     }
   };
 }};
 
-/* ---------- DOOT 3: LAST TOOT (division with remainders) ---------- */
-MJGAMES.lasttoot={id:'lasttoot',name:'Last Toot',emoji:'💨',member:'doot',concept:'div',
+/* ---------- DOOT 3: LEFTOVERS (remainders made concrete) ---------- */
+MJGAMES.lasttoot={id:'lasttoot',name:'Leftovers',emoji:'💨',member:'doot',concept:'div',
 setup(L,st){
-  st.m=R(3,L<5?4:6);
-  st.k=R(2,L<5?4:6);
+  st.m=R(2,L<5?3:4);
+  st.k=R(2,L<5?3:5);
   st.r=R(1,st.m-1);
-  st.n=st.m*st.k+st.r; st.air=st.n; st.blown=0; st.squeaks=0; st.phase='blow';
+  st.n=st.m*st.k+st.r; st.picked=0;
+  let dots=''; for(let i=0;i<st.n;i++)dots+='<span class="airdot" id="ad'+i+'">●</span>';
   return {
-    call:st.n+' beats of air, '+st.m+'-beat notes... something is LEFT OVER!',
-    sub:'BLOW full notes while they fit. Then SQUEAK once for each leftover beat!',
-    html:'<div class="mjbig"><span id="mjAir">'+st.n+'</span> 💨</div>'+
-      '<div class="mjriff" id="mjNotesOut"></div>'+
-      '<div class="row" style="justify-content:center;gap:14px">'+
-      '<button class="mjdrum" id="mjBlow">🎺</button>'+
-      '<button class="mjdrum" id="mjSqueak" style="background:radial-gradient(circle at 38% 32%,#ffb0dd,#c25b93);border-color:#8a3a63">🐭</button>'+
-      '<button class="mjcymbal" id="mjLock">🔔<br>DONE</button></div>'+
-      '<p class="sub center" id="mjTootMsg">Blow '+st.m+'-beat notes!</p>',
+    call:'Group by '+st.m+' \u2014 watch for the LEFTOVER!',
+    sub:'Tap to wrap the air into notes of '+st.m+'. When there is not enough left for a full note, those beats are the LEFTOVER (the squeak). How many full notes, and how many left over?',
+    html:'<div class="airtrack" id="airTrack">'+dots+'</div>'+
+      '<div class="notesmade" id="notesMade"></div>'+
+      '<div class="mjbig" style="font-size:20px">Full notes: <b id="mjNoteCount">0</b> &nbsp; Leftover: <b id="mjLeft">?</b></div>'+
+      '<div class="row" style="justify-content:center;margin-top:8px"><button class="mjcymbal" id="mjLock">🔔<br>THAT\u2019S ALL!</button></div>',
     wire(){
-      $('#mjBlow').addEventListener('click',()=>{ if(MJ.busy)return; ac();
-        if(st.air>=st.m){ st.air-=st.m; st.blown++;
-          $('#mjAir').textContent=st.air;
-          const el=document.createElement('span'); el.className='mjnote'; el.textContent='♪'; $('#mjNotesOut').appendChild(el);
-          tone(330,.26,'sawtooth',.2);
-          if(st.air<st.m)$('#mjTootMsg').textContent='Only '+st.air+' beat'+(st.air>1?'s':'')+' left... not enough for a full note!';
-        } else { $('#mjTootMsg').textContent='Not enough air for a full note! SQUEAK out the rest!'; shh(); }
-      });
-      $('#mjSqueak').addEventListener('click',()=>{ if(MJ.busy)return; ac();
-        st.squeaks++; tone(880+st.squeaks*60,.1,'square',.18); punch($('#mjSqueak'));
-        $('#mjTootMsg').textContent='Squeak '+st.squeaks+'!';
+      $('#airTrack').addEventListener('click',()=>{ if(MJ.busy)return;
+        const remaining=st.n-st.picked*st.m;
+        if(remaining>=st.m){ ac();
+          const start=st.picked*st.m;
+          for(let j=start;j<start+st.m;j++){ const d=$('#ad'+j); if(d)d.classList.add('used'); }
+          st.picked++;
+          const el=document.createElement('span'); el.className='madenote'; el.textContent='🎵'; $('#notesMade').appendChild(el);
+          $('#mjNoteCount').textContent=st.picked;
+          V.horn(60+st.picked*2,.3);
+          const nowLeft=st.n-st.picked*st.m;
+          if(nowLeft<st.m){ // mark leftovers as squeaks
+            for(let j=st.picked*st.m;j<st.n;j++){ const d=$('#ad'+j); if(d)d.classList.add('leftover'); }
+            $('#mjLeft').textContent=nowLeft;
+          }
+        }
       });
       $('#mjLock').addEventListener('click',()=>{ if(MJ.busy)return; ac(); drum('clap');
-        if(st.blown===st.k&&st.squeaks===st.r)mjOK(st.n+' ÷ '+st.m+' = '+st.k+' notes with '+st.r+' left over. THAT is the squeak!');
-        else if(st.blown!==st.k)mjNo('That was '+st.blown+' full notes. '+st.n+' ÷ '+st.m+' fits '+st.k+'.');
-        else mjNo('You squeaked '+st.squeaks+'. The leftover was '+st.r+' beat'+(st.r>1?'s':'')+'.'); });
+        const leftover=st.n-st.picked*st.m;
+        if(st.picked===st.k&&leftover===st.r){ shh(); mjOK(st.n+' \u00f7 '+st.m+' = '+st.k+' notes, with '+st.r+' left over. THAT is the squeak!'); }
+        else if(st.picked<st.k)mjNo('There is still air for another full note! Keep wrapping.');
+        else mjNo(st.n+' \u00f7 '+st.m+' = '+st.k+' full notes and '+st.r+' left over.');
+      });
     }
   };
 }};
@@ -4666,6 +4858,7 @@ const SONGS=[
    Tap-through, hands-on: the kid moves the fader and discovers below-zero.
    Runs once before Gain's first game/audition; replayable from his card. ---------- */
 const LESSON={on:false,step:0,cur:0};
+const ELLY={on:false,step:0,after:null};
 const LESSON_STEPS=[
  {say:'This is my fader. It is really a NUMBER LINE standing up. See the gold line? That is ZERO.',need:null,btn:'Got it!'},
  {say:'Above zero: louder. +1, +2, +3. Tap ▲ twice and watch the numbers.',need:{dir:1,to:2}},
@@ -4733,7 +4926,8 @@ function gainLights(){ const bm=$('#showBeams'); if(!bm)return;
 function openShow(){
   showStop();
   $('#showStage').innerHTML='<div id="showBeams"><i class="bm b1"></i><i class="bm b2"></i><i class="bm b3"></i></div>'+
-    BAND.map(m=>'<span class="perf" id="sm-'+m.id+'">'+memberSVG(m.id,54)+'</span>').join('');
+    BAND.map(m=>'<span class="perf" id="sm-'+m.id+'">'+memberSVG(m.id,54)+'</span>').join('')+
+    '<span class="perf" id="sm-elly" title="Elly">'+ellySVG(48)+'</span>';
   $('#showTitle').textContent='🎶 Band Room';
   $('#showStyle').textContent='';
   const list=SONGS.filter(sg=>!sg.shopId||S.owned.includes(sg.shopId));
@@ -4781,6 +4975,7 @@ function showPlay(id){
       else if(kind==='fx'){ if(e[1]==='riser')V.sweep(true); else V.scratch(); }
       showHit(who);
       if(st%8===0){ if(who!=='gain')showHit('gain'); gainLights(); }
+      if(st%16===0){ V.bell(84); showHit('elly'); }
     },Math.round(st*spb));
   });
   showLater(()=>{ if(SHOW.on){ $('#showCap').textContent='🎉 '+nameify(pick(['Encore? Tap it again!','The garage goes wild!','Gain flashes the lights. Perfect set.']));
@@ -4847,9 +5042,92 @@ function openPlay(id){
   show('scr-play');
 }
 
+/* ---------- REGISTER 1: COIN COUNT (add coin values) ---------- */
+const COIN_DEF={1:['🟤','1¢'],5:['⚪','5¢'],10:['🔘','10¢'],25:['⭐','25¢']};
+MJGAMES.coincount={id:'coincount',name:'Coin Count',emoji:'🪙',member:'reg',concept:'money',
+setup(L,st){
+  const kinds=L<3?[1,5]:L<5?[1,5,10]:[1,5,10,25];
+  st.coins=[]; const num=L<3?R(3,5):R(4,7);
+  for(let i=0;i<num;i++)st.coins.push(pick(kinds));
+  st.coins.sort((a,b)=>b-a);
+  st.total=st.coins.reduce((a,c)=>a+c,0); st.sum=0;
+  let row=st.coins.map((c,i)=>'<button class="coinbtn" data-i="'+i+'" data-v="'+c+'">'+COIN_DEF[c][0]+'<b>'+COIN_DEF[c][1]+'</b></button>').join('');
+  return {
+    call:'Add up the coins!',
+    sub:'Tap each coin to drop it in the drawer. What is the total?',
+    html:'<div class="coinrow">'+row+'</div>'+
+      '<div class="drawer">Drawer: <b id="coinSum">0</b>¢</div>',
+    wire(){
+      $$('.coinbtn').forEach(b=>b.addEventListener('click',()=>{ if(MJ.busy||b.disabled)return; ac();
+        b.disabled=true; b.classList.add('used'); st.sum+=(+b.dataset.v);
+        $('#coinSum').textContent=st.sum; tone(600+ (+b.dataset.v)*4,.1,'triangle',.2); V.bell(72);
+        if($$('.coinbtn').every(x=>x.disabled)){
+          later(()=>{ if(st.sum===st.total)mjOK('All counted: '+st.total+'¢! Drawer balanced.'); else mjNo('The drawer shows '+st.sum+'¢. Count again with ↻!'); },300);
+        }
+      }));
+    }
+  };
+}};
+
+/* ---------- REGISTER 2: MAKE CHANGE (subtract to a target with coins) ---------- */
+MJGAMES.makechange={id:'makechange',name:'Make Change',emoji:'💰',member:'reg',concept:'money',
+setup(L,st){
+  const kinds=L<4?[1,5,10]:[1,5,10,25];
+  st.need=L<3?R(2,9):L<5?R(5,25):R(10,60);
+  st.made=0;
+  let pad=kinds.map(c=>'<button class="coinbtn" data-v="'+c+'">'+COIN_DEF[c][0]+'<b>'+COIN_DEF[c][1]+'</b></button>').join('');
+  return {
+    call:'Give back '+st.need+'¢ change!',
+    sub:'Tap coins until the change adds up to EXACTLY '+st.need+'¢.',
+    html:'<div class="coinrow">'+pad+'</div>'+
+      '<div class="drawer">Change: <b id="chSum">0</b>¢ / '+st.need+'¢</div>'+
+      '<div class="row" style="justify-content:center;gap:10px;margin-top:8px">'+
+      '<button class="mjdrum" id="chUndo" style="font-size:16px">↶ undo</button>'+
+      '<button class="mjcymbal" id="mjLock">💵<br>GIVE</button></div>',
+    wire(){
+      st.stack=[];
+      $$('.coinbtn').forEach(b=>b.addEventListener('click',()=>{ if(MJ.busy)return; ac();
+        const v=+b.dataset.v; st.made+=v; st.stack.push(v); $('#chSum').textContent=st.made;
+        tone(600+v*4,.1,'triangle',.2); V.bell(72); }));
+      $('#chUndo').addEventListener('click',()=>{ if(MJ.busy||!st.stack.length)return; ac();
+        st.made-=st.stack.pop(); $('#chSum').textContent=st.made; tone(300,.1,'sine',.18); });
+      $('#mjLock').addEventListener('click',()=>{ if(MJ.busy)return; ac(); drum('clap');
+        if(st.made===st.need)mjOK('Exactly '+st.need+'¢ back. Perfect change!');
+        else if(st.made>st.need)mjNo('That is '+st.made+'¢, too much! Undo some. They only need '+st.need+'¢.');
+        else mjNo('Only '+st.made+'¢ so far. They need '+st.need+'¢. Add more!'); });
+    }
+  };
+}};
+
+/* ---------- REGISTER 3: MERCH RUN (short story problems) ---------- */
+const MERCH=[['🎸 pick',15],['🎫 button',25],['📷 photo',40],['🧢 cap',60],['👕 shirt',75],['🥁 sticker',10]];
+MJGAMES.merchrun={id:'merchrun',name:'Merch Run',emoji:'🛍️',member:'reg',concept:'money',
+setup(L,st){
+  const cents=c=>c>=100?('$'+(c/100).toFixed(2)):(c+'¢');
+  const two=L>=5;
+  const it1=pick(MERCH), it2=pick(MERCH.filter(x=>x!==it1));
+  if(!two){ st.total=it1[1];
+    st.story='A fan wants a '+it1[0]+'. It costs '+cents(it1[1])+'. How much do they pay?'; }
+  else { st.total=it1[1]+it2[1];
+    st.story='A fan buys a '+it1[0]+' ('+cents(it1[1])+') AND a '+it2[0]+' ('+cents(it2[1])+'). What do they owe in total?'; }
+  const opts=numChoices(st.total,two?12:6).map(String);
+  return {
+    call:'Ring up the sale!',
+    sub:st.story,
+    html:'<div class="storycard">'+st.story+'</div>'+
+      '<div class="mjcards">'+opts.map(o=>'<button class="mjposter" data-v="'+o+'">'+(+o>=100?'$'+(o/100).toFixed(2):o+'¢')+'</button>').join('')+'</div>',
+    wire(){
+      $$('.mjposter').forEach(b=>b.addEventListener('click',()=>{ if(MJ.busy)return; ac();
+        if(+b.dataset.v===st.total){ b.classList.add('good'); V.bell(84); mjOK('Ka-CHING! That is '+(st.total>=100?'$'+(st.total/100).toFixed(2):st.total+'¢')+'. Sale complete!'); }
+        else { b.classList.add('badc'); mjNo('Add it up again! The total was '+(st.total>=100?'$'+(st.total/100).toFixed(2):st.total+'¢')+'.'); }
+      }));
+    }
+  };
+}};
+
 const MONTHS_MJ=['March','April','May','June','September','October'];
 
-Object.assign(window.BQ,{MJ:MJ,MJGAMES:MJGAMES,startMJ:startMJ,mjNext:mjNext,mjOK:mjOK,mjNo:mjNo,mName:mName,nameify:nameify,renameMember:renameMember,openPlay:openPlay,PLAY_RIGS:PLAY_RIGS,V:V,SONGS:SONGS,SHOW:SHOW,openShow:openShow,showPlay:showPlay,showStop:showStop,LESSON:LESSON,startLesson:startLesson,lessonMove:lessonMove,lessonAdvance:lessonAdvance,gainLessonGate:gainLessonGate,mjRetry:function(){if(MJ.on&&!MJ.busy){MJ.round--;mjNext();}}});
+Object.assign(window.BQ,{MJ:MJ,MJGAMES:MJGAMES,startMJ:startMJ,mjNext:mjNext,mjOK:mjOK,mjNo:mjNo,mName:mName,nameify:nameify,renameMember:renameMember,openPlay:openPlay,PLAY_RIGS:PLAY_RIGS,V:V,SONGS:SONGS,SHOW:SHOW,openShow:openShow,showPlay:showPlay,showStop:showStop,LESSON:LESSON,startLesson:startLesson,lessonMove:lessonMove,lessonAdvance:lessonAdvance,gainLessonGate:gainLessonGate,startBattle:startBattle,battleGo:battleGo,battleWin:battleWin,ellySVG:ellySVG,ellyChime:ellyChime,ellyHint:ellyHint,ellyTip:ellyTip,startEllyIntro:startEllyIntro,ellyNext:ellyNext,ellyFinishIntro:ellyFinishIntro,ELLY:ELLY,ELLY_INTRO:ELLY_INTRO,ELLY_HINTS:ELLY_HINTS,proofIntro:proofIntro,proofWin:proofWin,proofCount:proofCount,mjRetry:function(){if(MJ.on&&!MJ.busy){MJ.round--;mjNext();}}});
 </script>
 
 </body>
