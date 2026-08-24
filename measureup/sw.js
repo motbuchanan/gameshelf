@@ -1,4 +1,4 @@
-const CACHE='measureup-v0-36';
+const CACHE='measureup-v0-39';
 const CORE=['./','./index.html','./manifest.json'];
 self.addEventListener('install',e=>{
   e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting()));
