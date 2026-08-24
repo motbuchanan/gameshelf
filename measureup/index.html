@@ -9,12 +9,12 @@
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Measure Up">
-<title>Measure Up v0.32</title>
+<title>Measure Up v0.36</title>
 <style>
 :root{
   --bg:#0e0b1e; --panel:#1d1636; --panel2:#28204a; --ink:#f4f0ff; --dim:#a89cd8;
   --gold:#ffd158; --note:#8ef0c9; --bad:#ff7a7a;
-  --boom:#ff5d5d; --rumble:#5d8bff; --combo:#ffb347; --slice:#7dff8a; --tock:#c58dff; --luna:#59e0d0;
+  --boom:#ff5d5d; --rumble:#5d8bff; --combo:#ffb347; --slice:#7dff8a; --tock:#c58dff; --luna:#59e0d0; --round:#9d7cff;
   --r:22px;
 }
 *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
@@ -767,6 +767,17 @@ svg .charg{will-change:transform}
   </div>
   <button class="btn wide" id="lsNext" style="margin-top:10px" onclick="lessonAdvance()">Next</button>
 </div>
+<div class="scr" id="scr-rlesson">
+  <div class="row" style="justify-content:space-between;align-items:center">
+    <button class="btn ghost backbtn" onclick="RLESSON.on=false;renderHub();show('scr-hub')">← Back</button>
+    <div class="chip">🪈 Swoop&#8217;s Rounding Lesson</div>
+    <span></span>
+  </div>
+  <div class="center" style="margin-top:6px" id="rlSwoop"></div>
+  <div id="rlSay"></div>
+  <div id="rlCtrl"></div>
+  <button class="btn wide" id="rlNext" style="margin-top:10px" onclick="rlessonAdvance()">Next</button>
+</div>
 <div class="scr" id="scr-show">
   <div class="row" style="justify-content:space-between;align-items:center">
     <button class="btn ghost backbtn" id="btnShowExit">← Back</button>
@@ -805,14 +816,14 @@ svg .charg{will-change:transform}
 <canvas id="fx"></canvas>
 <div id="toast"></div>
 <button id="homeBtn" onclick="goHome()" aria-label="Back to Garage">🏠</button>
-<div id="vbadge">v0.32 · Aug 23</div>
+<div id="vbadge">v0.36 · Aug 24</div>
 
 <script>
 'use strict';
 /* ============ UTILS ============ */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const VERSION='v0.32 · Aug 23';
+const VERSION='v0.36 · Aug 24';
 const RM=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -825,10 +836,10 @@ function clearTimers(){TIMERS.forEach(clearTimeout);TIMERS=[];}
 const KEY='bq_save_v1';
 const DEF={
   v:1, creature:null, notes:0, gold:0,
-  skills:{add:1,sub:1,mul:1,frac:1,clock:1,cal:1,meas:1,div:1,neg:1,skip:1,money:1},
+  skills:{add:1,sub:1,mul:1,frac:1,clock:1,cal:1,meas:1,div:1,neg:1,skip:1,money:1,round:1},
   auditioned:{}, band:{}, owned:[], proofs:{}, met:{}, plays:{}, memberNames:{}, memberGear:{}, cleared:{},
   equipped:{drumskin:'classic'},
-  flags:{soundcheckOffered:false,introDone:false,coach_kc:false,coach_arc:false,coach_rs:false,coach_gg:false,coach_tt:false,coach_st:false,coach_hp:false,coach_gig:false},
+  flags:{soundcheckOffered:false,introDone:false,coach_kc:false,coach_arc:false,coach_rs:false,coach_gg:false,coach_tt:false,coach_st:false,coach_hp:false,coach_gig:false,lesson_round:false},
   stats:{answers:0,correct:0,bestStreak:0,rounds:0}
 };
 let S;
@@ -980,6 +991,7 @@ const ELLY_HINTS={
  'scr-play':'Free play! No score, no rush. Just tap and make sounds. Every bandmate has their own instrument to mess around with.',
  'scr-shop':'The Gear Shop! Spend the 🎵 Notes you earn on flair, backdrops, new songs, and instrument add-ons. Nothing here is needed to play, it is all just for fun.',
  'scr-lesson':'Gain is teaching you negative numbers. Take your time and tap along, there is no wrong here.',
+ 'scr-rlesson':'Swoop is teaching you rounding. Slide numbers to the closest ten. No wrong here, just tap along!',
  'scr-mj':'A mini-game! Read what the bandmate asks at the top, then tap to answer. See the ↻ button? That gives you a fresh try. The ❓ replays how to play!',
  'scr-quiz':'Answer at your own pace. A wrong answer is never a big deal, you still earn Notes for trying. I will chime softly so you know to look again.'
 };
@@ -1363,6 +1375,23 @@ function memberSVG(id,sz){
     '<rect x="110" y="60" width="14" height="20" rx="2" fill="#fff" stroke="#c9c9d9" stroke-width="1.5"/>'+  /* receipt */
     '<g stroke="#c9c9d9" stroke-width="1.4"><line x1="113" y1="66" x2="121" y2="66"/><line x1="113" y1="70" x2="121" y2="70"/><line x1="113" y1="74" x2="121" y2="74"/></g>';
   }
+  if(id==='round'){ const c='#9d7cff',d='#6f52c9',tube='#e6e0ff';
+    b=legs(c)+
+    '<ellipse cx="62" cy="74" rx="33" ry="42" fill="'+c+'"/>'+                      /* tall body, shifted left to face the whistle */
+    '<circle cx="54" cy="60" r="8.5" fill="#fff"/><circle cx="74" cy="60" r="8.5" fill="#fff"/>'+
+    '<circle cx="56" cy="61" r="4.5" fill="'+O+'"/><circle cx="76" cy="61" r="4.5" fill="'+O+'"/>'+
+    '<circle cx="57.5" cy="58.5" r="1.7" fill="#fff"/><circle cx="77.5" cy="58.5" r="1.7" fill="#fff"/>'+
+    '<circle cx="44" cy="80" r="6" fill="#b49cff" opacity=".5"/><circle cx="80" cy="79" r="9" fill="#b49cff" opacity=".6"/>'+  /* puffed cheek (blowing) */
+    '<circle cx="88" cy="76" r="4.5" fill="'+O+'"/>'+                               /* little O mouth where the mouthpiece meets */
+    '<rect x="90" y="71" width="42" height="10" rx="5" fill="'+tube+'" stroke="'+d+'" stroke-width="2"/>'+   /* the slide tube, mouth -> right */
+    '<rect x="87" y="69" width="8" height="14" rx="3" fill="#ffd158" stroke="#d9b52e" stroke-width="1.5"/>'+ /* gold mouthpiece at the mouth */
+    '<g stroke="'+d+'" stroke-width="1.4"><line x1="104" y1="71" x2="104" y2="81"/><line x1="114" y1="71" x2="114" y2="81"/></g>'+  /* tube seams */
+    '<rect x="120" y="65" width="9" height="22" rx="3" fill="'+d+'"/>'+            /* slider knob */
+    '<line x1="124.5" y1="59" x2="124.5" y2="65" stroke="'+d+'" stroke-width="2"/>'+
+    '<g stroke="#c9b8ff" stroke-width="2.5" stroke-linecap="round" opacity=".85"><line x1="133" y1="69" x2="139" y2="69"/><line x1="134" y1="76" x2="140" y2="76"/><line x1="133" y1="83" x2="139" y2="83"/></g>'+  /* slide whoosh */
+    arm(56,96,68,92,84,84,c)+hand(84,84,c)+                                        /* hand steadies the mouthpiece end */
+    arm(74,98,102,100,122,90,c)+hand(122,90,c);                                    /* hand works the slider */
+  }
   const fl=(typeof S!=='undefined'&&S&&S.memberGear)?S.memberGear[id]:null;
   if(fl)b+='<text x="106" y="30" font-size="26">'+fl+'</text>';
   let hash=0; for(let i=0;i<id.length;i++)hash=(hash+id.charCodeAt(i))%20;
@@ -1371,7 +1400,7 @@ function memberSVG(id,sz){
 }
 
 /* ============ BAND DATA ============ */
-const CONCEPT_NAMES={add:'Addition',sub:'Subtraction',mul:'Multiplication',frac:'Fractions',clock:'Clocks & Time',cal:'Days & Months',meas:'Measurement',div:'Division',neg:'Negative Numbers',skip:'Skip Counting',money:'Money & Coins'};
+const CONCEPT_NAMES={add:'Addition',sub:'Subtraction',mul:'Multiplication',frac:'Fractions',clock:'Clocks & Time',cal:'Days & Months',meas:'Measurement',div:'Division',neg:'Negative Numbers',skip:'Skip Counting',money:'Money & Coins',round:'Rounding & Estimating'};
 const BAND=[
  {id:'boom',name:'Boom',emoji:'🥁',title:'Drummer',concept:'add',color:'#ff5d5d',
   cfg:{body:'round',col:'#ff5d5d',eyes:'dot',extra:'horns'},
@@ -1427,7 +1456,12 @@ const BAND=[
   cfg:{body:'round',col:'#54d98b',eyes:'happy',extra:'none'},
   bio:'I run the merch table! T-shirts, stickers, tour buttons. Coins and bills, counting change, making sure everybody pays fair and gets the right money back. Cha-CHING!',
   lines:['Step right up to the merch table!','A dime is ten cents, a nickel is five. I know every coin by heart.','Money is just counting with extra steps. And I LOVE counting.'],
-  dreams:['Sold out the whole merch table tonight. Every coin counted twice.','My first gig, I gave back the wrong change. Never again. Now I am the best there is.','My dream is a cash box so full it takes two hands to carry.','Every fan who leaves happy with the right change... that is my kind of music.','One day you will count change faster than me. That is the day I know I taught you right.']}
+  dreams:['Sold out the whole merch table tonight. Every coin counted twice.','My first gig, I gave back the wrong change. Never again. Now I am the best there is.','My dream is a cash box so full it takes two hands to carry.','Every fan who leaves happy with the right change... that is my kind of music.','One day you will count change faster than me. That is the day I know I taught you right.']},
+ {id:'round',name:'Swoop',emoji:'🪈',title:'Slide Whistle',concept:'round',color:'#9d7cff',
+  cfg:{body:'tall',col:'#9d7cff',eyes:'happy',extra:'none'},
+  bio:'I do not hit every note. I SLIIIDE to the closest one! A messy number like 28? I swoop it up to 30. That is rounding. A quick close guess before you even do the math? That is estimating. Close enough to dance to!',
+  lines:['Wheee! I am Swoop, on the slide whistle!','Do not sweat the exact number. Slide to the CLOSEST ten!','5 or more, I swoop UP. Less than 5, I stay DOWN.'],
+  dreams:['Nice swoops today. You always find the closest note.','Perfect is slow. Close and quick? That gets the crowd dancing NOW.','My dream solo is one endless slide that lands on the exact right note every time.','Estimating is not lazy math. It is knowing where you are going before you get there.','Whenever a number looks scary, just swoop it to something friendly. I will teach you how.']}
 ];
 const BY_ID={}; BAND.forEach(m=>BY_ID[m.id]=m);
 /* Custom member names: every bandmate is renameable. mName() is the display
@@ -1676,6 +1710,10 @@ function talkTo(id){
   if(id==='reg') btns+='<button class="btn wide" onclick="startMJ(\'coincount\')">🪙 Coin Count</button>'+
     '<button class="btn wide ghost" onclick="startMJ(\'makechange\')">💰 Make Change</button>'+
     '<button class="btn wide ghost" onclick="startMJ(\'merchrun\')">🛍️ Merch Run</button>';
+  if(id==='round') btns+='<button class="btn wide ghost" onclick="startRoundLesson()">📖 Learn rounding with me!</button>';
+  if(id==='round') btns+='<button class="btn wide" onclick="startMJ(\'nearesten\')">🎯 Nearest Ten</button>'+
+    '<button class="btn wide ghost" onclick="startMJ(\'swoopup\')">🪈 Swoop It</button>'+
+    '<button class="btn wide ghost" onclick="startMJ(\'guessfirst\')">💭 Guess First</button>';
   if(id==='plink') btns+='<button class="btn wide" onclick="startMJ(\'hopbars\')">🐸 Hop the Bars</button>'+
     '<button class="btn wide ghost" onclick="startMJ(\'missingbar\')">🕳️ Missing Bar</button>'+
     '<button class="btn wide ghost" onclick="startMJ(\'echohops\')">🔁 Echo Hops</button>';
@@ -4203,6 +4241,7 @@ function startMJ(id,practice){
   closeModal();
   const def=MJGAMES[id]; if(!def)return;
   if(def.member==='gain'&&gainLessonGate(function(){startMJ(id,practice);}))return;
+  if(def.member==='round'&&roundLessonGate(function(){startMJ(id,practice);}))return;
   if(coachGate(id,def.member,function(){startMJ(id);},function(){startMJ(id,true);}))return;
   MJ.id=id; MJ.def=def; MJ.round=0; MJ.score=0; MJ.on=true; MJ.practice=!!practice;
   if(MJ.practice)toast('🎓 Practice round: no score, no levels, all fun!');
@@ -5027,7 +5066,7 @@ function openShow(){
   /* stage arrangement: drummer + horns at BACK, melody in the MIDDLE, front performers at the lip.
      Order the row so it reads like a band on risers, not a wrapping list. */
   const backLine=['doot','gain','boom','elly'];
-  const midLine=['combo','slice','plink','reg'];
+  const midLine=['combo','slice','plink','reg','round'];
   const frontLine=['rumble','tock','gauge','luna'];
   const cell=(id,cls)=>'<span class="perf '+cls+'" id="sm-'+id+'">'+(id==='elly'?ellySVG(52):memberSVG(id,54))+'</span>';
   const roster=BAND.map(m=>m.id).concat('elly');
@@ -5055,6 +5094,40 @@ function openShow(){
   if(S.owned.includes('fx_lights'))$('#showStage').classList.add('lightshow');
   show('scr-show');
 }
+/* SESSION FILL: give every bandmate a real part in every song. Members with an
+   explicit track keep it; anyone missing gets a sparse, in-key part derived from
+   the song's tonic (fifths/octaves, so it stays consonant over any progression).
+   This also auto-covers any member added in the future. (Garrett: everyone plays!) */
+function addSessionFill(sg,evts,bars,barSteps){
+  const cov=new Set(['boom','gain','elly']);              /* drums, lights, host: always on */
+  if(sg.bass||sg.b808)cov.add('rumble');
+  if(sg.chords||sg.offbeat)cov.add('slice');
+  if(sg.arp||sg.lead)cov.add('combo');
+  if(sg.horn)cov.add('doot');
+  if(sg.bells)cov.add('plink');
+  if(sg.perc)cov.add('gauge');
+  if(sg.fx)cov.add('tock');
+  const dj=sg.drums.join('');
+  if(dj.indexOf('C')>=0)cov.add('luna');                  /* clap char */
+  if(dj.indexOf('c')>=0)cov.add('tock');                  /* scratch char */
+  let root=36;
+  if(sg.bass&&sg.bass[0])root=sg.bass[0][1];
+  else if(sg.b808&&sg.b808[0])root=sg.b808[0][1];
+  const span=bars*barSteps, loops=sg.loops||1;
+  const put=(who,step,kind,e)=>{ for(let L=0;L<loops;L++)evts.push([step+L*span,kind,e||null,who]); };
+  const perBar=(who,steps,kind,e)=>{ for(let b=0;b<bars;b++)steps.forEach(s=>put(who,b*barSteps+s,kind,e)); };
+  const perPhrase=(who,step,kind,e,every)=>{ every=every||2; for(let b=0;b<bars;b+=every)put(who,b*barSteps+step,kind,e); };
+  if(!cov.has('rumble'))perBar('rumble',[0,8],'bass',[0,root]);
+  if(!cov.has('slice'))perBar('slice',[0],'strum',[0,[root+12,root+19,root+24]]);
+  if(!cov.has('combo')){ const arp=[root+12,root+24]; [0,8].forEach((s,i)=>perBar('combo',[s],'lead',[0,arp[i],.2])); }
+  if(!cov.has('gauge'))perBar('gauge',[4,12],'perc',[0,'block']);       /* woodblock on 2 & 4 */
+  if(!cov.has('luna'))perBar('luna',[2,6,10,14],'hatc',null);           /* shaker on the offbeats */
+  if(!cov.has('doot'))perPhrase('doot',0,'horn',[0,root+12,.4],2);      /* horn stab per phrase */
+  if(!cov.has('plink'))perBar('plink',[6,14],'bell',[0,root+19]);       /* bell sprinkle */
+  if(!cov.has('tock'))perPhrase('tock',barSteps-1,'scratch',null,2);    /* scratch at phrase end */
+  perPhrase('reg',0,'coin',null,2);                                     /* register ding, always */
+  perPhrase('round',barSteps-1,'swoop',[0,'up'],2);                     /* slide-whistle swoop, always */
+}
 function showPlay(id){
   const sg=SONGS.find(x=>x.id===id); if(!sg)return;
   ac(); showStop(); SHOW.on=true;
@@ -5076,6 +5149,7 @@ function showPlay(id){
   addLoop(sg.arp,'lead','combo'); addLoop(sg.lead,'lead','combo');
   addLoop(sg.horn,'horn','doot'); addLoop(sg.bells,'bell','plink');
   addLoop(sg.perc,'perc','gauge'); addLoop(sg.fx,'fx','tock');
+  addSessionFill(sg,evts,bars,barSteps);
   SHOW.evtCount=evts.length;
   evts.forEach(ev=>{ const st=ev[0],kind=ev[1],e=ev[2],who=ev[3];
     showLater(()=>{ if(!SHOW.on)return;
@@ -5087,6 +5161,8 @@ function showPlay(id){
       else if(kind==='bell')V.bell(e[1]);
       else if(kind==='perc'){ if(e[1]==='block')tone(1250,.06,'sine',.3); else if(e[1]==='bell')V.bell(88); else {V.hat(true);V.bell(84);} }
       else if(kind==='fx'){ if(e[1]==='riser')V.sweep(true); else V.scratch(); }
+      else if(kind==='coin'){ V.bell(72); tone(1200,.05,'square',.15); }
+      else if(kind==='swoop'){ V.sweep(!(e&&e[1]==='dn')); }
       showHit(who);
       if(st%8===0){ if(who!=='gain')showHit('gain'); gainLights(); }
       if(st%16===0){ V.bell(84); showHit('elly'); }
@@ -5138,8 +5214,153 @@ const PLAY_RIGS={
     {label:'🪙<br>COIN',fn:()=>{V.bell(72);tone(1200,.05,'square',.15);}},
     {label:'💵<br>CHA-CHING',fn:()=>{tone(1320,.08,'square',.2);later(()=>tone(1760,.12,'square',.18),90);}},
     {label:'🔔<br>DING',fn:()=>V.bell(88)},
-    {label:'💰<br>DRAWER',fn:()=>{tone(220,.12,'sine',.25);V.kick();}}]}
+    {label:'💰<br>DRAWER',fn:()=>{ V.kick(); tone(1300,.05,'square',.22); tone(900,.06,'square',.16); later(()=>{ V.bell(88); tone(1600,.06,'square',.14); },110); }}]}
 };
+/* ============ SWOOP: rounding and estimating (slide whistle) - v0.34 ============ */
+RIG_NAMES.round='slide whistle';
+function nearestTen(n){ return Math.round(n/10)*10; }
+function tensAround(n){ const lo=Math.floor(n/10)*10; return [lo,lo+10]; }
+function tenChoices(ans){ const s=new Set([ans]); let d=10; while(s.size<4){ if(ans-d>=0)s.add(ans-d); if(s.size<4)s.add(ans+d); d+=10; } return shuffle(Array.from(s).map(String)); }
+/* shared horizontal number-line viz: a value sitting between two friendly tens */
+function roundLineHTML(val,lo,hi){
+  const W=300,H=78,padL=22,padR=22,y=46;
+  const x=v=>padL+(v-lo)/(hi-lo)*(W-padL-padR);
+  const mid=(lo+hi)/2; let ticks='';
+  for(let v=lo;v<=hi;v++){ const xx=x(v).toFixed(1),big=(v===lo||v===hi),m=(v===mid&&!big);
+    ticks+='<line x1="'+xx+'" y1="'+(y-(big?15:m?11:6))+'" x2="'+xx+'" y2="'+(y+(big?15:m?11:6))+'" stroke="'+(big?'#ffd158':m?'#ff9ec4':'#6f52c9')+'" stroke-width="'+(big?4:m?3:2)+'"/>';
+    if(big)ticks+='<text x="'+xx+'" y="'+(y+32)+'" font-size="15" font-weight="bold" text-anchor="middle" fill="#ffd158">'+v+'</text>';
+    else if(m)ticks+='<text x="'+xx+'" y="'+(y+30)+'" font-size="11" text-anchor="middle" fill="#ff9ec4">'+v+'</text>';
+  }
+  const mx=x(val).toFixed(1);
+  return '<svg width="100%" viewBox="0 0 '+W+' '+H+'" style="max-width:330px;vertical-align:middle">'+
+    '<line x1="'+padL+'" y1="'+y+'" x2="'+(W-padR)+'" y2="'+y+'" stroke="#4b3f86" stroke-width="4" stroke-linecap="round"/>'+ticks+
+    '<text x="'+mx+'" y="'+(y-19)+'" font-size="17" font-weight="bold" text-anchor="middle" fill="#c9b8ff">'+val+'</text>'+
+    '<polygon points="'+mx+','+(y-13)+' '+(+mx-6)+','+(y-25)+' '+(+mx+6)+','+(y-25)+'" fill="#9d7cff"/>'+
+    '<circle cx="'+mx+'" cy="'+y+'" r="6" fill="#9d7cff" stroke="#fff" stroke-width="2"/></svg>';
+}
+/* QG.round: drives auditions, proofs, gigs, soundcheck */
+QG.round=function(L){
+  if(L<3){ let n=R(11,89); while(n%10===0)n=R(11,89); const a=tensAround(n),ans=nearestTen(n);
+    return {q:'Which ten is '+n+' closest to?',vis:roundLineHTML(n,a[0],a[1]),choices:shuffle([String(a[0]),String(a[1])]),a:String(ans)}; }
+  if(L<5){ let n=R(11,98); while(n%10===0)n=R(11,98); const a=tensAround(n),ans=nearestTen(n);
+    return {q:'Round '+n+' to the nearest ten.',vis:roundLineHTML(n,a[0],a[1]),choices:tenChoices(ans),a:String(ans)}; }
+  if(L<7){ let n=R(12,197); while(n%10===0)n=R(12,197); const ans=nearestTen(n);
+    return {q:'Round '+n+' to the nearest ten. (5 or more swoops UP!)',vis:'',choices:tenChoices(ans),a:String(ans)}; }
+  if(L<9){ const a=R(11,49),b=R(11,49),ans=nearestTen(a)+nearestTen(b);
+    return {q:'Estimate '+a+' + '+b+'. Round each to the nearest ten first!',vis:'',choices:tenChoices(ans),a:String(ans)}; }
+  const n=R(120,880),ans=Math.round(n/100)*100;
+  const s2=new Set([ans]); let d=100; while(s2.size<4){ if(ans-d>=0)s2.add(ans-d); if(s2.size<4)s2.add(ans+d); d+=100; }
+  return {q:'Round '+n+' to the nearest HUNDRED.',vis:'',choices:shuffle(Array.from(s2).map(String)),a:String(ans)};
+};
+/* ---------- SWOOP 1: NEAREST TEN (tap the closer ten) ---------- */
+MJGAMES.nearesten={id:'nearesten',name:'Nearest Ten',emoji:'\U0001F3AF',member:'round',concept:'round',
+setup(L,st){
+  let n; if(L<3){ do{n=R(11,49);}while(n%10===0); } else if(L<6){ do{n=R(11,98);}while(n%10===0); } else { do{n=R(101,289);}while(n%10===0); }
+  const a=tensAround(n); st.n=n; st.ans=nearestTen(n); st.lo=a[0]; st.hi=a[1];
+  return {
+    call:'Swoop '+n+' to the closest ten!',
+    sub:'It sits between '+a[0]+' and '+a[1]+'. Which is nearer? Watch the arrow.',
+    html:'<div class="center">'+roundLineHTML(n,a[0],a[1])+'</div>'+
+      '<div class="row" style="justify-content:center;gap:16px;margin-top:10px">'+
+      '<button class="mjcymbal rnd10" data-v="'+a[0]+'" style="font-size:24px">'+a[0]+'</button>'+
+      '<button class="mjcymbal rnd10" data-v="'+a[1]+'" style="font-size:24px">'+a[1]+'</button></div>',
+    wire(){
+      $$('.rnd10').forEach(b=>b.addEventListener('click',()=>{ if(MJ.busy)return; ac(); const v=+b.dataset.v;
+        tone(ntf(60+(v-st.lo)/10*12),.2,'triangle',.26);
+        if(v===st.ans)mjOK(st.n+' swoops to '+st.ans+'. Closest ten, every time!');
+        else { punch(b); mjNo(st.n+' is closer to '+st.ans+'. Count the steps to each ten!'); } }));
+    }
+  };
+}};
+/* ---------- SWOOP 2: SWOOP IT (up vs down / the 5-rule) ---------- */
+MJGAMES.swoopup={id:'swoopup',name:'Swoop It',emoji:'\U0001FA88',member:'round',concept:'round',
+setup(L,st){
+  let n; if(L<4){ n=R(11,89); } else { n=R(101,289); }
+  const a=tensAround(n); st.n=n; st.lo=a[0]; st.hi=a[1]; st.ans=nearestTen(n); st.up=(st.ans===a[1]);
+  return {
+    call:'Does '+n+' swoop UP or stay DOWN?',
+    sub:'Ones digit is '+(n%10)+'. 5 or more swoops UP. Less than 5 stays DOWN.',
+    html:'<div class="center">'+roundLineHTML(n,a[0],a[1])+'</div>'+
+      '<div class="row" style="justify-content:center;gap:16px;margin-top:10px">'+
+      '<button class="mjcymbal rndsw" data-d="down" style="font-size:20px">\u2B07\uFE0F<br>stay '+a[0]+'</button>'+
+      '<button class="mjcymbal rndsw" data-d="up" style="font-size:20px">\u2B06\uFE0F<br>swoop '+a[1]+'</button></div>',
+    wire(){
+      $$('.rndsw').forEach(b=>b.addEventListener('click',()=>{ if(MJ.busy)return; ac(); const up=b.dataset.d==='up';
+        V.sweep(up);
+        if(up===st.up)mjOK(st.n+' \u2192 '+st.ans+'. '+(st.up?'Five or more, swoop up!':'Under five, stay put!'));
+        else { punch(b); mjNo('Ones digit is '+(st.n%10)+'. '+(st.up?'That is 5 or more, swoop UP to '+st.hi:'That is under 5, stay DOWN at '+st.lo)+'.'); } }));
+    }
+  };
+}};
+/* ---------- SWOOP 3: GUESS FIRST (estimate a sum by rounding) ---------- */
+MJGAMES.guessfirst={id:'guessfirst',name:'Guess First',emoji:'\U0001F4AD',member:'round',concept:'round',
+setup(L,st){
+  const a=(L<4?R(11,49):R(11,89)),b=(L<4?R(11,49):R(11,89));
+  st.a=a; st.b=b; st.ra=nearestTen(a); st.rb=nearestTen(b); st.ans=st.ra+st.rb; st.exact=a+b;
+  return {
+    call:'About how many fans? '+a+' + '+b,
+    sub:'Do not add the messy numbers. Round each to the nearest ten, THEN add.',
+    html:'<div class="center" style="font-size:22px;margin:8px 0">'+a+' + '+b+'  \u279C  <b style="color:#c9b8ff">'+st.ra+'</b> + <b style="color:#c9b8ff">'+st.rb+'</b> = ?</div>'+
+      '<div class="mjcards" id="rndGF"></div>',
+    wire(){
+      const opts=tenChoices(st.ans);
+      $('#rndGF').innerHTML=opts.map(o=>'<button class="mjposter rndgf" data-v="'+o+'">about<br><b>'+o+'</b></button>').join('');
+      $$('.rndgf').forEach(b=>b.addEventListener('click',()=>{ if(MJ.busy)return; ac(); const v=+b.dataset.v;
+        if(v===st.ans)mjOK('About '+st.ans+'! (Really '+st.exact+'. Close and QUICK!)');
+        else { punch(b); mjNo('Round first: '+st.a+'\u2192'+st.ra+', '+st.b+'\u2192'+st.rb+'. '+st.ra+' + '+st.rb+' = '+st.ans+'.'); } }));
+    }
+  };
+}};
+/* coach cards for Swoop's games */
+Object.assign(COACH,{
+  nearesten:{member:'round',verb:'TAP',hint:'tap',title:'\U0001F3AF Nearest Ten',
+    lines:['Every number lives between two friendly tens.','Look at the arrow on the line, then TAP the ten it is CLOSEST to!']},
+  swoopup:{member:'round',verb:'TAP',hint:'tap',title:'\U0001FA88 Swoop It',
+    lines:['I never hit the messy note. I SLIDE to the closest ten!','Check the ones digit: 5 or more swoops UP, less than 5 stays DOWN. TAP which way!']},
+  guessfirst:{member:'round',verb:'TAP',hint:'tap',title:'\U0001F4AD Guess First',
+    lines:['A quick close guess beats a slow exact answer!','Round each number to the nearest ten FIRST, then add the friendly tens. TAP the estimate!']}
+});
+/* Swoop's practice-room slide whistle */
+PLAY_RIGS.round={hint:'Slide up, slide down. Wheee! Land on a note.',custom(el){
+  el.innerHTML='<div class="mjbig" style="font-size:44px;transition:transform .08s" id="rigWh">\U0001FA88</div>'+
+    '<div class="sub center">low \u27F5 slide the whistle \u27F6 high</div>'+
+    '<input type="range" id="rigWr" min="0" max="24" step="1" value="12" style="width:88%;display:block;margin:14px auto">';
+  $('#rigWr').addEventListener('input',e=>{ const v=+e.target.value; ac(); tone(ntf(60+v),.13,'triangle',.26);
+    const h=$('#rigWh'); if(h)h.style.transform='translateX('+((v-12)*4)+'px)'; });
+}};
+/* ---------- SWOOP'S ROUNDING LESSON: guided first meeting with rounding + estimating ---------- */
+const RLESSON={on:false,step:0,after:null};
+const RLESSON_STEPS=[
+ {say:'Hi! I am Swoop, on the slide whistle. I do not hit every note, I SLIDE to the closest one. Numbers work the same way!',btn:'Show me!'},
+ {say:'Here is 23. It lives on the line BETWEEN two friendly tens: 20 and 30. Which ten is it closer to? Tap it!',line:{val:23,lo:20,hi:30},pick:[20,30],ans:20,good:'Yes! 23 is only 3 steps from 20, but 7 from 30. CLOSER wins. That is rounding.'},
+ {say:'Now the tricky one, the MIDDLE. 25 sits EXACTLY halfway. My rule for the middle: 5 or more, swoop UP!',btn:'Got it!'},
+ {say:'So where does 25 swoop? Tap it!',line:{val:25,lo:20,hi:30},pick:[20,30],ans:30,good:'Right! The ones digit is 5, so it swoops UP to 30. That is the halfway rule.'},
+ {say:'One more. Where does 71 land? Look at the arrow.',line:{val:71,lo:70,hi:80},pick:[70,80],ans:70,good:'Nice! 71 barely left 70, so it stays. Just 1 step away!'},
+ {say:'Here is my favorite trick. Rounding lets you GUESS FAST. About how much is 28 + 31? Do not add the mess. Swoop each to a friendly ten first!',btn:'How?'},
+ {say:'28 swoops to 30. 31 swoops to 30. So the answer is CLOSE to 30 + 30. Tap the good guess!',pick:[50,60,70],ans:60,good:'About 60! (Really 59, so close!) That is estimating: quick and close.'},
+ {say:'That is it! Rounding swoops one number to the nearest ten. Estimating rounds first so you can guess fast. Close and quick beats slow and perfect. Come swoop with me!',btn:'\U0001FA88 Let us go!'}
+];
+function startRoundLesson(after){ RLESSON.on=true; RLESSON.step=0; RLESSON.after=after||null;
+  closeModal(); $('#rlSwoop').innerHTML=memberSVG('round',86); show('scr-rlesson'); rlessonSay(); }
+function rlessonSay(){ const st=RLESSON_STEPS[RLESSON.step];
+  $('#rlSay').innerHTML='<div class="speak">"'+nameify(st.say)+'"</div>';
+  let ctrl='';
+  if(st.line)ctrl+='<div class="center">'+roundLineHTML(st.line.val,st.line.lo,st.line.hi)+'</div>';
+  if(st.pick)ctrl+='<div class="row" style="justify-content:center;gap:14px;margin-top:10px">'+
+    st.pick.map(v=>'<button class="mjcymbal rlpick" data-v="'+v+'" style="font-size:22px">'+v+'</button>').join('')+'</div>';
+  $('#rlCtrl').innerHTML=ctrl;
+  $('#rlNext').style.display=st.pick?'none':'';
+  $('#rlNext').textContent=st.btn||'Next';
+  if(st.pick)$$('.rlpick').forEach(b=>b.addEventListener('click',()=>{ if(!RLESSON.on||MJ&&false)return; ac(); const v=+b.dataset.v;
+    tone(ntf(64+(v%20)),.16,'triangle',.24);
+    if(v===st.ans){ b.classList.add('good'); drum('clap'); $$('.rlpick').forEach(x=>x.disabled=true);
+      $('#rlSay').innerHTML='<div class="speak">"'+nameify(st.good)+'"</div>'; later(()=>rlessonAdvance(),1000); }
+    else { punch(b); tone(150,.14,'sine',.16); } }));
+}
+function rlessonAdvance(){ if(RLESSON.step>=RLESSON_STEPS.length-1){ rlessonEnd(); return; } RLESSON.step++; rlessonSay(); }
+function rlessonEnd(){ RLESSON.on=false; S.flags.lesson_round=true; save(); sFanfare(); confetti(16);
+  const after=RLESSON.after; RLESSON.after=null; renderHub(); show('scr-hub'); if(after)later(after,250); }
+function roundLessonGate(after){ if(S.flags.lesson_round)return false; startRoundLesson(after); return true; }
 const PACK_PADS={
   vintage:{member:'boom',pads:[
     {label:'✨<br>RIM',fn:()=>{tone(1750,.05,'square',.22);tone(880,.04,'sine',.15);}},
@@ -5246,7 +5467,7 @@ setup(L,st){
 
 const MONTHS_MJ=['March','April','May','June','September','October'];
 
-Object.assign(window.BQ,{MJ:MJ,MJGAMES:MJGAMES,startMJ:startMJ,mjNext:mjNext,mjOK:mjOK,mjNo:mjNo,mName:mName,nameify:nameify,renameMember:renameMember,openPlay:openPlay,PLAY_RIGS:PLAY_RIGS,V:V,SONGS:SONGS,SHOW:SHOW,openShow:openShow,showPlay:showPlay,showStop:showStop,LESSON:LESSON,startLesson:startLesson,lessonMove:lessonMove,lessonAdvance:lessonAdvance,gainLessonGate:gainLessonGate,startBattle:startBattle,battleGo:battleGo,battleWin:battleWin,ellySVG:ellySVG,ellyChime:ellyChime,ellyHint:ellyHint,ellyTip:ellyTip,startEllyIntro:startEllyIntro,ellyNext:ellyNext,ellyFinishIntro:ellyFinishIntro,ELLY:ELLY,ELLY_INTRO:ELLY_INTRO,ELLY_HINTS:ELLY_HINTS,proofIntro:proofIntro,proofWin:proofWin,proofCount:proofCount,mjRetry:function(){if(MJ.on&&!MJ.busy){MJ.round--;mjNext();}}});
+Object.assign(window.BQ,{MJ:MJ,MJGAMES:MJGAMES,startMJ:startMJ,mjNext:mjNext,mjOK:mjOK,mjNo:mjNo,mName:mName,nameify:nameify,renameMember:renameMember,openPlay:openPlay,PLAY_RIGS:PLAY_RIGS,V:V,SONGS:SONGS,SHOW:SHOW,openShow:openShow,showPlay:showPlay,showStop:showStop,LESSON:LESSON,startLesson:startLesson,lessonMove:lessonMove,lessonAdvance:lessonAdvance,gainLessonGate:gainLessonGate,startBattle:startBattle,battleGo:battleGo,battleWin:battleWin,ellySVG:ellySVG,ellyChime:ellyChime,ellyHint:ellyHint,ellyTip:ellyTip,startEllyIntro:startEllyIntro,ellyNext:ellyNext,ellyFinishIntro:ellyFinishIntro,ELLY:ELLY,ELLY_INTRO:ELLY_INTRO,ELLY_HINTS:ELLY_HINTS,proofIntro:proofIntro,proofWin:proofWin,proofCount:proofCount,mjRetry:function(){if(MJ.on&&!MJ.busy){MJ.round--;mjNext();}},QG:QG,startRoundLesson:startRoundLesson,RLESSON:RLESSON,rlessonAdvance:rlessonAdvance,roundLessonGate:roundLessonGate,roundLineHTML:roundLineHTML,nearestTen:nearestTen});
 </script>
 
 </body>
