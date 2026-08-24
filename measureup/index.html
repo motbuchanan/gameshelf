@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Measure Up">
-<title>Measure Up v0.39</title>
+<title>Measure Up v0.40</title>
 <style>
 :root{
   --bg:#0e0b1e; --panel:#1d1636; --panel2:#28204a; --ink:#f4f0ff; --dim:#a89cd8;
@@ -538,6 +538,7 @@ svg .charg{will-change:transform}
 <!-- HUB -->
 <div class="scr" id="scr-hub">
   <div class="topbar">
+    <a class="btn ghost small" href="../" style="display:inline-block;text-decoration:none" aria-label="Back to Game Shelf">🎮 Shelf</a>
     <div class="chip">🎵 <span class="cv" id="hudNotes">0</span></div>
     <div class="chip">📀 <span class="cv" id="hudGold">0</span></div>
     <div class="spacer"></div>
@@ -816,14 +817,14 @@ svg .charg{will-change:transform}
 <canvas id="fx"></canvas>
 <div id="toast"></div>
 <button id="homeBtn" onclick="goHome()" aria-label="Back to Garage">🏠</button>
-<div id="vbadge">v0.39 · Aug 24</div>
+<div id="vbadge">v0.40 · Aug 24</div>
 
 <script>
 'use strict';
 /* ============ UTILS ============ */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const VERSION='v0.39 · Aug 24';
+const VERSION='v0.40 · Aug 24';
 const RM=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -5223,20 +5224,30 @@ function tensAround(n){ const lo=Math.floor(n/10)*10; return [lo,lo+10]; }
 function tenChoices(ans){ const s=new Set([ans]); let d=10; while(s.size<4){ if(ans-d>=0)s.add(ans-d); if(s.size<4)s.add(ans+d); d+=10; } return shuffle(Array.from(s).map(String)); }
 /* shared horizontal number-line viz: a value sitting between two friendly tens */
 function roundLineHTML(val,lo,hi){
-  const W=300,H=78,padL=22,padR=22,y=46;
+  const W=300,H=94,padL=26,padR=26,y=54;
   const x=v=>padL+(v-lo)/(hi-lo)*(W-padL-padR);
-  const mid=(lo+hi)/2; let ticks='';
-  for(let v=lo;v<=hi;v++){ const xx=x(v).toFixed(1),big=(v===lo||v===hi),m=(v===mid&&!big);
-    ticks+='<line x1="'+xx+'" y1="'+(y-(big?15:m?11:6))+'" x2="'+xx+'" y2="'+(y+(big?15:m?11:6))+'" stroke="'+(big?'#ffd158':m?'#ff9ec4':'#6f52c9')+'" stroke-width="'+(big?4:m?3:2)+'"/>';
-    if(big)ticks+='<text x="'+xx+'" y="'+(y+32)+'" font-size="15" font-weight="bold" text-anchor="middle" fill="#ffd158">'+v+'</text>';
-    else if(m)ticks+='<text x="'+xx+'" y="'+(y+30)+'" font-size="11" text-anchor="middle" fill="#ff9ec4">'+v+'</text>';
+  const mid=(lo+hi)/2, xLo=padL, xHi=W-padR, xMid=x(mid);
+  const DOWN='#4f6bff', UP='#9d7cff', valUp=val>=mid;
+  let s='<svg width="100%" viewBox="0 0 '+W+' '+H+'" style="max-width:340px;vertical-align:middle">';
+  /* two color zones: which side is the dot standing in? the darker side wins */
+  s+='<rect x="'+xLo+'" y="'+(y-14)+'" width="'+(xMid-xLo)+'" height="28" rx="7" fill="'+DOWN+'" opacity="'+(valUp?0.13:0.34)+'"/>';
+  s+='<rect x="'+xMid+'" y="'+(y-14)+'" width="'+(xHi-xMid)+'" height="28" rx="7" fill="'+UP+'" opacity="'+(valUp?0.34:0.13)+'"/>';
+  s+='<line x1="'+xLo+'" y1="'+y+'" x2="'+xHi+'" y2="'+y+'" stroke="#4b3f86" stroke-width="4" stroke-linecap="round"/>';
+  for(let v=lo;v<=hi;v++){ const xx=x(v).toFixed(1);
+    if(v===lo||v===hi){ s+='<line x1="'+xx+'" y1="'+(y-14)+'" x2="'+xx+'" y2="'+(y+14)+'" stroke="#ffd158" stroke-width="4"/>';
+      s+='<text x="'+xx+'" y="'+(y+31)+'" font-size="16" font-weight="bold" text-anchor="middle" fill="#ffd158">'+v+'</text>'; }
+    else if(v!==mid){ s+='<line x1="'+xx+'" y1="'+(y-5)+'" x2="'+xx+'" y2="'+(y+5)+'" stroke="#6f52c9" stroke-width="2"/>'; }
   }
+  /* the middle flag: the decision line */
+  s+='<line x1="'+xMid+'" y1="'+(y-22)+'" x2="'+xMid+'" y2="'+(y+13)+'" stroke="#ff9ec4" stroke-width="3" stroke-dasharray="3 4"/>';
+  s+='<path d="M'+xMid+' '+(y-22)+' l 15 5 l -15 5 z" fill="#ff9ec4"/>';
+  s+='<text x="'+xMid+'" y="'+(y+31)+'" font-size="10" text-anchor="middle" fill="#ff9ec4">middle</text>';
+  /* the number, sitting in its zone */
   const mx=x(val).toFixed(1);
-  return '<svg width="100%" viewBox="0 0 '+W+' '+H+'" style="max-width:330px;vertical-align:middle">'+
-    '<line x1="'+padL+'" y1="'+y+'" x2="'+(W-padR)+'" y2="'+y+'" stroke="#4b3f86" stroke-width="4" stroke-linecap="round"/>'+ticks+
-    '<text x="'+mx+'" y="'+(y-19)+'" font-size="17" font-weight="bold" text-anchor="middle" fill="#c9b8ff">'+val+'</text>'+
-    '<polygon points="'+mx+','+(y-13)+' '+(+mx-6)+','+(y-25)+' '+(+mx+6)+','+(y-25)+'" fill="#9d7cff"/>'+
-    '<circle cx="'+mx+'" cy="'+y+'" r="6" fill="#9d7cff" stroke="#fff" stroke-width="2"/></svg>';
+  s+='<text x="'+mx+'" y="'+(y-24)+'" font-size="18" font-weight="bold" text-anchor="middle" fill="#fff">'+val+'</text>';
+  s+='<polygon points="'+mx+','+(y-15)+' '+(+mx-6)+','+(y-27)+' '+(+mx+6)+','+(y-27)+'" fill="#fff"/>';
+  s+='<circle cx="'+mx+'" cy="'+y+'" r="7" fill="#fff" stroke="'+(valUp?UP:DOWN)+'" stroke-width="3"/>';
+  return s+'</svg>';
 }
 /* QG.round: drives auditions, proofs, gigs, soundcheck */
 QG.round=function(L){
@@ -5258,17 +5269,17 @@ setup(L,st){
   let n; if(L<3){ do{n=R(11,49);}while(n%10===0); } else if(L<6){ do{n=R(11,98);}while(n%10===0); } else { do{n=R(101,289);}while(n%10===0); }
   const a=tensAround(n); st.n=n; st.ans=nearestTen(n); st.lo=a[0]; st.hi=a[1];
   return {
-    call:'Swoop '+n+' to the closest ten!',
-    sub:'It sits between '+a[0]+' and '+a[1]+'. Which is nearer? Watch the arrow.',
+    call:'Which ten is '+n+' closer to?',
+    sub:'Tap the ten on the dot\u2019s side of the middle flag.',
     html:'<div class="center">'+roundLineHTML(n,a[0],a[1])+'</div>'+
       '<div class="row" style="justify-content:center;gap:16px;margin-top:10px">'+
-      '<button class="mjcymbal rnd10" data-v="'+a[0]+'" style="font-size:24px">'+a[0]+'</button>'+
-      '<button class="mjcymbal rnd10" data-v="'+a[1]+'" style="font-size:24px">'+a[1]+'</button></div>',
+      '<button class="mjcymbal rnd10" data-v="'+a[0]+'" style="font-size:24px;border-color:#4f6bff">'+a[0]+'</button>'+
+      '<button class="mjcymbal rnd10" data-v="'+a[1]+'" style="font-size:24px;border-color:#9d7cff">'+a[1]+'</button></div>',
     wire(){
       $$('.rnd10').forEach(b=>b.addEventListener('click',()=>{ if(MJ.busy)return; ac(); const v=+b.dataset.v;
         tone(ntf(60+(v-st.lo)/10*12),.2,'triangle',.26);
-        if(v===st.ans)mjOK(st.n+' swoops to '+st.ans+'. Closest ten, every time!');
-        else { punch(b); mjNo(st.n+' is closer to '+st.ans+'. Count the steps to each ten!'); } }));
+        if(v===st.ans)mjOK(n+' is closer to '+st.ans+'. Nice swoop!');
+        else { punch(b); mjNo('Check the flag: '+n+' is on the '+(n>=(st.lo+st.hi)/2?'UP':'DOWN')+' side, so it goes to '+st.ans+'.'); } }));
     }
   };
 }};
@@ -5278,17 +5289,17 @@ setup(L,st){
   let n; if(L<4){ n=R(11,89); } else { n=R(101,289); }
   const a=tensAround(n); st.n=n; st.lo=a[0]; st.hi=a[1]; st.ans=nearestTen(n); st.up=(st.ans===a[1]);
   return {
-    call:'Does '+n+' swoop UP or stay DOWN?',
-    sub:'Ones digit is '+(n%10)+'. 5 or more swoops UP. Less than 5 stays DOWN.',
+    call:'Is '+n+' past the middle flag?',
+    sub:'Past it (or right on it) swoops UP. Before it stays DOWN.',
     html:'<div class="center">'+roundLineHTML(n,a[0],a[1])+'</div>'+
       '<div class="row" style="justify-content:center;gap:16px;margin-top:10px">'+
-      '<button class="mjcymbal rndsw" data-d="down" style="font-size:20px">\u2B07\uFE0F<br>stay '+a[0]+'</button>'+
-      '<button class="mjcymbal rndsw" data-d="up" style="font-size:20px">\u2B06\uFE0F<br>swoop '+a[1]+'</button></div>',
+      '<button class="mjcymbal rndsw" data-d="down" style="font-size:20px;border-color:#4f6bff">\u2B07\uFE0F<br>stay '+a[0]+'</button>'+
+      '<button class="mjcymbal rndsw" data-d="up" style="font-size:20px;border-color:#9d7cff">\u2B06\uFE0F<br>swoop '+a[1]+'</button></div>',
     wire(){
       $$('.rndsw').forEach(b=>b.addEventListener('click',()=>{ if(MJ.busy)return; ac(); const up=b.dataset.d==='up';
         V.sweep(up);
-        if(up===st.up)mjOK(st.n+' \u2192 '+st.ans+'. '+(st.up?'Five or more, swoop up!':'Under five, stay put!'));
-        else { punch(b); mjNo('Ones digit is '+(st.n%10)+'. '+(st.up?'That is 5 or more, swoop UP to '+st.hi:'That is under 5, stay DOWN at '+st.lo)+'.'); } }));
+        if(up===st.up)mjOK(st.n+' \u2192 '+st.ans+'. '+(st.up?'Past the flag, swoop UP!':'Before the flag, stay DOWN!'));
+        else { punch(b); mjNo('The dot is '+(st.up?'PAST':'BEFORE')+' the middle flag, so '+st.n+' '+(st.up?'swoops UP to '+st.hi:'stays DOWN at '+st.lo)+'.'); } }));
     }
   };
 }};
@@ -5299,7 +5310,7 @@ setup(L,st){
   st.a=a; st.b=b; st.ra=nearestTen(a); st.rb=nearestTen(b); st.ans=st.ra+st.rb; st.exact=a+b;
   return {
     call:'About how many fans? '+a+' + '+b,
-    sub:'Do not add the messy numbers. Round each to the nearest ten, THEN add.',
+    sub:'Round each number to its ten, then add the tens.',
     html:'<div class="center" style="font-size:22px;margin:8px 0">'+a+' + '+b+'  \u279C  <b style="color:#c9b8ff">'+st.ra+'</b> + <b style="color:#c9b8ff">'+st.rb+'</b> = ?</div>'+
       '<div class="mjcards" id="rndGF"></div>',
     wire(){
