@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Measure Up">
-<title>Measure Up v0.40</title>
+<title>Measure Up v0.41</title>
 <style>
 :root{
   --bg:#0e0b1e; --panel:#1d1636; --panel2:#28204a; --ink:#f4f0ff; --dim:#a89cd8;
@@ -273,8 +273,33 @@ input.nm{
 @keyframes shk{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}50%{transform:translateX(8px)}75%{transform:translateX(-5px)}}
 .rivalteaser{
   border:2px dashed #4a3b8e;border-radius:18px;padding:10px 12px;margin-top:10px;color:var(--dim);
-  text-align:center;font-size:14px;font-weight:700;
+  text-align:center;font-size:14px;font-weight:700;cursor:pointer;transition:border-color .2s,color .2s;
 }
+.rivalteaser:active{transform:scale(.99)}
+.rivalteaser:hover{border-color:#7a63d6;color:#cbbdf5}
+.ellyhost{background:#241c48;border:1px solid #ffcf4d55;border-radius:12px;padding:7px 10px;margin:4px 0;color:#ffe9b0;font-weight:600;font-size:13px;line-height:1.3}
+.bgoals{display:flex;flex-direction:column;gap:8px;margin:4px 0}
+.bgoal{background:#241c48;border:1px solid #372a68;border-radius:12px;padding:8px 10px}
+.bgoal.done{border-color:#ffd15866;background:#2a2450}
+.bgtop{display:flex;justify-content:space-between;align-items:center;font-weight:800;font-size:14.5px}
+.bgnum{font-size:12px;color:var(--dim);font-weight:800}
+.bgdesc{font-size:12px;color:var(--dim);margin:1px 0 5px}
+.bgbar{height:9px;background:#191338;border-radius:6px;overflow:hidden}
+.bgfill{height:100%;background:linear-gradient(90deg,#6a5cff,#ff8ad1);border-radius:6px;transition:width .5s}
+.bgoal.done .bgfill{background:linear-gradient(90deg,#ffd158,#ffb03a)}
+.battleflyer p.newhint{color:#7a2f00}
+.bunlock{background:linear-gradient(180deg,#ffd158,#ffab3a);color:#3a2a00;font-weight:900;border-radius:12px;padding:10px;text-align:center;margin:8px 0;font-size:14.5px}
+.blocked{background:#241c48;border:1px dashed #4a3b8e;color:var(--dim);border-radius:12px;padding:9px;text-align:center;font-weight:700;font-size:13px;margin:8px 0}
+.ellypop{position:fixed;left:10px;right:10px;bottom:14px;z-index:220;background:linear-gradient(90deg,#2a2358,#241c48);border:1.5px solid #ffcf4d88;border-radius:16px;padding:10px 12px;box-shadow:0 10px 30px rgba(0,0,0,.45);animation:ellyPopIn .3s ease-out}
+@keyframes ellyPopIn{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+.ellypop .eptop{display:flex;align-items:flex-start;gap:10px}
+.ellypop .eptop svg{width:46px;height:46px;flex:0 0 46px}
+.ellypop .epsay{color:#ffe9b0;font-weight:600;font-size:13.5px;line-height:1.3;flex:1}
+.ellypop .epx{background:none;border:none;color:#bda7ff;font-size:20px;font-weight:900;cursor:pointer;padding:0 2px;line-height:1}
+.ellypop .epacts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.ellypop .epchip{background:#3a2f6e;border:1px solid #4f3fa0;color:#eae2ff;border-radius:10px;padding:6px 10px;font-size:12.5px;font-weight:800;cursor:pointer}
+.ellypop .epchip:active{transform:scale(.97)}
+@media (prefers-reduced-motion: reduce){ .ellypop{animation:none} }
 @media (prefers-reduced-motion: reduce){
   .idle,.idle2{animation:none}
   .bdot,.fseg,.mbar{animation:none !important}
@@ -565,7 +590,7 @@ svg .charg{will-change:transform}
   <h2>The Garage</h2>
   <p class="sub" style="text-align:left;margin-top:-2px">Your band hangs out here. <b>Jam</b> with them to train, take a <b>placement audition</b>, and pass their <b>Proofs</b> to rank up and grow the band!</p>
   <div class="bandgrid" id="bandGrid"></div>
-  <div class="rivalteaser">👀 COMING SOON: someone keeps leaving flyers about a "Battle of the Bands"...</div>
+  <div class="rivalteaser" id="rivalteaser" onclick="openBattle()">⚡ Battle of the Bands <span id="rtProg"></span><div style="font-size:11px;font-weight:600;opacity:.85;margin-top:2px">tap for the story and your goals</div></div>
 </div>
 
 <!-- BEAT BUILDER (Boom's jam) -->
@@ -755,10 +780,11 @@ svg .charg{will-change:transform}
 <div class="scr" id="scr-lesson">
   <div class="row" style="justify-content:space-between;align-items:center">
     <button class="btn ghost backbtn" onclick="LESSON.on=false;renderHub();show('scr-hub')">← Back</button>
-    <div class="chip">📖 Gain&#8217;s Board Lesson</div>
+    <div class="chip">📖 Elly &amp; Gain</div>
     <span></span>
   </div>
   <div class="center" style="margin-top:6px" id="lsGain"></div>
+  <div class="ellyhost" id="lsHost"></div>
   <div id="lsSay"></div>
   <div class="center"><span id="lsFader"></span></div>
   <div class="mjbig" style="font-size:34px;margin:4px 0" id="lsVal">0</div>
@@ -771,10 +797,11 @@ svg .charg{will-change:transform}
 <div class="scr" id="scr-rlesson">
   <div class="row" style="justify-content:space-between;align-items:center">
     <button class="btn ghost backbtn" onclick="RLESSON.on=false;renderHub();show('scr-hub')">← Back</button>
-    <div class="chip">🪈 Swoop&#8217;s Rounding Lesson</div>
+    <div class="chip">🪈 Elly &amp; Swoop</div>
     <span></span>
   </div>
   <div class="center" style="margin-top:6px" id="rlSwoop"></div>
+  <div class="ellyhost" id="rlHost"></div>
   <div id="rlSay"></div>
   <div id="rlCtrl"></div>
   <button class="btn wide" id="rlNext" style="margin-top:10px" onclick="rlessonAdvance()">Next</button>
@@ -817,14 +844,14 @@ svg .charg{will-change:transform}
 <canvas id="fx"></canvas>
 <div id="toast"></div>
 <button id="homeBtn" onclick="goHome()" aria-label="Back to Garage">🏠</button>
-<div id="vbadge">v0.40 · Aug 24</div>
+<div id="vbadge">v0.41 · Aug 24</div>
 
 <script>
 'use strict';
 /* ============ UTILS ============ */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const VERSION='v0.40 · Aug 24';
+const VERSION='v0.41 · Aug 24';
 const RM=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -841,7 +868,7 @@ const DEF={
   auditioned:{}, band:{}, owned:[], proofs:{}, met:{}, plays:{}, memberNames:{}, memberGear:{}, cleared:{},
   equipped:{drumskin:'classic'},
   flags:{soundcheckOffered:false,introDone:false,coach_kc:false,coach_arc:false,coach_rs:false,coach_gg:false,coach_tt:false,coach_st:false,coach_hp:false,coach_gig:false,lesson_round:false},
-  stats:{answers:0,correct:0,bestStreak:0,rounds:0}
+  stats:{answers:0,correct:0,bestStreak:0,rounds:0,shows:0}
 };
 let S;
 function load(){
@@ -1121,6 +1148,8 @@ function show(id){
   toastKill();
   $$('.scr').forEach(s=>s.classList.toggle('on',s.id===id));
   const hb=$('#homeBtn'); if(hb)hb.classList.toggle('show', id!=='scr-hub'&&id!=='scr-title'&&id!=='scr-creator'&&id!=='scr-intro');
+  var _ep=document.getElementById('ellyPop'); if(_ep&&id!=='scr-hub')_ep.remove();
+  if(id==='scr-hub')later(()=>ellyPop(),450);
   window.scrollTo(0,0);
 }
 function modal(html){ $('#mbox').innerHTML=html; $('#modal').classList.add('on'); }
@@ -1538,11 +1567,11 @@ function showCoach(key,memberId,onGo,onPractice){
   const m=BY_ID[memberId]||BY_ID.boom;
   const g=RM?'':(' g-'+c.hint);
   modal(
-    '<div class="center">'+memberSVG(m.id,90)+'<h2>'+c.title+'</h2></div>'+
-    '<div class="speak">"'+nameify(c.lines[0])+'"</div>'+
+    '<div class="center">'+ellySVG(76)+'<h2>'+c.title+'</h2></div>'+
+    '<div class="speak">"'+ellyCoachLine(m,c)+'"</div>'+
     '<div class="coachhint'+g+'">'+(GESTURE_EMOJI[c.hint]||'👆')+'</div>'+
     '<div class="coachverb">'+c.verb+'</div>'+
-    '<div class="speak">"'+nameify(c.lines[1])+'"</div>'+
+    '<div class="speak" style="display:flex;gap:8px;align-items:center;text-align:left;opacity:.94">'+memberSVG(m.id,44)+'<span>"'+nameify(c.lines[0]+' '+c.lines[1])+'"</span></div>'+
     '<button class="btn wide" id="coachGo">Let\u2019s go! 🤘</button>'+
     (onPractice?'<button class="btn wide ghost" id="coachPr">🎓 Practice first (no score, just try!)</button>':'')+
     '<button class="btn wide ghost" id="coachBack">← Back to the Garage</button>'
@@ -1677,7 +1706,94 @@ function renderHub(){
     d.addEventListener('click',()=>{sTap();talkTo(m.id);});
     g.appendChild(d);
   });
+  const rt=$('#rtProg'); if(rt){ rt.textContent='· '+battleDone()+'/4 goals'; }
 }
+
+/* ============ ELLY GUIDE + BATTLE OF THE BANDS ============ */
+function ellyCoachLine(m,c){
+  var vp={DRAG:'drag',TAP:'tap',SWIPE:'swipe',SPIN:'spin',PULL:'pull'};
+  var v=vp[c.verb]||String(c.verb).toLowerCase();
+  return 'This is '+mName(m.id)+'\u2019s game! Your move is to '+v+'. Watch the hint below, then give it a try. I\u2019ve got you!';
+}
+function ellyMemberPair(id){
+  return '<div style="display:flex;align-items:flex-end;justify-content:center;gap:10px">'+
+    '<div style="text-align:center">'+ellySVG(80)+'<div style="font-size:11px;color:#ffe9b0;font-weight:800;margin-top:2px">Elly guides</div></div>'+
+    '<div style="text-align:center;opacity:.96">'+memberSVG(id,60)+'<div style="font-size:11px;color:var(--dim);font-weight:700;margin-top:2px">'+mName(id)+' shows</div></div>'+
+  '</div>';
+}
+function battleGoals(){
+  var CC=['add','sub','mul','frac','clock','cal','meas','div','neg','skip','money','round'];
+  var joined=BAND.filter(function(m){return S.band[m.id];}).length;
+  var golds=CC.filter(function(c){return tierOf(Math.floor(lvlOf(c)))>=2;}).length;
+  var masters=BAND.filter(function(m){var gt=memberGames(m.id).length;return gt>0&&clearedCount(m.id)>=gt;}).length;
+  var shows=(S.stats&&S.stats.shows)||0;
+  return [
+    {icon:'\uD83C\uDFB8',name:'Full Band',desc:'Recruit all 12 bandmates',cur:joined,max:12},
+    {icon:'\uD83E\uDD47',name:'Go for Gold',desc:'Earn 3 gold medals',cur:golds,max:3},
+    {icon:'\uD83C\uDFAF',name:'Game Master',desc:'Star every game for 4 bandmates',cur:masters,max:4},
+    {icon:'\uD83C\uDFA4',name:'Road Warrior',desc:'Play 10 shows',cur:shows,max:10}
+  ];
+}
+function battleDone(){ return battleGoals().filter(function(g){return g.cur>=g.max;}).length; }
+var BATTLE_HINTS=[
+ 'Torn flyers keep turning up in the Garage. Somebody out there is challenging your band...',
+ 'They are not one band. They are a whole circuit, each from a different corner of the music galaxy. Country. Disco. Jazz. And more.',
+ 'A Battle of the Bands is a showdown against one themed crew at a time. Beat them and their star might just join YOU, bringing a new sound and a new trick to learn.',
+ 'Word is the first challengers are already tuning up. Get your band tight and they cannot ignore you.',
+ '\uD83C\uDF1F You are ready! The first rival band is stepping up to the stage. Time to show them what the Garage can do!'
+];
+function openBattle(){
+  sTap();
+  var goals=battleGoals(), done=goals.filter(function(g){return g.cur>=g.max;}).length;
+  var joined=BAND.filter(function(m){return S.band[m.id];}).length;
+  var rc=1; if(joined>=1)rc=2; if(joined>=3)rc=3; if(joined>=6)rc=4; if(done>=goals.length)rc=5;
+  var reveal=BATTLE_HINTS.slice(0,rc);
+  var hh=reveal.map(function(t,i){return '<p'+((i===reveal.length-1&&rc>1)?' class="newhint"':'')+'>'+t+'</p>';}).join('');
+  var gg=goals.map(function(g){
+    var c=Math.min(g.cur,g.max), ok=c>=g.max, pct=Math.round(c/g.max*100);
+    return '<div class="bgoal'+(ok?' done':'')+'"><div class="bgtop"><span>'+(ok?'\u2705':g.icon)+' '+g.name+'</span><span class="bgnum">'+c+'/'+g.max+'</span></div>'+
+      '<div class="bgdesc">'+g.desc+'</div><div class="bgbar"><div class="bgfill" style="width:'+pct+'%"></div></div></div>';
+  }).join('');
+  var footer=(done>=goals.length)
+    ? '<div class="bunlock">\uD83C\uDF1F The stage is set! Your band is battle-ready. The first rival crew steps up soon.</div>'
+    : '<div class="blocked">\uD83D\uDD12 Finish all 4 goals to call out the first rival band. ('+done+'/'+goals.length+' done)</div>';
+  modal('<div class="center"><div class="flyercard battleflyer"><h3>\u26A1 BATTLE OF THE BANDS</h3>'+hh+'</div></div>'+
+    '<h2 style="margin:12px 2px 2px">\uD83C\uDFAF Goals to get there</h2>'+
+    '<div class="bgoals">'+gg+'</div>'+footer+
+    '<button class="btn wide" onclick="closeModal()">Back to the Garage</button>');
+}
+var ELLY_TIPS=[
+ 'A steady drum beat is just counting in a loop: 1, 2, 3, 4, over and over.',
+ 'Two eighth notes fit inside one beat. That is a fraction you can hear!',
+ 'Tempo is a rate: beats per minute. Bigger number, faster song.',
+ 'A pattern that repeats is the secret behind almost every catchy tune.',
+ 'Every star you earn makes your band stronger for the Battle of the Bands.',
+ 'Stuck on a game? Tap me any time and I will give you a hint.',
+ 'Play a show now and then. It pays notes AND builds toward your goals.'
+];
+var ELLY_POP_LAST=0, ELLY_TIP_IX=0;
+function ellyDismiss(){ var e=document.getElementById('ellyPop'); if(e)e.remove(); }
+function ellySuggestions(){
+  var out=[]; var notIn=BAND.filter(function(m){return !S.band[m.id];});
+  if(notIn.length){ var m=notIn[0]; out.push({label:'\uD83C\uDFB8 Jam with '+mName(m.id),fn:"talkTo('"+m.id+"')"}); }
+  var joined=BAND.filter(function(m){return S.band[m.id];}).length;
+  if(joined>=1) out.push({label:'\uD83C\uDFA4 Play a show',fn:'startGig()'});
+  out.push({label:'\u26A1 Battle board',fn:'openBattle()'});
+  if(S.notes>=20 && out.length<3) out.push({label:'\uD83D\uDECD\uFE0F Shop',fn:'openShop()'});
+  return out.slice(0,3);
+}
+function ellyPop(force){
+  var hub=document.getElementById('scr-hub'); if(!hub||!hub.classList.contains('on'))return;
+  if(!force){ if(Date.now()-ELLY_POP_LAST<45000)return; if($('#modal').classList.contains('on'))return; }
+  ellyDismiss(); ELLY_POP_LAST=Date.now();
+  var tip=ELLY_TIPS[ELLY_TIP_IX%ELLY_TIPS.length]; ELLY_TIP_IX++;
+  var acts=ellySuggestions().map(function(a){return '<button class="epchip" onclick="ellyDismiss();'+a.fn+'">'+a.label+'</button>';}).join('');
+  var el=document.createElement('div'); el.className='ellypop'; el.id='ellyPop';
+  el.innerHTML='<div class="eptop">'+ellySVG(46)+'<div class="epsay">'+tip+'</div><button class="epx" onclick="ellyDismiss()" aria-label="Close">\u00D7</button></div><div class="epacts">'+acts+'</div>';
+  document.body.appendChild(el);
+  later(function(){ ellyDismiss(); },11000);
+}
+
 let LINE_IX={};
 function memberGames(id){ return Object.keys(MJGAMES).filter(k=>MJGAMES[k].member===id); }
 function clearedCount(id){ return memberGames(id).filter(k=>S.cleared[k]).length; }
@@ -4153,7 +4269,7 @@ function gigEnd(){
   const ratio=GIG.maxHype?Math.min(1,GIG.hype/GIG.maxHype):0;
   const tier=gigResultTier(ratio), rw=gigReward(ratio);
   const names=['🎸 Nice first set!','🌟 Great show!','🔥 The crowd went WILD!'];
-  addNotes(rw.notes); if(rw.gold)addGold(rw.gold);
+  addNotes(rw.notes); if(rw.gold)addGold(rw.gold); S.stats.shows=(S.stats.shows||0)+1; save();
   const closer=GIG.members.length?nameify(GIG_LINES[pick(GIG.members)]):'You walk off to your own echo. A crowd of one, but they are on their feet.';
   renderHub(); show('scr-hub');
   modal('<div class="center">'+creatureSVG(S.creature,100)+'<h2>'+names[tier]+'</h2></div>'+
@@ -4178,7 +4294,7 @@ function splashDismiss(){
   later(()=>{ if(SPLASH_STATE===1){ SPLASH_STATE=2; const sp2=$('#splash'); if(sp2){sp2.classList.add('bye'); later(()=>sp2.remove(),550);} } },1900);
 }
 (function(){ const sp=$('#splash'); if(sp)sp.addEventListener('pointerdown',splashDismiss); })();
-window.BQ={get QZ(){return QZ;},goHome:goHome,splashDismiss:splashDismiss,dreamOutro:dreamOutro,BY_ID:BY_ID,WHY:WHY,maybeWhy:maybeWhy,capOf2:capOf,startAudition:startAudition,roundCall:roundCall,callKill:callKill,CALLB:CALLB,rampL:rampL,notePlay:notePlay,firstPlay:firstPlay,kcCfg:kcCfg,arcCfg2:arcCfg,COACH:COACH,GESTURE_EMOJI:GESTURE_EMOJI,coachGate:coachGate,showCoach:showCoach,gigSoundcheck:gigSoundcheck,GIG:GIG,startGig:startGig,gigBuildCues:gigBuildCues,gigJudgeDance:gigJudgeDance,gigDancePts:gigDancePts,gigResultTier:gigResultTier,gigReward:gigReward,gigCueMax:gigCueMax,VENUES:VENUES,GIG_LINES:GIG_LINES,get S(){return S;},QG:QG,adjust:adjust,creatureSVG:creatureSVG,lvlOf:lvlOf,capOf:capOf,tierOf:tierOf,proofCount:proofCount,save:save,load:load,BAND:BAND,SHOP:SHOP,runQuiz:runQuiz,show:show,BB:BB,NS:NS,bbTap:bbTap,nsTap:nsTap,startBB:startBB,startNS:startNS,ARC:ARC,startARC:startARC,sliceNote:sliceNote,tryCollect:tryCollect,arcStep:arcStep,arcNeeded:arcNeeded,arcMeasureDone:arcMeasureDone,arcSpawnOne:arcSpawnOne,arcCfg:arcCfg,drawGlyph:drawGlyph,GLYPH:GLYPH,KC:KC,kcCatch:kcCatch,kcStep:kcStep,startKC:startKC,RS:RS,rsTap:rsTap,startRS:startRS,GG:GG,ggStamp:ggStamp,startGG:startGG,TT:TT,ttDrop:ttDrop,ttTime:ttTime,startTT:startTT,ST2:ST2,st2Resolve:st2Resolve,startST:startST,HP:HP,hpTap:hpTap,startHP:startHP,INTRO:INTRO,startIntro:startIntro};
+window.BQ={get QZ(){return QZ;},goHome:goHome,splashDismiss:splashDismiss,dreamOutro:dreamOutro,BY_ID:BY_ID,WHY:WHY,maybeWhy:maybeWhy,capOf2:capOf,startAudition:startAudition,roundCall:roundCall,callKill:callKill,CALLB:CALLB,rampL:rampL,notePlay:notePlay,firstPlay:firstPlay,kcCfg:kcCfg,arcCfg2:arcCfg,COACH:COACH,GESTURE_EMOJI:GESTURE_EMOJI,coachGate:coachGate,showCoach:showCoach,gigSoundcheck:gigSoundcheck,GIG:GIG,startGig:startGig,gigBuildCues:gigBuildCues,gigJudgeDance:gigJudgeDance,gigDancePts:gigDancePts,gigResultTier:gigResultTier,gigReward:gigReward,gigCueMax:gigCueMax,VENUES:VENUES,GIG_LINES:GIG_LINES,get S(){return S;},QG:QG,adjust:adjust,creatureSVG:creatureSVG,lvlOf:lvlOf,capOf:capOf,tierOf:tierOf,proofCount:proofCount,save:save,load:load,BAND:BAND,SHOP:SHOP,runQuiz:runQuiz,show:show,BB:BB,NS:NS,bbTap:bbTap,nsTap:nsTap,startBB:startBB,startNS:startNS,ARC:ARC,startARC:startARC,sliceNote:sliceNote,tryCollect:tryCollect,arcStep:arcStep,arcNeeded:arcNeeded,arcMeasureDone:arcMeasureDone,arcSpawnOne:arcSpawnOne,arcCfg:arcCfg,drawGlyph:drawGlyph,GLYPH:GLYPH,KC:KC,kcCatch:kcCatch,kcStep:kcStep,startKC:startKC,RS:RS,rsTap:rsTap,startRS:startRS,GG:GG,ggStamp:ggStamp,startGG:startGG,TT:TT,ttDrop:ttDrop,ttTime:ttTime,startTT:startTT,ST2:ST2,st2Resolve:st2Resolve,startST:startST,HP:HP,hpTap:hpTap,startHP:startHP,INTRO:INTRO,startIntro:startIntro,openBattle:openBattle,battleGoals:battleGoals,battleDone:battleDone,ellyPop:ellyPop,ellyDismiss:ellyDismiss,ellyCoachLine:ellyCoachLine,ellyMemberPair:ellyMemberPair,ellySuggestions:ellySuggestions};
 </script>
 <script>
 /* ================= MINI JAMS (v0.15) =================
@@ -5011,7 +5127,7 @@ const LESSON_STEPS=[
 ];
 function startLesson(after){
   LESSON.on=true; LESSON.step=0; LESSON.cur=0; LESSON.after=after||null;
-  closeModal(); $('#lsGain').innerHTML=memberSVG('gain',86); show('scr-lesson'); lessonDraw(); lessonSay();
+  closeModal(); $('#lsGain').innerHTML=ellyMemberPair('gain'); $('#lsHost').innerHTML='<b>Elly:</b> \u201CI\u2019ll walk you through this one with Gain. Tap along, there is no wrong here.\u201D'; show('scr-lesson'); lessonDraw(); lessonSay();
 }
 function lessonDraw(){
   $('#lsFader').innerHTML=faderHTML(LESSON.cur,-5,5);
@@ -5352,7 +5468,7 @@ const RLESSON_STEPS=[
  {say:'That is it! Rounding swoops one number to the nearest ten. Estimating rounds first so you can guess fast. Close and quick beats slow and perfect. Come swoop with me!',btn:'🪈 Let us go!'}
 ];
 function startRoundLesson(after){ RLESSON.on=true; RLESSON.step=0; RLESSON.after=after||null;
-  closeModal(); $('#rlSwoop').innerHTML=memberSVG('round',86); show('scr-rlesson'); rlessonSay(); }
+  closeModal(); $('#rlSwoop').innerHTML=ellyMemberPair('round'); $('#rlHost').innerHTML='<b>Elly:</b> \u201CRounding time! Swoop shows the moves, I\u2019ll explain as we go.\u201D'; show('scr-rlesson'); rlessonSay(); }
 function rlessonSay(){ const st=RLESSON_STEPS[RLESSON.step];
   $('#rlSay').innerHTML='<div class="speak">"'+nameify(st.say)+'"</div>';
   let ctrl='';
