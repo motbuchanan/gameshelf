@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Measure Up">
-<title>Measure Up v0.41</title>
+<title>Measure Up v0.46</title>
 <style>
 :root{
   --bg:#0e0b1e; --panel:#1d1636; --panel2:#28204a; --ink:#f4f0ff; --dim:#a89cd8;
@@ -300,6 +300,31 @@ input.nm{
 .ellypop .epchip{background:#3a2f6e;border:1px solid #4f3fa0;color:#eae2ff;border-radius:10px;padding:6px 10px;font-size:12.5px;font-weight:800;cursor:pointer}
 .ellypop .epchip:active{transform:scale(.97)}
 @media (prefers-reduced-motion: reduce){ .ellypop{animation:none} }
+.btlband{display:flex;justify-content:center;gap:6px;margin:6px 0 2px;flex-wrap:wrap}
+.btlmember{text-align:center;opacity:.45;transition:opacity .25s,transform .25s}
+.btlmember.active{opacity:1;transform:translateY(-4px) scale(1.12)}
+.btlmember .bm-art{height:50px;display:flex;align-items:flex-end;justify-content:center}
+.btlmember .bm-art svg{display:block}
+.bc-art{display:inline-block;vertical-align:middle}
+.bc-art svg{vertical-align:middle}
+.btlmember .bm-name{font-size:10px;font-weight:800;color:var(--dim)}
+.crowdwrap2{margin:8px 2px}
+.crowdlbls{display:flex;justify-content:space-between;font-weight:900;font-size:12px;margin-bottom:3px}
+.crowdmeter{position:relative;height:26px;border-radius:14px;overflow:hidden;background:linear-gradient(90deg,#5a2b2b,#7a3a3a);border:2px solid #2a1e52}
+.crowdmine{position:absolute;left:0;top:0;bottom:0;width:50%;background:linear-gradient(90deg,#6a5cff,#9d7cff);transition:width .6s cubic-bezier(.3,.9,.3,1)}
+.crowdmid{position:absolute;left:50%;top:-3px;bottom:-3px;width:3px;background:#fff;opacity:.55;transform:translateX(-1.5px)}
+.btlcall{background:#2a1e52;border:1px solid #4a3b8e;border-radius:14px;padding:10px;text-align:center;margin:8px 0}
+.btlcall .bc-who{font-weight:900;color:#ffd158;font-size:14px}
+.btlcall .bc-line{font-style:italic;color:#e8dcff;margin:4px 0;font-size:14px}
+.btlpick{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:8px 0}
+.btlopt{background:#241c48;border:2px solid #372a68;border-radius:12px;padding:6px 8px;text-align:center;cursor:pointer;min-width:66px}
+.btlopt.suggested{border-color:#ffd158;box-shadow:0 0 0 3px #ffd15833}
+.btlopt:active{transform:scale(.97)}
+.btlopt .bo-name{font-size:11px;font-weight:800;margin-top:2px}
+.btlopt .bo-con{font-size:9px;color:var(--dim)}
+.btlq{background:#241c48;border:1px solid #372a68;border-radius:14px;padding:12px;margin:8px 0;text-align:center}
+.btlq .bq-text{font-weight:800;font-size:17px;margin-bottom:6px}
+.btlchoices{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
 @media (prefers-reduced-motion: reduce){
   .idle,.idle2{animation:none}
   .bdot,.fseg,.mbar{animation:none !important}
@@ -816,6 +841,20 @@ svg .charg{will-change:transform}
   <p class="sub center" id="showCap">Pick a song. The band knows them all.</p>
   <div id="showList"></div>
 </div>
+<div class="scr" id="scr-battle">
+  <div class="row" style="justify-content:space-between;align-items:center">
+    <button class="btn ghost backbtn" id="btnBattleExit">← Back</button>
+    <div class="chip" id="btlRound">Round 1/5</div>
+    <div class="chip" id="btlImpress">🪕 0/2</div>
+  </div>
+  <div class="btlband" id="btlRival"></div>
+  <div class="crowdwrap2">
+    <div class="crowdlbls"><span style="color:#9d7cff">🎤 YOU</span><span id="btlPct">50%</span><span style="color:#ff8a8a" id="btlRivalName">THE HOEDOWN</span></div>
+    <div class="crowdmeter"><div class="crowdmine" id="btlMine"></div><div class="crowdmid"></div></div>
+  </div>
+  <div class="ellyhost" id="btlElly"></div>
+  <div id="btlStage"></div>
+</div>
 <div class="scr" id="scr-play">
   <div class="row" style="justify-content:space-between;align-items:center">
     <button class="btn ghost backbtn" id="btnPlayExit">← Back</button>
@@ -844,14 +883,14 @@ svg .charg{will-change:transform}
 <canvas id="fx"></canvas>
 <div id="toast"></div>
 <button id="homeBtn" onclick="goHome()" aria-label="Back to Garage">🏠</button>
-<div id="vbadge">v0.41 · Aug 24</div>
+<div id="vbadge">v0.46 · Aug 24</div>
 
 <script>
 'use strict';
 /* ============ UTILS ============ */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const VERSION='v0.41 · Aug 24';
+const VERSION='v0.46 · Aug 24';
 const RM=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -864,7 +903,7 @@ function clearTimers(){TIMERS.forEach(clearTimeout);TIMERS=[];}
 const KEY='bq_save_v1';
 const DEF={
   v:1, creature:null, notes:0, gold:0,
-  skills:{add:1,sub:1,mul:1,frac:1,clock:1,cal:1,meas:1,div:1,neg:1,skip:1,money:1,round:1},
+  skills:{add:1,sub:1,mul:1,frac:1,clock:1,cal:1,meas:1,div:1,neg:1,skip:1,money:1,round:1,patterns:1},
   auditioned:{}, band:{}, owned:[], proofs:{}, met:{}, plays:{}, memberNames:{}, memberGear:{}, cleared:{},
   equipped:{drumskin:'classic'},
   flags:{soundcheckOffered:false,introDone:false,coach_kc:false,coach_arc:false,coach_rs:false,coach_gg:false,coach_tt:false,coach_st:false,coach_hp:false,coach_gig:false,lesson_round:false},
@@ -1032,7 +1071,8 @@ function ellyHint(){
   modal('<div class="center ellymodal">'+ellySVG(96)+'<h2>Elly</h2></div>'+
     '<div class="ellyspeak" style="background:#241c48;padding:12px;border-radius:12px">"'+ellyTip()+'"</div>'+
     '<button class="btn wide" onclick="closeModal()">Thanks, Elly! 🔔</button>'+
-    '<button class="btn wide ghost" onclick="ellyReplayIntro()">Show me the welcome tour again</button>');
+    '<button class="btn wide ghost" onclick="startIntroReplay()">🎬 Replay the intro (meet the band)</button>'+
+    '<button class="btn wide ghost" onclick="ellyReplayIntro()">🔔 Elly\u2019s quick tour</button>');
 }
 const ELLY_INTRO=[
  'Hi hi! I am Elly, your guide. I am the little bell you will hear around here. Let me show you the ropes! (Tap to keep going.)',
@@ -1226,6 +1266,7 @@ function ellySVG(sz){
   return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 140 140"><g class="charg">'+e+'</g></svg>';
 }
 function memberSVG(id,sz){
+  if(id==='roscoe')return countryCharSVG('banjo',sz);
   /* v0.24 character pass: everyone has arms, hands, legs, and visibly PLAYS their
      instrument. Garrett's art direction: "how could they hug, let alone play?" */
   sz=sz||120;
@@ -1430,7 +1471,7 @@ function memberSVG(id,sz){
 }
 
 /* ============ BAND DATA ============ */
-const CONCEPT_NAMES={add:'Addition',sub:'Subtraction',mul:'Multiplication',frac:'Fractions',clock:'Clocks & Time',cal:'Days & Months',meas:'Measurement',div:'Division',neg:'Negative Numbers',skip:'Skip Counting',money:'Money & Coins',round:'Rounding & Estimating'};
+const CONCEPT_NAMES={add:'Addition',sub:'Subtraction',mul:'Multiplication',frac:'Fractions',clock:'Clocks & Time',cal:'Days & Months',meas:'Measurement',div:'Division',neg:'Negative Numbers',skip:'Skip Counting',money:'Money & Coins',round:'Rounding & Estimating',patterns:'Patterns & Sequences'};
 const BAND=[
  {id:'boom',name:'Boom',emoji:'🥁',title:'Drummer',concept:'add',color:'#ff5d5d',
   cfg:{body:'round',col:'#ff5d5d',eyes:'dot',extra:'horns'},
@@ -1491,7 +1532,12 @@ const BAND=[
   cfg:{body:'tall',col:'#9d7cff',eyes:'happy',extra:'none'},
   bio:'I do not hit every note. I SLIIIDE to the closest one! A messy number like 28? I swoop it up to 30. That is rounding. A quick close guess before you even do the math? That is estimating. Close enough to dance to!',
   lines:['Wheee! I am Swoop, on the slide whistle!','Do not sweat the exact number. Slide to the CLOSEST ten!','5 or more, I swoop UP. Less than 5, I stay DOWN.'],
-  dreams:['Nice swoops today. You always find the closest note.','Perfect is slow. Close and quick? That gets the crowd dancing NOW.','My dream solo is one endless slide that lands on the exact right note every time.','Estimating is not lazy math. It is knowing where you are going before you get there.','Whenever a number looks scary, just swoop it to something friendly. I will teach you how.']}
+  dreams:['Nice swoops today. You always find the closest note.','Perfect is slow. Close and quick? That gets the crowd dancing NOW.','My dream solo is one endless slide that lands on the exact right note every time.','Estimating is not lazy math. It is knowing where you are going before you get there.','Whenever a number looks scary, just swoop it to something friendly. I will teach you how.']},
+ {id:'roscoe',name:'Roscoe',emoji:'🪕',title:'Banjo',concept:'patterns',color:'#e0a94e',
+  cfg:{body:'round',col:'#e0a94e',eyes:'dot',extra:'none'},
+  bio:'A banjo roll is the same little pattern, rolling around and around. Spot the pattern and you can play anything at all. That is sequences.',
+  lines:['Howdy. The name is Roscoe, and I pick a mean banjo.','A good roll is just a pattern you trust.','You run a fair band. I like that a lot.'],
+  dreams:['You lead a band the way it should be led. Fair. That is why I crossed the stage.','Back with the Hoedown, Fentley took every solo. Here, everybody gets a turn.','A pattern only works if every part shows up on time. Same as a good band.','Teach the young one my rolls. Patterns are the whole secret.','Real glad I jumped ship. This is home now.']}
 ];
 const BY_ID={}; BAND.forEach(m=>BY_ID[m.id]=m);
 /* Custom member names: every bandmate is renameable. mName() is the display
@@ -1722,13 +1768,13 @@ function ellyMemberPair(id){
   '</div>';
 }
 function battleGoals(){
-  var CC=['add','sub','mul','frac','clock','cal','meas','div','neg','skip','money','round'];
+  var CC=['add','sub','mul','frac','clock','cal','meas','div','neg','skip','money','round','patterns'];
   var joined=BAND.filter(function(m){return S.band[m.id];}).length;
   var golds=CC.filter(function(c){return tierOf(Math.floor(lvlOf(c)))>=2;}).length;
   var masters=BAND.filter(function(m){var gt=memberGames(m.id).length;return gt>0&&clearedCount(m.id)>=gt;}).length;
   var shows=(S.stats&&S.stats.shows)||0;
   return [
-    {icon:'\uD83C\uDFB8',name:'Full Band',desc:'Recruit all 12 bandmates',cur:joined,max:12},
+    {icon:'\uD83C\uDFB8',name:'Full Band',desc:'Recruit every bandmate',cur:joined,max:BAND.length},
     {icon:'\uD83E\uDD47',name:'Go for Gold',desc:'Earn 3 gold medals',cur:golds,max:3},
     {icon:'\uD83C\uDFAF',name:'Game Master',desc:'Star every game for 4 bandmates',cur:masters,max:4},
     {icon:'\uD83C\uDFA4',name:'Road Warrior',desc:'Play 10 shows',cur:shows,max:10}
@@ -1760,7 +1806,8 @@ function openBattle(){
   modal('<div class="center"><div class="flyercard battleflyer"><h3>\u26A1 BATTLE OF THE BANDS</h3>'+hh+'</div></div>'+
     '<h2 style="margin:12px 2px 2px">\uD83C\uDFAF Goals to get there</h2>'+
     '<div class="bgoals">'+gg+'</div>'+footer+
-    '<button class="btn wide" onclick="closeModal()">Back to the Garage</button>');
+    '<button class="btn wide" style="background:linear-gradient(90deg,#c0392b,#e67e22)" onclick="closeModal();startBandBattle();">⚔️ Try the Country battle (preview)</button>'+
+    '<button class="btn wide ghost" onclick="closeModal()">Back to the Garage</button>');
 }
 var ELLY_TIPS=[
  'A steady drum beat is just counting in a loop: 1, 2, 3, 4, over and over.',
@@ -1793,6 +1840,203 @@ function ellyPop(force){
   document.body.appendChild(el);
   later(function(){ ellyDismiss(); },11000);
 }
+
+/* ============ TRADE SOLOS BATTLE (engine preview) ============ */
+var BATTLE=null;
+var COUNTRY_CREW={ name:'The Hoedown', members:[
+  {id:'fiddle',emoji:'🎻',name:'Fentley',line:'Y\u2019all call THAT pickin\u2019?'},
+  {id:'washtub',emoji:'🪣',name:'Big Tub',line:'Boom-chuck, boom-chuck!'},
+  {id:'washboard',emoji:'🥄',name:'Skids',line:'Scritch-scratch, keep up now!'},
+  {id:'harmonica',emoji:'🎵',name:'Old Pete',line:'*wheeze* nice try, city kid.'},
+  {id:'banjo',emoji:'🪕',name:'Roscoe',star:true,line:'\u2026huh. Not bad, kid.'}
+]};
+function countryCharSVG(id,sz){ sz=sz||60; var O='#221a44';
+  var feet=function(col){return '<ellipse cx="52" cy="126" rx="12" ry="6.5" fill="'+col+'"/><ellipse cx="88" cy="126" rx="12" ry="6.5" fill="'+col+'"/>';};
+  var arm=function(x1,y1,qx,qy,x2,y2,c,w){return '<path d="M'+x1+' '+y1+' Q'+qx+' '+qy+' '+x2+' '+y2+'" stroke="'+c+'" stroke-width="'+(w||9)+'" fill="none" stroke-linecap="round"/>';};
+  var hand=function(x,y,c){return '<circle cx="'+x+'" cy="'+y+'" r="6.5" fill="'+c+'" stroke="'+O+'" stroke-width="2"/>';};
+  var dot=function(x1,y1,x2,y2){return '<circle cx="'+x1+'" cy="'+y1+'" r="5" fill="'+O+'"/><circle cx="'+x2+'" cy="'+y2+'" r="5" fill="'+O+'"/><circle cx="'+(x1+2)+'" cy="'+(y1-2)+'" r="1.7" fill="#fff"/><circle cx="'+(x2+2)+'" cy="'+(y2-2)+'" r="1.7" fill="#fff"/>';};
+  var smile=function(x,y,w){return '<path d="M'+x+' '+y+' q'+(w/2)+' 7 '+w+' 0" stroke="'+O+'" stroke-width="4" fill="none" stroke-linecap="round"/>';};
+  let b='';
+ if(id==='fiddle'){ const c='#e8834a';
+   b=feet('#c96a3a')+
+   '<ellipse cx="70" cy="88" rx="33" ry="37" fill="'+c+'"/>'+
+   '<ellipse cx="70" cy="101" rx="18" ry="13" fill="#ffd9b8"/>'+
+   // fiddle under chin (viewer left)
+   '<ellipse cx="34" cy="74" rx="11" ry="15" fill="#8a4b28" transform="rotate(-22 34 74)"/>'+
+   '<line x1="39" y1="62" x2="22" y2="40" stroke="#6f3c20" stroke-width="4" stroke-linecap="round"/>'+
+   '<line x1="20" y1="92" x2="64" y2="62" stroke="#f2e6c8" stroke-width="2.4"/>'+
+   '<line x1="18" y1="96" x2="66" y2="64" stroke="#6f3c20" stroke-width="3" stroke-linecap="round"/>'+
+   arm(54,86,42,82,28,86,c)+hand(28,86,c)+
+   arm(88,86,72,72,66,64,c)+hand(66,64,c)+
+   // cowboy hat
+   '<ellipse cx="70" cy="54" rx="35" ry="8" fill="#7a4a2a"/>'+
+   '<path d="M53 54 Q53 30 70 30 Q87 30 87 54 Z" fill="#8a5630"/>'+
+   '<rect x="53" y="49" width="34" height="6" rx="3" fill="#5e3620"/>'+
+   '<circle cx="61" cy="76" r="5" fill="'+O+'"/><circle cx="79" cy="76" r="5" fill="'+O+'"/>'+
+   '<circle cx="63" cy="74" r="1.7" fill="#fff"/><circle cx="81" cy="74" r="1.7" fill="#fff"/>'+
+   '<line x1="74" y1="66" x2="85" y2="64" stroke="'+O+'" stroke-width="2.5" stroke-linecap="round"/>'+
+   '<path d="M62 88 q9 5 18 -2" stroke="'+O+'" stroke-width="4" fill="none" stroke-linecap="round"/>';
+ } else if(id==='washtub'){ const c='#4f8bd6';
+   b=feet('#3a6ca8')+
+   '<ellipse cx="70" cy="80" rx="40" ry="42" fill="'+c+'"/>'+
+   '<ellipse cx="70" cy="94" rx="22" ry="16" fill="#bcd8f5"/>'+
+   // washtub bass: metal tub + broomstick neck + string
+   '<path d="M40 118 L34 96 Q70 90 106 96 L100 118 Z" fill="#b8c2cc" stroke="#8a949e" stroke-width="2"/>'+
+   '<ellipse cx="70" cy="96" rx="36" ry="7" fill="#d7dde2" stroke="#8a949e" stroke-width="2"/>'+
+   '<line x1="106" y1="96" x2="112" y2="40" stroke="#9a6b3a" stroke-width="5" stroke-linecap="round"/>'+
+   '<line x1="70" y1="96" x2="112" y2="42" stroke="#eee" stroke-width="2"/>'+
+   arm(96,86,104,74,110,44,c)+hand(110,44,c)+
+   arm(50,88,56,98,70,98,c)+hand(70,98,c)+
+   // flat cap
+   '<path d="M40 50 Q70 30 100 50 Q100 44 70 42 Q40 44 40 50 Z" fill="#5a6b7a"/>'+
+   '<ellipse cx="70" cy="50" rx="30" ry="6" fill="#6b7c8b"/>'+
+   dot(58,66,82,66)+ smile(60,80,20);
+ } else if(id==='washboard'){ const c='#8fd14f';
+   b=feet('#5fa02f')+
+   '<ellipse cx="70" cy="84" rx="33" ry="38" fill="'+c+'"/>'+
+   // washboard on chest
+   '<rect x="52" y="74" width="36" height="40" rx="5" fill="#d9a25a" stroke="#9a6b34" stroke-width="2"/>'+
+   '<g stroke="#b5b5b5" stroke-width="3">'+
+     '<line x1="55" y1="80" x2="85" y2="80"/><line x1="55" y1="86" x2="85" y2="86"/><line x1="55" y1="92" x2="85" y2="92"/><line x1="55" y1="98" x2="85" y2="98"/><line x1="55" y1="104" x2="85" y2="104"/></g>'+
+   // spoons in right hand
+   '<line x1="104" y1="70" x2="96" y2="88" stroke="#c9c9c9" stroke-width="4" stroke-linecap="round"/>'+
+   '<ellipse cx="105" cy="68" rx="5" ry="7" fill="#dcdcdc"/>'+
+   arm(88,80,100,74,104,72,c)+hand(104,72,c)+
+   arm(52,84,46,92,50,100,c)+hand(50,100,c)+
+   // motion lines
+   '<g stroke="#c8f0a0" stroke-width="3" stroke-linecap="round"><line x1="112" y1="80" x2="120" y2="80"/><line x1="112" y1="88" x2="118" y2="88"/></g>'+
+   dot(60,66,80,66)+
+   '<path d="M59 76 q11 13 22 0 q-11 7 -22 0 Z" fill="#6e2a2a"/>'+
+   '<line x1="63" y1="77" x2="79" y2="77" stroke="#fff" stroke-width="3"/>';
+ } else if(id==='harmonica'){ const c='#d8b06a';
+   b=feet('#a9863f')+
+   '<ellipse cx="70" cy="86" rx="32" ry="36" fill="'+c+'"/>'+
+   '<ellipse cx="70" cy="98" rx="17" ry="12" fill="#f0dcae"/>'+
+   // harmonica at mouth
+   '<rect x="50" y="82" width="40" height="12" rx="3" fill="#8a9096" stroke="#5f656b" stroke-width="1.5"/>'+
+   '<g fill="#5f656b"><rect x="54" y="85" width="3" height="6"/><rect x="60" y="85" width="3" height="6"/><rect x="66" y="85" width="3" height="6"/><rect x="72" y="85" width="3" height="6"/><rect x="78" y="85" width="3" height="6"/></g>'+
+   arm(52,92,50,86,54,84,c)+hand(54,84,c)+
+   arm(88,92,90,86,86,84,c)+hand(86,84,c)+
+   // straw hat
+   '<ellipse cx="70" cy="52" rx="36" ry="8" fill="#e6c766"/>'+
+   '<path d="M55 52 Q55 34 70 34 Q85 34 85 52 Z" fill="#efd47f"/>'+
+   '<rect x="55" y="47" width="30" height="5" rx="2" fill="#b98a3a"/>'+
+   // sleepy eyes + round glasses + little beard
+   '<circle cx="60" cy="72" r="7" fill="none" stroke="'+O+'" stroke-width="2"/><circle cx="80" cy="72" r="7" fill="none" stroke="'+O+'" stroke-width="2"/><line x1="67" y1="72" x2="73" y2="72" stroke="'+O+'" stroke-width="2"/>'+
+   '<path d="M56 72 q4 3 8 0" stroke="'+O+'" stroke-width="2.5" fill="none" stroke-linecap="round"/>'+
+   '<path d="M76 72 q4 3 8 0" stroke="'+O+'" stroke-width="2.5" fill="none" stroke-linecap="round"/>'+
+   '<path d="M58 100 q12 10 24 0" stroke="#efe3c4" stroke-width="6" fill="none" stroke-linecap="round" opacity=".8"/>';
+  } else if(id==='banjo'){ const c='#e0a94e';
+   b=feet('#b5842f')+
+   '<ellipse cx="70" cy="85" rx="34" ry="38" fill="'+c+'"/>'+
+   '<ellipse cx="70" cy="98" rx="18" ry="13" fill="#ffe6ad"/>'+
+   '<circle cx="54" cy="101" r="17" fill="#f4ead2" stroke="#8a5a2a" stroke-width="4"/>'+
+   '<circle cx="54" cy="101" r="10" fill="none" stroke="#d8c39a" stroke-width="2"/>'+
+   '<rect x="66" y="52" width="8" height="46" rx="3" fill="#7a4a24" transform="rotate(28 70 74)"/>'+
+   '<circle cx="92" cy="52" r="3" fill="#3a2a18"/><circle cx="98" cy="58" r="3" fill="#3a2a18"/>'+
+   '<line x1="54" y1="88" x2="90" y2="52" stroke="#efe6d0" stroke-width="1"/>'+
+   arm(84,86,70,96,60,103,c)+hand(60,103,c)+
+   arm(58,68,78,54,90,50,c)+hand(90,50,c)+
+   '<path d="M40 62 Q70 50 100 62 L97 68 Q70 58 43 68 Z" fill="#d05b5b"/>'+
+   '<path d="M40 63 l-7 5 8 3 z" fill="#b84848"/>'+
+   '<circle cx="61" cy="77" r="5" fill="'+O+'"/><circle cx="80" cy="77" r="5" fill="'+O+'"/>'+
+   '<circle cx="63" cy="75" r="1.8" fill="#fff"/><circle cx="82" cy="75" r="1.8" fill="#fff"/>'+
+   '<path d="M61 88 q10 6 20 -1" stroke="'+O+'" stroke-width="4" fill="none" stroke-linecap="round"/>';
+}
+  return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 140 140"><g class="charg">'+b+'</g></svg>';
+}
+function startBandBattle(){
+  var mine=BAND.filter(function(m){return S.band[m.id];});
+  if(!mine.length)mine=[BY_ID.boom];
+  BATTLE={on:true,round:0,rounds:5,crowd:50,impress:0,impressMax:2,busy:false,phase:'pick',mine:mine,calls:[],sudden:false};
+  for(var i=0;i<5;i++){ var star=(i===2||i===4); var m=pick(mine);
+    BATTLE.calls.push({concept:m.concept,star:star,caller: star?COUNTRY_CREW.members[4]:COUNTRY_CREW.members[i%4]}); }
+  show('scr-battle'); battleRound();
+}
+function battlePaint(){
+  var c=Math.max(0,Math.min(100,BATTLE.crowd));
+  var el=$('#btlMine'); if(el)el.style.width=c+'%';
+  var p=$('#btlPct'); if(p)p.textContent=Math.round(c)+'%';
+}
+function battleRound(){
+  if(!BATTLE)return;
+  if(BATTLE.round>=BATTLE.rounds)return battleEnd();
+  BATTLE.busy=false; BATTLE.phase='pick'; BATTLE.sentId=null;
+  var call=BATTLE.calls[BATTLE.round];
+  battlePaint();
+  $('#btlRound').textContent='Round '+(BATTLE.round+1)+'/'+BATTLE.rounds;
+  $('#btlImpress').textContent='🪕 '+BATTLE.impress+'/'+BATTLE.impressMax;
+  $('#btlRivalName').textContent=COUNTRY_CREW.name.toUpperCase();
+  $('#btlRival').innerHTML=COUNTRY_CREW.members.map(function(rm){
+    return '<div class="btlmember'+(rm.id===call.caller.id?' active':'')+'"><div class="bm-art">'+countryCharSVG(rm.id,48)+'</div><div class="bm-name">'+rm.name+'</div></div>';
+  }).join('');
+  var sugg=BATTLE.mine.filter(function(m){return m.concept===call.concept;})[0]||BATTLE.mine[0];
+  $('#btlElly').innerHTML='<b>Elly:</b> \u201C'+(call.star?'That\u2019s Roscoe\u2019s pattern call! ':'')+'Send '+mName(sugg.id)+' for this one.\u201D';
+  var opts=BATTLE.mine.map(function(m){
+    return '<div class="btlopt'+(m.id===sugg.id?' suggested':'')+'" data-id="'+m.id+'">'+memberSVG(m.id,40)+'<div class="bo-name">'+mName(m.id)+'</div><div class="bo-con">'+CONCEPT_NAMES[m.concept]+'</div></div>';
+  }).join('');
+  $('#btlStage').innerHTML='<div class="btlcall"><div class="bc-who"><span class="bc-art">'+countryCharSVG(call.caller.id,30)+'</span> '+call.caller.name+(call.star?' (banjo)':'')+' calls</div><div class="bc-line">\u201C'+call.caller.line+'\u201D</div><div style="font-size:12px;color:var(--dim)">Answer with a '+CONCEPT_NAMES[call.concept]+' move.</div></div>'+
+    '<div style="text-align:center;font-weight:800;font-size:13px;color:#ffd158;margin-top:4px">Who plays this solo?</div>'+
+    '<div class="btlpick">'+opts+'</div>';
+  $$('#btlStage .btlopt').forEach(function(o){ o.addEventListener('click',function(){ battleSend(o.dataset.id); }); });
+}
+function battleSend(id){
+  if(!BATTLE||BATTLE.phase!=='pick'||BATTLE.busy)return; sTap();
+  BATTLE.sentId=id; BATTLE.phase='answer';
+  var m=BY_ID[id]; var call=BATTLE.calls[BATTLE.round];
+  BATTLE.match=(m.concept===call.concept);
+  var L=Math.max(1,Math.floor(lvlOf(m.concept)));
+  var item=QG[m.concept](L); BATTLE.item=item;
+  var choices=item.choices.map(function(ch){ return '<button class="choice" data-v="'+String(ch)+'">'+ch+'</button>'; }).join('');
+  $('#btlStage').innerHTML='<div class="btlcall"><div class="bc-who">'+m.emoji+' '+mName(id)+' steps up'+(BATTLE.match?'!':' (off their lane)')+'</div></div>'+
+    '<div class="btlq"><div class="bq-text">'+item.q+'</div><div>'+(item.vis||'')+'</div><div class="btlchoices">'+choices+'</div></div>';
+  $$('#btlStage .choice').forEach(function(b){ b.addEventListener('click',function(e){ battleAnswer(b,b.dataset.v,e); }); });
+}
+function battleAnswer(btn,val,ev){
+  if(!BATTLE||BATTLE.busy||BATTLE.phase!=='answer')return; BATTLE.busy=true;
+  var ok=(val===BATTLE.item.a), call=BATTLE.calls[BATTLE.round], match=BATTLE.match;
+  $$('#btlStage .choice').forEach(function(b){ if(b.dataset.v===BATTLE.item.a)b.classList.add('good'); else if(b===btn&&!ok)b.classList.add('badc'); });
+  var msg;
+  if(ok){ sCorrect(1); BATTLE.crowd=Math.min(100,BATTLE.crowd+(match?18:9));
+    if(call.star&&match){ BATTLE.impress++; var im=$('#btlImpress'); if(im){im.textContent='🪕 '+BATTLE.impress+'/'+BATTLE.impressMax; punch(im);} }
+    msg=match?('The crowd roars!'+(call.star?' Roscoe raises an eyebrow.':'')):'Not their lane, but the crowd still digs it.'; addNotes(2,ev);
+  } else { sWrong(); BATTLE.crowd=Math.max(0,BATTLE.crowd-13); msg='It was '+BATTLE.item.a+'. The Hoedown wins the crowd back.'; addNotes(1,ev); }
+  S.stats.answers++; if(ok)S.stats.correct++;
+  try{ adjust(BY_ID[BATTLE.sentId].concept,ok,true,true); }catch(e){}
+  save(); battlePaint();
+  $('#btlElly').innerHTML='<b>Elly:</b> \u201C'+msg+'\u201D';
+  later(function(){ BATTLE.round++; battleRound(); }, ok?1100:1500);
+}
+function battleEnd(forced){
+  if(!BATTLE)return;
+  if(!forced && BATTLE.crowd===50 && !BATTLE.sudden){ BATTLE.sudden=true; var m=pick(BATTLE.mine);
+    BATTLE.calls.push({concept:m.concept,star:true,caller:COUNTRY_CREW.members[4]}); BATTLE.rounds++; toast('Tie! Sudden-death round!'); return battleRound(); }
+  var won = forced ? (forced==='win') : (BATTLE.crowd>50);
+  var full = won && BATTLE.impress>=BATTLE.impressMax;
+  BATTLE.on=false;
+  var html;
+  if(won){ confetti(full?30:16); sFanfare();
+    if(full){ var firstJoin=!S.band.roscoe; S.flags.country_beaten=true; S.band.roscoe=true; S.auditioned.roscoe=true; if(!S.skills.patterns)S.skills.patterns=1; save();
+      html='<div class="center"><div style="font-size:56px">🪕</div><h2>Roscoe joins the band!</h2>'+
+        '<p class="sub">You won the crowd AND nailed his pattern calls. Roscoe grabbed his banjo and crossed the stage.</p>'+
+        (firstJoin?'<p class="sub" style="color:#ffd158">New bandmate: Roscoe the Banjo. New skill: Patterns &amp; Sequences. Go say hi in the Garage!</p>':'<p class="sub" style="color:var(--dim)">Roscoe is already in your band.</p>')+'</div>';
+    } else {
+      html='<div class="center"><div style="font-size:52px">🎤</div><h2>You took the crowd!</h2>'+
+        '<p class="sub">Great set. Roscoe is not fully sold though. Win his 🪕 pattern rounds to fill the recruit spark and get him to defect.</p>'+
+        '<p class="sub" style="color:var(--dim)">Impress spark: '+BATTLE.impress+'/'+BATTLE.impressMax+'</p></div>';
+    }
+  } else {
+    html='<div class="center"><div style="font-size:52px">🤠</div><h2>The Hoedown holds the crowd</h2>'+
+      '<p class="sub">They edged you out this time. Tune up and run it back.</p></div>';
+  }
+  $('#btlElly').innerHTML='<b>Elly:</b> \u201C'+(won?'That is how you lead a band!':'Shake it off. We go again.')+'\u201D';
+  var primary = (won && S.band.roscoe) ? '<button class="btn wide" id="btlMeet">🪕 Meet Roscoe in the Garage</button>' : '<button class="btn wide" id="btlRematch">↻ Rematch</button>';
+  $('#btlStage').innerHTML=html+primary+'<button class="btn wide ghost" id="btlBack">\u2190 Back to the Garage</button>';
+  var rm=$('#btlRematch'); if(rm)rm.addEventListener('click',startBandBattle);
+  var mt=$('#btlMeet'); if(mt)mt.addEventListener('click',function(){ BATTLE=null; renderHub(); show('scr-hub'); talkTo('roscoe'); });
+  var bk=$('#btlBack'); if(bk)bk.addEventListener('click',function(){ BATTLE=null; renderHub(); show('scr-hub'); });
+}
+
 
 let LINE_IX={};
 function memberGames(id){ return Object.keys(MJGAMES).filter(k=>MJGAMES[k].member===id); }
@@ -1838,6 +2082,8 @@ function talkTo(id){
   if(id==='gain') btns+='<button class="btn wide" onclick="startMJ(\'faderride\')">🎚️ Fader Ride</button>'+
     '<button class="btn wide ghost" onclick="startMJ(\'zeroout\')">⚖️ Zero Out</button>'+
     '<button class="btn wide ghost" onclick="startMJ(\'lightlevels\')">💡 Light Levels</button>';
+  if(id==='roscoe') btns+='<button class="btn wide" onclick="startMJ(\'rollnext\')">🪕 Roll Next</button>'+
+    '<button class="btn wide ghost" onclick="startMJ(\'fillgap\')">🎵 Fill the Gap</button>';
   if(id==='luna') btns+='<button class="btn wide" onclick="startHP()">🐇 Jam: Calendar Hop</button>'+
     '<button class="btn wide ghost" onclick="startMJ(\'tourorder\')">🗺️ Tour Router</button>'+
     '<button class="btn wide ghost" onclick="startMJ(\'countdown\')">📆 Countdown</button>';
@@ -4011,21 +4257,29 @@ const INTRO_S1=[
   {char:'boom',flyer:true,say:'Look at it! This town needs a NEW BAND. And a band needs a LEADER.'},
   {char:'boom',say:'Every great band starts with ONE brave musician who steps up. Is that... you?',btn:"It's me! 🙋"}
 ];
-const INTRO_MEETS=[
-  ['boom','That is the spirit! Welcome to the garage. Meet the crew...'],
-  ['rumble','...that is Rumble. Bass. Speaks about four words a day.'],
-  ['combo','Combo on keys! Thinks in grids. Counts EVERYTHING in groups.'],
-  ['slice','Slice shreds guitar. Cuts every note into perfect pieces.'],
-  ['tock','Tock keeps the whole show on time. The turntable IS a clock.'],
-  ['gauge','Gauge the roadie. If it has a length, Gauge has measured it.'],
-  ['luna','And Luna books the tour. Days, months, seasons... all her.'],
-  ['doot','Doot on the horn! One breath, split into equal notes. Fairest player I know.'],
-  ['gain','And way in the back: Gain, on sound and lights. Faders go ABOVE zero and BELOW it. Wild, right?'],
-  ['plink','Plink hops the xylophone by 2s and 5s and 10s. Never plays a bar she does not need!'],
-  ['reg','And Register works the merch table! Coins, bills, and making change. Money math with a cash-register beat!'],
-  ['boom','Everyone here will jam with you ANYTIME. That is how you get good.'],
-  ['boom','But first: warm up with ME. The crowd wants FIVE beats. Catch drums that add up to 5!']
-];
+const MEET_LINES={
+  rumble:'...that is Rumble. Bass. Speaks about four words a day.',
+  combo:'Combo on keys! Thinks in grids. Counts EVERYTHING in groups.',
+  slice:'Slice shreds guitar. Cuts every note into perfect pieces.',
+  tock:'Tock keeps the whole show on time. The turntable IS a clock.',
+  gauge:'Gauge the roadie. If it has a length, Gauge has measured it.',
+  luna:'And Luna books the tour. Days, months, seasons... all her.',
+  doot:'Doot on the horn! One breath, split into equal notes. Fairest player I know.',
+  gain:'And way in the back: Gain, on sound and lights. Faders go ABOVE zero and BELOW it. Wild, right?',
+  plink:'Plink hops the xylophone by 2s and 5s and 10s. Never plays a bar she does not need!',
+  reg:'And Register works the merch table! Coins, bills, and making change. Money math with a cash-register beat!',
+  round:'Swoop on the slide whistle! Never hits the messy note, just SLIDES to the closest one. That is rounding.',
+  roscoe:'And Roscoe on banjo! He crossed the stage from a rival band. A roll is just a pattern, over and over.'
+};
+/* meet sequence is generated from the roster, so new bandmates auto-appear (fallback line if none written) */
+function introMeets(){
+  var out=[['boom','That is the spirit! Welcome to the garage. Meet the crew...']];
+  BAND.forEach(function(m){ if(m.id==='boom')return;
+    out.push([m.id, MEET_LINES[m.id] || ('And this is '+m.name+' on the '+(RIG_NAMES[m.id]||'stage')+'! '+(CONCEPT_NAMES[m.concept]||'')+'.')]); });
+  out.push(['boom','Everyone here will jam with you ANYTIME. That is how you get good.']);
+  out.push(['boom','But first: warm up with ME. The crowd wants FIVE beats. Catch drums that add up to 5!']);
+  return out;
+}
 function startIntro(){
   INTRO.active=true; INTRO.scene=1; INTRO.ix=0;
   show('scr-intro'); renderIntro();
@@ -4040,11 +4294,13 @@ function renderIntro(){
     say.textContent=nameify('🥁 Boom: "'+st.say+'"');
     nx.textContent=st.btn||'Next 🥁';
   }else if(INTRO.scene===3){
-    const m=INTRO_MEETS[INTRO.ix];
+    const meets=INTRO.meets||introMeets();
+    const m=meets[INTRO.ix];
     ch.innerHTML=memberSVG(m[0],120);
     fl.style.display='none';
     say.textContent=nameify('🥁 Boom: "'+m[1]+'"');
-    nx.textContent=(INTRO.ix>=INTRO_MEETS.length-1)?'🥁 Warm up with Boom!':'Next 🥁';
+    var lastMeet=INTRO.replay?meets.length-2:meets.length-1;
+    nx.textContent=(INTRO.ix>=lastMeet)?(INTRO.replay?'🚪 Back to the Garage':'🥁 Warm up with Boom!'):'Next 🥁';
   }else if(INTRO.scene===5){
     ch.innerHTML=memberSVG('boom',130);
     fl.style.display='none';
@@ -4056,14 +4312,17 @@ $('#btnIntroNext').addEventListener('click',()=>{
   ac(); drum('kick');
   if(INTRO.scene===1){
     INTRO.ix++;
-    if(INTRO.ix>=INTRO_S1.length){ openCreator(false); return; }
+    if(INTRO.ix>=INTRO_S1.length){ if(INTRO.replay){ introScene3(); } else { openCreator(false); } return; }
     renderIntro();
   }else if(INTRO.scene===3){
-    if(INTRO.ix>=INTRO_MEETS.length-1){ startKC({tutorial:true}); return; }
+    const meets=INTRO.meets||introMeets();
+    var lastMeet=INTRO.replay?meets.length-2:meets.length-1;
+    if(INTRO.ix>=lastMeet){ if(INTRO.replay){ introScene5(); } else { startKC({tutorial:true}); } return; }
     INTRO.ix++; drum(INTRO.ix%2?'hat':'kick');
     renderIntro();
   }else if(INTRO.scene===5){
     INTRO.active=false;
+    if(INTRO.replay){ INTRO.replay=false; renderHub(); show('scr-hub'); sFanfare(); confetti(20); return; }
     S.flags.introDone=true; save();
     renderHub(); show('scr-hub');
     sFanfare(); confetti(30);
@@ -4071,13 +4330,15 @@ $('#btnIntroNext').addEventListener('click',()=>{
   }
 });
 $('#btnIntroSkip').addEventListener('click',()=>{
+  if(INTRO.replay){ INTRO.replay=false; INTRO.active=false; renderHub(); show('scr-hub'); return; }
   INTRO.active=false;
   S.flags.introDone=true; save();
   if(!S.creature)openCreator(false);
   else { renderHub(); show('scr-hub'); }
 });
-function introScene3(){ INTRO.scene=3; INTRO.ix=0; show('scr-intro'); renderIntro(); }
+function introScene3(){ INTRO.meets=introMeets(); INTRO.scene=3; INTRO.ix=0; show('scr-intro'); renderIntro(); }
 function introScene5(){ INTRO.scene=5; INTRO.ix=0; INTRO.active=true; show('scr-intro'); renderIntro(); sFanfare(); confetti(24); }
+function startIntroReplay(){ closeModal(); INTRO.replay=true; INTRO.active=true; INTRO.scene=1; INTRO.ix=0; show('scr-intro'); renderIntro(); }
 
 /* ============ WIRING + INIT ============ */
 $('#btnStart').addEventListener('click',()=>{
@@ -4294,7 +4555,7 @@ function splashDismiss(){
   later(()=>{ if(SPLASH_STATE===1){ SPLASH_STATE=2; const sp2=$('#splash'); if(sp2){sp2.classList.add('bye'); later(()=>sp2.remove(),550);} } },1900);
 }
 (function(){ const sp=$('#splash'); if(sp)sp.addEventListener('pointerdown',splashDismiss); })();
-window.BQ={get QZ(){return QZ;},goHome:goHome,splashDismiss:splashDismiss,dreamOutro:dreamOutro,BY_ID:BY_ID,WHY:WHY,maybeWhy:maybeWhy,capOf2:capOf,startAudition:startAudition,roundCall:roundCall,callKill:callKill,CALLB:CALLB,rampL:rampL,notePlay:notePlay,firstPlay:firstPlay,kcCfg:kcCfg,arcCfg2:arcCfg,COACH:COACH,GESTURE_EMOJI:GESTURE_EMOJI,coachGate:coachGate,showCoach:showCoach,gigSoundcheck:gigSoundcheck,GIG:GIG,startGig:startGig,gigBuildCues:gigBuildCues,gigJudgeDance:gigJudgeDance,gigDancePts:gigDancePts,gigResultTier:gigResultTier,gigReward:gigReward,gigCueMax:gigCueMax,VENUES:VENUES,GIG_LINES:GIG_LINES,get S(){return S;},QG:QG,adjust:adjust,creatureSVG:creatureSVG,lvlOf:lvlOf,capOf:capOf,tierOf:tierOf,proofCount:proofCount,save:save,load:load,BAND:BAND,SHOP:SHOP,runQuiz:runQuiz,show:show,BB:BB,NS:NS,bbTap:bbTap,nsTap:nsTap,startBB:startBB,startNS:startNS,ARC:ARC,startARC:startARC,sliceNote:sliceNote,tryCollect:tryCollect,arcStep:arcStep,arcNeeded:arcNeeded,arcMeasureDone:arcMeasureDone,arcSpawnOne:arcSpawnOne,arcCfg:arcCfg,drawGlyph:drawGlyph,GLYPH:GLYPH,KC:KC,kcCatch:kcCatch,kcStep:kcStep,startKC:startKC,RS:RS,rsTap:rsTap,startRS:startRS,GG:GG,ggStamp:ggStamp,startGG:startGG,TT:TT,ttDrop:ttDrop,ttTime:ttTime,startTT:startTT,ST2:ST2,st2Resolve:st2Resolve,startST:startST,HP:HP,hpTap:hpTap,startHP:startHP,INTRO:INTRO,startIntro:startIntro,openBattle:openBattle,battleGoals:battleGoals,battleDone:battleDone,ellyPop:ellyPop,ellyDismiss:ellyDismiss,ellyCoachLine:ellyCoachLine,ellyMemberPair:ellyMemberPair,ellySuggestions:ellySuggestions};
+window.BQ={get QZ(){return QZ;},goHome:goHome,splashDismiss:splashDismiss,dreamOutro:dreamOutro,BY_ID:BY_ID,WHY:WHY,maybeWhy:maybeWhy,capOf2:capOf,startAudition:startAudition,roundCall:roundCall,callKill:callKill,CALLB:CALLB,rampL:rampL,notePlay:notePlay,firstPlay:firstPlay,kcCfg:kcCfg,arcCfg2:arcCfg,COACH:COACH,GESTURE_EMOJI:GESTURE_EMOJI,coachGate:coachGate,showCoach:showCoach,gigSoundcheck:gigSoundcheck,GIG:GIG,startGig:startGig,gigBuildCues:gigBuildCues,gigJudgeDance:gigJudgeDance,gigDancePts:gigDancePts,gigResultTier:gigResultTier,gigReward:gigReward,gigCueMax:gigCueMax,VENUES:VENUES,GIG_LINES:GIG_LINES,get S(){return S;},QG:QG,adjust:adjust,creatureSVG:creatureSVG,lvlOf:lvlOf,capOf:capOf,tierOf:tierOf,proofCount:proofCount,save:save,load:load,BAND:BAND,SHOP:SHOP,runQuiz:runQuiz,show:show,BB:BB,NS:NS,bbTap:bbTap,nsTap:nsTap,startBB:startBB,startNS:startNS,ARC:ARC,startARC:startARC,sliceNote:sliceNote,tryCollect:tryCollect,arcStep:arcStep,arcNeeded:arcNeeded,arcMeasureDone:arcMeasureDone,arcSpawnOne:arcSpawnOne,arcCfg:arcCfg,drawGlyph:drawGlyph,GLYPH:GLYPH,KC:KC,kcCatch:kcCatch,kcStep:kcStep,startKC:startKC,RS:RS,rsTap:rsTap,startRS:startRS,GG:GG,ggStamp:ggStamp,startGG:startGG,TT:TT,ttDrop:ttDrop,ttTime:ttTime,startTT:startTT,ST2:ST2,st2Resolve:st2Resolve,startST:startST,HP:HP,hpTap:hpTap,startHP:startHP,INTRO:INTRO,startIntro:startIntro,openBattle:openBattle,battleGoals:battleGoals,battleDone:battleDone,ellyPop:ellyPop,ellyDismiss:ellyDismiss,ellyCoachLine:ellyCoachLine,ellyMemberPair:ellyMemberPair,ellySuggestions:ellySuggestions,startIntroReplay:startIntroReplay,startBandBattle:startBandBattle,battleRound:battleRound,battleSend:battleSend,battleAnswer:battleAnswer,battleEnd:battleEnd,get BATTLE(){return BATTLE;}};
 </script>
 <script>
 /* ================= MINI JAMS (v0.15) =================
@@ -4411,6 +4672,7 @@ $('#btnMjExit').addEventListener('click',()=>{ MJ.on=false; callKill(false); ren
 $('#btnPlayExit').addEventListener('click',()=>{ $('#playRig').innerHTML=''; renderHub(); show('scr-hub'); });
 $('#btnShow').addEventListener('click',()=>{ sTap(); openShow(); });
 $('#btnShowExit').addEventListener('click',()=>{ showStop(); renderHub(); show('scr-hub'); });
+$('#btnBattleExit').addEventListener('click',()=>{ BATTLE=null; renderHub(); show('scr-hub'); });
 $('#btnMjHelp').addEventListener('click',()=>{ if(MJ.id){ sTap(); const gid=MJ.id; showCoach(gid,MJ.def.member,function(){},function(){startMJ(gid,true);}); } });
 $('#btnMjRetry').addEventListener('click',()=>{ if(!MJ.on||MJ.busy)return; sTap(); drum('hat'); MJ.round--; mjNext(); toast('↻ Fresh try, same round!'); });
 
@@ -5183,7 +5445,7 @@ function openShow(){
   /* stage arrangement: drummer + horns at BACK, melody in the MIDDLE, front performers at the lip.
      Order the row so it reads like a band on risers, not a wrapping list. */
   const backLine=['doot','gain','boom','elly'];
-  const midLine=['combo','slice','plink','reg','round'];
+  const midLine=['combo','slice','plink','reg','round','roscoe'];
   const frontLine=['rumble','tock','gauge','luna'];
   const cell=(id,cls)=>'<span class="perf '+cls+'" id="sm-'+id+'">'+(id==='elly'?ellySVG(52):memberSVG(id,54))+'</span>';
   const roster=BAND.map(m=>m.id).concat('elly');
@@ -5291,7 +5553,7 @@ function showPlay(id){
 }
 
 /* ---------- PRACTICE ROOM: every member's instrument is playable, no goals ---------- */
-const RIG_NAMES={boom:'drum kit',rumble:'bass',combo:'keys',slice:'guitar',tock:'decks',gauge:'road gear',luna:'shakers',doot:'horn',gain:'board',plink:'xylophone',reg:'register'};
+const RIG_NAMES={boom:'drum kit',rumble:'bass',combo:'keys',slice:'guitar',tock:'decks',gauge:'road gear',luna:'shakers',doot:'horn',gain:'board',plink:'xylophone',reg:'register',roscoe:'banjo'};
 function rigPads(list){ return '<div class="mjmates" style="flex-wrap:wrap">'+list.map((p,i)=>'<button class="mjdrum rigpad" data-i="'+i+'" style="font-size:15px;line-height:1.15">'+p.label+'</button>').join('')+'</div>'; }
 const PLAY_RIGS={
   boom:{hint:'Tap the kit. You are the beat.',pads:[
@@ -5447,6 +5709,67 @@ Object.assign(COACH,{
   guessfirst:{member:'round',verb:'TAP',hint:'tap',title:'💭 Guess First',
     lines:['A quick close guess beats a slow exact answer!','Round each number to the nearest ten FIRST, then add the friendly tens. TAP the estimate!']}
 });
+
+/* ============ ROSCOE: PATTERNS & SEQUENCES (banjo recruit) ============ */
+QG.patterns=function(L){
+  if(L<5 && Math.random()<0.45){
+    var sets=[['🔴','🔵'],['🪕','🥁'],['⭐','🌙'],['🟢','🟡','🔵'],['🍎','🍌','🍇']];
+    var syms=pick(sets), reps=R(2,3), seq=[];
+    for(var r=0;r<reps;r++){ for(var k=0;k<syms.length;k++)seq.push(syms[k]); }
+    var ans=syms[0]; seq.push('?');
+    var ch=syms.slice().sort(function(){return Math.random()-0.5;});
+    return {q:'What comes next in the pattern?', vis:'<div style="font-size:28px;letter-spacing:6px;margin:6px 0">'+seq.join(' ')+'</div>', choices:ch, a:ans};
+  }
+  var step,start;
+  if(L<3){ step=pick([2,5,10,1]); start=pick([0,1,step]); }
+  else if(L<5){ step=pick([2,3,4,5,10]); start=R(1,9); }
+  else if(L<7){ step=pick([3,4,6,7,9,11]); start=R(2,15); }
+  else { step=pick([6,7,8,9,12,15,25]); start=R(3,20); }
+  var terms=[]; for(var i=0;i<4;i++)terms.push(start+step*i);
+  var a=start+step*4;
+  return {q:'What comes next?', vis:'<div style="font-size:24px;letter-spacing:2px;margin:6px 0"><b>'+terms.join(',  ')+',  ?</b></div>', choices:numChoices(a,L<5?2:6), a:String(a)};
+};
+MJGAMES.rollnext={id:'rollnext',name:'Roll Next',emoji:'🪕',member:'roscoe',concept:'patterns',
+setup:function(L,st){
+  var it=QG.patterns(Math.max(1,L)); st.ans=it.a;
+  return { call:'What comes next?', sub:'Roscoe rolls a pattern. Tap what plays next.',
+    html:'<div class="center">'+it.vis+'</div><div class="mjcards" id="patRoll"></div>',
+    wire:function(){
+      $('#patRoll').innerHTML=it.choices.map(function(o){return '<button class="mjposter patr" data-v="'+o+'" style="font-size:22px">'+o+'</button>';}).join('');
+      $$('.patr').forEach(function(b){ b.addEventListener('click',function(){ if(MJ.busy)return; ac();
+        if(b.dataset.v===String(st.ans))mjOK('Yep! The roll keeps rolling.');
+        else { punch(b); mjNo('The pattern repeats. Next up was '+st.ans+'.'); } }); });
+    } };
+}};
+MJGAMES.fillgap={id:'fillgap',name:'Fill the Gap',emoji:'🎵',member:'roscoe',concept:'patterns',
+setup:function(L,st){
+  var step,start; if(L<4){step=pick([2,3,5,10]);start=R(1,9);}else{step=pick([3,4,6,7,9,12]);start=R(2,14);}
+  var terms=[]; for(var i=0;i<5;i++)terms.push(start+step*i);
+  var gap=R(1,3); st.ans=terms[gap]; st.step=step;
+  var shown=terms.map(function(t,i){return i===gap?'?':t;});
+  return { call:'What fills the gap?', sub:'The beats climb by the same step each time.',
+    html:'<div class="center" style="font-size:24px;margin:8px 0"><b>'+shown.join(',  ')+'</b></div><div class="mjcards" id="patGap"></div>',
+    wire:function(){
+      var opts=numChoices(st.ans,L<4?2:5);
+      $('#patGap').innerHTML=opts.map(function(o){return '<button class="mjposter patg" data-v="'+o+'">'+o+'</button>';}).join('');
+      $$('.patg').forEach(function(b){ b.addEventListener('click',function(){ if(MJ.busy)return; ac();
+        if(b.dataset.v===String(st.ans))mjOK('That fits the pattern!');
+        else { punch(b); mjNo('Each step adds '+st.step+'. The gap was '+st.ans+'.'); } }); });
+    } };
+}};
+Object.assign(COACH,{
+  rollnext:{member:'roscoe',verb:'TAP',hint:'tap',title:'🪕 Roll Next',
+    lines:['A banjo roll is the same little pattern, over and over.','Watch the roll, then TAP what comes next!']},
+  fillgap:{member:'roscoe',verb:'TAP',hint:'tap',title:'🎵 Fill the Gap',
+    lines:['Every step of the pattern is the same size.','Find the missing beat, then TAP what fills the gap!']}
+});
+PLAY_RIGS.roscoe={hint:'Pick the strings. Roll a little pattern of your own!',custom:function(el){
+  el.innerHTML='<div class="mjbig" style="font-size:44px">🪕</div><div class="sub center">tap the strings</div><div class="row" id="banjoStr" style="justify-content:center;gap:10px;margin-top:12px"></div>';
+  var notes=[62,64,66,69,71];
+  $('#banjoStr').innerHTML=notes.map(function(n,i){return '<button class="mjcymbal bjs" data-n="'+n+'" style="font-size:22px">'+(i+1)+'</button>';}).join('');
+  $$('.bjs').forEach(function(b){ b.addEventListener('click',function(){ ac(); tone(ntf(+b.dataset.n),.5,'triangle',.3); punch(b); }); });
+}};
+
 /* Swoop's practice-room slide whistle */
 PLAY_RIGS.round={hint:'Slide up, slide down. Wheee! Land on a note.',custom(el){
   el.innerHTML='<div class="mjbig" style="font-size:44px;transition:transform .08s" id="rigWh">🪈</div>'+
