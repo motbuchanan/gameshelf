@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Measure Up">
-<title>Measure Up v0.52</title>
+<title>Measure Up v0.53</title>
 <style>
 :root{
   --bg:#0e0b1e; --panel:#1d1636; --panel2:#28204a; --ink:#f4f0ff; --dim:#a89cd8;
@@ -300,6 +300,12 @@ input.nm{
 .ellypop .epchip{background:#3a2f6e;border:1px solid #4f3fa0;color:#eae2ff;border-radius:10px;padding:6px 10px;font-size:12.5px;font-weight:800;cursor:pointer}
 .ellypop .epchip:active{transform:scale(.97)}
 @media (prefers-reduced-motion: reduce){ .ellypop{animation:none} }
+.lvbar{position:relative;height:30px;background:#191338;border-radius:15px;border:2px solid #372a68;margin:22px 2px 8px}
+.lvfill{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#6a5cff,#9d7cff);border-radius:13px;transition:width .6s cubic-bezier(.3,.9,.3,1)}
+.lvtick{position:absolute;top:4px;transform:translateX(-50%);font-size:14px;line-height:1}
+.lvtick.need{filter:drop-shadow(0 0 4px #ffd158)}
+.lvtick.gold{top:-20px;font-size:16px}
+.lvnum{text-align:center;font-weight:800;font-size:14px;color:#e8dcff;margin-top:4px}
 .btlband{display:flex;justify-content:center;gap:6px;margin:6px 0 2px;flex-wrap:wrap}
 .btlmember{text-align:center;opacity:.45;transition:opacity .25s,transform .25s}
 .btlmember.active{opacity:1;transform:translateY(-4px) scale(1.12)}
@@ -883,14 +889,14 @@ svg .charg{will-change:transform}
 <canvas id="fx"></canvas>
 <div id="toast"></div>
 <button id="homeBtn" onclick="goHome()" aria-label="Back to Garage">🏠</button>
-<div id="vbadge">v0.52 · Aug 24</div>
+<div id="vbadge">v0.53 · Aug 24</div>
 
 <script>
 'use strict';
 /* ============ UTILS ============ */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const VERSION='v0.52 · Aug 24';
+const VERSION='v0.53 · Aug 24';
 const RM=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -1777,15 +1783,16 @@ function ellyMemberPair(id){
 }
 function battleGoals(){
   var CC=['add','sub','mul','frac','clock','cal','meas','div','neg','skip','money','round','patterns','compare'];
-  var joined=BAND.filter(function(m){return S.band[m.id];}).length;
+  var coreN=BAND.filter(function(m){return !m.recruit;});
+  var joined=coreN.filter(function(m){return S.band[m.id];}).length;
   var golds=CC.filter(function(c){return tierOf(Math.floor(lvlOf(c)))>=2;}).length;
   var masters=BAND.filter(function(m){var gt=memberGames(m.id).length;return gt>0&&clearedCount(m.id)>=gt;}).length;
   var shows=(S.stats&&S.stats.shows)||0;
   return [
-    {icon:'\uD83C\uDFB8',name:'Full Band',desc:'Recruit every bandmate',cur:joined,max:BAND.length},
+    {icon:'\uD83C\uDFB8',name:'Full Band',desc:'Recruit every bandmate',cur:joined,max:coreN.length},
     {icon:'\uD83E\uDD47',name:'Go for Gold',desc:'Earn 3 gold medals',cur:golds,max:3},
     {icon:'\uD83C\uDFAF',name:'Game Master',desc:'Star every game for 4 bandmates',cur:masters,max:4},
-    {icon:'\uD83C\uDFA4',name:'Road Warrior',desc:'Play 10 shows',cur:shows,max:10}
+    {icon:'\uD83C\uDFA4',name:'Road Warrior',desc:'Play 3 shows',cur:shows,max:3}
   ];
 }
 function battleDone(){ return battleGoals().filter(function(g){return g.cur>=g.max;}).length; }
@@ -2120,7 +2127,7 @@ function talkTo(id){
       if(Math.floor(lvlOf(cc))>=need)
         btns+='<button class="btn wide" style="background:linear-gradient(180deg,#ff7a4d,#d84e2f);box-shadow:0 5px 0 #7e3218" onclick="startBattle(\''+id+'\')">⚡ Proof '+PROOF_NAMES[p]+'</button>';
       else
-        btns+='<button class="btn wide ghost" onclick="toast(\''+nameify(mName(id))+': jam to Lvl '+need+' first!\')">🔒 Proof '+PROOF_NAMES[p]+' at Lvl '+need+'</button>';
+        btns+='<button class="btn wide ghost" onclick="openLevelHelp(\''+id+'\')">🔒 Proof '+PROOF_NAMES[p]+' at Lvl '+need+' \u00b7 how?</button>';
     }else{
       btns+='<button class="btn wide ghost" onclick="toast(\'💎 '+CONCEPT_NAMES[cc]+': PLATINUM!\')">💎 All Proofs passed!</button>';
     }
@@ -4293,11 +4300,15 @@ const MEET_LINES={
 };
 /* meet sequence is generated from the roster, so new bandmates auto-appear (fallback line if none written) */
 function introMeets(){
-  var out=[['boom','That is the spirit! Welcome to the garage. Meet the crew...']];
-  BAND.forEach(function(m){ if(m.id==='boom')return;
-    if(m.recruit && !S.band[m.id])return;
-    out.push([m.id, MEET_LINES[m.id] || ('And this is '+m.name+' on the '+(RIG_NAMES[m.id]||'stage')+'! '+(CONCEPT_NAMES[m.concept]||'')+'.')]); });
-  out.push(['boom','Everyone here will jam with you ANYTIME. That is how you get good.']);
+  var out=[];
+  var crew=BAND.filter(function(m){ return m.id!=='boom' && S.band[m.id]; });
+  if(crew.length){
+    out.push(['boom','That is the spirit! Welcome to the garage. Here is the crew you have rounded up so far...']);
+    crew.forEach(function(m){ out.push([m.id, MEET_LINES[m.id] || ('And this is '+m.name+' on the '+(RIG_NAMES[m.id]||'stage')+'! '+(CONCEPT_NAMES[m.concept]||'')+'.')]); });
+    out.push(['boom','More players join the lineup every time you recruit one. That is how the band grows.']);
+  } else {
+    out.push(['boom','That is the spirit! Welcome to the garage. Right now it is just me on drums, but the crew grows every time you recruit a new player.']);
+  }
   out.push(['boom','But first: warm up with ME. The crowd wants FIVE beats. Catch drums that add up to 5!']);
   return out;
 }
@@ -4576,7 +4587,7 @@ function splashDismiss(){
   later(()=>{ if(SPLASH_STATE===1){ SPLASH_STATE=2; const sp2=$('#splash'); if(sp2){sp2.classList.add('bye'); later(()=>sp2.remove(),550);} } },1900);
 }
 (function(){ const sp=$('#splash'); if(sp)sp.addEventListener('pointerdown',splashDismiss); })();
-window.BQ={get QZ(){return QZ;},goHome:goHome,splashDismiss:splashDismiss,dreamOutro:dreamOutro,BY_ID:BY_ID,WHY:WHY,maybeWhy:maybeWhy,capOf2:capOf,startAudition:startAudition,roundCall:roundCall,callKill:callKill,CALLB:CALLB,rampL:rampL,notePlay:notePlay,firstPlay:firstPlay,kcCfg:kcCfg,arcCfg2:arcCfg,COACH:COACH,GESTURE_EMOJI:GESTURE_EMOJI,coachGate:coachGate,showCoach:showCoach,gigSoundcheck:gigSoundcheck,GIG:GIG,startGig:startGig,gigBuildCues:gigBuildCues,gigJudgeDance:gigJudgeDance,gigDancePts:gigDancePts,gigResultTier:gigResultTier,gigReward:gigReward,gigCueMax:gigCueMax,VENUES:VENUES,GIG_LINES:GIG_LINES,get S(){return S;},QG:QG,adjust:adjust,creatureSVG:creatureSVG,lvlOf:lvlOf,capOf:capOf,tierOf:tierOf,proofCount:proofCount,save:save,load:load,BAND:BAND,SHOP:SHOP,runQuiz:runQuiz,show:show,BB:BB,NS:NS,bbTap:bbTap,nsTap:nsTap,startBB:startBB,startNS:startNS,ARC:ARC,startARC:startARC,sliceNote:sliceNote,tryCollect:tryCollect,arcStep:arcStep,arcNeeded:arcNeeded,arcMeasureDone:arcMeasureDone,arcSpawnOne:arcSpawnOne,arcCfg:arcCfg,drawGlyph:drawGlyph,GLYPH:GLYPH,KC:KC,kcCatch:kcCatch,kcStep:kcStep,startKC:startKC,RS:RS,rsTap:rsTap,startRS:startRS,GG:GG,ggStamp:ggStamp,startGG:startGG,TT:TT,ttDrop:ttDrop,ttTime:ttTime,startTT:startTT,ST2:ST2,st2Resolve:st2Resolve,startST:startST,HP:HP,hpTap:hpTap,startHP:startHP,INTRO:INTRO,startIntro:startIntro,openBattle:openBattle,battleGoals:battleGoals,battleDone:battleDone,ellyPop:ellyPop,ellyDismiss:ellyDismiss,ellyCoachLine:ellyCoachLine,ellyMemberPair:ellyMemberPair,ellySuggestions:ellySuggestions,startIntroReplay:startIntroReplay,openMusicCard:openMusicCard,startBandBattle:startBandBattle,battleRound:battleRound,battleSend:battleSend,battleAnswer:battleAnswer,battleEnd:battleEnd,get BATTLE(){return BATTLE;}};
+window.BQ={get QZ(){return QZ;},goHome:goHome,splashDismiss:splashDismiss,dreamOutro:dreamOutro,BY_ID:BY_ID,WHY:WHY,maybeWhy:maybeWhy,capOf2:capOf,startAudition:startAudition,roundCall:roundCall,callKill:callKill,CALLB:CALLB,rampL:rampL,notePlay:notePlay,firstPlay:firstPlay,kcCfg:kcCfg,arcCfg2:arcCfg,COACH:COACH,GESTURE_EMOJI:GESTURE_EMOJI,coachGate:coachGate,showCoach:showCoach,gigSoundcheck:gigSoundcheck,GIG:GIG,startGig:startGig,gigBuildCues:gigBuildCues,gigJudgeDance:gigJudgeDance,gigDancePts:gigDancePts,gigResultTier:gigResultTier,gigReward:gigReward,gigCueMax:gigCueMax,VENUES:VENUES,GIG_LINES:GIG_LINES,get S(){return S;},QG:QG,adjust:adjust,creatureSVG:creatureSVG,lvlOf:lvlOf,capOf:capOf,tierOf:tierOf,proofCount:proofCount,save:save,load:load,BAND:BAND,SHOP:SHOP,runQuiz:runQuiz,show:show,BB:BB,NS:NS,bbTap:bbTap,nsTap:nsTap,startBB:startBB,startNS:startNS,ARC:ARC,startARC:startARC,sliceNote:sliceNote,tryCollect:tryCollect,arcStep:arcStep,arcNeeded:arcNeeded,arcMeasureDone:arcMeasureDone,arcSpawnOne:arcSpawnOne,arcCfg:arcCfg,drawGlyph:drawGlyph,GLYPH:GLYPH,KC:KC,kcCatch:kcCatch,kcStep:kcStep,startKC:startKC,RS:RS,rsTap:rsTap,startRS:startRS,GG:GG,ggStamp:ggStamp,startGG:startGG,TT:TT,ttDrop:ttDrop,ttTime:ttTime,startTT:startTT,ST2:ST2,st2Resolve:st2Resolve,startST:startST,HP:HP,hpTap:hpTap,startHP:startHP,INTRO:INTRO,startIntro:startIntro,openBattle:openBattle,battleGoals:battleGoals,battleDone:battleDone,ellyPop:ellyPop,ellyDismiss:ellyDismiss,ellyCoachLine:ellyCoachLine,ellyMemberPair:ellyMemberPair,ellySuggestions:ellySuggestions,startIntroReplay:startIntroReplay,openMusicCard:openMusicCard,openLevelHelp:openLevelHelp,startBandBattle:startBandBattle,battleRound:battleRound,battleSend:battleSend,battleAnswer:battleAnswer,battleEnd:battleEnd,get BATTLE(){return BATTLE;}};
 </script>
 <script>
 /* ================= MINI JAMS (v0.15) =================
@@ -5527,6 +5538,13 @@ function addSessionFill(sg,evts,bars,barSteps){
   if(!cov.has('tock'))perPhrase('tock',barSteps-1,'scratch',null,2);    /* scratch at phrase end */
   perPhrase('reg',0,'coin',null,2);                                     /* register ding, always */
   perPhrase('round',barSteps-1,'swoop',[0,'up'],2);                     /* slide-whistle swoop, always */
+  /* catch-all: any remaining bandmate (recruits like Roscoe/Big Tub, and future members) gets a real part */
+  var got=new Set([...cov,'rumble','slice','combo','gauge','luna','doot','plink','tock','reg','round']);
+  BAND.forEach(function(m){ if(got.has(m.id))return;
+    var isBass=/bass/i.test(RIG_NAMES[m.id]||'');
+    if(isBass)perBar(m.id,[0,8],'bass',[0,root]);
+    else perBar(m.id,[2,6,10,14],'lead',[0,root+24,.14]);
+  });
 }
 function showPlay(id){
   const sg=SONGS.find(x=>x.id===id); if(!sg)return;
@@ -5875,6 +5893,35 @@ var MUSIC_DEMOS={
   roscoe:function(){ drum('hat'); later(function(){tone(ntf(64),.2,'triangle',.3);},260); later(function(){drum('hat');},520); later(function(){tone(ntf(64),.2,'triangle',.3);},780); },
   bigtub:function(){ tone(ntf(45),.5,'sine',.34); later(function(){tone(ntf(72),.5,'triangle',.3);},760); }
 };
+
+function openLevelHelp(id){
+  sTap();
+  var m=BY_ID[id], cc=m.concept, p=proofCount(cc), need=[3,6,9][Math.min(2,p)];
+  var demo=Math.floor(lvlOf(cc));
+  function draw(){
+    var pct=Math.min(100,(demo/12)*100);
+    var ticks=[3,6,9].map(function(t){return '<div class="lvtick'+(t===need?' need':'')+'" style="left:'+((t/12)*100)+'%">\u26A1</div>';}).join('')+
+      '<div class="lvtick gold" style="left:'+((7/12)*100)+'%">\uD83E\uDD47</div>';
+    var w=$('#lvWrap'); if(!w)return;
+    w.innerHTML='<div class="lvbar"><div class="lvfill" style="width:'+pct+'%"></div>'+ticks+'</div>'+
+      '<div class="lvnum">'+mName(id)+' is at Level <b>'+Math.floor(demo)+'</b>'+(Math.floor(demo)>=need?(' \u2014 Proof unlocked! \u26A1'):(' \u2014 needs Level '+need))+'</div>';
+  }
+  modal(
+    '<div class="center">'+ellySVG(56)+'<h2>\uD83C\uDFB8 How to Level Up</h2></div>'+
+    '<div class="speak"><b>Elly:</b> \u201CTo unlock '+mName(id)+'\u2019s next Proof, reach Level '+need+'. Try the two ways to climb, watch the bar!\u201D</div>'+
+    '<div id="lvWrap"></div>'+
+    '<div class="row" style="gap:8px;margin:4px 0"><button class="btn ghost" id="lvJam" style="flex:1;line-height:1.15">\uD83C\uDFAE Jam a game<br><span style="font-size:11px;opacity:.8">nudges up a little</span></button>'+
+      '<button class="btn" id="lvAud" style="flex:1;line-height:1.15;background:linear-gradient(180deg,#ff7a4d,#d84e2f)">\uD83C\uDFA4 Audition<br><span style="font-size:11px;opacity:.9">jumps up fast!</span></button></div>'+
+    '<div class="speak" style="font-size:13px">Jamming games keeps you sharp but climbs slowly. An <b>audition</b> jumps your level fast, that is how you reach a Proof. Answer your best!</div>'+
+    '<button class="btn wide" id="lvGo" style="background:linear-gradient(180deg,#ff7a4d,#d84e2f)">\uD83C\uDFA4 Play for me again (real audition)</button>'+
+    '<button class="btn wide ghost" onclick="closeModal()">Got it! \uD83C\uDFB6</button>'
+  );
+  draw();
+  var jb=$('#lvJam'); if(jb)jb.addEventListener('click',function(){ ac(); demo=Math.min(12,demo+0.4); draw(); tone(ntf(60),.12,'triangle',.2); });
+  var ab=$('#lvAud'); if(ab)ab.addEventListener('click',function(){ ac(); demo=Math.min(12,demo+2.5); draw(); tone(ntf(74),.2,'triangle',.3); });
+  var gb=$('#lvGo'); if(gb)gb.addEventListener('click',function(){ closeModal(); startAudition(id); });
+}
+
 function openMusicCard(id){
   sTap();
   var m=BY_ID[id], card=MUSIC_CARDS[id];
