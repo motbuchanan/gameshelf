@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Measure Up">
-<title>Measure Up v0.55</title>
+<title>Measure Up v0.57</title>
 <style>
 :root{
   --bg:#0e0b1e; --panel:#1d1636; --panel2:#28204a; --ink:#f4f0ff; --dim:#a89cd8;
@@ -892,14 +892,14 @@ svg .charg{will-change:transform}
 <canvas id="fx"></canvas>
 <div id="toast"></div>
 <button id="homeBtn" onclick="goHome()" aria-label="Back to Garage">🏠</button>
-<div id="vbadge">v0.55 · Aug 24</div>
+<div id="vbadge">v0.57 · Aug 24</div>
 
 <script>
 'use strict';
 /* ============ UTILS ============ */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const VERSION='v0.55 · Aug 24';
+const VERSION='v0.57 · Aug 24';
 const RM=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -2111,9 +2111,11 @@ function talkTo(id){
     '<button class="btn wide ghost" onclick="startMJ(\'zeroout\')">⚖️ Zero Out</button>'+
     '<button class="btn wide ghost" onclick="startMJ(\'lightlevels\')">💡 Light Levels</button>';
   if(id==='roscoe') btns+='<button class="btn wide" onclick="startMJ(\'rollnext\')">🪕 Roll Next</button>'+
-    '<button class="btn wide ghost" onclick="startMJ(\'fillgap\')">🎵 Fill the Gap</button>';
+    '<button class="btn wide ghost" onclick="startMJ(\'fillgap\')">🎵 Fill the Gap</button>'+
+    '<button class="btn wide ghost" onclick="startMJ(\'stepsize\')">🎼 Find the Step</button>';
   if(id==='bigtub') btns+='<button class="btn wide" onclick="startMJ(\'bigger\')">🪣 Bigger Wins</button>'+
-    '<button class="btn wide ghost" onclick="startMJ(\'feedsign\')">🐊 Feed the Sign</button>';
+    '<button class="btn wide ghost" onclick="startMJ(\'feedsign\')">🐊 Feed the Sign</button>'+
+    '<button class="btn wide ghost" onclick="startMJ(\'bigthree\')">📊 Top of Three</button>';
   if(id==='luna') btns+='<button class="btn wide" onclick="startHP()">🐇 Jam: Calendar Hop</button>'+
     '<button class="btn wide ghost" onclick="startMJ(\'tourorder\')">🗺️ Tour Router</button>'+
     '<button class="btn wide ghost" onclick="startMJ(\'countdown\')">📆 Countdown</button>';
@@ -2275,22 +2277,18 @@ function clockHTML(h,m){
     const nx=70+43*Math.cos(a),ny=70+43*Math.sin(a);
     ticks+='<text x="'+nx+'" y="'+(ny+5)+'" font-size="13" font-weight="bold" text-anchor="middle" fill="#f4f0ff">'+(i===0?12:i)+'</text>';
   }
-  return '<svg width="170" height="170" viewBox="0 0 140 140" class="clocksvg" data-ha="'+ha+'" data-ma="'+ma+'">'+
+  const hr=(ha-90)*Math.PI/180, mr=(ma-90)*Math.PI/180;
+  const hx=(70+26*Math.cos(hr)).toFixed(1), hy=(70+26*Math.sin(hr)).toFixed(1);
+  const mx=(70+42*Math.cos(mr)).toFixed(1), my=(70+42*Math.sin(mr)).toFixed(1);
+  return '<svg width="170" height="170" viewBox="0 0 140 140" class="clocksvg">'+
     '<circle cx="70" cy="70" r="64" fill="#241c48" stroke="#c58dff" stroke-width="4"/>'+ticks+
-    '<g class="hgrp"><line x1="70" y1="70" x2="70" y2="42" stroke="#ffd158" stroke-width="7" stroke-linecap="round"/></g>'+
-    '<g class="mgrp"><line x1="70" y1="70" x2="70" y2="26" stroke="#f4f0ff" stroke-width="4" stroke-linecap="round"/></g>'+
+    '<line x1="70" y1="70" x2="'+hx+'" y2="'+hy+'" stroke="#ffd158" stroke-width="7" stroke-linecap="round"/>'+
+    '<line x1="70" y1="70" x2="'+mx+'" y2="'+my+'" stroke="#f4f0ff" stroke-width="4" stroke-linecap="round"/>'+
     '<circle cx="70" cy="70" r="5" fill="#ffd158"/></svg>';
 }
 function animateVis(){
   const c=document.querySelector('#quizVis .clocksvg');
-  if(c){
-    const hg=c.querySelector('.hgrp'),mg=c.querySelector('.mgrp');
-    later(()=>{
-      hg.style.transform='rotate('+c.dataset.ha+'deg)';
-      mg.style.transform='rotate('+c.dataset.ma+'deg)';
-      sTap(); later(sTap,420); later(sTap,840);
-    },80);
-  }
+  if(c){ later(()=>{ sTap(); later(sTap,420); later(sTap,840); },80); }
 }
 function fmtTime(h,m){ return h+':'+String(m).padStart(2,'0'); }
 const DAYS=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -5866,6 +5864,44 @@ PLAY_RIGS.bigtub={hint:'Thump the low string, then the high one. Low is less, hi
   $$('.tbs').forEach(function(b){ b.addEventListener('click',function(){ ac(); V.bass(+b.dataset.n); punch(b); }); });
 }};
 
+/* ---- parity games: 3rd game for Roscoe (patterns) and Big Tub (compare) ---- */
+MJGAMES.stepsize={id:'stepsize',name:'Find the Step',emoji:'🪕',member:'roscoe',concept:'patterns',
+setup:function(L,st){
+  var step; if(L<4)step=pick([2,3,5,10]); else step=pick([3,4,6,7,9,12]);
+  var start=R(1,9); var terms=[]; for(var i=0;i<4;i++)terms.push(start+step*i); st.ans=String(step);
+  return { call:'How much does it jump?', sub:'The pattern climbs by the same amount every time.',
+    html:'<div class="center" style="font-size:24px;margin:8px 0"><b>'+terms.join(',  ')+'</b></div><div class="mjcards" id="stepZ"></div>',
+    wire:function(){
+      var opts=[step]; while(opts.length<4){ var d=step+pick([-3,-2,-1,1,2,3]); if(d>0&&opts.indexOf(d)<0)opts.push(d); }
+      opts.sort(function(){return Math.random()-0.5;});
+      $('#stepZ').innerHTML=opts.map(function(o){return '<button class="mjposter stepb" data-v="'+o+'">+'+o+'</button>';}).join('');
+      $$('.stepb').forEach(function(b){ b.addEventListener('click',function(){ if(MJ.busy)return; ac();
+        if(b.dataset.v===st.ans)mjOK('That is the step!'); else { punch(b); mjNo('Each jump adds '+st.ans+'.'); } }); });
+    } };
+}};
+MJGAMES.bigthree={id:'bigthree',name:'Top of Three',emoji:'🪣',member:'bigtub',concept:'compare',
+setup:function(L,st){
+  var hi=L<3?10:L<5?30:L<7?100:300; var a=R(1,hi),b=R(1,hi),c=R(1,hi);
+  while(b===a)b=R(1,hi); while(c===a||c===b)c=R(1,hi);
+  var askBig=Math.random()<0.6; st.ans=String(askBig?Math.max(a,b,c):Math.min(a,b,c));
+  var arr=[a,b,c];
+  return { call:askBig?'Tap the BIGGEST':'Tap the SMALLEST', sub:'Three numbers now. Find the one Big Tub wants.',
+    html:'<div class="mjcards" id="b3Z"></div>',
+    wire:function(){
+      var opts=arr.slice().sort(function(){return Math.random()-0.5;});
+      $('#b3Z').innerHTML=opts.map(function(o){return '<button class="mjposter b3b" data-v="'+o+'" style="font-size:26px">'+o+'</button>';}).join('');
+      $$('.b3b').forEach(function(b){ b.addEventListener('click',function(){ if(MJ.busy)return; ac();
+        if(b.dataset.v===st.ans){ V.bass(50); mjOK('That is the one!'); } else { punch(b); mjNo('It was '+st.ans+'.'); } }); });
+    } };
+}};
+Object.assign(COACH,{
+  stepsize:{member:'roscoe',verb:'TAP',hint:'tap',title:'🪕 Find the Step',
+    lines:['Every step of the pattern is the same size.','See how much it grows each time, then TAP the jump!']},
+  bigthree:{member:'bigtub',verb:'TAP',hint:'tap',title:'🪣 Top of Three',
+    lines:['Now there are THREE numbers to compare.','Find the biggest (or smallest) and TAP it!']}
+});
+
+
 /* ============ MUSIC CARDS: how each member's math is music (or real-world) ============ */
 var PRACTICAL={luna:1,gauge:1,reg:1};
 var MUSIC_CARDS={
@@ -5929,6 +5965,24 @@ function openLevelHelp(id){
 
 /* ============ GUIDED LESSON ENGINE (data-driven, uniform across members) ============ */
 var LESSONS={
+  reg:{ game:function(){startMJ('makechange');}, steps:[
+    {say:'At the merch table you take the cash and hand back change. The secret is to count UP from the price.', vis:'<div style="font-size:36px">💵🧾</div>'},
+    {say:'A shirt is $15. They give you a $20. Start at 15 and count up: 16, 17, 18, 19, 20. That is $5 back.', vis:'<div style="font-size:19px"><b>$15 to 16, 17, 18, 19, 20 is $5</b></div>'},
+    {say:'Coins work the same way. Count up from the price to the money they handed you. Whatever you counted is the change.', vis:'<div style="font-size:30px">🪙🪙🪙</div>'},
+    {say:'In my game you count the money and make the right change. Try it!', vis:''}
+  ]},
+  tock:{ game:function(){startMJ('tourbus');}, steps:[
+    {say:'A clock has 12 hours around the edge. The SHORT hand points to the hour. The LONG hand points to the minutes.', vis:clockHTML(3,0)},
+    {say:'When the long hand is on 12, it is o\u2019clock on the dot. The short hand is on 3, so this says 3 o\u2019clock.', vis:clockHTML(3,0)},
+    {say:'When the long hand swings to 6, it is HALF past. This one reads half past 3, or 3:30.', vis:clockHTML(3,30)},
+    {say:'Music runs on time too. Tempo is how fast the beats tick, like a clock you can dance to. In my game, keep the times in order. Go!', vis:clockHTML(9,15)}
+  ]},
+  luna:{ game:function(){startMJ('tourorder');}, steps:[
+    {say:'Luna books the tour, and that is a calendar puzzle. A week is 7 days. A month is about 4 weeks.', vis:'<div style="font-size:36px">📅</div>'},
+    {say:'The gig is in 3 weeks. That is 3 times 7 = 21 days away. Count forward on the calendar to find the date.', vis:'<div style="font-size:20px"><b>3 weeks = 21 days</b></div>'},
+    {say:'Plan backward from the show: rehearse on day 7 and day 14, then load in on day 21. Never double-book a night!', vis:'<div style="font-size:18px"><b>Day 7, Day 14, Day 21 🎤</b></div>'},
+    {say:'In my game you put the tour dates in the right order. Give it a go!', vis:''}
+  ]},
   roscoe:{ game:function(){startMJ('rollnext');}, steps:[
     {say:'A banjo roll is the same little pattern, played over and over. That is what a pattern is: something that repeats.', vis:'<div style="font-size:26px;letter-spacing:6px">\uD83E\uDE95 \uD83E\uDE95 \uD83E\uDD41 \u00b7 \uD83E\uDE95 \uD83E\uDE95 \uD83E\uDD41</div>'},
     {say:'Spot the pattern and you can play anything. A whole song is a pattern too: verse, chorus, verse, chorus. That is A B A B.', vis:'<div style="font-size:24px;letter-spacing:8px"><b>A B A B ?</b></div>'},
