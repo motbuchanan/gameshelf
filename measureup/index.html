@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Measure Up">
-<title>Measure Up v0.57</title>
+<title>Measure Up v0.60</title>
 <style>
 :root{
   --bg:#0e0b1e; --panel:#1d1636; --panel2:#28204a; --ink:#f4f0ff; --dim:#a89cd8;
@@ -530,6 +530,10 @@ input.nm{
   box-shadow:0 5px 0 #2e2170,0 8px 18px rgba(0,0,0,.4);cursor:pointer;display:none;line-height:1}
 #homeBtn:active{transform:translateY(3px);box-shadow:0 2px 0 #2e2170}
 #homeBtn.show{display:block}
+#ellyBtn{position:fixed;right:12px;bottom:calc(52px + env(safe-area-inset-bottom));z-index:150;width:52px;height:52px;border-radius:50%;border:none;background:linear-gradient(180deg,#ffe38f,#ffc23d);box-shadow:0 4px 0 #b07d12;cursor:pointer;display:none;padding:5px;align-items:center;justify-content:center}
+#ellyBtn:active{transform:translateY(3px);box-shadow:0 1px 0 #b07d12}
+#ellyBtn.show{display:flex}
+#ellyBtn svg{width:100%;height:100%}
 #showList .btn{margin-top:8px}
 .ellybar{display:flex;align-items:center;gap:10px;background:linear-gradient(90deg,#2a2358,#241c48);
   border:1.5px solid #ffcf4d55;border-radius:14px;padding:8px 12px;margin:8px 0;cursor:pointer}
@@ -892,14 +896,15 @@ svg .charg{will-change:transform}
 <canvas id="fx"></canvas>
 <div id="toast"></div>
 <button id="homeBtn" onclick="goHome()" aria-label="Back to Garage">🏠</button>
-<div id="vbadge">v0.57 · Aug 24</div>
+<button id="ellyBtn" onclick="openEllyHelp()" aria-label="Ask Elly for help"></button>
+<div id="vbadge">v0.60 · Aug 24</div>
 
 <script>
 'use strict';
 /* ============ UTILS ============ */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const VERSION='v0.57 · Aug 24';
+const VERSION='v0.60 · Aug 24';
 const RM=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -1070,11 +1075,25 @@ const ELLY_HINTS={
  'scr-lesson':'Gain is teaching you negative numbers. Take your time and tap along, there is no wrong here.',
  'scr-rlesson':'Swoop is teaching you rounding. Slide numbers to the closest ten. No wrong here, just tap along!',
  'scr-mj':'A mini-game! Read what the bandmate asks at the top, then tap to answer. See the ↻ button? That gives you a fresh try. The ❓ replays how to play!',
- 'scr-quiz':'Answer at your own pace. A wrong answer is never a big deal, you still earn Notes for trying. I will chime softly so you know to look again.'
+ 'scr-quiz':'Answer at your own pace. A wrong answer is never a big deal, you still earn Notes for trying. I will chime softly so you know to look again.',
+ 'scr-battle':'Trade Solos! The rival band calls out, and you send the bandmate whose skill fits. I light up who I would pick. Answer right to win the crowd!',
+ 'scr-station':'Echo Beats! Tap the pads and lay down a beat. No score here, just make sounds you like.'
 };
 function ellyTip(){
   let id='scr-hub'; $$('.scr').forEach(sc=>{ if(sc.classList.contains('on'))id=sc.id; });
   return ELLY_HINTS[id]||'Tap around and explore! I am always right here if you need me.';
+}
+function curScreen(){ let id='scr-hub'; $$('.scr').forEach(function(sc){ if(sc.classList.contains('on'))id=sc.id; }); return id; }
+function openEllyHelp(){
+  sTap();
+  var id=curScreen(), tip=ELLY_HINTS[id]||'Tap around and explore! I am always right here if you need me.';
+  modal(
+    '<div class="center">'+ellySVG(58)+'<h2>How can I help?</h2></div>'+
+    '<div class="speak"><b>Elly:</b> \u201C'+tip+'\u201D</div>'+
+    '<button class="btn wide" onclick="closeModal();startIntroReplay()">\uD83C\uDFAC Replay the intro (meet the band)</button>'+
+    (id!=='scr-hub'?'<button class="btn wide ghost" onclick="closeModal();goHome()">\uD83C\uDFE0 Back to the Garage</button>':'')+
+    '<button class="btn wide ghost" onclick="closeModal()">Thanks, Elly! \uD83C\uDFB5</button>'
+  );
 }
 function ellyHint(){
   sTap(); ellyChime();
@@ -1198,6 +1217,7 @@ function show(id){
   toastKill();
   $$('.scr').forEach(s=>s.classList.toggle('on',s.id===id));
   const hb=$('#homeBtn'); if(hb)hb.classList.toggle('show', id!=='scr-hub'&&id!=='scr-title'&&id!=='scr-creator'&&id!=='scr-intro');
+  const eb=$('#ellyBtn'); if(eb){ if(!eb.dataset.init){ eb.innerHTML=ellySVG(40); eb.dataset.init='1'; } eb.classList.toggle('show', id!=='scr-title'&&id!=='scr-creator'&&id!=='scr-intro'); }
   var _ep=document.getElementById('ellyPop'); if(_ep&&id!=='scr-hub')_ep.remove();
   if(id==='scr-hub')later(()=>ellyPop(),450);
   window.scrollTo(0,0);
@@ -2119,7 +2139,6 @@ function talkTo(id){
   if(id==='luna') btns+='<button class="btn wide" onclick="startHP()">🐇 Jam: Calendar Hop</button>'+
     '<button class="btn wide ghost" onclick="startMJ(\'tourorder\')">🗺️ Tour Router</button>'+
     '<button class="btn wide ghost" onclick="startMJ(\'countdown\')">📆 Countdown</button>';
-  if(id==='boom'&&S.band.boom) btns+='<button class="btn wide ghost" onclick="closeModal();openStation()">🎧 Echo Beats</button>';
   // stamp a ✓ on any game this member has already cleared
   memberGames(id).forEach(gid=>{ if(S.cleared[gid]){
     btns=btns.replace(new RegExp('(startMJ\\(\\x27'+gid+'\\x27\\)">[^<]*)</button>'),'$1 ✓</button>');
@@ -2622,7 +2641,9 @@ function answer(val,btn,ev){
     $('#quizBar').style.width=QZ.respect+'%';
     grooveLayers(1+Math.floor(QZ.respect/34));
     if(ok&&QZ.item.beats){ playBeats(QZ.item.beats); delay=Math.max(delay,QZ.item.beats*180+700); }
+    if(!ok) QZ.wrong=(QZ.wrong||0)+1;
     if(QZ.respect>=100){ later(()=>battleWin(),delay); return; }
+    if(QZ.wrong>=3 && !QZ.helped){ QZ.helped=true; QZ.idx++; later(function(){ openStuckHelp(m.concept); },delay); return; }
   }
   QZ.idx++;
   if(QZ.mode!=='battle'&&QZ.idx>=QZ.count){ later(()=>QZ.onDone&&QZ.onDone(),delay); return; }
@@ -4589,7 +4610,7 @@ function splashDismiss(){
   later(()=>{ if(SPLASH_STATE===1){ SPLASH_STATE=2; const sp2=$('#splash'); if(sp2){sp2.classList.add('bye'); later(()=>sp2.remove(),550);} } },1900);
 }
 (function(){ const sp=$('#splash'); if(sp)sp.addEventListener('pointerdown',splashDismiss); })();
-window.BQ={get QZ(){return QZ;},goHome:goHome,splashDismiss:splashDismiss,dreamOutro:dreamOutro,BY_ID:BY_ID,WHY:WHY,maybeWhy:maybeWhy,capOf2:capOf,startAudition:startAudition,roundCall:roundCall,callKill:callKill,CALLB:CALLB,rampL:rampL,notePlay:notePlay,firstPlay:firstPlay,kcCfg:kcCfg,arcCfg2:arcCfg,COACH:COACH,GESTURE_EMOJI:GESTURE_EMOJI,coachGate:coachGate,showCoach:showCoach,gigSoundcheck:gigSoundcheck,GIG:GIG,startGig:startGig,gigBuildCues:gigBuildCues,gigJudgeDance:gigJudgeDance,gigDancePts:gigDancePts,gigResultTier:gigResultTier,gigReward:gigReward,gigCueMax:gigCueMax,VENUES:VENUES,GIG_LINES:GIG_LINES,get S(){return S;},QG:QG,adjust:adjust,creatureSVG:creatureSVG,lvlOf:lvlOf,capOf:capOf,tierOf:tierOf,proofCount:proofCount,save:save,load:load,BAND:BAND,SHOP:SHOP,runQuiz:runQuiz,show:show,BB:BB,NS:NS,bbTap:bbTap,nsTap:nsTap,startBB:startBB,startNS:startNS,ARC:ARC,startARC:startARC,sliceNote:sliceNote,tryCollect:tryCollect,arcStep:arcStep,arcNeeded:arcNeeded,arcMeasureDone:arcMeasureDone,arcSpawnOne:arcSpawnOne,arcCfg:arcCfg,drawGlyph:drawGlyph,GLYPH:GLYPH,KC:KC,kcCatch:kcCatch,kcStep:kcStep,startKC:startKC,RS:RS,rsTap:rsTap,startRS:startRS,GG:GG,ggStamp:ggStamp,startGG:startGG,TT:TT,ttDrop:ttDrop,ttTime:ttTime,startTT:startTT,ST2:ST2,st2Resolve:st2Resolve,startST:startST,HP:HP,hpTap:hpTap,startHP:startHP,INTRO:INTRO,startIntro:startIntro,openBattle:openBattle,battleGoals:battleGoals,battleDone:battleDone,ellyPop:ellyPop,ellyDismiss:ellyDismiss,ellyCoachLine:ellyCoachLine,ellyMemberPair:ellyMemberPair,ellySuggestions:ellySuggestions,startIntroReplay:startIntroReplay,openMusicCard:openMusicCard,openLevelHelp:openLevelHelp,openLesson:openLesson,startBandBattle:startBandBattle,battleRound:battleRound,battleSend:battleSend,battleAnswer:battleAnswer,battleEnd:battleEnd,get BATTLE(){return BATTLE;}};
+window.BQ={get QZ(){return QZ;},goHome:goHome,splashDismiss:splashDismiss,dreamOutro:dreamOutro,BY_ID:BY_ID,WHY:WHY,maybeWhy:maybeWhy,capOf2:capOf,startAudition:startAudition,roundCall:roundCall,callKill:callKill,CALLB:CALLB,rampL:rampL,notePlay:notePlay,firstPlay:firstPlay,kcCfg:kcCfg,arcCfg2:arcCfg,COACH:COACH,GESTURE_EMOJI:GESTURE_EMOJI,coachGate:coachGate,showCoach:showCoach,gigSoundcheck:gigSoundcheck,GIG:GIG,startGig:startGig,gigBuildCues:gigBuildCues,gigJudgeDance:gigJudgeDance,gigDancePts:gigDancePts,gigResultTier:gigResultTier,gigReward:gigReward,gigCueMax:gigCueMax,VENUES:VENUES,GIG_LINES:GIG_LINES,get S(){return S;},QG:QG,adjust:adjust,creatureSVG:creatureSVG,lvlOf:lvlOf,capOf:capOf,tierOf:tierOf,proofCount:proofCount,save:save,load:load,BAND:BAND,SHOP:SHOP,runQuiz:runQuiz,show:show,BB:BB,NS:NS,bbTap:bbTap,nsTap:nsTap,startBB:startBB,startNS:startNS,ARC:ARC,startARC:startARC,sliceNote:sliceNote,tryCollect:tryCollect,arcStep:arcStep,arcNeeded:arcNeeded,arcMeasureDone:arcMeasureDone,arcSpawnOne:arcSpawnOne,arcCfg:arcCfg,drawGlyph:drawGlyph,GLYPH:GLYPH,KC:KC,kcCatch:kcCatch,kcStep:kcStep,startKC:startKC,RS:RS,rsTap:rsTap,startRS:startRS,GG:GG,ggStamp:ggStamp,startGG:startGG,TT:TT,ttDrop:ttDrop,ttTime:ttTime,startTT:startTT,ST2:ST2,st2Resolve:st2Resolve,startST:startST,HP:HP,hpTap:hpTap,startHP:startHP,INTRO:INTRO,startIntro:startIntro,openBattle:openBattle,battleGoals:battleGoals,battleDone:battleDone,ellyPop:ellyPop,ellyDismiss:ellyDismiss,ellyCoachLine:ellyCoachLine,ellyMemberPair:ellyMemberPair,ellySuggestions:ellySuggestions,startIntroReplay:startIntroReplay,openMusicCard:openMusicCard,openLevelHelp:openLevelHelp,openLesson:openLesson,openEllyHelp:openEllyHelp,openStuckHelp:openStuckHelp,startBandBattle:startBandBattle,battleRound:battleRound,battleSend:battleSend,battleAnswer:battleAnswer,battleEnd:battleEnd,get BATTLE(){return BATTLE;}};
 </script>
 <script>
 /* ================= MINI JAMS (v0.15) =================
@@ -5996,6 +6017,92 @@ var LESSONS={
     {say:'In my games you tap the bigger number, or feed the sign the right way. Try it!', vis:''}
   ]}
 };
+
+/* ============ STUCK HELPER: Elly teaches the METHOD at the wall ============ */
+var METHOD={
+  add:{steps:[
+    {say:'Add the ONES column first. If they make 10 or more, carry the extra ten over to the tens.', vis:'<div style="font-size:20px"><b>27 + 15</b><br>7 + 5 = 12, write 2, carry 1<br>1 + 2 + 1 = 4 -> <b>42</b></div>'},
+    {say:'Stack them by place: ones under ones, tens under tens. Then add each column.', vis:''}
+  ]},
+  sub:{steps:[
+    {say:'Subtract the ones first. If the top is too small, BORROW ten from the next column.', vis:'<div style="font-size:20px"><b>42 - 15</b><br>2 is less than 5, borrow: 12 - 5 = 7<br>3 - 1 = 2 -> <b>27</b></div>'},
+    {say:'Line them up by place, biggest number on top, then work right to left.', vis:''}
+  ]},
+  mul:{steps:[
+    {say:'Break the hard one into easy parts. Times a number by 5, then add the rest.', vis:'<div style="font-size:20px"><b>6 x 7</b><br>6 x 5 = 30<br>6 x 2 = 12<br>30 + 12 = <b>42</b></div>'},
+    {say:'Or skip-count the smaller number that many times: 7, 14, 21, 28, 35, 42.', vis:''}
+  ]},
+  frac:{steps:[
+    {say:'Same bottom number? Just add or subtract the TOP numbers. Keep the bottom the same.', vis:'<div style="font-size:22px"><b>1/4 + 2/4 = 3/4</b></div>'},
+    {say:'The bottom tells how many equal pieces make a whole. The top tells how many you have.', vis:''}
+  ]},
+  round:{steps:[
+    {say:'Look at the digit to the RIGHT of the place you are rounding. 5 or more, round UP. 4 or less, round DOWN.', vis:'<div style="font-size:20px">47 -> nearest ten<br>7 is 5 or more -> <b>50</b></div>'},
+    {say:'Rounding just swoops a number to the closest friendly one so it is easier to work with.', vis:''}
+  ]},
+  compare:{steps:[
+    {say:'More digits usually means a bigger number. Same length? Compare left to right, first difference wins.', vis:'<div style="font-size:22px"><b>63 &gt; 58</b> (6 tens beats 5 tens)</div>'},
+    {say:'The greater-than sign is a mouth. Its open side always eats the BIGGER number.', vis:''}
+  ]},
+  patterns:{steps:[
+    {say:'Find the STEP: how much does it change each time? Then keep adding that same step.', vis:'<div style="font-size:20px">3, 6, 9, 12, ?<br>each jumps +3 -> <b>15</b></div>'},
+    {say:'Some patterns repeat instead of grow: red, blue, red, blue... say it out loud to hear it.', vis:''}
+  ]},
+  clock:{steps:[
+    {say:'SHORT hand points to the hour. LONG hand points to the minutes, count by 5s from the 12.', vis:'<div style="font-size:20px">long hand on 3 = 15 minutes<br>(5, 10, 15)</div>'},
+    {say:'Long hand on 12 is o\u2019clock. Long hand on 6 is half past (30).', vis:''}
+  ]},
+  skip:{steps:[
+    {say:'Keep adding the SAME jump every time. By 5s: 5, 10, 15, 20. By 10s: 10, 20, 30.', vis:'<div style="font-size:20px"><b>2, 4, 6, 8, 10...</b></div>'},
+    {say:'Skip counting is really just fast adding of the same number over and over.', vis:''}
+  ]},
+  money:{steps:[
+    {say:'Making change? Count UP from the price to the money they gave you.', vis:'<div style="font-size:18px">$15 shirt, paid $20<br>16, 17, 18, 19, 20 -> <b>$5</b></div>'},
+    {say:'Add coins by their value: quarter 25, dime 10, nickel 5, penny 1.', vis:''}
+  ]},
+  div:{steps:[
+    {say:'Divide means share equally. Ask: how many equal groups, or how many in each group?', vis:'<div style="font-size:18px">12 shared by 3 = <b>4</b> each<br>(3 x 4 = 12)</div>'},
+    {say:'Division and multiplication are a team. If 3 x 4 = 12, then 12 / 3 = 4.', vis:''}
+  ]},
+  neg:{steps:[
+    {say:'Zero is the middle. Numbers below zero go DOWN. -5 is lower (colder) than -1.', vis:'<div style="font-size:18px">-3 &lt; 0 &lt; 3<br>(minus means below zero)</div>'},
+    {say:'Going up adds, going down subtracts, even past zero.', vis:''}
+  ]},
+  cal:{steps:[
+    {say:'A week is 7 days. To jump weeks, count by 7. Count forward or back on the calendar.', vis:'<div style="font-size:18px">3 weeks = 3 x 7 = <b>21 days</b></div>'},
+    {say:'The months go in order all year: Jan, Feb, Mar... 12 in all.', vis:''}
+  ]},
+  meas:{steps:[
+    {say:'Start the ruler at ZERO, not at the 1. Then read where the object ends.', vis:'<div style="font-size:18px">12 inches = 1 foot<br>line up from 0</div>'},
+    {say:'Bigger unit, fewer of them. Smaller unit, more of them.', vis:''}
+  ]}
+};
+function openStuckHelp(concept){
+  sTap();
+  var M=METHOD[concept], nm=CONCEPT_NAMES[concept]||'this one';
+  if(!M){
+    modal('<div class="center">'+ellySVG(56)+'<h2>You have got this!</h2></div>'+
+      '<div class="speak"><b>Elly:</b> \u201CThis one is tricky! Read it slow, take your time, and answer your best. You earn Notes just for trying, so keep going!\u201D</div>'+
+      '<button class="btn wide" onclick="closeModal();nextQ()">Let me try again! \u26A1</button>');
+    return;
+  }
+  var i=0;
+  function draw(){
+    var st=M.steps[i], last=i>=M.steps.length-1;
+    modal(
+      '<div class="center">'+ellySVG(52)+'<h2>\uD83D\uDCA1 Stuck? Here is the trick</h2></div>'+
+      '<div class="sub center" style="margin:-4px 0 6px">'+nm+'</div>'+
+      '<div class="lessprog">'+M.steps.map(function(_,k){return '<i class="'+(k<=i?'on':'')+'"></i>';}).join('')+'</div>'+
+      (st.vis?'<div class="center" style="margin:8px 0">'+st.vis+'</div>':'')+
+      '<div class="speak"><b>Elly:</b> \u201C'+st.say+'\u201D</div>'+
+      (last?'<button class="btn wide" onclick="closeModal();nextQ()">Let me try again! \u26A1</button>'
+           :'<button class="btn wide" id="shNext">Next \u2192</button>')
+    );
+    var nx=$('#shNext'); if(nx)nx.addEventListener('click',function(){ ac(); i++; draw(); });
+  }
+  draw();
+}
+
 function openLesson(id){
   sTap();
   var L=LESSONS[id]; if(!L){ toast('Lesson coming soon!'); return; }
