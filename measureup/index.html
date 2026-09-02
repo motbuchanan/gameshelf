@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Measure Up">
-<title>Measure Up v0.66</title>
+<title>Measure Up v0.67</title>
 <style>
 :root{
   --bg:#0e0b1e; --panel:#1d1636; --panel2:#28204a; --ink:#f4f0ff; --dim:#a89cd8;
@@ -306,6 +306,10 @@ input.nm{
 .lvtick.need{filter:drop-shadow(0 0 4px #ffd158)}
 .lvtick.gold{top:-20px;font-size:16px}
 .lvnum{text-align:center;font-weight:800;font-size:14px;color:#e8dcff;margin-top:4px}
+.thcall{background:#241c48;border:2px solid #9d7cff66;border-radius:14px;padding:10px 12px;margin:8px 0;text-align:center}
+.thcallmain{font-size:22px;font-weight:900;color:#f4f0ff;line-height:1.25}
+.thcallsub{font-size:14px;color:#ffe9b0;margin-top:4px;font-weight:600;line-height:1.3}
+.thch.threc{border-color:#ffd158;box-shadow:0 0 0 2px #ffd15855}
 .lessprog{display:flex;gap:6px;justify-content:center;margin:8px 0}
 .lessprog i{width:8px;height:8px;border-radius:50%;background:#372a68;transition:background .2s}
 .lessprog i.on{background:#9d7cff}
@@ -638,6 +642,15 @@ svg .charg{will-change:transform}
   <div class="bandgrid" id="bandGrid"></div>
   <div class="rivalteaser" id="rivalteaser" onclick="openBattle()">⚡ Battle of the Bands <span id="rtProg"></span><div style="font-size:11px;font-weight:600;opacity:.85;margin-top:2px">tap for the story and your goals</div></div>
   <div class="rivalteaser" id="mgrTeaser" onclick="openAch()" style="border-color:#ffd15866">📋 Manny’s Achievement Wall <span id="mgrBadge" style="font-weight:700;color:#ffd158"></span><div style="font-size:11px;font-weight:600;opacity:.85;margin-top:2px">medals, streaks, and a daily challenge</div></div>
+  <div class="rivalteaser" id="musicTeaser" style="border-color:#9d7cff88">🎼 Elly’s Music Class <span id="thProg" style="font-weight:700;color:#c9b8ff"></span><div style="font-size:11px;font-weight:600;opacity:.85;margin-top:2px">clefs, counting 1 &amp; 2 &amp; 3 &amp; 4 &amp;, time signatures</div></div>
+</div>
+<div class="scr" id="scr-theory">
+  <div class="row" style="justify-content:space-between;align-items:center">
+    <button class="btn ghost backbtn" id="thBack">← Back</button>
+    <div class="chip" id="thChip">🎼 Music Class</div>
+    <span></span>
+  </div>
+  <div id="thBody"></div>
 </div>
 
 <!-- BEAT BUILDER (Boom's jam) -->
@@ -915,14 +928,14 @@ svg .charg{will-change:transform}
 <div id="toast"></div>
 <button id="homeBtn" onclick="goHome()" aria-label="Back to Garage">🏠</button>
 <button id="ellyBtn" onclick="openEllyHelp()" aria-label="Ask Elly for help"></button>
-<div id="vbadge">v0.66 · Sep 2</div>
+<div id="vbadge">v0.67 · Sep 2</div>
 
 <script>
 'use strict';
 /* ============ UTILS ============ */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const VERSION='v0.66 · Sep 2';
+const VERSION='v0.67 · Sep 2';
 const RM=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -940,7 +953,8 @@ const DEF={
   equipped:{drumskin:'classic'},
   flags:{soundcheckOffered:false,introDone:false,coach_kc:false,coach_arc:false,coach_rs:false,coach_gg:false,coach_tt:false,coach_st:false,coach_hp:false,coach_gig:false,lesson_round:false},
   stats:{answers:0,correct:0,bestStreak:0,rounds:0,shows:0,battleWins:0},
-  ach:{claimed:{}}
+  ach:{claimed:{}},
+  theory:{placed:false,start:null,lessons:{},stars:{},known:{}}
 };
 let S;
 function load(){
@@ -959,6 +973,7 @@ function load(){
     S.cleared=Object.assign({},S.cleared||{});
     if(!S.flags.roscoeCore){ S.flags.roscoeCore=true; S.band.roscoe=true; S.auditioned.roscoe=true; if(!S.skills.patterns)S.skills.patterns=1; }
     if(!S.ach)S.ach={claimed:{}};
+    S.theory=Object.assign({placed:false,start:null,lessons:{},stars:{},known:{}},S.theory||{});
     if(S.stats&&S.stats.battleWins==null)S.stats.battleWins=0;
   }catch(e){ S=JSON.parse(JSON.stringify(DEF)); }
 }
@@ -6883,6 +6898,370 @@ setup(L,st){
 const MONTHS_MJ=['March','April','May','June','September','October'];
 
 Object.assign(window.BQ,{openAch:openAch,renderAch:renderAch,claimAch:claimAch,claimDaily:claimDaily,ACH:ACH,ensureDaily:ensureDaily,achClaimableCount:achClaimableCount,openStepPractice:openStepPractice,openGoldLesson:openGoldLesson,STEPWALK:STEPWALK,openMusicCard:openMusicCard,openLevelHelp:openLevelHelp,openLesson:openLesson,openStuckHelp:openStuckHelp,MJ:MJ,MJGAMES:MJGAMES,startMJ:startMJ,mjNext:mjNext,mjOK:mjOK,mjNo:mjNo,mName:mName,nameify:nameify,renameMember:renameMember,openPlay:openPlay,PLAY_RIGS:PLAY_RIGS,V:V,SONGS:SONGS,SHOW:SHOW,openShow:openShow,showPlay:showPlay,showStop:showStop,LESSON:LESSON,startLesson:startLesson,lessonMove:lessonMove,lessonAdvance:lessonAdvance,gainLessonGate:gainLessonGate,startBattle:startBattle,battleGo:battleGo,battleWin:battleWin,ellySVG:ellySVG,ellyChime:ellyChime,ellyHint:ellyHint,ellyTip:ellyTip,startEllyIntro:startEllyIntro,ellyNext:ellyNext,ellyFinishIntro:ellyFinishIntro,ELLY:ELLY,ELLY_INTRO:ELLY_INTRO,ELLY_HINTS:ELLY_HINTS,proofIntro:proofIntro,proofWin:proofWin,proofCount:proofCount,mjRetry:function(){if(MJ.on&&!MJ.busy){MJ.round--;mjNext();}},QG:QG,startRoundLesson:startRoundLesson,RLESSON:RLESSON,rlessonAdvance:rlessonAdvance,roundLessonGate:roundLessonGate,roundLineHTML:roundLineHTML,nearestTen:nearestTen});
+</script>
+<script>
+/* ============ ELLY'S MUSIC CLASS: music theory from zero (v0.67) ============ */
+const TH={on:false,mode:null,ch:null,step:0,game:null,round:0,score:0,busy:false,st:{},ear:null};
+function thS(){ if(!S.theory)S.theory={placed:false,start:null,lessons:{},stars:{},known:{}}; S.theory.lessons=S.theory.lessons||{}; S.theory.stars=S.theory.stars||{}; S.theory.known=S.theory.known||{}; return S.theory; }
+
+/* ---------- STAFF RENDERER (all hand-drawn SVG, literal hex colors) ---------- */
+/* pos: 0 = bottom line, 1 = first space ... 8 = top line. -2 = ledger below, 10 = ledger above. */
+function staffSVG(o){
+  o=o||{}; var G=12, y0=26, W=o.w||300, H=o.h||120, x=14;
+  var ink=o.ink||'#f4f0ff', gold='#ffd158';
+  var s='<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="max-width:'+W+'px;display:block;margin:0 auto" xmlns="http://www.w3.org/2000/svg">';
+  s+='<rect x="0" y="0" width="'+W+'" height="'+H+'" rx="12" fill="#fff8e6"/>';
+  var yl=function(i){return y0+i*G;}; /* i=0 top line ... 4 bottom line */
+  var py=function(pos){return y0+4*G-pos*G/2;};
+  if(o.spaces){ for(var k=0;k<4;k++)s+='<rect x="8" y="'+(yl(k)+1)+'" width="'+(W-16)+'" height="'+(G-2)+'" fill="#ffe08a" opacity=".55"/>'; }
+  if(o.hiLine!=null){ s+='<rect x="8" y="'+(py(o.hiLine)-3)+'" width="'+(W-16)+'" height="6" fill="'+gold+'" opacity=".7"/>'; }
+  for(var i=0;i<5;i++)s+='<line x1="8" y1="'+yl(i)+'" x2="'+(W-8)+'" y2="'+yl(i)+'" stroke="#2a1f55" stroke-width="1.6"/>';
+  if(o.lineNums){ for(var n=0;n<5;n++)s+='<text x="12" y="'+(yl(4-n)+4)+'" font-size="11" font-weight="900" fill="#c0392b">'+(n+1)+'</text>'; }
+  if(o.spaceNums){ for(var q=0;q<4;q++)s+='<text x="'+(o.lineNums?30:12)+'" y="'+(yl(3-q)+G/2+4)+'" font-size="11" font-weight="900" fill="#b8860b">'+(q+1)+'</text>'; }
+  if(!o.lineNums&&!o.spaceNums)s+='<line x1="8" y1="'+yl(0)+'" x2="8" y2="'+yl(4)+'" stroke="#2a1f55" stroke-width="2"/>';
+  if(o.clef==='treble'){
+    /* stroked treble clef, scaled so the curl wraps the G line (2nd from bottom) */
+    var gy=yl(3), sc=G/10, tx=x, ty=gy;
+    s+='<g transform="translate('+tx+','+ty+') scale('+sc+')"><path d="M 9 22 c -6 6 3 12 7 5 c 3 -6 -3 -13 -3 -24 L 11 -42 c 2 -7 9 -6 9 2 c 0 10 -9 14 -14 22 c -5 8 -6 18 2 24 c 8 6 20 2 20 -8 c 0 -10 -13 -12 -18 -5 c -3 5 -1 11 5 12" fill="none" stroke="#2a1f55" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></g>';
+    x+=34;
+  } else if(o.clef==='bass'){
+    var fy=yl(1);
+    s+='<circle cx="'+(x+4)+'" cy="'+fy+'" r="3.6" fill="#2a1f55"/>';
+    s+='<path d="M '+(x+4)+' '+fy+' c 2 -14 22 -14 22 2 c 0 14 -12 24 -24 30" fill="none" stroke="#2a1f55" stroke-width="3.2" stroke-linecap="round"/>';
+    s+='<circle cx="'+(x+32)+'" cy="'+(fy-G/2)+'" r="2.6" fill="#2a1f55"/><circle cx="'+(x+32)+'" cy="'+(fy+G/2)+'" r="2.6" fill="#2a1f55"/>';
+    x+=42;
+  }
+  if(o.ts){
+    var t=String(o.ts).split('/');
+    s+='<text x="'+(x+2)+'" y="'+(yl(2)-1)+'" font-size="'+(G*2.1)+'" font-weight="900" fill="'+(o.tsHi==='top'?'#c0392b':'#2a1f55')+'" font-family="Georgia,serif">'+t[0]+'</text>';
+    s+='<text x="'+(x+2)+'" y="'+(yl(4)-1)+'" font-size="'+(G*2.1)+'" font-weight="900" fill="'+(o.tsHi==='bot'?'#c0392b':'#2a1f55')+'" font-family="Georgia,serif">'+t[1]+'</text>';
+    x+=26;
+  }
+  var notes=o.notes||[];
+  if(notes.length){
+    var left=x+10, right=W-14, span=right-left, ncount=notes.length;
+    var ax=[], slot=span/Math.max(1,ncount);
+    notes.forEach(function(nt,i){ ax.push(left+slot*i+slot/2-4); });
+    notes.forEach(function(nt,i){
+      if(nt.bar==='before')s+='<line x1="'+(ax[i]-slot/2-2)+'" y1="'+yl(0)+'" x2="'+(ax[i]-slot/2-2)+'" y2="'+yl(4)+'" stroke="#2a1f55" stroke-width="2"/>';
+      var pos=(nt.pos==null?4:nt.pos), cy=py(pos), cx=ax[i], hi=(nt.hi?gold:null), col=hi?'#b8860b':'#2a1f55';
+      if(pos<=-2)s+='<line x1="'+(cx-9)+'" y1="'+py(-2)+'" x2="'+(cx+9)+'" y2="'+py(-2)+'" stroke="#2a1f55" stroke-width="1.6"/>';
+      if(pos>=10)s+='<line x1="'+(cx-9)+'" y1="'+py(10)+'" x2="'+(cx+9)+'" y2="'+py(10)+'" stroke="#2a1f55" stroke-width="1.6"/>';
+      if(hi)s+='<circle cx="'+cx+'" cy="'+cy+'" r="10" fill="'+gold+'" opacity=".55"/>';
+      var d=nt.d||'q';
+      if(d==='rest'){ s+='<path d="M '+(cx-4)+' '+(cy-11)+' l 7 8 l -5 6 l 5 7 c -6 -4 -9 0 -5 4" fill="none" stroke="'+col+'" stroke-width="3" stroke-linecap="round"/>'; }
+      else {
+        var hollow=(d==='h'||d==='w');
+        s+='<ellipse cx="'+cx+'" cy="'+cy+'" rx="6.4" ry="4.4" transform="rotate(-20 '+cx+' '+cy+')" fill="'+(hollow?'none':col)+'" stroke="'+col+'" stroke-width="'+(hollow?2.4:1)+'"/>';
+        if(d!=='w'){
+          var up=(pos<=4)||nt.up, sx=up?cx+5.6:cx-5.6, sy1=cy, sy2=up?cy-G*3.1:cy+G*3.1;
+          if(nt.beam)sy2=cy-G*3.1, sx=cx+5.6, up=true;
+          s+='<line x1="'+sx+'" y1="'+sy1+'" x2="'+sx+'" y2="'+sy2+'" stroke="'+col+'" stroke-width="1.8"/>';
+          if(d==='e'&&!nt.beam)s+='<path d="M '+sx+' '+sy2+' c 8 5 9 12 4 18" fill="none" stroke="'+col+'" stroke-width="2.4" stroke-linecap="round"/>';
+          if(nt.beam==='start'&&notes[i+1]){ var nx=ax[i+1]+5.6, ny2=py(notes[i+1].pos==null?4:notes[i+1].pos)-G*3.1; s+='<line x1="'+sx+'" y1="'+sy2+'" x2="'+nx+'" y2="'+ny2+'" stroke="'+col+'" stroke-width="4.5"/>'; }
+        }
+      }
+      if(nt.label!=null)s+='<text x="'+cx+'" y="'+(H-8)+'" text-anchor="middle" font-size="17" font-weight="900" fill="'+(nt.lblHi?'#c0392b':(nt.hi?'#b8860b':'#2a1f55'))+'" id="'+(o.idp?o.idp+i:'')+'">'+String(nt.label).replace(/&/g,'&amp;')+'</text>';
+      if(nt.bar==='after')s+='<line x1="'+(ax[i]+slot/2+2)+'" y1="'+yl(0)+'" x2="'+(ax[i]+slot/2+2)+'" y2="'+yl(4)+'" stroke="#2a1f55" stroke-width="2"/>';
+    });
+  }
+  if(o.endBar!==false){ s+='<line x1="'+(W-10)+'" y1="'+yl(0)+'" x2="'+(W-10)+'" y2="'+yl(4)+'" stroke="#2a1f55" stroke-width="2"/><line x1="'+(W-14)+'" y1="'+yl(0)+'" x2="'+(W-14)+'" y2="'+yl(4)+'" stroke="#2a1f55" stroke-width="1.2"/>'; }
+  return s+'</svg>';
+}
+/* rhythm helpers: a rhythm is an array of 'q' (one count) and 'e' (eighth pair = one count). Expands to note objects with labels 1 & 2 & ... */
+function thRhythmNotes(rh,o){ o=o||{}; var out=[],beat=1,pos=o.pos==null?4:o.pos;
+  rh.forEach(function(d,i){
+    if(d==='q'){ out.push({d:'q',pos:pos,label:o.labels===false?null:String(beat),cnt:String(beat),bar:(o.bars&&beat===1&&i>0)?'before':null}); beat++; }
+    else if(d==='r'){ out.push({d:'rest',pos:4,label:o.labels===false?null:String(beat),cnt:String(beat),bar:(o.bars&&beat===1&&i>0)?'before':null}); beat++; }
+    else { out.push({d:'e',pos:pos,beam:'start',label:o.labels===false?null:String(beat),cnt:String(beat),bar:(o.bars&&beat===1&&i>0)?'before':null}); out.push({d:'e',pos:pos,beam:'end',label:o.labels===false?null:'&',cnt:'&'}); beat++; }
+    if(o.per&&beat>o.per)beat=1;
+  });
+  return out;
+}
+/* play a rhythm: kick on numbers, hat on &, light labels in order */
+function thPlayRhythm(notes,bpm,idp,done){
+  ac(); var ms=60000/(bpm||84), t=0; drum('hat');
+  notes.forEach(function(n,i){
+    later(function(){ if(!TH.on)return; if(n.d==='rest'){ /* silence */ } else if(n.cnt==='&')drum('hat'); else drum('kick');
+      if(idp){ var prev=document.getElementById(idp+(i-1)); if(prev)prev.setAttribute('fill','#2a1f55'); var el=document.getElementById(idp+i); if(el)el.setAttribute('fill','#c0392b'); } },t);
+    t+=(n.cnt==='&'||n.beam==='start')?ms/2:ms;
+  });
+  later(function(){ if(!TH.on)return; if(idp){ var el=document.getElementById(idp+(notes.length-1)); if(el)el.setAttribute('fill','#2a1f55'); } if(done)done(); },t+50);
+}
+function thPlayBtn(label,id){ return '<button class="btn small" id="'+id+'" style="margin:6px auto;display:block">'+(label||'\u25B6 Hear it')+'</button>'; }
+
+/* ---------- CHAPTERS ---------- */
+var TH_CH=[
+ {id:'staff',emoji:'\uD83C\uDFBC',name:'The Staff',member:'plink',blurb:'5 lines, 4 spaces, where notes live',
+  steps:[
+   {say:'Welcome to Music Class! Music gets written on a STAFF. Count the lines with me. How many lines?',vis:staffSVG({lineNums:true}),pick:['4','5','6'],ans:'5',good:'Five lines! Every staff has exactly five.'},
+   {say:'Between the lines are SPACES. Count the yellow spaces. How many?',vis:staffSVG({spaces:true,spaceNums:true}),pick:['3','4','5'],ans:'4',good:'Four spaces! Five lines, four spaces. That is the whole staff.'},
+   {say:'A NOTE is a little oval. This one sits right ON a line. See the line going through its middle?',vis:staffSVG({notes:[{d:'q',pos:4}]})},
+   {say:'And this one sits IN a space, tucked between two lines. Every note is on a line or in a space, never floating!',vis:staffSVG({notes:[{d:'q',pos:5}]})},
+   {say:'Your turn. Is this note ON a line or IN a space?',vis:staffSVG({notes:[{d:'q',pos:2}]}),pick:['Line','Space'],ans:'Line',good:'Line! The line goes right through it.'},
+   {say:'And this one?',vis:staffSVG({notes:[{d:'q',pos:5}]}),pick:['Line','Space'],ans:'Space',good:'Space! It sits between two lines.'},
+   {say:'Here is the secret of the staff: HIGHER on the staff means a HIGHER sound. Tap both notes to hear it!',vis:staffSVG({notes:[{d:'q',pos:1,label:'low'},{d:'q',pos:7,label:'high'}]}),hear:[{label:'\uD83D\uDD0A low note',fn:function(){V.bell(60);}},{label:'\uD83D\uDD0A high note',fn:function(){V.bell(79);}}]},
+   {say:'That is the staff! Five lines, four spaces, and notes that climb higher as the sound goes higher. Try the game!',vis:staffSVG({notes:[{d:'q',pos:0},{d:'q',pos:2},{d:'q',pos:4},{d:'q',pos:6},{d:'q',pos:8}]})}
+  ],games:['staffspot']},
+ {id:'clefs',emoji:'\uD83D\uDD11',name:'Two Clefs',member:'rumble',blurb:'treble clef and bass clef',
+  steps:[
+   {say:'At the start of every staff is a CLEF. The clef tells you if the notes are HIGH or LOW.',vis:staffSVG({clef:'treble'})},
+   {say:'This curly one is the TREBLE CLEF. Treble means HIGH. Flutes, Plink\u2019s xylophone, your right hand on a piano. Tap to hear a treble sound!',vis:staffSVG({clef:'treble',notes:[{d:'q',pos:6},{d:'q',pos:7},{d:'q',pos:8}]}),hear:[{label:'\uD83D\uDD0A treble (high)',fn:function(){V.bell(84);later(function(){V.bell(88);},220);}}]},
+   {say:'This one with two dots is the BASS CLEF. Say it like \u201Cbase.\u201D Bass means LOW. Rumble\u2019s bass, tubas, your left hand on a piano. Tap to hear it!',vis:staffSVG({clef:'bass',notes:[{d:'q',pos:0},{d:'q',pos:1},{d:'q',pos:2}]}),hear:[{label:'\uD83D\uDD0A bass (low)',fn:function(){V.bass(36);later(function(){V.bass(31);},260);}}]},
+   {say:'Look close: the treble clef CURLS around one line. That line is called G. Some people call this the G clef!',vis:staffSVG({clef:'treble',hiLine:2})},
+   {say:'And the bass clef\u2019s two dots HUG one line. That line is called F. The F clef!',vis:staffSVG({clef:'bass',hiLine:6})},
+   {say:'Your turn. Which clef is this?',vis:staffSVG({clef:'bass'}),pick:['Treble','Bass'],ans:'Bass',good:'Bass clef! Two dots, low sounds.'},
+   {say:'And this one?',vis:staffSVG({clef:'treble'}),pick:['Treble','Bass'],ans:'Treble',good:'Treble clef! Curly, high sounds.'},
+   {say:'Rumble plays LOW notes on the bass. Which clef does Rumble read?',vis:memberSVG('rumble',80),pick:['Treble','Bass'],ans:'Bass',good:'Bass clef for the bass player. Low with low!'},
+   {say:'Treble is curly and high. Bass has two dots and is low. Try the game and spot them!',vis:'<div class="row" style="justify-content:center;gap:8px">'+staffSVG({clef:'treble',w:140,h:100})+staffSVG({clef:'bass',w:140,h:100})+'</div>'}
+  ],games:['clefspot']},
+ {id:'beat',emoji:'\uD83E\uDD41',name:'The Beat',member:'boom',blurb:'count 1 2 3 4 with quarter notes',
+  steps:[
+   {say:'Every song has a BEAT. It is the steady tap your foot does. Boom keeps it. Tap \u25B6 and count with the red numbers!',vis:staffSVG({clef:'treble',ts:'4/4',notes:thRhythmNotes(['q','q','q','q']),idp:'thL'}),play:{rh:['q','q','q','q'],bpm:80}},
+   {say:'In music class you COUNT the beat: 1, 2, 3, 4. Then it starts over! 1, 2, 3, 4, 1, 2, 3, 4. Tap \u25B6 to hear two rounds.',vis:staffSVG({clef:'treble',ts:'4/4',notes:thRhythmNotes(['q','q','q','q','q','q','q','q'],{bars:true,per:4}),idp:'thL'}),play:{rh:['q','q','q','q','q','q','q','q'],bpm:80,per:4}},
+   {say:'This note is a QUARTER NOTE. A filled-in oval with a stem. It gets exactly ONE count.',vis:staffSVG({clef:'treble',notes:[{d:'q',pos:4,label:'1 count'}]})},
+   {say:'Four quarter notes in a row: 1, 2, 3, 4. Each note is one count.',vis:staffSVG({clef:'treble',ts:'4/4',notes:thRhythmNotes(['q','q','q','q']),idp:'thL'}),play:{rh:['q','q','q','q'],bpm:80}},
+   {say:'How many counts does one quarter note get?',vis:staffSVG({clef:'treble',notes:[{d:'q',pos:4}]}),pick:['1','2','4'],ans:'1',good:'One count. Quarter note = 1.'},
+   {say:'Count these notes. What count is the gold note?',vis:staffSVG({clef:'treble',ts:'4/4',notes:[{d:'q',pos:4,label:'1'},{d:'q',pos:4,label:'2'},{d:'q',pos:4,label:'3'},{d:'q',pos:4,hi:true,label:'?'}]}),pick:['3','4','5'],ans:'4',good:'Four! After 3 comes 4.'},
+   {say:'See the standing-up lines? Those are BAR LINES. They box the notes into MEASURES. After count 4, the next measure starts back at 1.',vis:staffSVG({clef:'treble',ts:'4/4',notes:thRhythmNotes(['q','q','q','q','q','q','q','q'],{bars:true,per:4})})},
+   {say:'After count 4 in a measure, what comes next?',vis:staffSVG({clef:'treble',ts:'4/4',notes:[{d:'q',pos:4,label:'3'},{d:'q',pos:4,label:'4'},{d:'q',pos:4,label:'?',bar:'before',hi:true},{d:'q',pos:4,label:'2'}]}),pick:['5','1','0'],ans:'1',good:'Back to 1! Every measure starts fresh.'},
+   {say:'That is the beat! Quarter note = 1 count. Count 1 2 3 4, then back to 1. Go keep the beat with Boom!'}
+  ],games:['beatkeeper','countout']},
+ {id:'ands',emoji:'\uD83C\uDFB5',name:'The \u201C&\u201D',member:'boom',blurb:'eighth notes: 1 & 2 & 3 & 4 &',
+  steps:[
+   {say:'Sometimes TWO notes share one beat. Those are EIGHTH NOTES. They hold hands with a beam on top. Two of them = one count.',vis:staffSVG({clef:'treble',notes:thRhythmNotes(['e'],{labels:false})})},
+   {say:'We count them 1 & (say \u201Cand\u201D). The number is the first note, the & is the second. Tap \u25B6!',vis:staffSVG({clef:'treble',ts:'4/4',notes:thRhythmNotes(['e']),idp:'thL'}),play:{rh:['e'],bpm:76}},
+   {say:'A whole measure of eighth notes: 1 & 2 & 3 & 4 &. Tap \u25B6 and count along. The & is the quick one in between!',vis:staffSVG({clef:'treble',ts:'4/4',notes:thRhythmNotes(['e','e','e','e']),idp:'thL'}),play:{rh:['e','e','e','e'],bpm:76}},
+   {say:'Quarter notes and eighth notes MIX. A quarter note gets just its number. Eighth notes get number AND &. Tap \u25B6!',vis:staffSVG({clef:'treble',ts:'4/4',notes:thRhythmNotes(['q','e','q','e']),idp:'thL'}),play:{rh:['q','e','q','e'],bpm:76}},
+   {say:'Two eighth notes together take how many counts?',vis:staffSVG({clef:'treble',notes:thRhythmNotes(['e'],{labels:false})}),pick:['1 count','2 counts','4 counts'],ans:'1 count',good:'One count, shared! That is why we say 1 &.'},
+   {say:'Which count goes under the gold note?',vis:staffSVG({clef:'treble',ts:'4/4',notes:[{d:'q',pos:4,label:'1'},{d:'q',pos:4,label:'2'},{d:'e',pos:4,beam:'start',label:'3'},{d:'e',pos:4,beam:'end',label:'?',hi:true},{d:'q',pos:4,label:'4'}]}),pick:['&','3','4'],ans:'&',good:'&! The second eighth note is the & of 3.'},
+   {say:'What about this gold one?',vis:staffSVG({clef:'treble',ts:'4/4',notes:[{d:'e',pos:4,beam:'start',label:'1'},{d:'e',pos:4,beam:'end',label:'&'},{d:'q',pos:4,label:'?',hi:true},{d:'q',pos:4,label:'3'},{d:'q',pos:4,label:'4'}]}),pick:['&','2','1'],ans:'2',good:'Two! A quarter note gets its number.'},
+   {say:'That is the &! Eighth notes share a beat: 1 & 2 & 3 & 4 &. Now count some rhythms with Boom!'}
+  ],games:['countands','hearpick']},
+ {id:'timesig',emoji:'\uD83D\uDD22',name:'Time Signatures',member:'tock',blurb:'the two numbers: how many counts per measure',
+  steps:[
+   {say:'The two stacked numbers at the start are the TIME SIGNATURE. Your teacher might say \u201Cmusic times.\u201D This one is four-four.',vis:staffSVG({clef:'treble',ts:'4/4'})},
+   {say:'The TOP number tells you how many counts fit in each measure. 4 on top means count to 4.',vis:staffSVG({clef:'treble',ts:'4/4',tsHi:'top',notes:thRhythmNotes(['q','q','q','q'])})},
+   {say:'The BOTTOM number tells which note gets ONE count. 4 on the bottom means the QUARTER note. So four-four = four quarter notes per measure.',vis:staffSVG({clef:'treble',ts:'4/4',tsHi:'bot',notes:thRhythmNotes(['q','q','q','q'])})},
+   {say:'Three-four means count to 3! 1 2 3, 1 2 3. That is a waltz, a swaying dance. Tap \u25B6!',vis:staffSVG({clef:'treble',ts:'3/4',notes:thRhythmNotes(['q','q','q','q','q','q'],{bars:true,per:3}),idp:'thL'}),play:{rh:['q','q','q','q','q','q'],bpm:88,per:3}},
+   {say:'Two-four means count to 2! 1 2, 1 2. Like marching: left, right, left, right. Tap \u25B6!',vis:staffSVG({clef:'treble',ts:'2/4',notes:thRhythmNotes(['q','q','q','q','q','q'],{bars:true,per:2}),idp:'thL'}),play:{rh:['q','q','q','q','q','q'],bpm:96,per:2}},
+   {say:'In three-four, how many counts in each measure?',vis:staffSVG({clef:'treble',ts:'3/4'}),pick:['2','3','4'],ans:'3',good:'Three! The top number says so.'},
+   {say:'This measure has two quarter notes and it is full. What is the time signature?',vis:staffSVG({clef:'treble',notes:thRhythmNotes(['q','q'])}),pick:['2/4','3/4','4/4'],ans:'2/4',good:'Two-four! Two counts per measure.'},
+   {say:'That is time signatures! Top number = counts per measure. Bottom 4 = the quarter note is one count. Go fill some measures!'}
+  ],games:['fillmeasure','topnum']}
+];
+var TH_BY={}; TH_CH.forEach(function(c){TH_BY[c.id]=c;});
+
+/* ---------- GAMES (6 rounds, self-paced, stars at the end) ---------- */
+var TH_GAMES={};
+function thPickHTML(arr,cls){ return '<div class="row" style="justify-content:center;gap:10px;flex-wrap:wrap;margin-top:10px">'+arr.map(function(v){return '<button class="choice '+(cls||'thpick')+'" data-v="'+v+'" style="min-width:96px">'+v+'</button>';}).join('')+'</div>'; }
+function thWirePick(ans,okMsg,noMsg){ $$('#thGame .thpick').forEach(function(b){ b.addEventListener('click',function(){ if(TH.busy)return; ac();
+  if(b.dataset.v===String(ans)){ b.classList.add('good'); thOK(okMsg); } else { b.classList.add('badc'); punch(b); var g=$$('#thGame .thpick').filter(function(x){return x.dataset.v===String(ans);})[0]; if(g)g.classList.add('good'); thNo(noMsg); } }); }); }
+
+TH_GAMES.staffspot={id:'staffspot',ch:'staff',emoji:'\uD83C\uDFBC',name:'Staff Spotter',explain:'Is the note ON a line or IN a space? Later rounds: which note is HIGHER?',
+ setup:function(r,st){
+  if(r<=3){ var pos=R(0,8); st.ans=(pos%2===0)?'Line':'Space';
+    return {call:'Line or space?',sub:'Look where the note sits.',html:staffSVG({clef:'treble',notes:[{d:'q',pos:pos}]})+thPickHTML(['Line','Space']),wire:function(){thWirePick(st.ans,st.ans==='Line'?'On the line!':'In the space!','It is '+st.ans.toLowerCase()+'. Look for the line through the middle.');}}; }
+  var a=R(0,8), b=R(0,8); while(Math.abs(a-b)<2){b=R(0,8);} st.ans=(a>b)?'Left':'Right';
+  return {call:'Which note is HIGHER?',sub:'Higher on the staff = higher sound. Tap \uD83D\uDD0A to hear them.',html:staffSVG({clef:'treble',notes:[{d:'q',pos:a,label:'Left'},{d:'q',pos:b,label:'Right'}]})+thPlayBtn('\uD83D\uDD0A hear both','thHear')+thPickHTML(['Left','Right']),
+    wire:function(){ $('#thHear').addEventListener('click',function(){ ac(); V.bell(60+a*2); later(function(){V.bell(60+b*2);},420); }); thWirePick(st.ans,'Higher note!','The higher one on the staff is the higher sound.'); }};
+ }};
+TH_GAMES.clefspot={id:'clefspot',ch:'clefs',emoji:'\uD83D\uDD11',name:'Clef Spotter',explain:'Name the clef you see, or pick the clef for the sound you hear. Treble = high and curly. Bass = low with two dots.',
+ setup:function(r,st){
+  var kind=r<=2?'see':(r<=4?'hear':'who');
+  if(kind==='see'){ st.ans=pick(['Treble','Bass']); return {call:'Which clef is this?',sub:'Curly = treble. Two dots = bass.',html:staffSVG({clef:st.ans.toLowerCase()})+thPickHTML(['Treble','Bass']),wire:function(){thWirePick(st.ans,st.ans+' clef!','That one is the '+st.ans.toLowerCase()+' clef.');}}; }
+  if(kind==='hear'){ st.ans=pick(['Treble','Bass']); var hi=st.ans==='Treble';
+    return {call:'Listen. High or low?',sub:'Tap \uD83D\uDD0A. High sounds live in the treble clef, low sounds in the bass clef.',html:'<div class="row" style="justify-content:center;gap:8px">'+staffSVG({clef:'treble',w:140,h:100,notes:[{d:'q',pos:7}]})+staffSVG({clef:'bass',w:140,h:100,notes:[{d:'q',pos:1}]})+'</div>'+thPlayBtn('\uD83D\uDD0A hear the sound','thHear')+thPickHTML(['Treble','Bass']),
+      wire:function(){ var play=function(){ ac(); if(hi){V.bell(84);later(function(){V.bell(86);},200);} else {V.bass(33);later(function(){V.bass(31);},260);} }; $('#thHear').addEventListener('click',play); later(play,400); thWirePick(st.ans,(hi?'High':'Low')+' sound, '+st.ans.toLowerCase()+' clef!','That was a '+(hi?'high':'low')+' sound, so it goes in the '+st.ans.toLowerCase()+' clef.'); }}; }
+  var who=pick([{id:'plink',a:'Treble',why:'high tinkly bars'},{id:'rumble',a:'Bass',why:'low rumbly strings'},{id:'round',a:'Treble',why:'high whistle'},{id:'doot',a:'Treble',why:'bright horn'}]);
+  st.ans=who.a;
+  return {call:'Which clef does '+mName(who.id)+' read?',sub:'Think: does this instrument sound high or low?',html:'<div class="center">'+memberSVG(who.id,90)+'</div>'+thPickHTML(['Treble','Bass']),wire:function(){thWirePick(st.ans,mName(who.id)+' plays '+who.why+': '+st.ans+' clef!',mName(who.id)+' plays '+who.why+', so '+st.ans.toLowerCase()+' clef.');}};
+ }};
+TH_GAMES.beatkeeper={id:'beatkeeper',ch:'beat',emoji:'\uD83E\uDD41',name:'Beat Keeper',explain:'Boom counts 1 2 3 4. Tap the drum right ON each count. Listen first, then tap along!',rounds:4,
+ setup:function(r,st){
+  var bpm=[72,76,80,84][Math.min(r-1,3)], ms=60000/bpm; st.hits=[]; st.times=[]; st.done=false; st.expect=8;
+  var notes=thRhythmNotes(['q','q','q','q','q','q','q','q'],{bars:true,per:4});
+  return {call:'Tap the drum on every count!',sub:'Listen to the count-in (1 2 3 4), then tap along: 1 2 3 4, 1 2 3 4.',
+   html:staffSVG({clef:'treble',ts:'4/4',notes:notes,idp:'thL'})+'<div class="mjbig" id="thCount">get ready</div><div class="row" style="justify-content:center"><button class="mjdrum" id="thDrum">\uD83E\uDD41</button></div><div class="sub center" id="thBk"></div>',
+   wire:function(){ ac(); var t0=null; st.beats=[];
+     var seq=[]; for(var i=0;i<4;i++)seq.push({cnt:String(i+1),pre:true}); for(var j=0;j<8;j++)seq.push({cnt:String(j%4+1),i:j});
+     var t=600; seq.forEach(function(b,k){ later(function(){ if(!TH.on)return; drum(b.pre?'hat':'kick'); $('#thCount').textContent=(b.pre?'ready: ':'')+b.cnt; if(!b.pre){ st.beats.push(performance.now()); if(b.i>0){var p=document.getElementById('thL'+(b.i-1)); if(p)p.setAttribute('fill','#2a1f55');} var el=document.getElementById('thL'+b.i); if(el)el.setAttribute('fill','#c0392b'); } },t); t+=ms; });
+     later(function(){ if(!TH.on||st.done)return; st.done=true; var el=document.getElementById('thL7'); if(el)el.setAttribute('fill','#2a1f55');
+       var good=0; st.beats.forEach(function(bt){ if(st.times.some(function(x){return Math.abs(x-bt)<=Math.min(240,ms*.3);}))good++; });
+       $('#thBk').textContent=good+' of 8 counts on the beat';
+       if(good>=5)thOK(good===8?'Perfect beat! 8 for 8!':good+' on the beat. Solid!'); else thNo('Only '+good+' landed. Listen to the count-in, then tap with each kick.'); },t+260);
+     $('#thDrum').addEventListener('pointerdown',function(e){ e.preventDefault(); if(st.done)return; ac(); drum('snare'); punch($('#thDrum')); st.times.push(performance.now()); });
+   }};
+ }};
+TH_GAMES.countout={id:'countout',ch:'beat',emoji:'\uD83D\uDD22',name:'Count It Out',explain:'Quarter notes get 1 2 3 4. Tap the counts in order under each note. After 4, a new measure starts at 1.',
+ setup:function(r,st){
+  if(r<=3){ var n=r<=1?4:8; var notes=thRhythmNotes(new Array(n).fill('q'),{bars:true,per:4,labels:false}); st.seq=notes.map(function(x){return x.cnt;}); st.i=0;
+    notes.forEach(function(x){x.label='_';});
+    return {call:'Count the notes: tap 1 2 3 4 in order',sub:n>4?'Two measures. After 4 comes 1 again!':'One measure of quarter notes.',html:staffSVG({clef:'treble',ts:'4/4',notes:notes,idp:'thL'})+thPickHTML(['1','2','3','4'],'thcnt'),
+      wire:function(){ $$('#thGame .thcnt').forEach(function(b){ b.addEventListener('click',function(){ if(TH.busy||st.i>=st.seq.length)return; ac();
+        if(b.dataset.v===st.seq[st.i]){ drum('kick'); var el=document.getElementById('thL'+st.i); if(el){el.textContent=st.seq[st.i]; el.setAttribute('fill','#c0392b');} st.i++; if(st.i>=st.seq.length)thOK('Counted it out!'); }
+        else { punch(b); ellyChime(); st.miss=(st.miss||0)+1; if(st.miss>=3){ thNo('The next count was '+st.seq[st.i]+'. Counts go 1 2 3 4, then back to 1.'); } } }); }); }}; }
+  var per=4, gi=R(0,7); var nts=thRhythmNotes(['q','q','q','q','q','q','q','q'],{bars:true,per:4}); nts.forEach(function(x,i){ if(i===gi){x.hi=true;x.label='?';} else x.label=null; });
+  st.ans=String(gi%4+1);
+  return {call:'What count is the gold note?',sub:'Count from 1 at the start of its measure.',html:staffSVG({clef:'treble',ts:'4/4',notes:nts})+thPickHTML(['1','2','3','4']),wire:function(){thWirePick(st.ans,'Count '+st.ans+'!','It is count '+st.ans+'. Start at 1 after the bar line.');}};
+ }};
+TH_GAMES.countands={id:'countands',ch:'ands',emoji:'\uD83C\uDFB5',name:'Count the &s',explain:'Quarter notes get a number. Eighth-note pairs get a number AND an &. Tap the counts in order.',
+ setup:function(r,st){
+  var rh=[]; for(var b=0;b<4;b++)rh.push(r<=2?(b%2?'e':'q'):(Math.random()<.5?'e':'q')); if(rh.indexOf('e')<0)rh[R(0,3)]='e';
+  var notes=thRhythmNotes(rh,{labels:false}); st.seq=notes.map(function(x){return x.cnt;}); st.i=0; notes.forEach(function(x){x.label='_';});
+  return {call:'Count it: numbers AND &s',sub:'Tap \u25B6 to hear it first. Kick = number, tick = &.',html:staffSVG({clef:'treble',ts:'4/4',notes:notes,idp:'thL'})+thPlayBtn('\u25B6 Hear it','thHear')+thPickHTML(['1','2','3','4','&'],'thcnt'),
+    wire:function(){ $('#thHear').addEventListener('click',function(){ thPlayRhythm(notes,76,null); });
+      $$('#thGame .thcnt').forEach(function(bt){ bt.addEventListener('click',function(){ if(TH.busy||st.i>=st.seq.length)return; ac();
+        if(bt.dataset.v===st.seq[st.i]){ drum(st.seq[st.i]==='&'?'hat':'kick'); var el=document.getElementById('thL'+st.i); if(el){el.textContent=st.seq[st.i]; el.setAttribute('fill','#c0392b');} st.i++; if(st.i>=st.seq.length)thOK('1 & 2 & ... you got it!'); }
+        else { punch(bt); ellyChime(); st.miss=(st.miss||0)+1; if(st.miss>=3){ thNo('The next one was '+st.seq[st.i]+'. Eighth notes go number, then &.'); } } }); }); }};
+ }};
+TH_GAMES.hearpick={id:'hearpick',ch:'ands',emoji:'\uD83D\uDC42',name:'Hear & Pick',explain:'Listen to the rhythm Boom plays. Which written rhythm matches? Kick = number, tick = &.',
+ setup:function(r,st){
+  var mk=function(){ var a=[]; for(var b=0;b<4;b++)a.push(Math.random()<.5?'e':'q'); return a; };
+  var A=mk(), B=mk(); while(B.join()===A.join())B=mk(); st.ans=pick(['A','B']); var target=st.ans==='A'?A:B;
+  var nA=thRhythmNotes(A,{labels:r<=2}), nB=thRhythmNotes(B,{labels:r<=2});
+  return {call:'Which rhythm did you hear?',sub:'Tap \u25B6 as many times as you like, then pick A or B.',
+    html:thPlayBtn('\u25B6 Play the rhythm','thHear')+'<div class="sub center"><b>A</b></div>'+staffSVG({clef:'treble',ts:'4/4',notes:nA,h:110})+'<div class="sub center"><b>B</b></div>'+staffSVG({clef:'treble',ts:'4/4',notes:nB,h:110})+thPickHTML(['A','B']),
+    wire:function(){ var tn=thRhythmNotes(target); var play=function(){ thPlayRhythm(tn,76,null); }; $('#thHear').addEventListener('click',play); later(play,500); thWirePick(st.ans,'That was '+st.ans+'!','It was '+st.ans+'. Listen for the quick tick-tick of the eighth notes.'); }};
+ }};
+TH_GAMES.fillmeasure={id:'fillmeasure',ch:'timesig',emoji:'\uD83E\uDDF1',name:'Fill the Measure',explain:'Read the top number. Add notes until the measure has exactly that many counts, then tap BAR LINE. Too many and it spills!',
+ setup:function(r,st){
+  var ts=pick(r<=2?['4/4','3/4']:['4/4','3/4','2/4']), need=+ts.split('/')[0]; st.need=need; st.rh=[]; st.spill=false;
+  var draw=function(){ var notes=thRhythmNotes(st.rh); var cnt=st.rh.length; $('#thStaff').innerHTML=staffSVG({clef:'treble',ts:ts,notes:notes,endBar:false}); $('#thFill').textContent=cnt+' of '+need+' counts'; };
+  return {call:'Fill a measure of '+ts,sub:'Top number '+need+' = '+need+' counts. Quarter = 1 count. Two eighths = 1 count.',
+    html:'<div id="thStaff"></div><div class="mjbig" id="thFill" style="font-size:24px"></div><div class="row" style="justify-content:center;gap:10px;flex-wrap:wrap"><button class="choice thadd" data-d="q" style="font-size:16px">+ quarter<br><small>1 count</small></button>'+(r>=3?'<button class="choice thadd" data-d="e" style="font-size:16px">+ two eighths<br><small>1 count</small></button>':'')+'<button class="choice" id="thUndo" style="font-size:16px">\u21A9 undo</button></div><div class="row" style="justify-content:center;margin-top:10px"><button class="mjcymbal" id="thBar">\uD83C\uDFC1<br>BAR LINE</button></div>',
+    wire:function(){ draw();
+      $$('#thGame .thadd').forEach(function(b){ b.addEventListener('click',function(){ if(TH.busy)return; ac(); st.rh.push(b.dataset.d); drum(b.dataset.d==='e'?'hat':'kick'); draw(); if(st.rh.length>need){ $('#thFill').textContent='Too many! '+st.rh.length+' counts spill over. Undo one.'; ellyChime(); } }); });
+      $('#thUndo').addEventListener('click',function(){ if(TH.busy)return; ac(); st.rh.pop(); drum('hat'); draw(); });
+      $('#thBar').addEventListener('click',function(){ if(TH.busy)return; ac(); drum('clap'); var n=st.rh.length;
+        if(n===need){ thPlayRhythm(thRhythmNotes(st.rh),84,null); thOK('Exactly '+need+' counts! Full measure.'); }
+        else if(n<need) thNo('Only '+n+' counts. The top number says '+need+'.');
+        else thNo(n+' counts is too many for '+ts+'. It needs exactly '+need+'.'); });
+    }};
+ }};
+TH_GAMES.topnum={id:'topnum',ch:'timesig',emoji:'\uD83D\uDD22',name:'Top Number',explain:'Count the counts in the full measure. That is the top number of the time signature.',
+ setup:function(r,st){
+  var need=pick(r<=2?[2,3,4]:[2,3,4]); var rh=[]; for(var i=0;i<need;i++)rh.push(r>=4&&Math.random()<.4?'e':'q');
+  st.ans=need+'/4';
+  return {call:'This measure is full. What time signature?',sub:'Count the counts. Two eighths hold hands = 1 count.',html:staffSVG({clef:'treble',notes:thRhythmNotes(rh,{labels:r<=2})})+thPlayBtn('\u25B6 Hear it','thHear')+thPickHTML(['2/4','3/4','4/4']),
+    wire:function(){ var tn=thRhythmNotes(rh); $('#thHear').addEventListener('click',function(){thPlayRhythm(tn,84,null);}); thWirePick(st.ans,need+' counts, so '+st.ans+'!','It has '+need+' counts, so the top number is '+need+'.'); }};
+ }};
+
+/* ---------- SCREEN + FLOW ---------- */
+function openTheory(){ sTap(); thS(); TH.on=true; TH.mode='menu';
+  if(!S.flags.metTheory){ S.flags.metTheory=true; save();
+    show('scr-theory'); thMenu();
+    modal('<div class="center">'+ellySVG(80)+'<h2>\uD83C\uDFBC Elly\u2019s Music Class</h2></div>'+
+      '<div class="speak"><b>Elly:</b> \u201CThis is where we learn how music is WRITTEN, the same stuff from music class at school. Clefs, counting, time signatures. Nothing is locked. Want a quick Ear Check first so I know where to start you? No grades, I promise.\u201D</div>'+
+      '<button class="btn wide" onclick="closeModal();thEarStart();">\uD83D\uDC42 Ear Check (2 minutes)</button>'+
+      '<button class="btn wide ghost" onclick="closeModal()">Skip, show me the chapters</button>');
+    return; }
+  show('scr-theory'); thMenu();
+}
+function thExit(){ TH.on=false; TH.mode=null; clearTimers(); renderHub(); show('scr-hub'); }
+function thStars(gid){ return thS().stars[gid]||0; }
+function thChStars(ch){ return ch.games.reduce(function(a,g){return a+thStars(g);},0); }
+function thProgressText(){ var t=thS(); var done=TH_CH.filter(function(c){return t.lessons[c.id];}).length; var st=TH_CH.reduce(function(a,c){return a+thChStars(c);},0); return done+'/'+TH_CH.length+' chapters \u00B7 \u2B50 '+st; }
+function thMenu(){ TH.mode='menu'; TH.game=null; var t=thS();
+  var h='<div class="center">'+ellySVG(64)+'<h2 style="margin:4px 0 2px">\uD83C\uDFBC Elly\u2019s Music Class</h2><div class="sub">'+thProgressText()+'</div></div>';
+  h+='<div class="ellyhost"><b>Elly:</b> \u201C'+(t.placed?(t.start!=null&&!t.lessons[TH_CH[t.start].id]?'Your Ear Check says start at <b>'+TH_CH[t.start].name+'</b>. But pick anything you like!':'Pick a chapter. Lessons first, then the games. Replay anything, any time.'):'Pick any chapter, or take the Ear Check so I can point you to the right one.')+'\u201D</div>';
+  TH_CH.forEach(function(c,i){
+    var star=thChStars(c), max=c.games.length*3, done=!!t.lessons[c.id], rec=(t.placed&&t.start===i&&!done), known=!!t.known[c.id];
+    h+='<div class="card thch'+(rec?' threc':'')+'" style="padding:10px 12px">'+
+      '<div class="row" style="justify-content:space-between;align-items:center;gap:8px"><div><b style="font-size:17px">'+(i+1)+'. '+c.emoji+' '+c.name+'</b><div class="sub" style="text-align:left;margin:0">'+c.blurb+(known?' \u00B7 <span style="color:#8ef0c9">\u2714 you knew this</span>':'')+'</div></div>'+
+      '<div style="text-align:right;white-space:nowrap"><div style="color:#ffd158;font-weight:800">\u2B50 '+star+'/'+max+'</div>'+(rec?'<div style="font-size:11px;color:#ffe9b0;font-weight:800">START HERE</div>':'')+'</div></div>'+
+      '<div class="row" style="gap:6px;margin-top:8px;flex-wrap:wrap"><button class="btn small'+(done?' ghost':'')+'" onclick="thLesson(\''+c.id+'\')">\uD83D\uDCD6 '+(done?'Replay lesson':'Lesson')+'</button>'+
+      c.games.map(function(g){var G=TH_GAMES[g]; return '<button class="btn small ghost" onclick="thStartGame(\''+g+'\')">'+G.emoji+' '+G.name+' '+(thStars(g)?'\u2B50'.repeat(thStars(g)):'')+'</button>';}).join('')+'</div></div>';
+  });
+  h+='<button class="btn wide ghost" style="margin-top:6px" onclick="thEarStart()">\uD83D\uDC42 '+(t.placed?'Redo the Ear Check':'Ear Check: where should I start?')+'</button>';
+  $('#thBody').innerHTML=h; $('#thChip').textContent='\uD83C\uDFBC Music Class';
+}
+/* lesson stepper: say + vis + (pick | hear | play | next) */
+function thLesson(id){ sTap(); clearTimers(); var c=TH_BY[id]; if(!c)return; TH.mode='lesson'; TH.ch=c; TH.step=0; $('#thChip').textContent=c.emoji+' '+c.name; thStepDraw(); }
+function thStepDraw(){ var c=TH.ch, i=TH.step, st=c.steps[i], last=(i>=c.steps.length-1);
+  var h='<div class="center">'+ellyMemberPair(c.member)+'</div>'+
+    '<div class="lessprog">'+c.steps.map(function(_,k){return '<i class="'+(k<=i?'on':'')+'"></i>';}).join('')+'</div>'+
+    (st.vis?'<div class="center" style="margin:8px 0">'+st.vis+'</div>':'')+
+    '<div class="speak"><b>Elly:</b> \u201C'+nameify(st.say)+'\u201D</div>';
+  if(st.hear)h+='<div class="row" style="justify-content:center;gap:8px;flex-wrap:wrap">'+st.hear.map(function(x,k){return '<button class="btn small thhear" data-k="'+k+'">'+x.label+'</button>';}).join('')+'</div>';
+  if(st.play)h+=thPlayBtn('\u25B6 Hear it','thPlayB');
+  if(st.pick)h+=thPickHTML(st.pick,'thlp')+'<div id="thGood" class="ellyhost" style="display:none"></div>';
+  h+='<button class="btn wide" id="thNext" style="margin-top:12px;'+(st.pick?'display:none;':'')+(last?'background:linear-gradient(180deg,#7dff8a,#4ccf6a);color:#12331c':'')+'">'+(last?'\u25B6 Try the game!':'Next \u2192')+'</button>';
+  h+='<button class="btn wide ghost" onclick="thMenu()">Back to chapters</button>';
+  $('#thBody').innerHTML=h; window.scrollTo(0,0);
+  $$('#thBody .thhear').forEach(function(b){ b.addEventListener('click',function(){ ac(); st.hear[+b.dataset.k].fn(); punch(b); }); });
+  var pb=$('#thPlayB'); if(pb)pb.addEventListener('click',function(){ clearTimers(); thPlayRhythm(thRhythmNotes(st.play.rh,{bars:true,per:st.play.per}),st.play.bpm,'thL'); });
+  $('#thNext').addEventListener('click',function(){ ac(); clearTimers(); if(last)thLessonDone(); else { tone(ntf(64+i*2),.1,'triangle',.18); TH.step++; thStepDraw(); } });
+  if(st.pick)$$('#thBody .thlp').forEach(function(b){ b.addEventListener('click',function(){ ac(); var v=b.dataset.v;
+    if(v===st.ans){ b.classList.add('good'); drum('clap'); $$('#thBody .thlp').forEach(function(x){x.disabled=true;}); var g=$('#thGood'); g.style.display=''; g.innerHTML='<b>Elly:</b> \u201C'+st.good+'\u201D'; $('#thNext').style.display=''; }
+    else { punch(b); ellyChime(); b.disabled=true; b.classList.add('badc'); var good=$$('#thBody .thlp').filter(function(x){return x.dataset.v===st.ans;})[0]; if(good){ good.style.boxShadow='0 0 0 3px #ffd158'; } } }); });
+}
+function thLessonDone(){ var c=TH.ch, t=thS(), first=!t.lessons[c.id]; t.lessons[c.id]=true; save(); sFanfare(); confetti(14); if(first){ addNotes(5); toast('\uD83D\uDCD6 Chapter done! +5 \uD83C\uDFB5'); } thStartGame(c.games[0]); }
+/* games */
+function thStartGame(gid){ sTap(); clearTimers(); var g=TH_GAMES[gid]; if(!g)return; TH.mode='game'; TH.game=g; TH.round=0; TH.score=0; TH.busy=false; $('#thChip').textContent=g.emoji+' '+g.name;
+  if(!S.flags['thcoach_'+gid]){ S.flags['thcoach_'+gid]=true; save();
+    modal('<div class="center">'+ellySVG(64)+'<h2>'+g.emoji+' '+g.name+'</h2></div><div class="speak"><b>Elly:</b> \u201C'+g.explain+'\u201D</div><button class="btn wide" id="thGo">Let\u2019s go!</button>');
+    $('#thGo').addEventListener('click',function(){ closeModal(); thNext(); }); return; }
+  thNext();
+}
+function thRounds(){ return TH.game.rounds||6; }
+function thNext(){ if(!TH.on||TH.mode!=='game')return; clearTimers(); TH.round++; TH.busy=false; TH.st={}; var g=TH.game, r=g.setup(TH.round,TH.st);
+  $('#thBody').innerHTML='<div class="row" style="justify-content:space-between;align-items:center"><span class="chip">Round '+TH.round+'/'+thRounds()+'</span><span class="chip">\u2B50 '+TH.score+'</span><span><button class="btn ghost small" id="thRetry" title="fresh try">\u21BB</button> <button class="btn ghost small" id="thHelp">\u2753</button></span></div>'+
+    '<div class="thcall"><div class="thcallmain">'+r.call+'</div>'+(r.sub?'<div class="thcallsub">'+r.sub+'</div>':'')+'</div>'+
+    '<div id="thGame">'+r.html+'</div><div class="mjmsg center" id="thMsg" style="min-height:24px;font-weight:800;color:#ffe9b0;margin-top:8px"></div>'+
+    '<button class="btn wide ghost" style="margin-top:10px" onclick="thMenu()">Back to chapters</button>';
+  window.scrollTo(0,0); if(r.wire)r.wire();
+  $('#thRetry').addEventListener('click',function(){ if(TH.busy)return; sTap(); TH.round--; thNext(); toast('\u21BB Fresh try, same round!'); });
+  $('#thHelp').addEventListener('click',function(){ sTap(); clearTimers(); modal('<div class="center">'+ellySVG(64)+'<h2>'+g.emoji+' '+g.name+'</h2></div><div class="speak"><b>Elly:</b> \u201C'+g.explain+'\u201D</div><button class="btn wide" onclick="closeModal()">Got it</button><button class="btn wide ghost" onclick="closeModal();thLesson(\''+g.ch+'\')">\uD83D\uDCD6 Replay the lesson</button>'); });
+}
+function thOK(msg){ if(TH.busy||TH.mode!=='game')return; TH.busy=true; TH.score++; addNotes(2); sCorrect(1); confetti(10); $('#thMsg').textContent=msg||'Nailed it!'; later(function(){ if(!TH.on)return; if(TH.round>=thRounds())thEnd(); else thNext(); },1600); }
+function thNo(msg){ if(TH.busy||TH.mode!=='game')return; TH.busy=true; ellyChime(); $('#thMsg').textContent=msg||'Almost! Next one is yours.'; later(function(){ if(!TH.on)return; if(TH.round>=thRounds())thEnd(); else thNext(); },2400); }
+function thEnd(){ clearTimers(); var g=TH.game, n=thRounds(), sc=TH.score, stars=sc>=n?3:(sc>=Math.ceil(n*.6)?2:1), t=thS(); var prev=t.stars[g.id]||0; if(stars>prev)t.stars[g.id]=stars; save();
+  TH.mode='menu'; sFanfare(); confetti(20);
+  modal('<div class="center">'+ellySVG(80)+'<h2>'+g.emoji+' '+g.name+'</h2><div style="font-size:34px">'+'\u2B50'.repeat(stars)+'\u2606'.repeat(3-stars)+'</div><div class="sub">'+sc+' of '+n+' rounds</div></div>'+
+    '<div class="speak"><b>Elly:</b> \u201C'+(stars===3?'Perfect! You really know this one.':stars===2?'Nice work! One more run for three stars?':'Good try! The lesson is always there if you want another look.')+'\u201D</div>'+
+    '<button class="btn wide" onclick="closeModal();thStartGame(\''+g.id+'\')">Play again</button>'+
+    '<button class="btn wide ghost" onclick="closeModal();thMenu()">Back to chapters</button>');
+  thMenu();
+}
+/* ---------- EAR CHECK: placement, no grades, points to a starting chapter ---------- */
+var TH_EAR=[
+ {ch:0,say:'Is this note on a LINE or in a SPACE?',vis:function(){return staffSVG({notes:[{d:'q',pos:4}]});},pick:['Line','Space'],ans:'Line'},
+ {ch:1,say:'Which clef is this?',vis:function(){return staffSVG({clef:'bass'});},pick:['Treble','Bass'],ans:'Bass'},
+ {ch:1,say:'A tuba plays very LOW notes. Which clef?',vis:function(){return '<div class="row" style="justify-content:center;gap:8px">'+staffSVG({clef:'treble',w:140,h:100})+staffSVG({clef:'bass',w:140,h:100})+'</div>';},pick:['Treble','Bass'],ans:'Bass'},
+ {ch:2,say:'How many counts does a quarter note get?',vis:function(){return staffSVG({clef:'treble',notes:[{d:'q',pos:4}]});},pick:['1','2','4'],ans:'1'},
+ {ch:2,say:'What count is the gold note?',vis:function(){return staffSVG({clef:'treble',ts:'4/4',notes:[{d:'q',pos:4,label:'1'},{d:'q',pos:4,label:'2'},{d:'q',pos:4,hi:true,label:'?'},{d:'q',pos:4,label:'4'}]});},pick:['2','3','4'],ans:'3'},
+ {ch:3,say:'What count goes under the gold note?',vis:function(){return staffSVG({clef:'treble',ts:'4/4',notes:[{d:'q',pos:4,label:'1'},{d:'e',pos:4,beam:'start',label:'2'},{d:'e',pos:4,beam:'end',label:'?',hi:true},{d:'q',pos:4,label:'3'},{d:'q',pos:4,label:'4'}]});},pick:['&','3','2'],ans:'&'},
+ {ch:4,say:'In this time signature, how many counts in a measure?',vis:function(){return staffSVG({clef:'treble',ts:'3/4'});},pick:['2','3','4'],ans:'3'}
+];
+function thEarStart(){ sTap(); clearTimers(); closeModal(); TH.on=true; TH.mode='ear'; TH.ear={i:0,right:{}}; show('scr-theory'); $('#thChip').textContent='\uD83D\uDC42 Ear Check'; thEarDraw(); }
+function thEarDraw(){ var e=TH.ear, q=TH_EAR[e.i];
+  $('#thBody').innerHTML='<div class="center">'+ellySVG(60)+'<div class="sub">Ear Check \u00B7 '+(e.i+1)+' of '+TH_EAR.length+' \u00B7 no grades, just a peek</div></div>'+
+    '<div class="center" style="margin:8px 0">'+q.vis()+'</div><div class="speak"><b>Elly:</b> \u201C'+q.say+'\u201D</div>'+thPickHTML(q.pick,'thear')+
+    '<button class="btn wide ghost" style="margin-top:12px" onclick="thEarSkip()">Not sure, skip this one</button>';
+  window.scrollTo(0,0);
+  $$('#thBody .thear').forEach(function(b){ b.addEventListener('click',function(){ ac(); if(b.dataset.v===q.ans){ b.classList.add('good'); drum('clap'); e.right[e.i]=true; } else { b.classList.add('badc'); ellyChime(); } later(thEarNext,500); }); });
+}
+function thEarSkip(){ sTap(); thEarNext(); }
+function thEarNext(){ var e=TH.ear; e.i++; if(e.i>=TH_EAR.length){ thEarEnd(); return; } thEarDraw(); }
+function thEarEnd(){ var e=TH.ear, t=thS(); var known={}; TH_CH.forEach(function(c,ci){ var qs=[]; TH_EAR.forEach(function(q,qi){ if(q.ch===ci)qs.push(qi); }); if(qs.length&&qs.every(function(qi){return e.right[qi];}))known[c.id]=true; });
+  var start=0; for(var k=0;k<TH_CH.length;k++){ if(!known[TH_CH[k].id]){ start=k; break; } start=k; }
+  t.placed=true; t.start=start; TH_CH.forEach(function(c){ if(known[c.id])t.known[c.id]=true; }); save();
+  var kn=TH_CH.filter(function(c){return known[c.id];}).map(function(c){return c.name;});
+  TH.mode='menu';
+  modal('<div class="center">'+ellySVG(80)+'<h2>Ear Check done!</h2></div>'+
+    '<div class="speak"><b>Elly:</b> \u201C'+(kn.length?'You already know '+kn.join(' and ')+'! ':'Everything here is brand new to you, and that is perfect. ')+'Let\u2019s start at <b>'+TH_CH[start].name+'</b>. Every chapter stays open, so wander anywhere you like.\u201D</div>'+
+    '<button class="btn wide" onclick="closeModal();thLesson(\''+TH_CH[start].id+'\')">\uD83D\uDCD6 Start '+TH_CH[start].name+'</button>'+
+    '<button class="btn wide ghost" onclick="closeModal();thMenu()">See all chapters</button>');
+  thMenu();
+}
+ELLY_HINTS['scr-theory']='This is my Music Class! Pick a chapter, do the lesson, then play its games for stars. Kick drum = a number, tick = an &. Nothing is locked and you can replay anything.';
+ACH.push({id:'theory',cat:'Mastery',icon:'\uD83C\uDFBC',name:'Music Student',desc:'Music Class games with 2+ stars',tiers:[{need:2,n:15,g:0},{need:5,n:25,g:1},{need:9,n:50,g:2}],cur:function(){ var t=thS(); return Object.keys(TH_GAMES).filter(function(g){return (t.stars[g]||0)>=2;}).length; }});
+var _mt=$('#musicTeaser'); if(_mt)_mt.addEventListener('click',openTheory);
+var _thBack=$('#thBack'); if(_thBack)_thBack.addEventListener('click',function(){ if(TH.mode==='lesson'||TH.mode==='game'){ clearTimers(); thMenu(); } else thExit(); });
+var _rh=renderHub; renderHub=function(){ _rh(); var el=$('#thProg'); if(el)el.textContent='\u00B7 '+thProgressText(); };
+Object.assign(window.BQ,{TH:TH,TH_CH:TH_CH,TH_GAMES:TH_GAMES,TH_EAR:TH_EAR,openTheory:openTheory,thMenu:thMenu,thLesson:thLesson,thStartGame:thStartGame,thNext:thNext,thOK:thOK,thNo:thNo,thEnd:thEnd,thEarStart:thEarStart,thEarNext:thEarNext,thEarEnd:thEarEnd,staffSVG:staffSVG,thRhythmNotes:thRhythmNotes,thExit:thExit,thS:thS});
+
 </script>
 
 </body>
