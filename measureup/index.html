@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Measure Up">
-<title>Measure Up v0.61</title>
+<title>Measure Up v0.64</title>
 <style>
 :root{
   --bg:#0e0b1e; --panel:#1d1636; --panel2:#28204a; --ink:#f4f0ff; --dim:#a89cd8;
@@ -309,6 +309,14 @@ input.nm{
 .lessprog{display:flex;gap:6px;justify-content:center;margin:8px 0}
 .lessprog i{width:8px;height:8px;border-radius:50%;background:#372a68;transition:background .2s}
 .lessprog i.on{background:#9d7cff}
+.achitem{background:#241c48;border:1px solid #372a68;border-radius:14px;padding:10px 12px;margin:8px 0}
+.achbar{height:10px;border-radius:6px;background:#17123a;overflow:hidden;margin-top:7px}
+.achbar i{display:block;height:100%;background:linear-gradient(90deg,#9d7cff,#ff8fd3)}
+.achmed{font-size:15px;letter-spacing:2px;color:#6c5fa8}
+.achclaim{background:linear-gradient(180deg,#7dff8a,#4ccf6a);color:#12331c;border:none;border-radius:12px;padding:8px 12px;font-weight:800;font-family:inherit;font-size:13px;box-shadow:0 3px 0 #2e7d47;cursor:pointer}
+.achclaim:active{transform:translateY(2px);box-shadow:0 1px 0 #2e7d47}
+.achcat{color:#b7a8e8;font-weight:800;margin:16px 0 2px;font-size:13px;text-transform:uppercase;letter-spacing:1px}
+.mgrrow{display:flex;gap:10px;align-items:center}
 .btlband{display:flex;justify-content:center;gap:6px;margin:6px 0 2px;flex-wrap:wrap}
 .btlmember{text-align:center;opacity:.45;transition:opacity .25s,transform .25s}
 .btlmember.active{opacity:1;transform:translateY(-4px) scale(1.12)}
@@ -629,6 +637,7 @@ svg .charg{will-change:transform}
   <p class="sub" style="text-align:left;margin-top:-2px">Your band hangs out here. <b>Jam</b> with them to train, take a <b>placement audition</b>, and pass their <b>Proofs</b> to rank up and grow the band!</p>
   <div class="bandgrid" id="bandGrid"></div>
   <div class="rivalteaser" id="rivalteaser" onclick="openBattle()">⚡ Battle of the Bands <span id="rtProg"></span><div style="font-size:11px;font-weight:600;opacity:.85;margin-top:2px">tap for the story and your goals</div></div>
+  <div class="rivalteaser" id="mgrTeaser" onclick="openAch()" style="border-color:#ffd15866">📋 Manny’s Achievement Wall <span id="mgrBadge" style="font-weight:700;color:#ffd158"></span><div style="font-size:11px;font-weight:600;opacity:.85;margin-top:2px">medals, streaks, and a daily challenge</div></div>
 </div>
 
 <!-- BEAT BUILDER (Boom's jam) -->
@@ -854,6 +863,15 @@ svg .charg{will-change:transform}
   <p class="sub center" id="showCap">Pick a song. The band knows them all.</p>
   <div id="showList"></div>
 </div>
+<div class="scr" id="scr-ach">
+  <div class="row" style="align-items:center;gap:10px;margin-bottom:4px">
+    <button class="btn small" onclick="show('scr-hub')">← Back</button>
+    <h2 style="margin:0;flex:1">📋 The Wall</h2>
+    <div id="achMoney" style="font-weight:800;font-size:14px"></div>
+  </div>
+  <div class="mgrrow" style="margin:4px 0 6px"><div id="mannyArt"></div><p class="sub" style="text-align:left;margin:0">Manny tracks every medal, streak, and show. Green button means a reward is ready!</p></div>
+  <div id="achWrap"></div>
+</div>
 <div class="scr" id="scr-battle">
   <div class="row" style="justify-content:space-between;align-items:center">
     <button class="btn ghost backbtn" id="btnBattleExit">← Back</button>
@@ -897,14 +915,14 @@ svg .charg{will-change:transform}
 <div id="toast"></div>
 <button id="homeBtn" onclick="goHome()" aria-label="Back to Garage">🏠</button>
 <button id="ellyBtn" onclick="openEllyHelp()" aria-label="Ask Elly for help"></button>
-<div id="vbadge">v0.61 · Sep 1</div>
+<div id="vbadge">v0.64 · Sep 2</div>
 
 <script>
 'use strict';
 /* ============ UTILS ============ */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const VERSION='v0.61 · Sep 1';
+const VERSION='v0.64 · Sep 2';
 const RM=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -917,11 +935,12 @@ function clearTimers(){TIMERS.forEach(clearTimeout);TIMERS=[];}
 const KEY='bq_save_v1';
 const DEF={
   v:1, creature:null, notes:0, gold:0,
-  skills:{add:1,sub:1,mul:1,frac:1,clock:1,cal:1,meas:1,div:1,neg:1,skip:1,money:1,round:1,patterns:1,compare:1,double:1},
+  skills:{add:1,sub:1,mul:1,frac:1,clock:1,cal:1,meas:1,div:1,neg:1,skip:1,money:1,round:1,patterns:1,compare:1,double:1,odd:1},
   auditioned:{}, band:{}, owned:[], proofs:{}, met:{}, plays:{}, memberNames:{}, memberGear:{}, cleared:{},
   equipped:{drumskin:'classic'},
   flags:{soundcheckOffered:false,introDone:false,coach_kc:false,coach_arc:false,coach_rs:false,coach_gg:false,coach_tt:false,coach_st:false,coach_hp:false,coach_gig:false,lesson_round:false},
-  stats:{answers:0,correct:0,bestStreak:0,rounds:0,shows:0}
+  stats:{answers:0,correct:0,bestStreak:0,rounds:0,shows:0,battleWins:0},
+  ach:{claimed:{}}
 };
 let S;
 function load(){
@@ -939,6 +958,8 @@ function load(){
     S.memberGear=Object.assign({},S.memberGear||{});
     S.cleared=Object.assign({},S.cleared||{});
     if(!S.flags.roscoeCore){ S.flags.roscoeCore=true; S.band.roscoe=true; S.auditioned.roscoe=true; if(!S.skills.patterns)S.skills.patterns=1; }
+    if(!S.ach)S.ach={claimed:{}};
+    if(S.stats&&S.stats.battleWins==null)S.stats.battleWins=0;
   }catch(e){ S=JSON.parse(JSON.stringify(DEF)); }
 }
 function save(){ try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){} }
@@ -1077,7 +1098,8 @@ const ELLY_HINTS={
  'scr-mj':'A mini-game! Read what the bandmate asks at the top, then tap to answer. See the ↻ button? That gives you a fresh try. The ❓ replays how to play!',
  'scr-quiz':'Answer at your own pace. A wrong answer is never a big deal, you still earn Notes for trying. I will chime softly so you know to look again.',
  'scr-battle':'Trade Solos! The rival band calls out, and you send the bandmate whose skill fits. I light up who I would pick. Answer right to win the crowd!',
- 'scr-station':'Echo Beats! Tap the pads and lay down a beat. No score here, just make sounds you like.'
+ 'scr-station':'Echo Beats! Tap the pads and lay down a beat. No score here, just make sounds you like.',
+ 'scr-ach':'Manny’s Wall! Every medal, streak, and show you play goes up here. A green button means a reward is ready, tap Claim! And peek at the daily challenge, it changes every single day.'
 };
 function ellyTip(){
   let id='scr-hub'; $$('.scr').forEach(sc=>{ if(sc.classList.contains('on'))id=sc.id; });
@@ -1218,6 +1240,7 @@ function show(id){
   $$('.scr').forEach(s=>s.classList.toggle('on',s.id===id));
   const hb=$('#homeBtn'); if(hb)hb.classList.toggle('show', id!=='scr-hub'&&id!=='scr-title'&&id!=='scr-creator'&&id!=='scr-intro');
   const eb=$('#ellyBtn'); if(eb){ if(!eb.dataset.init){ eb.innerHTML=ellySVG(40); eb.dataset.init='1'; } eb.classList.toggle('show', id!=='scr-title'&&id!=='scr-creator'&&id!=='scr-intro'); }
+  if(id==='scr-hub'){ const mb=$('#mgrBadge'); if(mb&&typeof achClaimableCount==='function'){ const c=achClaimableCount(); mb.textContent=c>0?('· 🔔 '+c+' to claim!'):''; } }
   var _ep=document.getElementById('ellyPop'); if(_ep&&id!=='scr-hub')_ep.remove();
   if(id==='scr-hub')later(()=>ellyPop(),450);
   window.scrollTo(0,0);
@@ -1299,6 +1322,7 @@ function memberSVG(id,sz){
   if(id==='roscoe')return countryCharSVG('banjo',sz);
   if(id==='bigtub')return countryCharSVG('washtub',sz);
   if(id==='shimmer')return ambientCharSVG('glock',sz);
+  if(id==='axel')return rockCharSVG('guitar',sz);
   /* v0.24 character pass: everyone has arms, hands, legs, and visibly PLAYS their
      instrument. Garrett's art direction: "how could they hug, let alone play?" */
   sz=sz||120;
@@ -1503,7 +1527,7 @@ function memberSVG(id,sz){
 }
 
 /* ============ BAND DATA ============ */
-const CONCEPT_NAMES={add:'Addition',sub:'Subtraction',mul:'Multiplication',frac:'Fractions',clock:'Clocks & Time',cal:'Days & Months',meas:'Measurement',div:'Division',neg:'Negative Numbers',skip:'Skip Counting',money:'Money & Coins',round:'Rounding & Estimating',patterns:'Patterns & Sequences',compare:'Greater & Less Than',double:'Doubling & Halving'};
+const CONCEPT_NAMES={add:'Addition',sub:'Subtraction',mul:'Multiplication',frac:'Fractions',clock:'Clocks & Time',cal:'Days & Months',meas:'Measurement',div:'Division',neg:'Negative Numbers',skip:'Skip Counting',money:'Money & Coins',round:'Rounding & Estimating',patterns:'Patterns & Sequences',compare:'Greater & Less Than',double:'Doubling & Halving',odd:'Odd & Even'};
 const BAND=[
  {id:'boom',name:'Boom',emoji:'🥁',title:'Drummer',concept:'add',color:'#ff5d5d',
   cfg:{body:'round',col:'#ff5d5d',eyes:'dot',extra:'horns'},
@@ -1579,7 +1603,12 @@ const BAND=[
   cfg:{body:'round',col:'#a8e6d8',eyes:'dot',extra:'none'},
   bio:'The bars on my glockenspiel get shorter as the notes go higher. Half the bar, one octave up. Doubling and halving is the sound I make.',
   lines:['Hear that? Same note, doubled.','Ring it once and let it fade. Half, then half again.','The Drift was lovely, but nobody ever let me play LOUD.'],
-  dreams:['Nimbus wanted every note soft. You let me shimmer. That is why I drifted over.','Every octave is a doubling. The whole instrument is math you can hear.','Let a note fade all the way to silence. That is halving, forever.','My dream is a song that doubles up and up until it sparkles.','This band lets the small bars sing too. I am staying.']}
+  dreams:['Nimbus wanted every note soft. You let me shimmer. That is why I drifted over.','Every octave is a doubling. The whole instrument is math you can hear.','Let a note fade all the way to silence. That is halving, forever.','My dream is a song that doubles up and up until it sparkles.','This band lets the small bars sing too. I am staying.']},
+ {id:'axel',name:'Axel',emoji:'🎸',title:'Electric Guitar',concept:'odd',color:'#ff6b5e',recruit:true,
+  cfg:{body:'round',col:'#ff6b5e',eyes:'dot',extra:'none'},
+  bio:'Count it in: 1, 2, 3, 4. Kick on the odd beats, snare on the even. I live on the backbeat, and the backbeat is even numbers, baby.',
+  lines:['ONE two THREE four. Hear which beats are mine?','Check the last digit. That is the whole trick.','The Voltage only played loud. A real rocker knows both.'],
+  dreams:['Howl wanted every song at full blast. You let a song breathe. That is why I plugged in over here.','Odd, even, odd, even. A drummer and I can talk all night without words.','My dream riff hits ONLY the even beats, and the crowd claps the odd ones for me.','Loud is easy. Loud at the RIGHT time, that is rock and roll.','This band counts together. I am staying.']}
 ];
 const BY_ID={}; BAND.forEach(m=>BY_ID[m.id]=m);
 /* Custom member names: every bandmate is renameable. mName() is the display
@@ -1811,7 +1840,7 @@ function ellyMemberPair(id){
   '</div>';
 }
 function battleGoals(){
-  var CC=['add','sub','mul','frac','clock','cal','meas','div','neg','skip','money','round','patterns','compare','double'];
+  var CC=['add','sub','mul','frac','clock','cal','meas','div','neg','skip','money','round','patterns','compare','double','odd'];
   var coreN=BAND.filter(function(m){return !m.recruit;});
   var joined=coreN.filter(function(m){return S.band[m.id];}).length;
   var golds=CC.filter(function(c){return tierOf(Math.floor(lvlOf(c)))>=2;}).length;
@@ -1907,6 +1936,12 @@ var DRIFT_CREW={ name:'The Drift', members:[
   {id:'chimes',emoji:'🎐',name:'Zephyr',line:'Can you drift with the wind?'},
   {id:'glock',emoji:'🔔',name:'Shimmer',star:true,line:'Half the bar, twice as high. Hear it?'}
 ]};
+var VOLTAGE_CREW={ name:'The Voltage', members:[
+  {id:'howl',emoji:'🎤',name:'Howl',line:'ARE YOU READY TO COUNT?!'},
+  {id:'crash',emoji:'🥁',name:'Crash',line:'One TWO three FOUR!'},
+  {id:'thud',emoji:'🎸',name:'Thud',line:'Feel it in your teeth yet?'},
+  {id:'guitar',emoji:'🎸',name:'Axel',star:true,line:'The snare hits the EVEN beats. Keep up.'}
+]};
 /* rival bands in order; the battle runs whichever recruit you have not won yet */
 var RIVALS=[
   {key:'hoedown',name:'The Hoedown',crew:COUNTRY_CREW,recruit:'bigtub',skill:'compare',impress:'🪣',flag:'country_beaten',draw:countryCharSVG,
@@ -1920,7 +1955,13 @@ var RIVALS=[
    winLine:'You held the room AND matched every octave call. Shimmer packed up the glockenspiel and drifted over to your side.',
    newLine:'New bandmate: Shimmer on Glockenspiel. New skill: Doubling &amp; Halving. Go say hi in the Garage!',
    already:'Shimmer is already in your band.',meet:'Meet Shimmer in the Garage',
-   starHint:'Win the glockenspiel rounds to fill the recruit spark and get them to drift over.',btnStyle:'linear-gradient(90deg,#3a6ea5,#7fb3d5)'}
+   starHint:'Win the glockenspiel rounds to fill the recruit spark and get them to drift over.',btnStyle:'linear-gradient(90deg,#3a6ea5,#7fb3d5)'},
+  {key:'voltage',name:'The Voltage',crew:VOLTAGE_CREW,recruit:'axel',skill:'odd',impress:'🎸',flag:'voltage_beaten',draw:rockCharSVG,
+   loseEmoji:'🤘',loseTitle:'The Voltage steals the show',winEmoji:'🎸',winTitle:'Axel joins the band!',
+   winLine:'You held the crowd AND nailed every backbeat call. Axel unplugged, walked across the stage, and plugged in on YOUR side.',
+   newLine:'New bandmate: Axel on Electric Guitar. New skill: Odd &amp; Even. Go say hi in the Garage!',
+   already:'Axel is already in your band.',meet:'Meet Axel in the Garage',
+   starHint:'Win the screaming guitar rounds to fill the recruit spark and get him to switch sides.',btnStyle:'linear-gradient(90deg,#e0342b,#7a2bd6)'}
 ];
 function curRival(){ for(var i=0;i<RIVALS.length;i++){ if(!S.band[RIVALS[i].recruit])return RIVALS[i]; } return RIVALS[RIVALS.length-1]; }
 function rivalStar(){ var c=curRival().crew; return c.members.filter(function(m){return m.star;})[0]||c.members[c.members.length-1]; }
@@ -2020,6 +2061,40 @@ function countryCharSVG(id,sz){ sz=sz||60; var O='#221a44';
    '<circle cx="63" cy="75" r="1.8" fill="#fff"/><circle cx="82" cy="75" r="1.8" fill="#fff"/>'+
    '<path d="M61 88 q10 6 20 -1" stroke="'+O+'" stroke-width="4" fill="none" stroke-linecap="round"/>';
 }
+  return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 140 140"><g class="charg">'+b+'</g></svg>';
+}
+
+
+/* ---- The Voltage: rock crew art (loud, warm palette) ---- */
+function rockCharSVG(id,sz){
+  const O='#221a44'; let b='';
+  const eye=(x,y)=>'<circle cx="'+x+'" cy="'+y+'" r="5" fill="'+O+'"/><circle cx="'+(x+2)+'" cy="'+(y-2)+'" r="1.8" fill="#fff"/>';
+  const feet=(c)=>'<ellipse cx="55" cy="123" rx="12" ry="6" fill="'+c+'"/><ellipse cx="85" cy="123" rx="12" ry="6" fill="'+c+'"/>';
+  if(id==='howl'){ const c='#9b59b6';
+    b=feet('#7d3f9e')+'<rect x="42" y="44" width="56" height="76" rx="24" fill="'+c+'"/>'+
+      '<path d="M46 44 l6 -14 6 12 6 -16 6 14 6 -14 6 12 6 -16 6 14" fill="none" stroke="#2c1e3e" stroke-width="6" stroke-linecap="round"/>'+
+      eye(58,68)+eye(82,68)+'<ellipse cx="70" cy="88" rx="9" ry="12" fill="'+O+'"/><ellipse cx="70" cy="84" rx="5" ry="5" fill="#c98ae0"/>'+
+      '<line x1="98" y1="96" x2="112" y2="80" stroke="#49527a" stroke-width="5" stroke-linecap="round"/><circle cx="113" cy="78" r="7" fill="#39415f"/><circle cx="113" cy="78" r="3.5" fill="#5a6488"/>';
+  } else if(id==='crash'){ const c='#e67e22';
+    b=feet('#b95f10')+'<circle cx="70" cy="74" r="36" fill="'+c+'"/>'+
+      '<rect x="36" y="52" width="68" height="10" rx="5" fill="#c0392b"/>'+
+      eye(58,74)+eye(82,74)+'<path d="M58 90 q12 9 24 0" stroke="'+O+'" stroke-width="4" fill="none" stroke-linecap="round"/>'+
+      '<line x1="34" y1="36" x2="58" y2="54" stroke="#c9a26a" stroke-width="4" stroke-linecap="round"/><circle cx="33" cy="35" r="4" fill="#f1c76a"/>'+
+      '<line x1="106" y1="36" x2="82" y2="54" stroke="#c9a26a" stroke-width="4" stroke-linecap="round"/><circle cx="107" cy="35" r="4" fill="#f1c76a"/>';
+  } else if(id==='thud'){ const c='#5d6d7e';
+    b=feet('#46535f')+'<rect x="34" y="56" width="72" height="62" rx="26" fill="'+c+'"/>'+
+      '<path d="M52 72 q6 -6 12 0" stroke="'+O+'" stroke-width="4" fill="none" stroke-linecap="round"/><path d="M76 72 q6 -6 12 0" stroke="'+O+'" stroke-width="4" fill="none" stroke-linecap="round"/>'+
+      '<path d="M60 86 q10 5 20 0" stroke="'+O+'" stroke-width="4" fill="none" stroke-linecap="round"/>'+
+      '<rect x="96" y="44" width="12" height="64" rx="6" fill="#3a2a1a"/><rect x="98" y="50" width="8" height="52" fill="#241a10"/>'+
+      '<path d="M100 52 v48 M104 52 v48" stroke="#c9b06a" stroke-width="1.2"/>';
+  } else { const c='#ff6b5e'; /* guitar: Axel */
+    b=feet('#d84e40')+'<circle cx="70" cy="68" r="34" fill="'+c+'"/>'+
+      '<path d="M52 40 l8 -16 8 12 8 -18 8 16 8 -12 6 14" fill="#ffd158" stroke="#e0692e" stroke-width="3" stroke-linejoin="round"/>'+
+      eye(58,64)+eye(80,64)+'<path d="M60 80 q12 8 22 -2" stroke="'+O+'" stroke-width="4" fill="none" stroke-linecap="round"/>'+
+      '<polygon points="44,96 96,104 90,120 60,118 42,110" fill="#c0392b" stroke="#7d1f14" stroke-width="2"/>'+
+      '<line x1="92" y1="102" x2="120" y2="88" stroke="#3a2a1a" stroke-width="5" stroke-linecap="round"/><rect x="116" y="82" width="10" height="9" rx="2" fill="#241a10"/>'+
+      '<path d="M66 102 l8 4 -5 3 7 5" stroke="#ffd158" stroke-width="3" fill="none" stroke-linecap="round"/>';
+  }
   return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 140 140"><g class="charg">'+b+'</g></svg>';
 }
 
@@ -2125,6 +2200,7 @@ function battleEnd(forced){
   BATTLE.on=false;
   var html;
   if(won){ confetti(full?30:16); sFanfare();
+    S.stats.battleWins=(S.stats.battleWins||0)+1;
     var RV=curRival();
     if(full){ var firstJoin=!S.band[RV.recruit]; S.flags[RV.flag]=true; S.band[RV.recruit]=true; S.auditioned[RV.recruit]=true; if(!S.skills[RV.skill])S.skills[RV.skill]=1; save();
       html='<div class="center"><div style="font-size:56px">'+RV.winEmoji+'</div><h2>'+RV.winTitle+'</h2>'+
@@ -2160,6 +2236,7 @@ function talkTo(id){
   const inband=!!S.band[id], aud=!!S.auditioned[id];
   let btns='';
   if(LESSONS[id]) btns+='<button class="btn wide" onclick="openLesson(\''+id+'\')">📖 Learn to play</button>';
+  if(METHOD[BY_ID[id].concept] && Math.floor(lvlOf(BY_ID[id].concept))>=6) btns+='<button class="btn wide" style="background:linear-gradient(180deg,#ffd158,#e0a92e);color:#3a2a00" onclick="openGoldLesson(\''+id+'\')">🥇 Gold Lesson</button>';
   if(id==='boom') btns+='<button class="btn wide" onclick="startKC()">🥁 Jam: Kit Catch</button>'+
     '<button class="btn wide ghost" onclick="startBB()">🧮 Beat Builder Classic</button>'+
     '<button class="btn wide ghost" onclick="startMJ(\'crowdcount\')">👏 Crowd Count</button>';
@@ -2198,6 +2275,9 @@ function talkTo(id){
   if(id==='roscoe') btns+='<button class="btn wide" onclick="startMJ(\'rollnext\')">🪕 Roll Next</button>'+
     '<button class="btn wide ghost" onclick="startMJ(\'fillgap\')">🎵 Fill the Gap</button>'+
     '<button class="btn wide ghost" onclick="startMJ(\'stepsize\')">🎼 Find the Step</button>';
+  if(id==='axel') btns+='<button class="btn wide" onclick="startMJ(\'backbeat\')">🥁 Backbeat</button>'+
+    '<button class="btn wide ghost" onclick="startMJ(\'pairup\')">👯 Pair Up</button>'+
+    '<button class="btn wide ghost" onclick="startMJ(\'oddoneout\')">🎯 Odd One Out</button>';
   if(id==='shimmer') btns+='<button class="btn wide" onclick="startMJ(\'doubleup\')">🔔 Double Up</button>'+
     '<button class="btn wide ghost" onclick="startMJ(\'splitit\')">✂️ Split It</button>'+
     '<button class="btn wide ghost" onclick="startMJ(\'fadeout\')">🌫️ Fade Out</button>';
@@ -4389,7 +4469,8 @@ const MEET_LINES={
   round:'Swoop on the slide whistle! Never hits the messy note, just SLIDES to the closest one. That is rounding.',
   roscoe:'And Roscoe on banjo! He crossed the stage from a rival band. A roll is just a pattern, over and over.',
   bigtub:'And Big Tub on washtub bass, straight out of The Hoedown. High note, low note, he knows which is bigger by ear.',
-  shimmer:'And Shimmer on the glockenspiel, drifted over from The Drift. Half the bar, twice as high. Doubling and halving you can hear.'
+  shimmer:'And Shimmer on the glockenspiel, drifted over from The Drift. Half the bar, twice as high. Doubling and halving you can hear.',
+  axel:'And Axel on electric guitar, straight out of The Voltage. Kick on the odd beats, snare on the even. The backbeat himself.'
 };
 /* meet sequence is generated from the roster, so new bandmates auto-appear (fallback line if none written) */
 function introMeets(){
@@ -5570,7 +5651,7 @@ function openShow(){
   /* stage arrangement: drummer + horns at BACK, melody in the MIDDLE, front performers at the lip.
      Order the row so it reads like a band on risers, not a wrapping list. */
   const backLine=['doot','gain','boom','elly'];
-  const midLine=['combo','slice','plink','reg','round','roscoe','bigtub','shimmer'];
+  const midLine=['combo','slice','plink','reg','round','roscoe','bigtub','shimmer','axel'];
   const frontLine=['rumble','tock','gauge','luna'];
   const cell=(id,cls)=>'<span class="perf '+cls+'" id="sm-'+id+'">'+(id==='elly'?ellySVG(52):memberSVG(id,54))+'</span>';
   const roster=BAND.map(m=>m.id).concat('elly');
@@ -5685,7 +5766,7 @@ function showPlay(id){
 }
 
 /* ---------- PRACTICE ROOM: every member's instrument is playable, no goals ---------- */
-const RIG_NAMES={boom:'drum kit',rumble:'bass',combo:'keys',slice:'guitar',tock:'decks',gauge:'road gear',luna:'shakers',doot:'horn',gain:'board',plink:'xylophone',reg:'register',roscoe:'banjo',bigtub:'washtub bass',shimmer:'glockenspiel'};
+const RIG_NAMES={boom:'drum kit',rumble:'bass',combo:'keys',slice:'guitar',tock:'decks',gauge:'road gear',luna:'shakers',doot:'horn',gain:'board',plink:'xylophone',reg:'register',roscoe:'banjo',bigtub:'washtub bass',shimmer:'glockenspiel',axel:'electric guitar'};
 function rigPads(list){ return '<div class="mjmates" style="flex-wrap:wrap">'+list.map((p,i)=>'<button class="mjdrum rigpad" data-i="'+i+'" style="font-size:15px;line-height:1.15">'+p.label+'</button>').join('')+'</div>'; }
 const PLAY_RIGS={
   boom:{hint:'Tap the kit. You are the beat.',pads:[
@@ -6048,11 +6129,82 @@ PLAY_RIGS.shimmer={hint:'Tap the bars, long to short. The last bar is the first 
   $$('.gks').forEach(function(b){ b.addEventListener('click',function(){ ac(); tone(ntf(+b.dataset.n),1.1,'sine',.28); punch(b); }); });
 }};
 
+/* ============ AXEL: ODD & EVEN (electric guitar, The Voltage recruit) ============ */
+QG.odd=function(L){
+  var hi=L<3?10:L<5?30:L<7?100:L<9?500:5000;
+  var n=R(1,hi);
+  if(Math.random()<0.5){
+    return {q:'Is '+n+' odd or even?', vis:'<div style="font-size:30px;margin:6px 0"><b>'+n+'</b></div>',
+      choices:['Odd','Even'].sort(function(){return Math.random()-0.5;}), a:(n%2?'Odd':'Even')};
+  }
+  var wantEven=Math.random()<0.5;
+  function mk(par){ var v=R(1,hi); if(v%2!==par){ v=(v<hi)?v+1:v-1; } if(v<1)v=par?1:2; return v; }
+  var ans=mk(wantEven?0:1), opts=[ans];
+  while(opts.length<4){ var v=mk(wantEven?1:0); if(opts.indexOf(v)<0)opts.push(v); }
+  opts.sort(function(){return Math.random()-0.5;});
+  return {q:'Tap the '+(wantEven?'EVEN':'ODD')+' one!', vis:'', choices:opts, a:String(ans)};
+};
+MJGAMES.backbeat={id:'backbeat',name:'Backbeat',emoji:'🥁',member:'axel',concept:'odd',
+setup:function(L,st){
+  var hi=L<3?10:L<5?30:L<7?100:500; var n=R(1,hi); st.ans=(n%2?'ODD':'EVEN');
+  return { call:'Kick or snare?', sub:'Odd numbers thump the KICK (beats 1 and 3). Even numbers CRACK the snare (beats 2 and 4).',
+    html:'<div class="center" style="font-size:34px;margin:8px 0"><b>'+n+'</b></div><div class="mjcards" id="bbZ"></div>',
+    wire:function(){
+      var opts=[['ODD','🦶 Kick (odd)'],['EVEN','🥁 Snare (even)']].sort(function(){return Math.random()-0.5;});
+      $('#bbZ').innerHTML=opts.map(function(o){return '<button class="mjposter bbb" data-v="'+o[0]+'">'+o[1]+'</button>';}).join('');
+      $$('.bbb').forEach(function(b){ b.addEventListener('click',function(){ if(MJ.busy)return; ac();
+        if(b.dataset.v===st.ans){ drum(st.ans==='EVEN'?'snare':'kick'); mjOK(st.ans==='EVEN'?'CRACK! Even, right on the backbeat.':'Thump! Odd, on the downbeat.'); }
+        else { punch(b); mjNo(n+' is '+st.ans.toLowerCase()+'. Check the last digit!'); } }); });
+    } };
+}};
+MJGAMES.pairup={id:'pairup',name:'Pair Up',emoji:'👯',member:'axel',concept:'odd',
+setup:function(L,st){
+  var hi=L<3?9:L<5?15:21; var n=R(4,hi); st.ans=(n%2===0?'Perfect pairs!':'One left over!');
+  var dots=''; for(var i=0;i<n;i++){ dots+='<span style="display:inline-block;width:13px;height:13px;border-radius:50%;background:#ff8fd3;margin:3px"></span>'; if(i%2===1)dots+='&nbsp;&nbsp;'; }
+  return { call:'Can '+n+' fans pair up?', sub:'Even pairs up perfectly. Odd leaves one dancing alone.',
+    html:'<div class="center" style="max-width:250px;margin:6px auto">'+dots+'</div><div class="mjcards" id="puZ"></div>',
+    wire:function(){
+      var opts=['Perfect pairs!','One left over!'].sort(function(){return Math.random()-0.5;});
+      $('#puZ').innerHTML=opts.map(function(o){return '<button class="mjposter pub" data-v="'+o+'">'+o+'</button>';}).join('');
+      $$('.pub').forEach(function(b){ b.addEventListener('click',function(){ if(MJ.busy)return; ac();
+        if(b.dataset.v===st.ans)mjOK(n+' is '+(n%2===0?'EVEN. Everybody has a partner!':'ODD. One rocks out solo!')); else { punch(b); mjNo(n+' is '+(n%2===0?'even, it pairs perfectly':'odd, one is left over')+'.'); } }); });
+    } };
+}};
+MJGAMES.oddoneout={id:'oddoneout',name:'Odd One Out',emoji:'🎯',member:'axel',concept:'odd',
+setup:function(L,st){
+  var hi=L<3?12:L<5?40:L<7?100:900;
+  var evens=Math.random()<0.5;
+  function mk(par){ var v=R(1,hi); if(v%2!==par){ v=(v<hi)?v+1:v-1; } if(v<1)v=par?1:2; return v; }
+  var target=mk(evens?1:0), opts=[target];
+  while(opts.length<4){ var v=mk(evens?0:1); if(opts.indexOf(v)<0)opts.push(v); }
+  st.ans=String(target); opts.sort(function(){return Math.random()-0.5;});
+  return { call:'Tap the one that does not belong!', sub:(evens?'Three evens, and one ODD snuck in.':'Three odds, and one EVEN snuck in.'),
+    html:'<div class="mjcards" id="ooZ"></div>',
+    wire:function(){
+      $('#ooZ').innerHTML=opts.map(function(o){return '<button class="mjposter oob" data-v="'+o+'" style="font-size:24px">'+o+'</button>';}).join('');
+      $$('.oob').forEach(function(b){ b.addEventListener('click',function(){ if(MJ.busy)return; ac();
+        if(b.dataset.v===st.ans)mjOK('Found it! The last digit gives it away.'); else { punch(b); mjNo('Check the LAST digit of each one. It was '+st.ans+'.'); } }); });
+    } };
+}};
+Object.assign(COACH,{
+  backbeat:{member:'axel',verb:'TAP',hint:'tap',title:'🥁 Backbeat',lines:['Odd numbers thump the kick. Even numbers crack the snare.','Look at the number, check the last digit, and TAP the right drum!']},
+  pairup:{member:'axel',verb:'TAP',hint:'tap',title:'👯 Pair Up',lines:['Even means everyone pairs up. Odd leaves one solo.','Count the pairs and TAP what happens!']},
+  oddoneout:{member:'axel',verb:'TAP',hint:'tap',title:'🎯 Odd One Out',lines:['One number does not match the others.','Check every LAST digit and TAP the sneaky one!']}
+});
+PLAY_RIGS.axel={hint:'Tap a power chord. Two notes, maximum crunch!',custom:function(el){
+  el.innerHTML='<div class="mjbig" style="font-size:44px">🎸</div><div class="sub center">power chords, low to high</div><div class="row" id="axStr" style="justify-content:center;gap:8px;margin-top:12px"></div>';
+  var notes=[52,55,57,59,62];
+  $('#axStr').innerHTML=notes.map(function(n,i){return '<button class="mjcymbal axs" data-n="'+n+'" style="font-size:18px">'+(i+1)+'</button>';}).join('');
+  $$('.axs').forEach(function(b){ b.addEventListener('click',function(){ ac(); var n=+b.dataset.n; tone(ntf(n),.5,'sawtooth',.15); tone(ntf(n+7),.5,'sawtooth',.11); punch(b); }); });
+}};
+
+
 
 
 /* ============ MUSIC CARDS: how each member's math is music (or real-world) ============ */
 var PRACTICAL={luna:1,gauge:1,reg:1};
 var MUSIC_CARDS={
+  axel:{elly:'Axel plays the backbeat, and the backbeat is just even numbers.',body:'Rock counts 1, 2, 3, 4, over and over. The kick drum lands on the ODD beats, 1 and 3. The snare CRACKS on the EVEN beats, 2 and 4. That crack on the evens is the backbeat, the thing that makes you nod your head. Odd, even, odd, even, all song long.'},
   shimmer:{elly:'Shimmer shows doubling and halving with something you can SEE and hear.',body:'The bars on a glockenspiel get shorter as the notes go higher. A bar HALF as long rings the very same note, one octave up: the pitch doubled. And when a bar rings and fades, every moment it is about half as loud as before.'},
   boom:{elly:'Boom shows the simplest music-math there is. Listen.',body:'A beat is counting out loud: 1, 2, 3, 4, over and over. Stack a clap on top and you are adding sounds together. Addition you can dance to.'},
   rumble:{elly:'Rumble teaches with silence. Weird, right? Give it a listen.',body:'Music needs empty space too. A rest is a beat you take AWAY. The gap I leave is the groove. That is subtraction you can feel.'},
@@ -6070,6 +6222,7 @@ var MUSIC_CARDS={
   reg:{elly:'Register works the merch table. Counting money is math you will use every day.',body:'At the table you take the cash and make change. Count UP from the price to what they handed you.',example:'Shirt is $15. They pay with a $20. Count up: 16, 17, 18, 19, 20. That is $5 back.'}
 };
 var MUSIC_DEMOS={
+  axel:function(){ [0,1,2,3,4,5,6,7].forEach(function(i){ later(function(){ drum(i%2===0?'kick':'snare'); }, i*280); }); },
   shimmer:function(){ tone(ntf(72),.9,'sine',.28); later(function(){tone(ntf(84),.9,'sine',.26);},900); later(function(){tone(ntf(84),1.8,'sine',.2);},1900); },
   boom:function(){ for(var i=0;i<4;i++)later(function(){drum('kick');},i*320); },
   rumble:function(){ tone(ntf(40),.4,'sine',.35); later(function(){tone(ntf(40),.4,'sine',.35);},900); },
@@ -6115,6 +6268,12 @@ function openLevelHelp(id){
 
 /* ============ GUIDED LESSON ENGINE (data-driven, uniform across members) ============ */
 var LESSONS={
+  axel:{ game:function(){startMJ('backbeat');}, steps:[
+    {say:'Every number is odd or even. EVEN means it pairs up perfectly, nobody left out.', vis:'<div style="font-size:26px">🎸🎸&nbsp;&nbsp;🎸🎸&nbsp;&nbsp;🎸🎸</div>'},
+    {say:'ODD means one is left over. Five picks: two pairs, and one flying solo.', vis:'<div style="font-size:26px">🎸🎸&nbsp;&nbsp;🎸🎸&nbsp;&nbsp;🎸</div>'},
+    {say:'Rock runs on this! Count 1, 2, 3, 4. The snare CRACKS on 2 and 4, the EVEN beats. That is the backbeat.', vis:'<div style="font-size:24px"><b>1 <span style="color:#ff8fd3">2</span> 3 <span style="color:#ff8fd3">4</span></b></div>'},
+    {say:'In my game, odd numbers thump the kick and even numbers crack the snare. Ready?', vis:''}
+  ]},
   shimmer:{ game:function(){startMJ('doubleup');}, steps:[
     {say:'Look at the bars on a glockenspiel. They get shorter as the notes climb higher.', vis:'<div style="font-size:30px;letter-spacing:2px">▮▮▮▮ ▮▮▮ ▮▮ ▮</div>'},
     {say:'A bar HALF as long rings the same note, one octave higher. Halving the bar doubles the pitch.', vis:'<div style="font-size:20px"><b>long bar: C &nbsp;&nbsp;&nbsp; half bar: C, higher</b></div>'},
@@ -6154,7 +6313,240 @@ var LESSONS={
 };
 
 /* ============ STUCK HELPER: Elly teaches the METHOD at the wall ============ */
+
+/* ============ STEP-THROUGH PRACTICE: solve it WITH the game, piece by piece ============ */
+
+/* ============ MANNY'S ACHIEVEMENT WALL ============ */
+function mannySVG(sz){
+  var O='#221a44';
+  return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 140 140"><g>'+
+   '<ellipse cx="55" cy="124" rx="12" ry="6" fill="#8a763f"/><ellipse cx="85" cy="124" rx="12" ry="6" fill="#8a763f"/>'+
+   '<rect x="38" y="42" width="64" height="78" rx="26" fill="#c9b06a"/>'+
+   '<circle cx="58" cy="66" r="5" fill="'+O+'"/><circle cx="60" cy="64" r="1.8" fill="#fff"/>'+
+   '<circle cx="82" cy="66" r="5" fill="'+O+'"/><circle cx="84" cy="64" r="1.8" fill="#fff"/>'+
+   '<path d="M60 80 q10 7 20 0" stroke="'+O+'" stroke-width="4" fill="none" stroke-linecap="round"/>'+
+   '<path d="M36 44 q34 -24 68 0 l0 6 -68 0 z" fill="#3a6ea5"/><rect x="30" y="47" width="80" height="8" rx="4" fill="#2f588a"/>'+
+   '<path d="M38 56 q-10 10 -1 20" stroke="#49527a" stroke-width="4" fill="none"/><circle cx="38" cy="78" r="4.5" fill="#49527a"/>'+
+   '<rect x="52" y="92" width="36" height="26" rx="4" fill="#f4f0ff" stroke="#8fa3b8" stroke-width="2"/>'+
+   '<rect x="62" y="88" width="16" height="7" rx="2" fill="#8fa3b8"/>'+
+   '<path d="M57 101 h9 M57 107 h13 M57 113 h7" stroke="#7a6fb0" stroke-width="2.5" stroke-linecap="round"/>'+
+   '<path d="M72 100 l3 3 5 -6" stroke="#4ccf6a" stroke-width="3" fill="none" stroke-linecap="round"/>'+
+   '</g></svg>';
+}
+var ACH_CC=['add','sub','mul','frac','clock','cal','meas','div','neg','skip','money','round','patterns','compare','double','odd'];
+function achLvlCount(n){ return ACH_CC.filter(function(c){return Math.floor(lvlOf(c))>=n;}).length; }
+var ACH=[
+ {id:'gold7',cat:'Mastery',icon:'🥇',name:'Gold Methods',desc:'Skills at Level 7 or higher',tiers:[{need:1,n:15,g:0},{need:5,n:25,g:1},{need:10,n:50,g:2}],cur:function(){return achLvlCount(7);}},
+ {id:'medals',cat:'Mastery',icon:'🏅',name:'Medal Collector',desc:'Gold medals earned',tiers:[{need:3,n:15,g:0},{need:8,n:25,g:1},{need:16,n:50,g:2}],cur:function(){return ACH_CC.filter(function(c){return tierOf(Math.floor(lvlOf(c)))>=2;}).length;}},
+ {id:'diamond',cat:'Mastery',icon:'💎',name:'Diamond Row',desc:'Skills at Level 10 or higher',tiers:[{need:1,n:30,g:1},{need:5,n:60,g:2},{need:16,n:120,g:4}],cur:function(){return achLvlCount(10);}},
+ {id:'streak',cat:'Performance',icon:'🔥',name:'Hot Streak',desc:'Best answer streak',tiers:[{need:8,n:10,g:0},{need:15,n:20,g:1},{need:25,n:40,g:2}],cur:function(){return S.stats.bestStreak||0;}},
+ {id:'correct',cat:'Performance',icon:'🎯',name:'Note Machine',desc:'Total right answers',tiers:[{need:100,n:15,g:0},{need:300,n:30,g:1},{need:800,n:60,g:2}],cur:function(){return S.stats.correct||0;}},
+ {id:'band',cat:'Collection',icon:'🎸',name:'Full House',desc:'Bandmates recruited',tiers:[{need:8,n:10,g:0},{need:13,n:20,g:1},{need:16,n:40,g:2}],cur:function(){return BAND.filter(function(m){return S.band[m.id];}).length;}},
+ {id:'gear',cat:'Collection',icon:'🛍️',name:'Gear Head',desc:'Shop items owned',tiers:[{need:6,n:10,g:0},{need:14,n:20,g:1},{need:23,n:35,g:1}],cur:function(){return (S.owned||[]).length;}},
+ {id:'shows',cat:'Shows',icon:'🎤',name:'Road Dog',desc:'Shows played',tiers:[{need:3,n:10,g:0},{need:10,n:25,g:1},{need:25,n:50,g:2}],cur:function(){return S.stats.shows||0;}},
+ {id:'battles',cat:'Battles',icon:'⚔️',name:'Circuit Champ',desc:'Battles won, rematches count',tiers:[{need:1,n:15,g:0},{need:3,n:25,g:1},{need:6,n:50,g:2}],cur:function(){return S.stats.battleWins||0;}}
+];
+function achState(a){ for(var i=0;i<a.tiers.length;i++){ if(!S.ach.claimed[a.id+'_'+i])return i; } return -1; }
+var DAILY_POOL=[
+ {id:'ans20', name:'Answer 20 questions', stat:'answers', need:20, reward:{n:15,g:0}},
+ {id:'right12', name:'Get 12 answers right', stat:'correct', need:12, reward:{n:15,g:0}},
+ {id:'show1', name:'Play a show in the Band Room', stat:'shows', need:1, reward:{n:12,g:1}},
+ {id:'right20', name:'Get 20 answers right', stat:'correct', need:20, reward:{n:20,g:1}},
+ {id:'ans35', name:'Answer 35 questions', stat:'answers', need:35, reward:{n:25,g:1}}
+];
+function todayKey(){ var d=new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
+function ensureDaily(){ var k=todayKey();
+  if(!S.daily||S.daily.date!==k){
+    var d=new Date(), idx=(d.getDate()+d.getMonth()*3)%DAILY_POOL.length;
+    S.daily={date:k, task:DAILY_POOL[idx].id, base:{answers:S.stats.answers||0, correct:S.stats.correct||0, shows:S.stats.shows||0}, claimed:false}; save();
+  }
+}
+function dailyProgress(){ ensureDaily();
+  var t=DAILY_POOL.filter(function(x){return x.id===S.daily.task;})[0]||DAILY_POOL[0];
+  var cur=Math.max(0,(S.stats[t.stat]||0)-((S.daily.base&&S.daily.base[t.stat])||0));
+  return {t:t, cur:Math.min(t.need,cur)};
+}
+function achClaimableCount(){ ensureDaily(); var c=0;
+  ACH.forEach(function(a){ var t=achState(a); if(t>=0&&a.cur()>=a.tiers[t].need)c++; });
+  var d=dailyProgress(); if(!S.daily.claimed&&d.cur>=d.t.need)c++;
+  return c;
+}
+function achJingle(){ [64,68,71,76].forEach(function(n,i){ later(function(){ tone(ntf(n),.16,'triangle',.24); }, i*90); }); }
+function renderAch(){
+  ensureDaily();
+  var ma=$('#mannyArt'); if(ma&&!ma.innerHTML)ma.innerHTML=mannySVG(54);
+  var d=dailyProgress(), html='';
+  html+='<div class="achitem" style="border-color:#ffd15855"><div class="mgrrow"><div style="font-size:22px">📅</div><div style="flex:1"><b>Today’s Challenge</b><div class="sub" style="margin:0;text-align:left">'+d.t.name+'</div></div>'
+    +(S.daily.claimed?'<span class="achmed">✅</span>'
+      :(d.cur>=d.t.need?'<button class="achclaim" onclick="claimDaily()">Claim +'+d.t.reward.n+'🎵'+(d.t.reward.g?' +'+d.t.reward.g+'💿':'')+'</button>'
+      :'<b>'+d.cur+'/'+d.t.need+'</b>'))
+    +'</div><div class="achbar"><i style="width:'+Math.min(100,Math.round(d.cur/d.t.need*100))+'%"></i></div></div>';
+  ['Mastery','Performance','Collection','Shows','Battles'].forEach(function(cat){
+    var items=ACH.filter(function(a){return a.cat===cat;}); if(!items.length)return;
+    html+='<div class="achcat">'+cat+'</div>';
+    items.forEach(function(a){
+      var t=achState(a), cur=a.cur();
+      if(t<0){ html+='<div class="achitem"><div class="mgrrow"><div style="font-size:22px">'+a.icon+'</div><div style="flex:1"><b>'+a.name+'</b><div class="sub" style="margin:0;text-align:left">'+a.desc+' — complete!</div></div><span class="achmed">🥉 🥈 🥇</span></div></div>'; return; }
+      var need=a.tiers[t].need, ready=cur>=need;
+      var meds=a.tiers.map(function(tr,i){return S.ach.claimed[a.id+'_'+i]?['🥉','🥈','🥇'][i]:'·';}).join(' ');
+      html+='<div class="achitem"><div class="mgrrow"><div style="font-size:22px">'+a.icon+'</div><div style="flex:1"><b>'+a.name+'</b><div class="sub" style="margin:0;text-align:left">'+a.desc+': '+Math.min(cur,need)+'/'+need+'</div></div>'
+        +(ready?'<button class="achclaim" onclick="claimAch(\''+a.id+'\')">Claim +'+a.tiers[t].n+'🎵'+(a.tiers[t].g?' +'+a.tiers[t].g+'💿':'')+'</button>':'<span class="achmed">'+meds+'</span>')
+        +'</div><div class="achbar"><i style="width:'+Math.min(100,Math.round(cur/need*100))+'%"></i></div></div>';
+    });
+  });
+  $('#achWrap').innerHTML=html;
+  var hm=$('#achMoney'); if(hm)hm.textContent='🎵 '+S.notes+'  💿 '+S.gold;
+}
+function claimAch(id){
+  var a=ACH.filter(function(x){return x.id===id;})[0]; if(!a)return;
+  var t=achState(a); if(t<0||a.cur()<a.tiers[t].need)return;
+  sTap(); S.ach.claimed[a.id+'_'+t]=1; addNotes(a.tiers[t].n); if(a.tiers[t].g)S.gold+=a.tiers[t].g;
+  save(); achJingle(); toast(['🥉','🥈','🥇'][t]+' '+a.name+' claimed!');
+  renderAch();
+}
+function claimDaily(){
+  var d=dailyProgress(); if(S.daily.claimed||d.cur<d.t.need)return;
+  sTap(); S.daily.claimed=true; addNotes(d.t.reward.n); if(d.t.reward.g)S.gold+=d.t.reward.g;
+  save(); achJingle(); toast('Daily challenge complete!');
+  renderAch();
+}
+function openAch(){
+  sTap(); ensureDaily();
+  show('scr-ach'); renderAch();
+  if(!S.flags.metManny){ S.flags.metManny=true; save();
+    modal('<div class="center">'+mannySVG(70)+'<h2>Manny the Manager</h2></div>'+
+      '<div class="speak"><b>Manny:</b> “Kid, somebody has to keep track of how great this band is doing. That is me. Medals, streaks, sold-out shows, it all goes up on my Wall. Swing by every day, I always have a fresh challenge for you.”</div>'+
+      '<button class="btn wide" onclick="closeModal()">Show me the Wall!</button>');
+  }
+}
+
+var STEPWALK={
+  odd:function(L){ var n=R(3,9)*100+R(0,9)*10+R(0,9); var lastD=n%10, isEv=lastD%2===0;
+    return {title:'The last digit decides',steps:[
+      {say:'Is '+n+' odd or even? Big numbers are easy, only ONE digit decides. Which one?',vis:'<div style="font-size:28px"><b>'+n+'</b></div>',choices:['The LAST digit','The first digit','All of them'].sort(function(){return Math.random()-0.5;}),a:'The LAST digit'},
+      {say:'The last digit of '+n+' is '+lastD+'. Is '+lastD+' odd or even?',choices:['Odd','Even'].sort(function(){return Math.random()-0.5;}),a:(lastD%2?'Odd':'Even')},
+      {say:'So the whole number '+n+' is ?',choices:['Odd','Even'].sort(function(){return Math.random()-0.5;}),a:(isEv?'Even':'Odd')}]};},
+  add:function(L){ var at=R(1,4),ao=R(5,9),bt=R(1,4),bo=R(10-ao,9);
+    var a=at*10+ao,b=bt*10+bo,os=ao+bo,ts=at+bt+1,tot=a+b;
+    return {title:'Add with a carry',steps:[
+      {say:'Let us solve '+a+' + '+b+' together. ONES first: '+ao+' + '+bo+' = ?',vis:'<div style="font-size:26px"><b>'+a+' + '+b+'</b></div>',choices:numChoices(os,2),a:os,after:'Ten or more! Write the '+(os%10)+', carry the 1.'},
+      {say:'Now the TENS, plus the 1 we carried: '+at+' + '+bt+' + 1 = ?',choices:numChoices(ts,2),a:ts},
+      {say:'Put it together: '+a+' + '+b+' = ?',choices:numChoices(tot,4),a:tot}]};},
+  sub:function(L){ var at=R(3,8),ao=R(0,4),bt=R(1,at-1),bo=R(ao+1,9);
+    var a=at*10+ao,b=bt*10+bo,o2=ao+10-bo,t2=at-1-bt,tot=a-b;
+    return {title:'Subtract with a borrow',steps:[
+      {say:'We are solving '+a+' - '+b+'. The ones: '+ao+' is smaller than '+bo+', so BORROW ten. Now '+(ao+10)+' - '+bo+' = ?',vis:'<div style="font-size:26px"><b>'+a+' - '+b+'</b></div>',choices:numChoices(o2,2),a:o2,after:'We borrowed, so the tens shrink by 1.'},
+      {say:'The tens are now '+(at-1)+'. So '+(at-1)+' - '+bt+' = ?',choices:numChoices(t2,2),a:t2},
+      {say:'So '+a+' - '+b+' = ?',choices:numChoices(tot,4),a:tot}]};},
+  mul:function(L){ var n=R(6,9),m=R(6,9),p5=n*5,pr=n*(m-5),tot=n*m;
+    return {title:'Break it apart',steps:[
+      {say:'The trick for '+n+' x '+m+': break '+m+' into 5 + '+(m-5)+'. First: '+n+' x 5 = ?',vis:'<div style="font-size:24px"><b>'+n+' x '+m+'</b></div>',choices:numChoices(p5,4),a:p5},
+      {say:'Now the rest: '+n+' x '+(m-5)+' = ?',choices:numChoices(pr,3),a:pr},
+      {say:'Add the parts: '+p5+' + '+pr+' = ?',choices:numChoices(tot,4),a:tot,after:n+' x '+m+' = '+tot+'!'}]};},
+  frac:function(L){ var d=pick([4,6,8,10]),n1=R(1,d-2),n2=R(1,d-1-n1),ns=n1+n2;
+    var ch=[ns+'/'+d,ns+'/'+(2*d),(ns+1)+'/'+d].sort(function(){return Math.random()-0.5;});
+    return {title:'Add fractions (same bottom)',steps:[
+      {say:'Same bottom number ('+d+')! Just add the TOPS: '+n1+' + '+n2+' = ?',vis:'<div style="font-size:24px"><b>'+n1+'/'+d+' + '+n2+'/'+d+'</b></div>',choices:numChoices(ns,2),a:ns},
+      {say:'Keep the bottom the SAME. So '+n1+'/'+d+' + '+n2+'/'+d+' = ?',choices:ch,a:ns+'/'+d}]};},
+  round:function(L){ var h=R(1,8),t=R(0,9),o=R(0,9),n=h*100+t*10+o,up=t>=5,ans=(up?h+1:h)*100;
+    return {title:'Round to the nearest hundred',steps:[
+      {say:'Round '+n+' to the nearest HUNDRED. Look one digit right of the hundreds: the TENS digit. What is it?',vis:'<div style="font-size:26px"><b>'+n+'</b></div>',choices:[t,o,h].filter(function(v,i,arr){return arr.indexOf(v)===i;}).sort(function(){return Math.random()-0.5;}),a:t},
+      {say:'Is '+t+' five or more?',choices:(t>=5?['Round UP','Round DOWN']:['Round DOWN','Round UP']).sort(function(){return Math.random()-0.5;}),a:(up?'Round UP':'Round DOWN')},
+      {say:'So '+n+' rounds to ?',choices:[h*100,(h+1)*100].sort(function(){return Math.random()-0.5;}),a:ans}]};},
+  double:function(L){ var tens=pick([2,4,6,8]),ones=pick([2,4,6,8]),n=tens*10+ones;
+    return {title:'Halve it in parts',steps:[
+      {say:'Half of '+n+': split it into '+(tens*10)+' and '+ones+'. Half of '+(tens*10)+' = ?',vis:'<div style="font-size:24px"><b>'+n+' \u00f7 2</b></div>',choices:numChoices(tens*5,3),a:tens*5},
+      {say:'Half of '+ones+' = ?',choices:numChoices(ones/2,2),a:ones/2},
+      {say:'Add them back: '+(tens*5)+' + '+(ones/2)+' = ?',choices:numChoices(n/2,3),a:n/2}]};},
+  compare:function(L){ var ha=R(1,8),hb=R(1,9); while(hb===ha)hb=R(1,9);
+    var a=ha*100+R(0,99),b=hb*100+R(0,99),big=(ha>hb?a:b);
+    return {title:'Compare from the left',steps:[
+      {say:'Compare '+a+' and '+b+'. Start at the LEFT: the hundreds are '+ha+' and '+hb+'. Which is more?',choices:[ha,hb].sort(function(){return Math.random()-0.5;}),a:Math.max(ha,hb)},
+      {say:'Bigger hundreds wins the whole compare. So which number is greater?',choices:[a,b].sort(function(){return Math.random()-0.5;}),a:big}]};},
+  patterns:function(L){ var st=pick([3,4,6,7,9]),s0=R(2,9),t=[s0,s0+st,s0+st*2,s0+st*3];
+    return {title:'Find the step, ride the step',steps:[
+      {say:'Look: '+t.join(', ')+'. How much does it jump each time?',choices:[st-1,st,st+1,st+2].sort(function(){return Math.random()-0.5;}),a:st},
+      {say:'Ride it! After '+t[3]+' comes ?',choices:numChoices(s0+st*4,3),a:s0+st*4},
+      {say:'One more: after '+(s0+st*4)+' comes ?',choices:numChoices(s0+st*5,3),a:s0+st*5}]};},
+  money:function(L){ var p=R(11,14);
+    return {title:'Count up for change',steps:[
+      {say:'A fan pays $20 for a $'+p+' shirt. Count UP. From '+p+' to 15 is ?',vis:'<div style="font-size:22px"><b>$'+p+' \u2192 $20</b></div>',choices:numChoices(15-p,2),a:15-p},
+      {say:'Now 15 up to 20 is ?',choices:numChoices(5,2),a:5},
+      {say:'Add the jumps: '+(15-p)+' + 5 = ? That is the change!',choices:numChoices(20-p,2),a:20-p}]};},
+  clock:function(L){ var h=R(1,11),mi=pick([1,2,4,5,7,8]),m=mi*5,mm=(m<10?'0'+m:''+m);
+    var ch=[h+':'+mm,(h===11?1:h+1)+':'+mm,h+':'+((m+15)%60<10?'0'+((m+15)%60):(m+15)%60)].sort(function(){return Math.random()-0.5;});
+    return {title:'Read the clock in two looks',steps:[
+      {say:'Look one: the SHORT hand. What hour is it pointing at?',vis:clockHTML(h,m),choices:[h,(h===11?1:h+1),(h===1?11:h-1)].sort(function(){return Math.random()-0.5;}),a:h},
+      {say:'Look two: the LONG hand is on the '+mi+'. Count by fives. How many minutes?',vis:clockHTML(h,m),choices:numChoices(m,5),a:m},
+      {say:'So the time is ?',vis:clockHTML(h,m),choices:ch,a:h+':'+mm}]};}
+};
+function openStepPractice(concept, onDone){
+  sTap();
+  var gen=STEPWALK[concept];
+  if(!gen){ if(onDone)onDone(); return; }
+  var P=gen(Math.max(1,Math.floor(lvlOf(concept)))), i=0, missHere=0;
+  function step(){
+    if(i>=P.steps.length){
+      addNotes(3);
+      modal('<div class="center">'+ellySVG(52)+'<h2>\uD83C\uDFB8 You played the whole riff!</h2></div>'+
+        '<div class="speak"><b>Elly:</b> \u201CEvery step of that was YOU. That is the whole method.\u201D</div>'+
+        '<button class="btn wide" id="spDone">Done! +3 \uD83C\uDFB5</button>');
+      var d=$('#spDone'); if(d)d.addEventListener('click',function(){ closeModal(); if(onDone)onDone(); });
+      return;
+    }
+    var st=P.steps[i];
+    modal(
+      '<div class="center">'+ellySVG(44)+'<h2 style="font-size:19px">\uD83E\uDD1D '+(P.title||'Do one with me')+'</h2></div>'+
+      '<div class="lessprog">'+P.steps.map(function(_,k){return '<i class="'+(k<i?'on':'')+'"></i>';}).join('')+'</div>'+
+      (st.vis?'<div class="center" style="margin:6px 0">'+st.vis+'</div>':'')+
+      '<div class="speak"><b>Elly:</b> \u201C'+st.say+'\u201D</div>'+
+      '<div class="mjcards" id="spChoices"></div>'
+    );
+    var opts=st.choices.map(String);
+    $('#spChoices').innerHTML=opts.map(function(o){return '<button class="mjposter spb" data-v="'+o+'">'+o+'</button>';}).join('');
+    $$('.spb').forEach(function(b){ b.addEventListener('click',function(){ ac();
+      if(b.dataset.v===String(st.a)){ tone(ntf(64+i*5),.22,'triangle',.26); if(st.after)toast(st.after); missHere=0; i++; step(); }
+      else { punch(b); missHere++;
+        if(missHere>=2){ toast('It is '+st.a+'. On we go!'); missHere=0; i++; later(step,700); }
+        else toast('Look again. You have got this.'); }
+    }); });
+  }
+  step();
+}
+function openGoldLesson(id){
+  sTap();
+  var m=BY_ID[id], cc=m.concept, M=METHOD[cc];
+  if(!M){ toast('Coming soon!'); return; }
+  var i=0;
+  function draw(){
+    var st=M.steps[i], last=i>=M.steps.length-1;
+    modal(
+      '<div class="center">'+ellySVG(44)+memberSVG(id,54)+'<h2 style="margin-top:4px">\uD83E\uDD47 '+mName(id)+'\u2019s Gold Lesson</h2></div>'+
+      '<div class="sub center" style="margin:-4px 0 6px">the '+CONCEPT_NAMES[cc]+' trick for Level 7 and up</div>'+
+      '<div class="lessprog">'+M.steps.map(function(_,k){return '<i class="'+(k<=i?'on':'')+'"></i>';}).join('')+'</div>'+
+      (st.vis?'<div class="center" style="margin:8px 0">'+st.vis+'</div>':'')+
+      '<div class="speak"><b>Elly:</b> \u201C'+st.say+'\u201D</div>'+
+      (last?((STEPWALK[cc]?'<button class="btn wide" id="glTogether">\uD83E\uDD1D Do one with me</button>':'')+
+             '<button class="btn wide ghost" onclick="closeModal()">Got it!</button>')
+           :'<button class="btn wide" id="glNext">Next \u2192</button>')
+    );
+    var nx=$('#glNext'); if(nx)nx.addEventListener('click',function(){ ac(); i++; draw(); });
+    var tg=$('#glTogether'); if(tg)tg.addEventListener('click',function(){ closeModal(); openStepPractice(cc, function(){
+      modal('<div class="center">'+ellySVG(52)+'<h2>\uD83E\uDD47 You know the gold trick!</h2></div>'+
+        '<div class="speak"><b>Elly:</b> \u201CNow use it for real. Audition to climb past Level 6!\u201D</div>'+
+        '<button class="btn wide" id="glAud" style="background:linear-gradient(180deg,#ff7a4d,#d84e2f)">\uD83C\uDFA4 Audition now</button>'+
+        '<button class="btn wide ghost" onclick="closeModal()">Later</button>');
+      var ga=$('#glAud'); if(ga)ga.addEventListener('click',function(){ closeModal(); startAudition(id); });
+    }); });
+  }
+  draw();
+}
+
 var METHOD={
+  odd:{steps:[
+    {say:'Even numbers pair up perfectly and end in 0, 2, 4, 6, or 8. Odd numbers leave one out and end in 1, 3, 5, 7, or 9.', vis:'<div style="font-size:20px"><b>even: 0 2 4 6 8</b><br><b>odd: 1 3 5 7 9</b></div>'},
+    {say:'For BIG numbers, only the LAST digit decides. 348 ends in 8, so it is even. 571 ends in 1, so it is odd.', vis:'<div style="font-size:22px"><b>34<u>8</u> even &nbsp;&nbsp; 57<u>1</u> odd</b></div>'}
+  ]},
   double:{steps:[
     {say:'To DOUBLE, add the number to itself. To HALVE, split it into two equal parts.', vis:'<div style="font-size:20px"><b>7 x 2 = 7 + 7 = 14</b><br><b>14 ÷ 2 = 7</b> (two equal parts)</div>'},
     {say:'Halving a bigger number? Halve the tens, halve the ones, then add them back together.', vis:'<div style="font-size:18px">half of 48: half of 40 = 20, half of 8 = 4 -> <b>24</b></div>'}
@@ -6234,10 +6626,12 @@ function openStuckHelp(concept){
       '<div class="lessprog">'+M.steps.map(function(_,k){return '<i class="'+(k<=i?'on':'')+'"></i>';}).join('')+'</div>'+
       (st.vis?'<div class="center" style="margin:8px 0">'+st.vis+'</div>':'')+
       '<div class="speak"><b>Elly:</b> \u201C'+st.say+'\u201D</div>'+
-      (last?'<button class="btn wide" onclick="closeModal();nextQ()">Let me try again! \u26A1</button>'
+      (last?((STEPWALK[concept]?'<button class="btn wide" id="shTogether">🤝 Do one with me first</button>':'')+
+             '<button class="btn wide'+(STEPWALK[concept]?' ghost':'')+'" onclick="closeModal();nextQ()">Let me try again! \u26A1</button>')
            :'<button class="btn wide" id="shNext">Next \u2192</button>')
     );
     var nx=$('#shNext'); if(nx)nx.addEventListener('click',function(){ ac(); i++; draw(); });
+    var tg=$('#shTogether'); if(tg)tg.addEventListener('click',function(){ closeModal(); openStepPractice(concept, function(){ nextQ(); }); });
   }
   draw();
 }
@@ -6433,7 +6827,7 @@ setup(L,st){
 
 const MONTHS_MJ=['March','April','May','June','September','October'];
 
-Object.assign(window.BQ,{openMusicCard:openMusicCard,openLevelHelp:openLevelHelp,openLesson:openLesson,openStuckHelp:openStuckHelp,MJ:MJ,MJGAMES:MJGAMES,startMJ:startMJ,mjNext:mjNext,mjOK:mjOK,mjNo:mjNo,mName:mName,nameify:nameify,renameMember:renameMember,openPlay:openPlay,PLAY_RIGS:PLAY_RIGS,V:V,SONGS:SONGS,SHOW:SHOW,openShow:openShow,showPlay:showPlay,showStop:showStop,LESSON:LESSON,startLesson:startLesson,lessonMove:lessonMove,lessonAdvance:lessonAdvance,gainLessonGate:gainLessonGate,startBattle:startBattle,battleGo:battleGo,battleWin:battleWin,ellySVG:ellySVG,ellyChime:ellyChime,ellyHint:ellyHint,ellyTip:ellyTip,startEllyIntro:startEllyIntro,ellyNext:ellyNext,ellyFinishIntro:ellyFinishIntro,ELLY:ELLY,ELLY_INTRO:ELLY_INTRO,ELLY_HINTS:ELLY_HINTS,proofIntro:proofIntro,proofWin:proofWin,proofCount:proofCount,mjRetry:function(){if(MJ.on&&!MJ.busy){MJ.round--;mjNext();}},QG:QG,startRoundLesson:startRoundLesson,RLESSON:RLESSON,rlessonAdvance:rlessonAdvance,roundLessonGate:roundLessonGate,roundLineHTML:roundLineHTML,nearestTen:nearestTen});
+Object.assign(window.BQ,{openAch:openAch,renderAch:renderAch,claimAch:claimAch,claimDaily:claimDaily,ACH:ACH,ensureDaily:ensureDaily,achClaimableCount:achClaimableCount,openStepPractice:openStepPractice,openGoldLesson:openGoldLesson,STEPWALK:STEPWALK,openMusicCard:openMusicCard,openLevelHelp:openLevelHelp,openLesson:openLesson,openStuckHelp:openStuckHelp,MJ:MJ,MJGAMES:MJGAMES,startMJ:startMJ,mjNext:mjNext,mjOK:mjOK,mjNo:mjNo,mName:mName,nameify:nameify,renameMember:renameMember,openPlay:openPlay,PLAY_RIGS:PLAY_RIGS,V:V,SONGS:SONGS,SHOW:SHOW,openShow:openShow,showPlay:showPlay,showStop:showStop,LESSON:LESSON,startLesson:startLesson,lessonMove:lessonMove,lessonAdvance:lessonAdvance,gainLessonGate:gainLessonGate,startBattle:startBattle,battleGo:battleGo,battleWin:battleWin,ellySVG:ellySVG,ellyChime:ellyChime,ellyHint:ellyHint,ellyTip:ellyTip,startEllyIntro:startEllyIntro,ellyNext:ellyNext,ellyFinishIntro:ellyFinishIntro,ELLY:ELLY,ELLY_INTRO:ELLY_INTRO,ELLY_HINTS:ELLY_HINTS,proofIntro:proofIntro,proofWin:proofWin,proofCount:proofCount,mjRetry:function(){if(MJ.on&&!MJ.busy){MJ.round--;mjNext();}},QG:QG,startRoundLesson:startRoundLesson,RLESSON:RLESSON,rlessonAdvance:rlessonAdvance,roundLessonGate:roundLessonGate,roundLineHTML:roundLineHTML,nearestTen:nearestTen});
 </script>
 
 </body>
