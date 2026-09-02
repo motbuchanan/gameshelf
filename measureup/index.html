@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Measure Up">
-<title>Measure Up v0.67</title>
+<title>Measure Up v0.68</title>
 <style>
 :root{
   --bg:#0e0b1e; --panel:#1d1636; --panel2:#28204a; --ink:#f4f0ff; --dim:#a89cd8;
@@ -153,6 +153,10 @@ input.nm{
 .pad:active,.pad.lit{transform:translateY(4px) scale(.97);filter:brightness(1.5);box-shadow:0 1px 0 rgba(0,0,0,.35)}
 /* shop */
 .shopgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.shophead{grid-column:1/-1;margin:8px 0 0;font-size:17px}
+.item.locked{opacity:.75;border-style:dashed}
+.item.daily{border-color:#ffd158;box-shadow:0 0 0 2px #ffd15844}
+.rar.daily{background:#8a6a0e}
 .item{background:var(--panel2);border-radius:18px;padding:12px;text-align:center;border:2px solid #3a2f6e}
 .rar{font-size:11px;font-weight:900;border-radius:10px;padding:3px 8px;display:inline-block;margin-bottom:4px}
 .rar.common{background:#3a4a5e}
@@ -809,7 +813,7 @@ svg .charg{will-change:transform}
     <div class="chip">🎵 <span class="cv" id="shNotes">0</span></div>
     <div class="chip">📀 <span class="cv" id="shGold">0</span></div>
   </div>
-  <p class="sub">Earn Notes 🎵 by trying. Earn Gold Records 📀 by beating bosses. More gear every update!</p>
+  <p class="sub">Earn Notes 🎵 by trying. Earn Gold Records 📀 at gold-tier shows and on Manny’s Wall. Come back every day for the Drop!</p>
   <div class="shopgrid" id="shopGrid"></div>
 </div>
 
@@ -928,14 +932,14 @@ svg .charg{will-change:transform}
 <div id="toast"></div>
 <button id="homeBtn" onclick="goHome()" aria-label="Back to Garage">🏠</button>
 <button id="ellyBtn" onclick="openEllyHelp()" aria-label="Ask Elly for help"></button>
-<div id="vbadge">v0.67 · Sep 2</div>
+<div id="vbadge">v0.68 · Sep 2</div>
 
 <script>
 'use strict';
 /* ============ UTILS ============ */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const VERSION='v0.67 · Sep 2';
+const VERSION='v0.68 · Sep 2';
 const RM=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -1635,7 +1639,7 @@ function nameify(str){
   return str;
 }
 function flairPick(id){
-  const owned=SHOP.filter(it=>it.type==='flair'&&S.owned.includes(it.id));
+  const owned=SHOP.concat(DAILY_VAULT).filter(it=>it.type==='flair'&&S.owned.includes(it.id));
   modal('<div class="center">'+memberSVG(id,90)+'<h2>Flair for '+mName(id)+'</h2></div>'+
     '<p class="sub">Pin something on! (It shows everywhere they do.)</p>'+
     '<div class="row" style="justify-content:center;gap:10px;flex-wrap:wrap">'+
@@ -2319,7 +2323,7 @@ function talkTo(id){
     }
   }
   modal(
-    '<div class="center">'+memberSVG(m.id,110)+'<h2 style="margin:4px 0">'+m.emoji+' '+mName(id)+' · '+m.title+' <button class="btn ghost small" style="padding:4px 8px;font-size:13px" onclick="renameMember(\''+id+'\')">✏️</button>'+(SHOP.some(it=>it.type==='flair'&&S.owned.includes(it.id))?'<button class="btn ghost small" style="padding:4px 8px;font-size:13px" onclick="flairPick(\''+id+'\')">🎽</button>':'')+'</h2></div>'+
+    '<div class="center">'+memberSVG(m.id,110)+'<h2 style="margin:4px 0">'+m.emoji+' '+mName(id)+' · '+m.title+' <button class="btn ghost small" style="padding:4px 8px;font-size:13px" onclick="renameMember(\''+id+'\')">✏️</button>'+(SHOP.concat(DAILY_VAULT).some(it=>it.type==='flair'&&S.owned.includes(it.id))?'<button class="btn ghost small" style="padding:4px 8px;font-size:13px" onclick="flairPick(\''+id+'\')">🎽</button>':'')+'</h2></div>'+
     '<div class="speak">"'+nameify(m.lines[LINE_IX[id]])+'"</div>'+
     '<div class="speak" style="background:#241c48">'+nameify(m.bio)+'</div>'+
     (aud&&!inband?'<p class="sub">Your '+CONCEPT_NAMES[m.concept]+' level: <b>'+Math.floor(lvlOf(m.concept))+'</b> '+starStr(lvlOf(m.concept))+' (re-audition anytime)</p>':'')+
@@ -2338,7 +2342,7 @@ function openCreator(editMode){
   renderCreator();
   show('scr-creator');
 }
-function ownedVals(type){ return SHOP.filter(it=>it.type===type&&S.owned.includes(it.id)).map(it=>it.val); }
+function ownedVals(type){ return SHOP.concat(typeof DAILY_VAULT!=='undefined'?DAILY_VAULT:[]).filter(it=>it.type===type&&S.owned.includes(it.id)).map(it=>it.val); }
 function renderCreator(){
   $('#creatorPreview').innerHTML=creatureSVG(DRAFT,160);
   punch($('#creatorPreview'));
@@ -3041,43 +3045,127 @@ const SHOP=[
  {id:'sg_hoedown',type:'song',   name:'Sheet Music: Hoedown Throwdown', rarity:'epic', notes:150, gold:0, val:'hoedown', desc:'Yee, and furthermore, haw.'},
  {id:'sg_robot',  type:'song',   name:'Sheet Music: Robot Factory', rarity:'epic', notes:150, gold:0, val:'robot', desc:'Beep boop stomp. Assembly line funk.'},
  {id:'fx_lights', type:'showfx', name:'Light Show Rig', rarity:'epic',   notes:160,gold:0, val:'lights', desc:'The stage flashes way harder during songs.'},
- {id:'fx_confetti',type:'showfx',name:'Confetti Cannon',rarity:'epic',   notes:200,gold:0, val:'confetti', desc:'Every song ends in a confetti storm.'}
+ {id:'fx_confetti',type:'showfx',name:'Confetti Cannon',rarity:'epic',   notes:200,gold:0, val:'confetti', desc:'Every song ends in a confetti storm.'},
+ /* ---- v0.68 expansion: perks (functional), more colors/flair/backdrops, gold sinks, achievement gear ---- */
+ {id:'pk_tipjar',  type:'perk',   name:'Tip Jar',        rarity:'epic',   notes:250,gold:0, val:'tipjar',  icon:'🫙', desc:'PERK: every right answer in a game pays +1 extra note. Forever.'},
+ {id:'pk_encore',  type:'perk',   name:'Encore Charm',   rarity:'epic',   notes:300,gold:0, val:'encore',  icon:'🎟️', desc:'PERK: shows pay 25% more notes.'},
+ {id:'pk_backstage',type:'perk',  name:'Backstage Pass', rarity:'epic',   notes:0,  gold:3, val:'backstage',icon:'🎫', desc:'PERK: a silver show now pays a gold record too.'},
+ {id:'pk_merch',   type:'perk',   name:'Merch Table',    rarity:'epic',   notes:0,  gold:4, val:'merch',   icon:'👕', desc:'PERK: every achievement you claim pays +10 bonus notes.'},
+ {id:'col_ocean',  type:'color',  name:'Deep Ocean',     rarity:'common', notes:25, gold:0, val:'#1e6fff', desc:'Cool, calm, and very blue.'},
+ {id:'col_sun',    type:'color',  name:'Sunshine',       rarity:'common', notes:25, gold:0, val:'#ffd93d', desc:'Glows even in the garage.'},
+ {id:'col_lava',   type:'color',  name:'Lava',           rarity:'rare',   notes:40, gold:0, val:'#ff4d00', desc:'Do not touch. Kidding. Touch it.'},
+ {id:'col_grape',  type:'color',  name:'Grape Soda',     rarity:'rare',   notes:40, gold:0, val:'#9b3dff', desc:'Fizzy purple stage presence.'},
+ {id:'col_mint',   type:'color',  name:'Fresh Mint',     rarity:'rare',   notes:40, gold:0, val:'#4dffb8', desc:'Crisp. Clean. Loud.'},
+ {id:'fl_rainbow', type:'flair',  name:'Rainbow Pin',    rarity:'rare',   notes:70, gold:0, val:'🌈', desc:'All the colors, one pin.'},
+ {id:'fl_alien',   type:'flair',  name:'Alien Buddy',    rarity:'rare',   notes:70, gold:0, val:'👾', desc:'Came for the music. Stayed for the snacks.'},
+ {id:'fl_pizza',   type:'flair',  name:'Pizza Slice',    rarity:'common', notes:35, gold:0, val:'🍕', desc:'Slice approves this message.'},
+ {id:'fl_dragon',  type:'flair',  name:'Tiny Dragon',    rarity:'epic',   notes:110,gold:0, val:'🐉', desc:'Breathes fire on the count of 4.'},
+ {id:'fl_rocket',  type:'flair',  name:'Rocket Patch',   rarity:'rare',   notes:70, gold:0, val:'🚀', desc:'Tour bus? We are taking THIS.'},
+ {id:'fl_diamond', type:'flair',  name:'Diamond Pin',    rarity:'epic',   notes:0,  gold:2, val:'💎', desc:'Costs gold records. Worth it.'},
+ {id:'bg_aurora',  type:'stagebg',name:'Northern Lights',rarity:'rare',   notes:90, gold:0, val:'linear-gradient(180deg,#061a2b,#0f4d5c 45%,#5ee0a0 80%,#b9ffb0)', desc:'The sky plays along.'},
+ {id:'bg_bigtop',  type:'stagebg',name:'Big Top',        rarity:'rare',   notes:90, gold:0, val:'repeating-linear-gradient(90deg,#c0392b 0 28px,#f4e6c8 28px 56px)', desc:'Circus stripes for a three-ring show.'},
+ {id:'bg_rain',    type:'stagebg',name:'Rooftop Rain',   rarity:'epic',   notes:0,  gold:2, val:'linear-gradient(180deg,#1a1d3a,#2f3b6e 60%,#5c6fb0)', desc:'City lights through the drizzle.'},
+ /* achievement gear: unlocked by a claimed Wall medal, then bought with notes */
+ {id:'ag_belt',    type:'flair',  name:'Champion Belt',  rarity:'epic',   notes:60, gold:0, val:'🏆', ach:'battles_1', achName:'Circuit Champ silver', desc:'Only battle winners wear it.'},
+ {id:'ag_mic',     type:'flair',  name:'Golden Mic',     rarity:'epic',   notes:60, gold:0, val:'🎤', ach:'gold7_1',   achName:'Gold Methods silver', desc:'For a band that knows its methods.'},
+ {id:'ag_jacket',  type:'flair',  name:'Tour Jacket',    rarity:'epic',   notes:60, gold:0, val:'🧥', ach:'shows_1',   achName:'Road Dog silver', desc:'Patches from every show.'},
+ {id:'ag_cap',     type:'flair',  name:'Scholar Cap',    rarity:'epic',   notes:60, gold:0, val:'🎓', ach:'theory_1',  achName:'Music Student silver', desc:'Reads music. Show-off.'},
+ {id:'ag_flame',   type:'flair',  name:'Streak Flame',   rarity:'epic',   notes:60, gold:0, val:'☄️', ach:'streak_1',  achName:'Hot Streak silver', desc:'Fifteen in a row. Still burning.'},
+ {id:'ag_crownbg', type:'stagebg',name:'Hall of Fame',   rarity:'epic',   notes:120,gold:0, val:'linear-gradient(180deg,#2a1d05,#7a5a12 55%,#ffd158)', ach:'medals_1', achName:'Medal Collector silver', desc:'A golden stage for a golden band.'},
+ {id:'ag_diamondbg',type:'stagebg',name:'Diamond Dome', rarity:'epic',   notes:0,  gold:3, val:'radial-gradient(circle at 50% 30%,#e8fbff,#7fd7ff 40%,#1b2b6e 80%)', ach:'diamond_0', achName:'Diamond Row bronze', desc:'Level 10 gets you a dome of ice.'}
 ];
+/* Daily Drop: one exclusive item per day, rotates through the vault by date so everything comes back around */
+const DAILY_VAULT=[
+ {id:'dd_ghost',   type:'flair', name:'Little Ghost',   val:'👻', notes:45, desc:'Boo. Politely.'},
+ {id:'dd_pumpkin', type:'flair', name:'Pumpkin Pin',    val:'🎃', notes:45, desc:'Harvest-season headliner.'},
+ {id:'dd_snow',    type:'flair', name:'Snowflake',      val:'❄️', notes:45, desc:'No two solos alike.'},
+ {id:'dd_sun',     type:'flair', name:'Sunny Badge',    val:'☀️', notes:45, desc:'Outdoor festival ready.'},
+ {id:'dd_cat',     type:'flair', name:'Stage Cat',      val:'🐱', notes:45, desc:'Sits on the amp. Owns the amp.'},
+ {id:'dd_frog',    type:'flair', name:'Frog Roadie',    val:'🐸', notes:45, desc:'Hops the cables for you.'},
+ {id:'dd_taco',    type:'flair', name:'Taco Tuesday',   val:'🌮', notes:45, desc:'Every day is taco day on tour.'},
+ {id:'dd_donut',   type:'flair', name:'Backstage Donut',val:'🍩', notes:45, desc:'Green-room essential.'},
+ {id:'dd_dino',    type:'flair', name:'Dino Buddy',     val:'🦖', notes:55, desc:'Roars on the downbeat.'},
+ {id:'dd_owl',     type:'flair', name:'Night Owl',      val:'🦉', notes:55, desc:'Late-night practice champion.'},
+ {id:'dd_shark',   type:'flair', name:'Riff Shark',     val:'🦈', notes:55, desc:'Chomps through every chorus.'},
+ {id:'dd_robot',   type:'flair', name:'Robot Pal',      val:'🤖', notes:55, desc:'Keeps perfect time. Obviously.'},
+ {id:'dd_bee',     type:'flair', name:'Buzz Bee',       val:'🐝', notes:45, desc:'Hums in the key of B.'},
+ {id:'dd_butterfly',type:'flair',name:'Butterfly',      val:'🦋', notes:45, desc:'Flutters on the & of 2.'},
+ {id:'dd_moon',    type:'flair', name:'Crescent Moon',  val:'🌙', notes:45, desc:'For the late set.'},
+ {id:'dd_clover',  type:'flair', name:'Lucky Clover',   val:'🍀', notes:45, desc:'Luck is practice in disguise.'},
+ {id:'dd_coral',   type:'color', name:'Coral Reef',     val:'#ff7f7f', notes:35, desc:'A one-day color. Grab it!'},
+ {id:'dd_teal',    type:'color', name:'Electric Teal',  val:'#12e2c8', notes:35, desc:'A one-day color. Grab it!'},
+ {id:'dd_gold',    type:'color', name:'Solid Gold',     val:'#ffd158', notes:35, desc:'A one-day color. Grab it!'},
+ {id:'dd_candy',   type:'color', name:'Cotton Candy',   val:'#ffb3e6', notes:35, desc:'A one-day color. Grab it!'},
+ {id:'dd_bgbeach', type:'stagebg',name:'Beach Bonfire', val:'linear-gradient(180deg,#1b1240,#5a2d5c 50%,#ff8c42 85%,#ffd27a)', notes:70, desc:'A one-day backdrop for the Band Room.'},
+ {id:'dd_bgcave',  type:'stagebg',name:'Crystal Cave',  val:'radial-gradient(circle at 50% 80%,#7fd7ff,#3b2a8a 45%,#120b2e 90%)', notes:70, desc:'A one-day backdrop. Echoes for days.'}
+];
+function dailyDrop(){ var d=new Date(); var n=Math.floor(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())/86400000); var it=DAILY_VAULT[n%DAILY_VAULT.length]; return Object.assign({rarity:'rare',gold:0,daily:true},it); }
+function shopItemAll(id){ return SHOP.concat(DAILY_VAULT).filter(function(it){return it.id===id;})[0]; }
+function hasPerk(v){ return SHOP.some(function(it){return it.type==='perk'&&it.val===v&&S.owned.includes(it.id);}); }
+function perkBonus(){ return hasPerk('tipjar')?1:0; }
+function shopPreview(it){
+  if(it.type==='color')return '<div style="width:40px;height:40px;border-radius:50%;background:'+it.val+';margin:6px auto"></div>';
+  if(it.type==='eyes')return '<div style="font-size:30px">✦ ✦</div>';
+  if(it.type==='acc')return '<div style="font-size:30px">'+(it.val==='crown'?'👑':'🎧')+'</div>';
+  if(it.type==='flair')return '<div style="font-size:32px">'+it.val+'</div>';
+  if(it.type==='stagebg')return '<div style="width:64px;height:38px;border-radius:8px;background:'+it.val+';margin:6px auto;border:2px solid #3a2f6e"></div>';
+  if(it.type==='perk')return '<div style="font-size:32px">'+(it.icon||'✨')+'</div>';
+  if(it.type==='song')return '<div style="font-size:30px">🎼</div>';
+  if(it.type==='showfx')return '<div style="font-size:30px">'+(it.val==='lights'?'💡':'🎊')+'</div>';
+  if(it.type==='voicepack')return '<div style="font-size:30px">🎚️</div>';
+  return '<div style="font-size:30px">🥁⚡</div>';
+}
+function shopCard(it,opts){
+  opts=opts||{};
+  const owned=S.owned.includes(it.id);
+  const cost=it.gold?('📀 '+it.gold):('🎵 '+it.notes);
+  const can=it.gold?S.gold>=it.gold:S.notes>=it.notes;
+  const locked=!!(it.ach&&!S.ach.claimed[it.ach]);
+  const d=document.createElement('div'); d.className='item'+(locked?' locked':'')+(it.daily?' daily':'');
+  d.innerHTML='<span class="rar '+it.rarity+'">'+(it.daily?'TODAY ONLY':it.ach?'MEDAL GEAR':it.type==='perk'?'PERK':it.rarity.toUpperCase())+'</span>'+shopPreview(it)+
+    '<div style="font-weight:900">'+it.name+'</div><div class="tt" style="color:#a89cd8;font-size:12px;min-height:30px">'+it.desc+'</div>'+
+    (locked?'<div class="tt" style="color:#ffd158;font-size:12px;font-weight:800">🔒 Earn '+it.achName+' on Manny\u2019s Wall</div>':'');
+  const b=document.createElement('button');
+  b.className='btn small wide'+(owned?' ghost':'');
+  b.textContent=locked?'🔒 Locked':owned?(it.type==='drumskin'?(S.equipped.drumskin===it.val?'Equipped ✔':'Equip'):'Owned ✔'):('Buy '+cost);
+  b.disabled=locked||(!owned&&!can);
+  b.addEventListener('click',e=>{
+    if(locked)return;
+    if(owned){
+      if(it.type==='drumskin'){S.equipped.drumskin=(S.equipped.drumskin===it.val?'classic':it.val);save();drum('kick');openShop();}
+      else if(it.type==='flair')toast('Pin it on a bandmate: tap them, then 🎽');
+      else if(it.type==='stagebg')toast('Pick it in the Band Room!');
+      else if(it.type==='perk')toast('Perk is ON. It works by itself.');
+      else toast('Equip it in the 🎨 editor!');
+      return;
+    }
+    if(it.gold){S.gold-=it.gold;}else{S.notes-=it.notes;}
+    S.owned.push(it.id); save();
+    sFanfare(); confetti(20); punch(d);
+    toast('Got it! '+it.name+' 🎉');
+    if(it.type==='drumskin'){S.equipped.drumskin=it.val;save();later(()=>drum('kick'),300);}
+    openShop();
+  });
+  d.appendChild(b);
+  return d;
+}
 function openShop(){
   $('#shNotes').textContent=S.notes; $('#shGold').textContent=S.gold;
   const g=$('#shopGrid'); g.innerHTML='';
-  SHOP.forEach(it=>{
-    const owned=S.owned.includes(it.id);
-    const cost=it.gold?('📀 '+it.gold):('🎵 '+it.notes);
-    const can=it.gold?S.gold>=it.gold:S.notes>=it.notes;
-    const d=document.createElement('div'); d.className='item';
-    let prev='';
-    if(it.type==='color')prev='<div style="width:40px;height:40px;border-radius:50%;background:'+it.val+';margin:6px auto"></div>';
-    else if(it.type==='eyes')prev='<div style="font-size:30px">✦ ✦</div>';
-    else if(it.type==='acc')prev='<div style="font-size:30px">'+(it.val==='crown'?'👑':'🎧')+'</div>';
-    else prev='<div style="font-size:30px">🥁⚡</div>';
-    d.innerHTML='<span class="rar '+it.rarity+'">'+it.rarity.toUpperCase()+'</span>'+prev+
-      '<div style="font-weight:900">'+it.name+'</div><div class="tt" style="color:#a89cd8;font-size:12px;min-height:30px">'+it.desc+'</div>';
-    const b=document.createElement('button');
-    b.className='btn small wide'+(owned?' ghost':'');
-    b.textContent=owned?(it.type==='drumskin'?(S.equipped.drumskin===it.val?'Equipped ✔':'Equip'):'Owned ✔'):('Buy '+cost);
-    b.disabled=!owned&&!can;
-    b.addEventListener('click',e=>{
-      if(owned){
-        if(it.type==='drumskin'){S.equipped.drumskin=(S.equipped.drumskin===it.val?'classic':it.val);save();drum('kick');openShop();}
-        else toast('Equip it in the 🎨 editor!');
-        return;
-      }
-      if(it.gold){S.gold-=it.gold;}else{S.notes-=it.notes;}
-      S.owned.push(it.id); save();
-      sFanfare(); confetti(20); punch(d);
-      toast('Got it! '+it.name+' 🎉');
-      if(it.type==='drumskin'){S.equipped.drumskin=it.val;save();later(()=>drum('kick'),300);}
-      openShop();
-    });
-    d.appendChild(b);
-    g.appendChild(d);
-  });
+  const head=(txt,sub)=>{ const h=document.createElement('div'); h.className='shophead'; h.innerHTML='<b>'+txt+'</b>'+(sub?'<div class="sub" style="margin:0;text-align:left">'+sub+'</div>':''); g.appendChild(h); };
+  const dd=dailyDrop();
+  head('📦 Today\u2019s Drop','One special item a day. Miss it and it comes back around later.');
+  g.appendChild(shopCard(dd));
+  const ach=SHOP.filter(it=>it.ach), unlocked=ach.filter(it=>S.ach.claimed[it.ach]).length;
+  head('🏅 Medal Gear \u00B7 '+unlocked+'/'+ach.length+' unlocked','Earn the medal on Manny\u2019s Wall, then buy the gear.');
+  ach.forEach(it=>g.appendChild(shopCard(it)));
+  const perks=SHOP.filter(it=>it.type==='perk'&&!it.ach);
+  head('✨ Perks','Gear that actually DOES something.');
+  perks.forEach(it=>g.appendChild(shopCard(it)));
+  const rest=SHOP.filter(it=>!it.ach&&it.type!=='perk');
+  const ownedN=rest.filter(it=>S.owned.includes(it.id)).length;
+  head('🛍️ Gear \u00B7 '+ownedN+'/'+rest.length+' owned','Colors, flair, backdrops, sheet music, show FX.');
+  rest.forEach(it=>g.appendChild(shopCard(it)));
   show('scr-shop');
 }
 $('#btnShopExit').addEventListener('click',()=>{renderHub();show('scr-hub');});
@@ -4605,7 +4693,7 @@ function gigCueMax(t){ return t==='dance'?14:t==='station'?16:18; }
 function gigJudgeDance(diff){ diff=Math.abs(diff); return diff<150?'perfect':diff<360?'good':'miss'; }
 function gigDancePts(q){ return q==='perfect'?14:q==='good'?8:0; }
 function gigResultTier(ratio){ return ratio>=0.85?2:ratio>=0.55?1:0; }
-function gigReward(ratio){ return {notes:Math.round(10+ratio*30), gold:ratio>=0.85?1:0}; }
+function gigReward(ratio,mult){ var base=Math.round((10+ratio*30)*(mult||1)); if(typeof hasPerk==='function'&&hasPerk('encore'))base=Math.round(base*1.25); var g=ratio>=0.85?1:0; if(typeof hasPerk==='function'&&hasPerk('backstage')&&ratio>=0.55)g=Math.max(g,1); return {notes:base, gold:g}; }
 
 function startGig(){
   closeModal();
@@ -4861,7 +4949,7 @@ function mjNext(){
 }
 function mjOK(detail){
   if(MJ.busy||!MJ.on)return; MJ.busy=true;
-  if(!MJ.practice){ adjust(MJ.def.concept,true,false,false); maybeWhy(MJ.def.concept,MJ.st); MJ.score+=10; addNotes(2); }
+  if(!MJ.practice){ adjust(MJ.def.concept,true,false,false); maybeWhy(MJ.def.concept,MJ.st); MJ.score+=10; addNotes(2+perkBonus()); }
   sCorrect(1); confetti(10);
   $('#mjScore').textContent=MJ.score;
   $('#mjMsg').textContent=detail||'Nailed it!';
@@ -5684,7 +5772,7 @@ function openShow(){
   const list=SONGS.filter(sg=>!sg.shopId||S.owned.includes(sg.shopId));
   $('#showList').innerHTML=list.map(sg=>'<button class="btn wide ghost" onclick="showPlay(\''+sg.id+'\')">'+sg.style.split(' ')[0]+' '+sg.title+' <span class="sub">· '+sg.style.split(' ').slice(1).join(' ')+'</span></button>').join('');
   if(SONGS.length>list.length)$('#showList').innerHTML+='<p class="sub center">🛍️ '+(SONGS.length-list.length)+' more song'+(SONGS.length-list.length>1?'s':'')+' waiting at the Gear Shop!</p>';
-  const bgs=SHOP.filter(it=>it.type==='stagebg'&&S.owned.includes(it.id));
+  const bgs=SHOP.concat(DAILY_VAULT).filter(it=>it.type==='stagebg'&&S.owned.includes(it.id));
   if(bgs.length)$('#showList').innerHTML+='<div class="row" style="justify-content:center;gap:8px;margin-top:10px;flex-wrap:wrap">'+
     '<button class="btn small ghost" onclick="setStageBG(\'\')">🌑 Classic</button>'+
     bgs.map(it=>'<button class="btn small ghost" onclick="setStageBG(\''+it.id+'\')">'+it.name+'</button>').join('')+'</div>';
@@ -6409,7 +6497,7 @@ var ACH=[
  {id:'streak',cat:'Performance',icon:'🔥',name:'Hot Streak',desc:'Best answer streak',tiers:[{need:8,n:10,g:0},{need:15,n:20,g:1},{need:25,n:40,g:2}],cur:function(){return S.stats.bestStreak||0;}},
  {id:'correct',cat:'Performance',icon:'🎯',name:'Note Machine',desc:'Total right answers',tiers:[{need:100,n:15,g:0},{need:300,n:30,g:1},{need:800,n:60,g:2}],cur:function(){return S.stats.correct||0;}},
  {id:'band',cat:'Collection',icon:'🎸',name:'Full House',desc:'Bandmates recruited',tiers:[{need:8,n:10,g:0},{need:13,n:20,g:1},{need:16,n:40,g:2}],cur:function(){return BAND.filter(function(m){return S.band[m.id];}).length;}},
- {id:'gear',cat:'Collection',icon:'🛍️',name:'Gear Head',desc:'Shop items owned',tiers:[{need:6,n:10,g:0},{need:14,n:20,g:1},{need:23,n:35,g:1}],cur:function(){return (S.owned||[]).length;}},
+ {id:'gear',cat:'Collection',icon:'🛍️',name:'Gear Head',desc:'Shop items owned',tiers:[{need:6,n:10,g:0},{need:14,n:20,g:1},{need:35,n:35,g:1}],cur:function(){return (S.owned||[]).length;}},
  {id:'shows',cat:'Shows',icon:'🎤',name:'Road Dog',desc:'Shows played',tiers:[{need:3,n:10,g:0},{need:10,n:25,g:1},{need:25,n:50,g:2}],cur:function(){return S.stats.shows||0;}},
  {id:'battles',cat:'Battles',icon:'⚔️',name:'Circuit Champ',desc:'Battles won, rematches count',tiers:[{need:1,n:15,g:0},{need:3,n:25,g:1},{need:6,n:50,g:2}],cur:function(){return S.stats.battleWins||0;}}
 ];
@@ -6467,7 +6555,7 @@ function renderAch(){
 function claimAch(id){
   var a=ACH.filter(function(x){return x.id===id;})[0]; if(!a)return;
   var t=achState(a); if(t<0||a.cur()<a.tiers[t].need)return;
-  sTap(); S.ach.claimed[a.id+'_'+t]=1; addNotes(a.tiers[t].n); if(a.tiers[t].g)S.gold+=a.tiers[t].g;
+  sTap(); S.ach.claimed[a.id+'_'+t]=1; addNotes(a.tiers[t].n+(hasPerk('merch')?10:0)); if(a.tiers[t].g)S.gold+=a.tiers[t].g;
   save(); achJingle(); toast(['🥉','🥈','🥇'][t]+' '+a.name+' claimed!');
   renderAch();
 }
@@ -7214,7 +7302,7 @@ function thNext(){ if(!TH.on||TH.mode!=='game')return; clearTimers(); TH.round++
   $('#thRetry').addEventListener('click',function(){ if(TH.busy)return; sTap(); TH.round--; thNext(); toast('\u21BB Fresh try, same round!'); });
   $('#thHelp').addEventListener('click',function(){ sTap(); clearTimers(); modal('<div class="center">'+ellySVG(64)+'<h2>'+g.emoji+' '+g.name+'</h2></div><div class="speak"><b>Elly:</b> \u201C'+g.explain+'\u201D</div><button class="btn wide" onclick="closeModal()">Got it</button><button class="btn wide ghost" onclick="closeModal();thLesson(\''+g.ch+'\')">\uD83D\uDCD6 Replay the lesson</button>'); });
 }
-function thOK(msg){ if(TH.busy||TH.mode!=='game')return; TH.busy=true; TH.score++; addNotes(2); sCorrect(1); confetti(10); $('#thMsg').textContent=msg||'Nailed it!'; later(function(){ if(!TH.on)return; if(TH.round>=thRounds())thEnd(); else thNext(); },1600); }
+function thOK(msg){ if(TH.busy||TH.mode!=='game')return; TH.busy=true; TH.score++; addNotes(2+perkBonus()); sCorrect(1); confetti(10); $('#thMsg').textContent=msg||'Nailed it!'; later(function(){ if(!TH.on)return; if(TH.round>=thRounds())thEnd(); else thNext(); },1600); }
 function thNo(msg){ if(TH.busy||TH.mode!=='game')return; TH.busy=true; ellyChime(); $('#thMsg').textContent=msg||'Almost! Next one is yours.'; later(function(){ if(!TH.on)return; if(TH.round>=thRounds())thEnd(); else thNext(); },2400); }
 function thEnd(){ clearTimers(); var g=TH.game, n=thRounds(), sc=TH.score, stars=sc>=n?3:(sc>=Math.ceil(n*.6)?2:1), t=thS(); var prev=t.stars[g.id]||0; if(stars>prev)t.stars[g.id]=stars; save();
   TH.mode='menu'; sFanfare(); confetti(20);
