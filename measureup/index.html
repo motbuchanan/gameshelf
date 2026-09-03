@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Measure Up">
-<title>Measure Up v0.74</title>
+<title>Measure Up v0.76</title>
 <style>
 :root{
   --bg:#0e0b1e; --panel:#1d1636; --panel2:#28204a; --ink:#f4f0ff; --dim:#a89cd8;
@@ -865,18 +865,6 @@ svg .charg{will-change:transform}
   </div>
   <button class="btn wide" id="lsNext" style="margin-top:10px" onclick="lessonAdvance()">Next</button>
 </div>
-<div class="scr" id="scr-rlesson">
-  <div class="row" style="justify-content:space-between;align-items:center">
-    <button class="btn ghost backbtn" onclick="RLESSON.on=false;renderHub();show('scr-hub')">← Back</button>
-    <div class="chip">🪈 Elly &amp; Swoop</div>
-    <span></span>
-  </div>
-  <div class="center" style="margin-top:6px" id="rlSwoop"></div>
-  <div class="ellyhost" id="rlHost"></div>
-  <div id="rlSay"></div>
-  <div id="rlCtrl"></div>
-  <button class="btn wide" id="rlNext" style="margin-top:10px" onclick="rlessonAdvance()">Next</button>
-</div>
 <div class="scr" id="scr-show">
   <div class="row" style="justify-content:space-between;align-items:center">
     <button class="btn ghost backbtn" id="btnShowExit">← Back</button>
@@ -939,14 +927,14 @@ svg .charg{will-change:transform}
 <div id="toast"></div>
 <button id="homeBtn" onclick="goHome()" aria-label="Back to Garage">🏠</button>
 <button id="ellyBtn" onclick="openEllyHelp()" aria-label="Ask Elly for help"></button>
-<div id="vbadge">v0.74 · Sep 2</div>
+<div id="vbadge">v0.76 · Sep 3</div>
 
 <script>
 'use strict';
 /* ============ UTILS ============ */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const VERSION='v0.74 · Sep 2';
+const VERSION='v0.76 · Sep 3';
 const RM=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -1122,7 +1110,6 @@ const ELLY_HINTS={
  'scr-play':'Free play! No score, no rush. Just tap and make sounds. Every bandmate has their own instrument to mess around with.',
  'scr-shop':'The Gear Shop! Spend the 🎵 Notes you earn on flair, backdrops, new songs, and instrument add-ons. Nothing here is needed to play, it is all just for fun.',
  'scr-lesson':'Gain is teaching you negative numbers. Take your time and tap along, there is no wrong here.',
- 'scr-rlesson':'Swoop is teaching you rounding. Slide numbers to the closest ten. No wrong here, just tap along!',
  'scr-mj':'A mini-game! Read what the bandmate asks at the top, then tap to answer. See the ↻ button? That gives you a fresh try. The ❓ replays how to play!',
  'scr-quiz':'Answer at your own pace. A wrong answer is never a big deal, you still earn Notes for trying. I will chime softly so you know to look again.',
  'scr-battle':'Trade Solos! The rival band calls out, and you send the bandmate whose skill fits. I light up who I would pick. Answer right to win the crowd!',
@@ -1327,9 +1314,6 @@ function creatureSVG(c,sz){
 
 /* ============ CUSTOM MEMBER ART (concept-driven silhouettes) ============ */
 let SVGID=0; function uid(){return 'bq'+(SVGID++);}
-const CONCEPT_COLOR={add:'#ff5d5d',sub:'#5d8bff',mul:'#ffb347',frac:'#7dff8a',clock:'#c58dff',cal:'#59e0d0',meas:'#ffdd57',div:'#ff8ad1',neg:'#4dd6ff',skip:'#c0f24d',money:'#54d98b'};
-function regExtra(){ return ''; }
-function memberSVG_reg_placeholder(){}
 function ellySVG(sz){
   sz=sz||120; const O='#221a44', g='#ffcf4d', g2='#e0a92e', rim='#b5851f';
   const e=
@@ -2260,7 +2244,6 @@ function battleEnd(forced){
 let LINE_IX={};
 function memberGames(id){ return Object.keys(MJGAMES).filter(k=>MJGAMES[k].member===id); }
 function clearedCount(id){ return memberGames(id).filter(k=>S.cleared[k]).length; }
-function gameCheck(gid){ return S.cleared[gid]?' ✓':''; }
 function talkTo(id){
   const m=BY_ID[id];
   LINE_IX[id]=((LINE_IX[id]||0)+1)%m.lines.length;
@@ -2505,7 +2488,8 @@ const QG={
     else if(L<5){a=R(3,12);b=R(3,9);}
     else if(L<7){a=R(11,49);b=R(3,9);}
     else if(L<9){a=R(12,58);b=R(11,39);}
-    else {a=R(5,30);b=R(5,30);c=R(3,20);}
+    else if(L<11){a=R(15,60);b=R(10,45);c=R(5,25);}
+    else {a=R(40,99);b=R(25,80);c=R(10,40);}
     const ans=a+b+c;
     const q=c?('Play '+pl(a,'beat')+', then '+b+', then '+c+'. Total beats?')
              :('🥁 '+pl(a,'beat')+' + '+pl(b,'beat')+' = ?');
@@ -2989,7 +2973,6 @@ function battleWin(){
 
 /* ============ ECHO BEATS STATION ============ */
 const ST={round:0,seq:[],input:[],phase:'idle',earned:0};
-const PADCOL={kick:'#c9403f',snare:'#3f6fc9',hat:'#3fa06b',clap:'#b07a2e'};
 function openStation(){
   ST.round=0; ST.earned=0; ST.phase='idle';
   $('#stNotes').textContent=S.notes;
@@ -3121,7 +3104,6 @@ const DAILY_VAULT=[
  {id:'dd_bgcave',  type:'stagebg',name:'Crystal Cave',  val:'radial-gradient(circle at 50% 80%,#7fd7ff,#3b2a8a 45%,#120b2e 90%)', notes:70, desc:'A one-day backdrop. Echoes for days.'}
 ];
 function dailyDrop(){ var d=new Date(); var n=Math.floor(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())/86400000); var it=DAILY_VAULT[n%DAILY_VAULT.length]; return Object.assign({rarity:'rare',gold:0,daily:true},it); }
-function shopItemAll(id){ return allItems().filter(function(it){return it.id===id;})[0]; }
 function hasPerk(v){ return SHOP.some(function(it){return it.type==='perk'&&it.val===v&&S.owned.includes(it.id);}); }
 function perkBonus(){ return hasPerk('tipjar')?1:0; }
 function shopPreview(it){
@@ -3489,7 +3471,6 @@ function arcSpawn(now){
 }
 const GLYPH={1:{r:26,stem:0,flag:0},2:{r:22,stem:48,flag:0},4:{r:19,stem:46,flag:0},8:{r:16,stem:44,flag:1}};
 function noteW(den){ return (GLYPH[den]?GLYPH[den].r:18)*2+22; }
-function noteH(den){ const g=GLYPH[den]||GLYPH[4]; return g.r*2+(g.stem?g.stem:0)+10; }
 /* real music-notation glyph: hollow/filled head, stem, flag — scale 1 = in-flight size */
 function drawGlyph(c,den,scale,col){
   const g=GLYPH[den]||GLYPH[4];
@@ -4721,6 +4702,11 @@ function travelTo(id){
   drum('kick'); later(()=>drum('kick'),300); later(()=>{ closeModal(); startGig(v.id); },hasPerk('bus')?500:1300);
 }
 const GIG_LINES={
+  round:'Swoop loops the stage twice and lands on your shoulder. "Rounded up: that was a ten."',
+  roscoe:'Roscoe hums the whole set back, note for note, in order. Every pattern.',
+  bigtub:'Big Tub thumps the ground once. "Bigger than last time. Bigger every time."',
+  shimmer:'Shimmer rings twice, then once. "Double the crowd, half the nerves."',
+  axel:'Axel windmills the last chord. "Odd beats, even beats, every beat yours."',
   boom:'Boom tackle-hugs you. "TOLD you we had a frontman!"',
   rumble:'Rumble gives one slow nod. From Rumble, that is a standing ovation.',
   combo:'Combo is already sketching a bigger stage. "Next one is DOUBLE the size."',
@@ -4897,7 +4883,7 @@ function gigEnd(){
   const names=['🎸 Nice first set!','🌟 Great show!','🔥 The crowd went WILD!'];
   const pct=Math.round(ratio*100); S.gigBest=S.gigBest||{}; const wasBest=pct>(S.gigBest[v.id]||0); if(wasBest)S.gigBest[v.id]=pct;
   addNotes(rw.notes); if(rw.gold)addGold(rw.gold); S.stats.shows=(S.stats.shows||0)+1; save();
-  const closer=GIG.members.length?nameify(GIG_LINES[pick(GIG.members)]):'You walk off to your own echo. A crowd of one, but they are on their feet.';
+  const closer=GIG.members.length?nameify(GIG_LINES[pick(GIG.members.filter(function(id){return GIG_LINES[id];}))]||'The band crowds around you. Nobody says it, but everybody knows: that was the one.'):'You walk off to your own echo. A crowd of one, but they are on their feet.';
   renderHub(); show('scr-hub');
   modal('<div class="center">'+creatureSVG(S.creature,100)+'<h2>'+names[tier]+'</h2></div>'+
     '<div class="card center"><div class="sub" style="margin:0 0 2px">'+v.emoji+' '+v.name+(wasBest?' · 🏅 new best here!':'')+'</div><b>Crowd '+pct+'%</b> '+['🥉','🥈','🥇'][tier]+
@@ -4985,7 +4971,6 @@ function startMJ(id,practice){
   closeModal();
   const def=MJGAMES[id]; if(!def)return;
   if(def.member==='gain'&&gainLessonGate(function(){startMJ(id,practice);}))return;
-  if(def.member==='round'&&roundLessonGate(function(){startMJ(id,practice);}))return;
   if(coachGate(id,def.member,function(){startMJ(id);},function(){startMJ(id,true);}))return;
   MJ.id=id; MJ.def=def; MJ.round=0; MJ.score=0; MJ.on=true; MJ.practice=!!practice;
   if(MJ.practice)toast('🎓 Practice round: no score, no levels, all fun!');
@@ -6383,6 +6368,9 @@ var MUSIC_CARDS={
   reg:{elly:'Register works the merch table. Counting money is math you will use every day.',body:'At the table you take the cash and make change. Count UP from the price to what they handed you.',example:'Shirt is $15. They pay with a $20. Count up: 16, 17, 18, 19, 20. That is $5 back.'}
 };
 var MUSIC_DEMOS={
+  gauge:function(){ [0,1,2,3,4,5,6,7,8,9,10,11].forEach(function(i){ later(function(){ drum(i%12===0?'kick':'hat'); },i*120); }); later(function(){drum('kick');},1440); later(function(){drum('snare');},1600); },
+  luna:function(){ [0,1,2,3,4,5,6].forEach(function(i){ later(function(){ tone(ntf(60+i*2),.22,'triangle',.16); if(i===0||i===6)drum('kick'); },i*260); }); },
+  reg:function(){ tone(ntf(48),.5,'sawtooth',.16); later(function(){tone(ntf(60),.5,'sawtooth',.14);},600); later(function(){tone(ntf(72),.5,'sawtooth',.12);},1200); later(function(){tone(ntf(84),.5,'sawtooth',.1);},1800); },
   axel:function(){ [0,1,2,3,4,5,6,7].forEach(function(i){ later(function(){ drum(i%2===0?'kick':'snare'); }, i*280); }); },
   shimmer:function(){ tone(ntf(72),.9,'sine',.28); later(function(){tone(ntf(84),.9,'sine',.26);},900); later(function(){tone(ntf(84),1.8,'sine',.2);},1900); },
   boom:function(){ for(var i=0;i<4;i++)later(function(){drum('kick');},i*320); },
@@ -6637,6 +6625,31 @@ function openAch(){
 }
 
 var STEPWALK={
+  div:function(L){ var m=R(2,6), k=R(2,6), n=m*k;
+    return {title:'Share it out, count the groups',steps:[
+      {say:n+' ÷ '+m+'. Think of it as '+n+' beats of air shared into '+m+' equal notes. How many beats in ALL?',vis:'<div style="font-size:26px"><b>'+n+' ÷ '+m+'</b></div>',choices:numChoices(n,4),a:n},
+      {say:'Count by '+m+'s until you hit '+n+': '+Array.from({length:k},function(_,i){return (i+1)*m;}).join(', ')+'. How many counts was that?',choices:numChoices(k,2),a:k},
+      {say:'So '+n+' ÷ '+m+' = ?',choices:numChoices(k,2),a:k,after:n+' ÷ '+m+' = '+k+'. Every note gets '+k+' beats!'}]};},
+  neg:function(L){ var start=R(2,6), down=R(start+1,start+6), end=start-down;
+    return {title:'Below zero is just counting down',steps:[
+      {say:'The volume is at +'+start+'. Turn it DOWN '+down+'. First, how far to reach zero?',vis:'<div style="font-size:24px"><b>+'+start+' → down '+down+'</b></div>',choices:numChoices(start,2),a:start},
+      {say:'Down '+start+' gets you to 0. How many more clicks are left?',choices:numChoices(down-start,2),a:down-start},
+      {say:'Those go BELOW zero. Where do you land?',choices:shuffle([end,-end,end-1]).filter(function(v,i,a){return a.indexOf(v)===i;}),a:end,after:'+'+start+' down '+down+' = '+end+'. Below zero, same counting!'}]};},
+  skip:function(L){ var step=pick([2,3,5,10]), hops=R(3,6), from=step*R(0,3);
+    return {title:'Same hop every time',steps:[
+      {say:'Hop by '+step+'s starting at '+from+'. What is ONE hop from '+from+'?',vis:'<div style="font-size:24px"><b>'+from+' → ? → ?</b></div>',choices:numChoices(from+step,step),a:from+step},
+      {say:'And one more hop?',choices:numChoices(from+2*step,step),a:from+2*step},
+      {say:'Now '+hops+' hops total from '+from+'. '+from+' + '+step+' × '+hops+' = ?',choices:numChoices(from+step*hops,step),a:from+step*hops,after:'Hop by '+step+', '+hops+' times: '+from+' → '+(from+step*hops)+'.'}]};},
+  cal:function(L){ var days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'], d=R(0,6), n=R(2,6), t=(d+n)%7;
+    return {title:'Count forward, wrap at the weekend',steps:[
+      {say:'Today is '+days[d]+'. The gig is in '+n+' days. What day is TOMORROW?',vis:'<div style="font-size:20px"><b>'+days.join(' · ')+'</b></div>',choices:shuffle([days[(d+1)%7],days[(d+2)%7],days[(d+6)%7]]),a:days[(d+1)%7]},
+      {say:'That is 1 day. How many more days after that?',choices:numChoices(n-1,2),a:n-1},
+      {say:'Count '+(n-1)+' more from '+days[(d+1)%7]+'. The gig is on...',choices:shuffle([days[t],days[(t+1)%7],days[(t+6)%7]]),a:days[t],after:days[d]+' + '+n+' days = '+days[t]+'. Booked!'}]};},
+  meas:function(L){ var ft=R(2,5), inch=ft*12;
+    return {title:'Twelve inches in every foot',steps:[
+      {say:'How many inches are in ONE foot?',vis:'<div style="font-size:24px"><b>1 ft = ? in</b></div>',choices:shuffle([12,10,6]),a:12},
+      {say:'So '+ft+' feet is '+ft+' groups of 12. '+ft+' × 12 = ?',choices:numChoices(inch,6),a:inch},
+      {say:'Gauge measures the cable at '+ft+' feet. In inches that is...',choices:numChoices(inch,6),a:inch,after:ft+' ft = '+inch+' in. Measured!'}]};},
   odd:function(L){ var n=R(3,9)*100+R(0,9)*10+R(0,9); var lastD=n%10, isEv=lastD%2===0;
     return {title:'The last digit decides',steps:[
       {say:'Is '+n+' odd or even? Big numbers are easy, only ONE digit decides. Which one?',vis:'<div style="font-size:28px"><b>'+n+'</b></div>',choices:['The LAST digit','The first digit','All of them'].sort(function(){return Math.random()-0.5;}),a:'The LAST digit'},
@@ -6905,41 +6918,6 @@ PLAY_RIGS.round={hint:'Slide up, slide down. Wheee! Land on a note.',custom(el){
     const h=$('#rigWh'); if(h)h.style.transform='translateX('+((v-12)*4)+'px)'; });
 }};
 /* ---------- SWOOP'S ROUNDING LESSON: guided first meeting with rounding + estimating ---------- */
-const RLESSON={on:false,step:0,after:null};
-const RLESSON_STEPS=[
- {say:'Hi! I am Swoop, on the slide whistle. I do not hit every note, I SLIDE to the closest one. Numbers work the same way!',btn:'Show me!'},
- {say:'Here is 23. It lives on the line BETWEEN two friendly tens: 20 and 30. Which ten is it closer to? Tap it!',line:{val:23,lo:20,hi:30},pick:[20,30],ans:20,good:'Yes! 23 is only 3 steps from 20, but 7 from 30. CLOSER wins. That is rounding.'},
- {say:'Now the tricky one, the MIDDLE. 25 sits EXACTLY halfway. My rule for the middle: 5 or more, swoop UP!',btn:'Got it!'},
- {say:'So where does 25 swoop? Tap it!',line:{val:25,lo:20,hi:30},pick:[20,30],ans:30,good:'Right! The ones digit is 5, so it swoops UP to 30. That is the halfway rule.'},
- {say:'One more. Where does 71 land? Look at the arrow.',line:{val:71,lo:70,hi:80},pick:[70,80],ans:70,good:'Nice! 71 barely left 70, so it stays. Just 1 step away!'},
- {say:'Here is my favorite trick. Rounding lets you GUESS FAST. About how much is 28 + 31? Do not add the mess. Swoop each to a friendly ten first!',btn:'How?'},
- {say:'28 swoops to 30. 31 swoops to 30. So the answer is CLOSE to 30 + 30. Tap the good guess!',pick:[50,60,70],ans:60,good:'About 60! (Really 59, so close!) That is estimating: quick and close.'},
- {say:'That is it! Rounding swoops one number to the nearest ten. Estimating rounds first so you can guess fast. Close and quick beats slow and perfect. Come swoop with me!',btn:'🪈 Let us go!'}
-];
-function startRoundLesson(after){ RLESSON.on=true; RLESSON.step=0; RLESSON.after=after||null;
-  closeModal(); $('#rlSwoop').innerHTML=ellyMemberPair('round'); $('#rlHost').innerHTML='<b>Elly:</b> \u201CRounding time! Swoop shows the moves, I\u2019ll explain as we go.\u201D'; show('scr-rlesson'); rlessonSay(); }
-function rlessonSay(){ const st=RLESSON_STEPS[RLESSON.step];
-  $('#rlSay').innerHTML='<div class="speak">"'+nameify(st.say)+'"</div>';
-  let ctrl='';
-  if(st.line)ctrl+='<div class="center">'+roundLineHTML(st.line.val,st.line.lo,st.line.hi)+'</div>';
-  if(st.pick)ctrl+='<div class="row" style="justify-content:center;gap:14px;margin-top:10px">'+
-    st.pick.map(v=>'<button class="mjcymbal rlpick" data-v="'+v+'" style="font-size:22px">'+v+'</button>').join('')+'</div>';
-  $('#rlCtrl').innerHTML=ctrl;
-  $('#rlNext').style.display=st.pick?'none':'';
-  $('#rlNext').textContent=st.btn||'Next';
-  if(st.pick)$$('.rlpick').forEach(b=>b.addEventListener('click',()=>{ if(!RLESSON.on)return; ac(); const v=+b.dataset.v;
-    tone(ntf(64+(v%20)),.16,'triangle',.24);
-    if(v===st.ans){ b.classList.add('good'); drum('clap'); $$('.rlpick').forEach(x=>x.disabled=true);
-      $('#rlSay').innerHTML='<div class="speak">"'+nameify(st.good)+'"</div>'; later(()=>rlessonAdvance(),1000); }
-    else { punch(b); tone(150,.14,'sine',.16); b.disabled=true;
-      /* teaching lesson: never let the kid get stuck. show which one is right. */
-      const good=$$('.rlpick').filter(x=>+x.dataset.v===st.ans)[0];
-      if(good){ good.style.boxShadow='0 0 0 3px var(--gold)'; good.classList.add('idle'); } } }));
-}
-function rlessonAdvance(){ if(RLESSON.step>=RLESSON_STEPS.length-1){ rlessonEnd(); return; } RLESSON.step++; rlessonSay(); }
-function rlessonEnd(){ RLESSON.on=false; S.flags.lesson_round=true; save(); sFanfare(); confetti(16);
-  const after=RLESSON.after||function(){ startMJ('nearesten'); }; RLESSON.after=null; renderHub(); show('scr-hub'); later(after,250); }
-function roundLessonGate(after){ if(S.flags.lesson_round)return false; startRoundLesson(after); return true; }
 const PACK_PADS={
   vintage:{member:'boom',pads:[
     {label:'✨<br>RIM',fn:()=>{tone(1750,.05,'square',.22);tone(880,.04,'sine',.15);}},
@@ -7046,7 +7024,7 @@ setup(L,st){
 
 const MONTHS_MJ=['March','April','May','June','September','October'];
 
-Object.assign(window.BQ,{openAch:openAch,renderAch:renderAch,claimAch:claimAch,claimDaily:claimDaily,ACH:ACH,ensureDaily:ensureDaily,achClaimableCount:achClaimableCount,openStepPractice:openStepPractice,openGoldLesson:openGoldLesson,STEPWALK:STEPWALK,openMusicCard:openMusicCard,openLevelHelp:openLevelHelp,openLesson:openLesson,openStuckHelp:openStuckHelp,MJ:MJ,MJGAMES:MJGAMES,startMJ:startMJ,mjNext:mjNext,mjOK:mjOK,mjNo:mjNo,mName:mName,nameify:nameify,renameMember:renameMember,openPlay:openPlay,PLAY_RIGS:PLAY_RIGS,V:V,SONGS:SONGS,SHOW:SHOW,openShow:openShow,showPlay:showPlay,showStop:showStop,LESSON:LESSON,startLesson:startLesson,lessonMove:lessonMove,lessonAdvance:lessonAdvance,gainLessonGate:gainLessonGate,startBattle:startBattle,battleGo:battleGo,battleWin:battleWin,ellySVG:ellySVG,ellyChime:ellyChime,ellyHint:ellyHint,ellyTip:ellyTip,startEllyIntro:startEllyIntro,ellyNext:ellyNext,ellyFinishIntro:ellyFinishIntro,ELLY:ELLY,ELLY_INTRO:ELLY_INTRO,ELLY_HINTS:ELLY_HINTS,proofIntro:proofIntro,proofWin:proofWin,proofCount:proofCount,mjRetry:function(){if(MJ.on&&!MJ.busy){MJ.round--;mjNext();}},QG:QG,startRoundLesson:startRoundLesson,RLESSON:RLESSON,rlessonAdvance:rlessonAdvance,roundLessonGate:roundLessonGate,roundLineHTML:roundLineHTML,nearestTen:nearestTen});
+Object.assign(window.BQ,{openAch:openAch,renderAch:renderAch,claimAch:claimAch,claimDaily:claimDaily,ACH:ACH,ensureDaily:ensureDaily,achClaimableCount:achClaimableCount,openStepPractice:openStepPractice,openGoldLesson:openGoldLesson,STEPWALK:STEPWALK,openMusicCard:openMusicCard,openLevelHelp:openLevelHelp,openLesson:openLesson,openStuckHelp:openStuckHelp,MJ:MJ,MJGAMES:MJGAMES,startMJ:startMJ,mjNext:mjNext,mjOK:mjOK,mjNo:mjNo,mName:mName,nameify:nameify,renameMember:renameMember,openPlay:openPlay,PLAY_RIGS:PLAY_RIGS,V:V,SONGS:SONGS,SHOW:SHOW,openShow:openShow,showPlay:showPlay,showStop:showStop,LESSON:LESSON,startLesson:startLesson,lessonMove:lessonMove,lessonAdvance:lessonAdvance,gainLessonGate:gainLessonGate,startBattle:startBattle,battleGo:battleGo,battleWin:battleWin,ellySVG:ellySVG,ellyChime:ellyChime,ellyHint:ellyHint,ellyTip:ellyTip,startEllyIntro:startEllyIntro,ellyNext:ellyNext,ellyFinishIntro:ellyFinishIntro,ELLY:ELLY,ELLY_INTRO:ELLY_INTRO,ELLY_HINTS:ELLY_HINTS,proofIntro:proofIntro,proofWin:proofWin,proofCount:proofCount,mjRetry:function(){if(MJ.on&&!MJ.busy){MJ.round--;mjNext();}},QG:QG,roundLineHTML:roundLineHTML,nearestTen:nearestTen});
 </script>
 <script>
 /* ============ ELLY'S MUSIC CLASS: music theory from zero (v0.67) ============ */
@@ -7102,6 +7080,7 @@ function staffSVG(o){
       else {
         var hollow=(d==='h'||d==='w');
         s+='<ellipse cx="'+cx+'" cy="'+cy+'" rx="6.4" ry="4.4" transform="rotate(-20 '+cx+' '+cy+')" fill="'+(hollow?'none':col)+'" stroke="'+col+'" stroke-width="'+(hollow?2.4:1)+'"/>';
+        if(nt.dot)s+='<circle cx="'+(cx+10)+'" cy="'+(pos%2===0?cy-4:cy)+'" r="2.2" fill="'+col+'"/>';
         if(d!=='w'){
           var up=(pos<=4)||nt.up, sx=up?cx+5.6:cx-5.6, sy1=cy, sy2=up?cy-G*3.1:cy+G*3.1;
           if(nt.beam)sy2=cy-G*3.1, sx=cx+5.6, up=true;
@@ -7121,7 +7100,8 @@ function staffSVG(o){
 function thRhythmNotes(rh,o){ o=o||{}; var out=[],beat=1,pos=o.pos==null?4:o.pos;
   rh.forEach(function(d,i){
     if(d==='q'){ out.push({d:'q',pos:pos,label:o.labels===false?null:String(beat),cnt:String(beat),bar:(o.bars&&beat===1&&i>0)?'before':null}); beat++; }
-    else if(d==='r'){ out.push({d:'rest',pos:4,label:o.labels===false?null:String(beat),cnt:String(beat),bar:(o.bars&&beat===1&&i>0)?'before':null}); beat++; }
+    else if(d==='r'){ out.push({d:'rest',pos:4,label:o.labels===false?null:'('+beat+')',cnt:String(beat),beats:1,bar:(o.bars&&beat===1&&i>0)?'before':null}); beat++; }
+    else if(d==='h'||d==='w'||d==='dh'){ var bt=d==='h'?2:d==='w'?4:3, lab=[]; for(var k=0;k<bt;k++)lab.push(beat+k); out.push({d:d==='dh'?'h':d,dot:d==='dh',pos:pos,label:o.labels===false?null:lab.join('-'),cnt:String(beat),beats:bt,bar:(o.bars&&beat===1&&i>0)?'before':null}); beat+=bt; }
     else { out.push({d:'e',pos:pos,beam:'start',label:o.labels===false?null:String(beat),cnt:String(beat),bar:(o.bars&&beat===1&&i>0)?'before':null}); out.push({d:'e',pos:pos,beam:'end',label:o.labels===false?null:'&',cnt:'&'}); beat++; }
     if(o.per&&beat>o.per)beat=1;
   });
@@ -7133,7 +7113,7 @@ function thPlayRhythm(notes,bpm,idp,done){
   notes.forEach(function(n,i){
     later(function(){ if(!TH.on)return; if(n.d==='rest'){ /* silence */ } else if(n.cnt==='&')drum('hat'); else drum('kick');
       if(idp){ var prev=document.getElementById(idp+(i-1)); if(prev)prev.setAttribute('fill','#2a1f55'); var el=document.getElementById(idp+i); if(el)el.setAttribute('fill','#c0392b'); } },t);
-    t+=(n.cnt==='&'||n.beam==='start')?ms/2:ms;
+    t+=(n.cnt==='&'||n.beam==='start')?ms/2:ms*(n.beats||1);
   });
   later(function(){ if(!TH.on)return; if(idp){ var el=document.getElementById(idp+(notes.length-1)); if(el)el.setAttribute('fill','#2a1f55'); } if(done)done(); },t+50);
 }
@@ -7942,8 +7922,6 @@ addRecruit({id:'lumi',name:'Lumi',emoji:'🪩',title:'Light Floor',concept:'area
 <script>
 /* ============ v0.73 BAND: THE CYPHER (hip-hop) + FLOW on the sampler: DECIMALS ============ */
 function decBar(v,o){ o=o||{}; var w=o.w||240, tenths=Math.round(v*10), s='<div class="center"><div style="display:inline-flex;gap:2px;padding:4px;background:#1d1636;border-radius:8px">'; for(var i=0;i<10;i++)s+='<div style="width:'+(w/10-2)+'px;height:26px;border-radius:3px;background:'+(i<tenths?'#ff7a3d':'#2a1f55')+'"></div>'; return s+'</div>'+(o.label!==false?'<div class="sub" style="margin:2px 0 0">'+tenths+' tenths lit</div>':'')+'</div>'; }
-function d1(v){ return (Math.round(v*100)/100).toFixed(String(v).indexOf('.')>=0&&String(v).split('.')[1].length>1?2:1); }
-function moneyish(v){ return v.toFixed(2); }
 QG.decimal=function(L){
   if(L<3){ var t=R(1,9); return {q:'How many tenths are lit? Say it as a decimal.', vis:decBar(t/10,{label:false}), choices:shuffle(['0.'+t, String(t), '0.'+((t+1)%10||1), t+'.0'].filter(function(v,i,a){return a.indexOf(v)===i;})).slice(0,4), a:'0.'+t}; }
   if(L<5){ var w=R(0,3), tt=R(1,9), v=w+'.'+tt; return {q:'Which is '+v+' in words?', vis:'<div style="font-size:30px"><b>'+v+'</b></div>', choices:shuffle([w+' and '+tt+' tenths', w+' and '+tt+' hundredths', (w+tt)+' tenths', tt+' and '+w+' tenths']).filter(function(x,i,a){return a.indexOf(x)===i;}).slice(0,4), a:w+' and '+tt+' tenths'}; }
@@ -8313,6 +8291,317 @@ addRecruit({id:'grace',name:'Grace',emoji:'🎶',title:'Choir Leader',concept:'s
   loseEmoji:'🙌',loseTitle:'The Choir raises the roof',winLine:'You held the room AND balanced every voice she called. Grace stepped down from the riser, arms wide, and joined your line.',
   starHint:'Win the choir rounds to fill the recruit spark and get her to step down from the riser.',btnStyle:'linear-gradient(90deg,#6a3ab0,#c0392b)',
   gigLine:'Grace lifts both arms. "Every voice. One blend. Frontman, that was the mean of all of us."',meetLine:'And Grace, who leads the choir, stepped down from The Choir\u2019s riser. Add them up, share them out: mean and median you can hear.'});
+
+</script>
+<script>
+/* ============ v0.76 BAND: ROOTS & CULTURE (reggae) + DUB on bass: COMPARING FRACTIONS ============ */
+function nlSVG(den,marks,o){ o=o||{}; var W=o.w||280, H=o.h||64, x0=20, x1=W-20, y=40, s='<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="max-width:'+W+'px;display:block;margin:0 auto">';
+  s+='<line x1="'+x0+'" y1="'+y+'" x2="'+x1+'" y2="'+y+'" stroke="#f4f0ff" stroke-width="3"/>';
+  for(var i=0;i<=den;i++){ var x=x0+(x1-x0)*i/den; s+='<line x1="'+x+'" y1="'+(y-8)+'" x2="'+x+'" y2="'+(y+8)+'" stroke="#f4f0ff" stroke-width="2"/>'; if(o.ticks!==false&&(i===0||i===den||o.allTicks))s+='<text x="'+x+'" y="'+(y+22)+'" text-anchor="middle" font-size="12" font-weight="900" fill="#ffd158">'+(i===0?'0':i===den?'1':i+'/'+den)+'</text>'; }
+  (marks||[]).forEach(function(m){ var x=x0+(x1-x0)*m.n/m.d; s+='<circle cx="'+x+'" cy="'+y+'" r="8" fill="'+(m.c||'#8ef0c9')+'" stroke="#1d1636" stroke-width="2"/>'; if(m.label)s+='<text x="'+x+'" y="'+(y-14)+'" text-anchor="middle" font-size="13" font-weight="900" fill="'+(m.c||'#8ef0c9')+'">'+m.label+'</text>'; });
+  return s+'</svg>'; }
+function fracBar(n,d,col){ col=col||'#8ef0c9'; var s='<div style="display:inline-flex;gap:2px;padding:3px;background:#1d1636;border-radius:6px;vertical-align:middle">'; for(var i=0;i<d;i++)s+='<div style="width:'+Math.max(10,Math.floor(150/d))+'px;height:22px;border-radius:3px;background:'+(i<n?col:'#2a1f55')+'"></div>'; return s+'</div>'; }
+function fracCmp(a,b){ return a[0]*b[1]-b[0]*a[1]; }
+function fstr(f){ return f[0]+'/'+f[1]; }
+QG.cmpfrac=function(L){
+  var dens=[2,3,4,5,6,8,10,12];
+  if(L<3){ var d=pick([4,6,8]), n1=R(1,d-1), n2=R(1,d-1); while(n2===n1)n2=R(1,d-1); var big=[Math.max(n1,n2),d]; return {q:'Which is BIGGER?', vis:'<div class="row" style="justify-content:center;gap:12px">'+fracBar(n1,d)+fracBar(n2,d,'#ffd158')+'</div>', choices:shuffle([n1+'/'+d,n2+'/'+d]), a:fstr(big)}; }
+  if(L<5){ var da=pick([2,3,4,6,8]), db=pick([2,3,4,6,8]); while(db===da)db=pick([2,3,4,6,8]); return {q:'Which is BIGGER? (Same top, so fewer pieces = bigger pieces.)', vis:'<div class="row" style="justify-content:center;gap:12px">'+fracBar(1,da)+fracBar(1,db,'#ffd158')+'</div>', choices:shuffle(['1/'+da,'1/'+db]), a:'1/'+Math.min(da,db)}; }
+  if(L<7){ var d3=pick([4,6,8,10]), n3=R(1,d3-1); while(n3*2===d3)n3=R(1,d3-1); return {q:'Is '+n3+'/'+d3+' MORE or LESS than 1/2?', vis:nlSVG(d3,[{n:n3,d:d3,label:n3+'/'+d3},{n:1,d:2,c:'#ffd158',label:'1/2'}]), choices:shuffle(['more than 1/2','less than 1/2']), a:(n3*2>d3?'more than 1/2':'less than 1/2')}; }
+  if(L<9){ var A=[R(1,3),pick([3,4,5])], B=[R(1,3),pick([3,4,5])]; while(fracCmp(A,B)===0){ B=[R(1,3),pick([3,4,5])]; } return {q:'Which is bigger, '+fstr(A)+' or '+fstr(B)+'?', vis:'<div class="row" style="justify-content:center;gap:12px">'+fracBar(A[0],A[1])+fracBar(B[0],B[1],'#ffd158')+'</div>', choices:shuffle([fstr(A),fstr(B)]), a:fstr(fracCmp(A,B)>0?A:B)}; }
+  var fs=[]; while(fs.length<3){ var f=[R(1,5),pick([2,3,4,6,8])]; if(f[0]>=f[1])continue; if(fs.some(function(g){return fracCmp(f,g)===0;}))continue; fs.push(f); }
+  var sorted=fs.slice().sort(fracCmp), ans=sorted.map(fstr).join(' < '), wrong1=sorted.slice().reverse().map(fstr).join(' < '), wrong2=[sorted[1],sorted[0],sorted[2]].map(fstr).join(' < ');
+  return {q:'Order them least to greatest', vis:'', choices:shuffle([ans,wrong1,wrong2]), a:ans};
+};
+MJGAMES.dropnote={id:'dropnote',name:'Drop the Note',emoji:'📍',member:'dub',concept:'cmpfrac',
+setup:function(L,st){
+  var d=L<3?pick([2,4]):L<6?pick([3,4,6]):pick([4,5,6,8]), n=R(1,d-1); st.n=n; st.d=d;
+  return {call:'Where does '+n+'/'+d+' sit on the bar?', sub:'The bar runs 0 to 1, cut into '+d+' equal pieces. Count '+n+' ticks from 0.',
+    html:nlSVG(d,[],{allTicks:L<4})+'<div class="row" id="dnZ" style="justify-content:space-between;max-width:280px;margin:0 auto;padding:0 12px"></div>',
+    wire:function(){ var h=''; for(var i=0;i<=d;i++)h+='<button class="pgc dnb" data-i="'+i+'" style="width:'+Math.max(26,Math.floor(240/(d+1))-4)+'px;height:36px;font-size:12px">'+i+'</button>'; $('#dnZ').innerHTML=h;
+      $$('.dnb').forEach(function(b){ b.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(+b.dataset.i===n){ b.classList.add('good'); V.bass(36); mjOK(n+'/'+d+' is '+n+' ticks along. One drop, right on the spot.'); } else { b.classList.add('badc'); punch(b); mjNo('Count '+n+' ticks from 0. '+n+'/'+d+' is tick number '+n+'.'); } }); }); }};
+}};
+MJGAMES.heavier={id:'heavier',name:'Heavier Bass',emoji:'🔊',member:'dub',concept:'cmpfrac',
+setup:function(L,st){
+  var A,B; if(L<3){ var d=pick([4,6,8]); A=[R(1,d-1),d]; B=[R(1,d-1),d]; while(B[0]===A[0])B=[R(1,d-1),d]; }
+  else if(L<6){ A=[1,pick([2,3,4,6,8])]; B=[1,pick([2,3,4,6,8])]; while(B[1]===A[1])B=[1,pick([2,3,4,6,8])]; }
+  else { A=[R(1,4),pick([3,4,5,6,8])]; B=[R(1,4),pick([3,4,5,6,8])]; while(fracCmp(A,B)===0||A[0]>=A[1]||B[0]>=B[1]){ A=[R(1,4),pick([3,4,5,6,8])]; B=[R(1,4),pick([3,4,5,6,8])]; } }
+  st.ans=fstr(fracCmp(A,B)>0?A:B);
+  return {call:'Which bass note is HEAVIER (bigger)?', sub:A[1]===B[1]?'Same bottom: the bigger top wins.':A[0]===B[0]?'Same top: fewer pieces means bigger pieces.':'Compare to 1/2, or picture the bars.',
+    html:'<div class="mjcards" id="hvZ" style="grid-template-columns:repeat(2,1fr)"></div>',
+    wire:function(){ $('#hvZ').innerHTML=[A,B].map(function(f){return '<button class="mjposter hvb" data-v="'+fstr(f)+'" style="font-size:22px">'+(L<8?fracBar(f[0],f[1])+'<br>':'')+fstr(f)+'</button>';}).join('');
+      $$('.hvb').forEach(function(b){ b.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(b.dataset.v===st.ans){ V.bass(31); mjOK(st.ans+' is bigger. Heavy.'); } else { punch(b); mjNo(st.ans+' is bigger. '+(A[1]===B[1]?'Same pieces, more of them.':A[0]===B[0]?'Fewer cuts, bigger slices.':'Picture the bars filling up.')); } }); }); }};
+}};
+MJGAMES.halfcheck={id:'halfcheck',name:'Half Check',emoji:'⚖️',member:'dub',concept:'cmpfrac',
+setup:function(L,st){
+  var d=L<4?pick([4,6,8]):pick([4,5,6,8,10,12]), n=R(1,d-1); var rel=n*2===d?'exactly 1/2':n*2>d?'more than 1/2':'less than 1/2'; st.ans=rel;
+  return {call:'Is '+n+'/'+d+' more or less than a half?', sub:'Half of '+d+' pieces is '+(d/2)+'. Is '+n+' more or less than that?',
+    html:(L<6?nlSVG(d,[{n:n,d:d,label:n+'/'+d},{n:1,d:2,c:'#ffd158',label:'1/2'}]):'<div class="center" style="font-size:30px"><b>'+n+'/'+d+'</b></div>')+'<div class="mjcards" id="hcZ" style="grid-template-columns:1fr"></div>',
+    wire:function(){ $('#hcZ').innerHTML=['less than 1/2','exactly 1/2','more than 1/2'].map(function(o){return '<button class="mjposter hcb" data-v="'+o+'" style="font-size:18px">'+o+'</button>';}).join('');
+      $$('.hcb').forEach(function(b){ b.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(b.dataset.v===st.ans){ V.bass(36); mjOK(n+'/'+d+' is '+st.ans+'. Half of '+d+' is '+(d/2)+'.'); } else { punch(b); mjNo('Half of '+d+' is '+(d/2)+'. '+n+' is '+st.ans+'.'); } }); }); }};
+}};
+Object.assign(COACH,{
+  dropnote:{member:'dub',verb:'TAP',hint:'tap',title:'📍 Drop the Note',lines:['The bar is a line from 0 to 1, cut into equal pieces.','Count the ticks from 0 and TAP where the fraction lands!']},
+  heavier:{member:'dub',verb:'TAP',hint:'tap',title:'🔊 Heavier Bass',lines:['Same bottom? Bigger top wins. Same top? Fewer pieces wins.','TAP the bigger fraction!']},
+  halfcheck:{member:'dub',verb:'TAP',hint:'tap',title:'⚖️ Half Check',lines:['Half is the great benchmark. Half of the bottom number is the line.','Is the top more or less than that? TAP it!']}
+});
+PLAY_RIGS.dub={hint:'One drop. Skip the one, land heavy on the three.',custom:function(el){
+  el.innerHTML='<div class="mjbig" style="font-size:44px">🎸</div><div class="sub center">deep and slow</div><div class="row" id="dbStr" style="justify-content:center;gap:8px;margin-top:12px;flex-wrap:wrap"></div>';
+  var notes=[28,31,33,35,36,38];
+  $('#dbStr').innerHTML=notes.map(function(n,i){return '<button class="mjcymbal dbs" data-n="'+n+'" style="font-size:16px;width:70px;height:70px;border-color:#1f8a70">'+(i+1)+'</button>';}).join('');
+  $$('.dbs').forEach(function(b){ b.addEventListener('click',function(){ ac(); V.bass(+b.dataset.n); punch(b); }); });
+}};
+MUSIC_CARDS.dub={elly:'Dub plays one drop: the bar is a line and the bass sits somewhere on it. Fractions on a number line.',body:'A bar of reggae is a line from 0 to 1. Dub can hit once at the start (0), or land right in the middle (1/2), or drop on the third quarter (3/4). Every spot on the line is a fraction, and you can see which is farther along. 3/4 is farther than 1/2. 2/3 is farther than 1/2 too, but not as far as 3/4.',example:'Listen: a hit at 0, a hit at 1/2, a hit at 3/4. Farther along the bar, later in the bar.'};
+MUSIC_DEMOS.dub=function(){ V.bass(36); later(function(){V.bass(36);},1000); later(function(){V.bass(33);},1500); later(function(){drum('hat');},2000); later(function(){V.bass(31);},2000); };
+LESSONS.dub={game:function(){startMJ('dropnote');},steps:[
+  {say:'A bar is a NUMBER LINE from 0 to 1. Cut it into 4 equal pieces and every tick is a fraction: 1/4, 2/4, 3/4.',vis:nlSVG(4,[{n:1,d:4,label:'1/4'},{n:2,d:4,label:'2/4'},{n:3,d:4,label:'3/4'}],{allTicks:true})},
+  {say:'Farther along the line is BIGGER. 3/4 sits past 1/2, so 3/4 is bigger than 1/2.',vis:nlSVG(4,[{n:2,d:4,c:'#ffd158',label:'1/2'},{n:3,d:4,label:'3/4'}])},
+  {say:'Same bottom number? The bigger top wins: 3/8 beats 2/8. Same top? FEWER pieces means BIGGER pieces: 1/3 beats 1/4.',vis:'<div class="row" style="justify-content:center;gap:12px">'+fracBar(1,3)+fracBar(1,4,'#ffd158')+'</div>'},
+  {say:'When they are different on both, check against a half. 2/3 is more than half, 1/4 is less. In my games you drop notes on the line, pick the heavier bass, and half-check. Easy now.',vis:nlSVG(6,[{n:3,d:6,c:'#ffd158',label:'1/2'},{n:4,d:6,label:'2/3'},{n:1,d:6,label:'1/6'}])}
+]};
+METHOD.cmpfrac={steps:[
+  {say:'Three checks, in order. Same denominator: compare numerators. Same numerator: the smaller denominator is bigger. Otherwise, benchmark against 1/2 (is the top more or less than half the bottom?).',vis:'<div style="font-size:18px"><b>3/8 vs 5/8 → 5/8 · 1/3 vs 1/5 → 1/3 · 2/3 vs 3/8 → 2/3 (past half)</b></div>'},
+  {say:'Still tied? Cross-multiply: for a/b vs c/d compare a×d with c×b. 2/3 vs 3/4: 2×4=8 vs 3×3=9, so 3/4 is bigger.',vis:'<div style="font-size:18px"><b>2/3 vs 3/4 → 8 vs 9 → 3/4</b></div>'}
+]};
+STEPWALK.cmpfrac=function(L){ var d=pick([6,8,10]), n=R(1,d-1); while(n*2===d)n=R(1,d-1); var half=d/2, rel=n>half?'more':'less';
+  return {title:'Check it against a half',steps:[
+    {say:'Is '+n+'/'+d+' more or less than 1/2? First: half of '+d+' is ?',vis:nlSVG(d,[{n:n,d:d,label:n+'/'+d}]),choices:numChoices(half,2),a:half},
+    {say:'So 1/2 = '+half+'/'+d+'. Is '+n+' more or less than '+half+'?',choices:shuffle(['more','less']),a:rel},
+    {say:'Then '+n+'/'+d+' is...',choices:shuffle(['more than 1/2','less than 1/2']),a:rel+' than 1/2',after:n+'/'+d+' is '+rel+' than 1/2, because '+n+' is '+rel+' than '+half+'.'}]}; };
+function reggaeCharSVG(id,sz){
+  const O='#221a44'; let b='';
+  const eye=(x,y)=>'<circle cx="'+x+'" cy="'+y+'" r="5" fill="'+O+'"/><circle cx="'+(x+2)+'" cy="'+(y-2)+'" r="1.8" fill="#fff"/>';
+  const chill=(x,y)=>'<path d="M'+(x-6)+' '+y+' q6 -3 12 0" stroke="'+O+'" stroke-width="4" fill="none" stroke-linecap="round"/>';
+  const smile=(x,y,w)=>'<path d="M'+x+' '+y+' q'+(w/2)+' 6 '+w+' 0" stroke="'+O+'" stroke-width="4" fill="none" stroke-linecap="round"/>';
+  const feet=(c)=>'<ellipse cx="55" cy="123" rx="13" ry="6" fill="'+c+'"/><ellipse cx="85" cy="123" rx="13" ry="6" fill="'+c+'"/>';
+  const tam=(c)=>'<path d="M36 60 q34 -40 68 0 z" fill="'+c+'"/><rect x="34" y="52" width="72" height="6" fill="#d4a017"/><rect x="34" y="58" width="72" height="5" fill="#1f8a3a"/><rect x="34" y="63" width="72" height="5" fill="#c0392b"/>';
+  if(id==='skank'){ b=feet('#8a5a1a')+'<circle cx="70" cy="80" r="34" fill="#f4c542"/>'+tam('#1a1a2e')+chill(58,82)+chill(82,82)+smile(60,96,20)+'<path d="M104 108 l14 -34" stroke="#3a2a1a" stroke-width="4"/><ellipse cx="100" cy="112" rx="10" ry="12" fill="#8b5a2b"/>'; }
+  else if(id==='riddim'){ b=feet('#1a5a3a')+'<rect x="38" y="52" width="64" height="66" rx="26" fill="#1f8a3a"/>'+tam('#c0392b')+eye(58,84)+eye(82,84)+smile(60,98,20)+'<ellipse cx="70" cy="116" rx="30" ry="9" fill="#e8e0c8" stroke="#8a7a50" stroke-width="2"/>'; }
+  else if(id==='toots'){ b=feet('#5a1a1a')+'<circle cx="70" cy="80" r="34" fill="#c0392b"/>'+tam('#f4c542')+eye(58,84)+eye(82,84)+'<ellipse cx="70" cy="98" rx="7" ry="5" fill="'+O+'"/>'+'<rect x="30" y="104" width="80" height="14" rx="3" fill="#f4f0ff"/>'+[0,1,2,3,4,5,6].map(function(i){return '<rect x="'+(34+i*11)+'" y="104" width="6" height="9" fill="'+O+'"/>';}).join(''); }
+  else { b=feet('#0e4a3a')+'<circle cx="70" cy="80" r="34" fill="#1f8a70"/>'+tam('#f4c542')+chill(58,82)+chill(82,82)+smile(60,96,20)+'<path d="M28 118 c-12 -10 -12 -44 2 -52 c10 -6 18 6 14 14 c-4 8 -12 6 -10 14 c2 8 10 8 8 18" fill="#3a2a1a" stroke="#1a1208" stroke-width="2"/><line x1="26" y1="62" x2="26" y2="112" stroke="#e8d8a0" stroke-width="1.5"/>'; }
+  return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 140 140"><g class="charg">'+b+'</g></svg>';
+}
+addRecruit({id:'dub',name:'Dub',emoji:'🎸',title:'One-Drop Bass',concept:'cmpfrac',conceptName:'Comparing Fractions',color:'#1f8a70',rig:'bass',draw:reggaeCharSVG,crewId:'bass',
+  bio:'One drop. The bar is a line from 0 to 1 and I decide where the bass lands. Half, three-quarters, two-thirds: I know which one is farther down the line.',
+  lines:['Same bottom, bigger top. Same top, smaller bottom.','Check it against a half. Everything is easy after that.','Roots & Culture plays the one. I drop it wherever I want.'],
+  dreams:['Skank wanted every hit on the one. You let me land on the three-quarter. That is why I drifted over.','A bar is a number line. Every fraction has a spot on it.','My dream groove: hits at 1/3, 1/2, and 2/3, and the crowd knows the order.','Fewer pieces, bigger pieces. Say it slow.','This band lets the bass breathe. I am staying.'],
+  key:'roots',bandName:'Roots & Culture',crew:{name:'Roots & Culture',members:[
+    {id:'skank',emoji:'🎸',name:'Skank',line:'Easy now. Off-beat, off-beat.'},{id:'riddim',emoji:'🥁',name:'Riddim',line:'One drop on the three!'},{id:'toots',emoji:'🎹',name:'Toots',line:'Bubble, bubble, bubble.'},{id:'bass',emoji:'🎸',name:'Dub',star:true,line:'Which is bigger, 2/3 or 3/4? Feel it.'}]},
+  loseEmoji:'🌴',loseTitle:'Roots & Culture keeps the groove',winLine:'You held the crowd AND put every fraction in its place on the line. Dub slid the bass strap off one shoulder and ambled over.',
+  starHint:'Win the bass rounds to fill the recruit spark and get them to drift over.',btnStyle:'linear-gradient(90deg,#1f8a3a,#f4c542)',
+  gigLine:'Dub nods slow. "Three-quarters of the way through that set I knew. Heavy."',meetLine:'And Dub on the one-drop bass, out of Roots & Culture. The bar is a number line, and every fraction has its spot.'});
+
+/* ============ v0.76 BAND: THE MIRRORS (mariachi) + FLIP on vihuela: SHAPES & SYMMETRY ============ */
+var SHAPES={
+  triangle:{sides:3,corners:3,sym:3,pts:function(c,r){return [[c,c-r],[c+r*0.866,c+r*0.5],[c-r*0.866,c+r*0.5]];},symAngles:[90,30,150],falseAngles:[0,60,120]},
+  square:{sides:4,corners:4,sym:4,pts:function(c,r){var k=r*0.72;return [[c-k,c-k],[c+k,c-k],[c+k,c+k],[c-k,c+k]];},symAngles:[0,90,45,135],falseAngles:[20,70,110]},
+  rectangle:{sides:4,corners:4,sym:2,pts:function(c,r){return [[c-r*0.95,c-r*0.55],[c+r*0.95,c-r*0.55],[c+r*0.95,c+r*0.55],[c-r*0.95,c+r*0.55]];},symAngles:[0,90],falseAngles:[30,150,45]},
+  pentagon:{sides:5,corners:5,sym:5,pts:function(c,r){var o=[];for(var i=0;i<5;i++){var a=-Math.PI/2+i*2*Math.PI/5;o.push([c+r*Math.cos(a),c+r*Math.sin(a)]);}return o;},symAngles:[90,18,54,126,162],falseAngles:[0,36,72]},
+  hexagon:{sides:6,corners:6,sym:6,pts:function(c,r){var o=[];for(var i=0;i<6;i++){var a=i*Math.PI/3;o.push([c+r*Math.cos(a),c+r*Math.sin(a)]);}return o;},symAngles:[0,30,60,90,120,150],falseAngles:[15,45,75]},
+  octagon:{sides:8,corners:8,sym:8,pts:function(c,r){var o=[];for(var i=0;i<8;i++){var a=Math.PI/8+i*Math.PI/4;o.push([c+r*Math.cos(a),c+r*Math.sin(a)]);}return o;},symAngles:[0,45,90,135,22.5,67.5],falseAngles:[10,35,80]},
+  circle:{sides:0,corners:0,sym:99,pts:null,symAngles:[0,45,90,135],falseAngles:[]}
+};
+var SHAPE_NAMES=Object.keys(SHAPES);
+function shapeSVG(name,o){ o=o||{}; var sz=o.sz||110, c=sz/2, r=sz*0.42, sh=SHAPES[name], fill=o.fill||'#ff9f43', s='<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 '+sz+' '+sz+'">';
+  if(name==='circle')s+='<circle cx="'+c+'" cy="'+c+'" r="'+r+'" fill="'+fill+'" stroke="#221a44" stroke-width="3"/>';
+  else s+='<polygon points="'+sh.pts(c,r).map(function(p){return p[0].toFixed(1)+','+p[1].toFixed(1);}).join(' ')+'" fill="'+fill+'" stroke="#221a44" stroke-width="3" stroke-linejoin="round"/>';
+  (o.lines||[]).forEach(function(l){ var a=l.deg*Math.PI/180, L2=r*1.15, x1=c+L2*Math.cos(a), y1=c-L2*Math.sin(a), x2=c-L2*Math.cos(a), y2=c+L2*Math.sin(a);
+    s+='<line x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'" stroke="'+(l.c||'#12e2c8')+'" stroke-width="3" stroke-dasharray="6 4"/>'; if(l.label)s+='<text x="'+(x1+(x1>c?6:-6))+'" y="'+(y1+5)+'" text-anchor="'+(x1>c?'start':'end')+'" font-size="14" font-weight="900" fill="'+(l.c||'#12e2c8')+'">'+l.label+'</text>'; });
+  if(o.corners){ sh.pts&&sh.pts(c,r).forEach(function(p){ s+='<circle cx="'+p[0]+'" cy="'+p[1]+'" r="5" fill="#ffd158" stroke="#221a44" stroke-width="2"/>'; }); }
+  return s+'</svg>'; }
+function symCount(name){ var n=SHAPES[name].sym; return n===99?'more than you can count':String(n); }
+QG.shape=function(L){
+  var pool=L<3?['triangle','square','rectangle','circle']:L<6?['triangle','square','rectangle','pentagon','hexagon','circle']:SHAPE_NAMES; var nm=pick(pool);
+  if(L<3||(L<7&&Math.random()<0.4)) return {q:'What shape is this?', vis:shapeSVG(nm), choices:shuffle([nm].concat(shuffle(pool.filter(function(x){return x!==nm;})).slice(0,3))), a:nm};
+  if(L<5){ var n2=pick(pool.filter(function(x){return x!=='circle';})); return {q:'How many SIDES does this shape have?', vis:shapeSVG(n2,{corners:true}), choices:shuffle([SHAPES[n2].sides].concat([SHAPES[n2].sides+1,SHAPES[n2].sides-1,SHAPES[n2].sides+2].filter(function(v){return v>=3;}))).slice(0,4).map(String), a:String(SHAPES[n2].sides)}; }
+  if(L<7){ var n3=pick(pool.filter(function(x){return x!=='circle'&&x!=='rectangle';})); return {q:'I have '+SHAPES[n3].sides+' sides and '+SHAPES[n3].corners+' corners. What am I?', vis:'', choices:shuffle([n3].concat(shuffle(SHAPE_NAMES.filter(function(x){return x!==n3&&x!=='rectangle';})).slice(0,3))), a:n3}; }
+  if(L<9){ var n4=pick(['triangle','square','rectangle','pentagon','hexagon']); return {q:'How many lines of symmetry does a '+n4+' have?', vis:shapeSVG(n4,{lines:SHAPES[n4].symAngles.map(function(d){return {deg:d};})}), choices:shuffle([SHAPES[n4].sym].concat([SHAPES[n4].sym+1,Math.max(1,SHAPES[n4].sym-1),SHAPES[n4].sym*2].filter(function(v,i,a){return v!==SHAPES[n4].sym&&a.indexOf(v)===i;}))).slice(0,4).map(String), a:String(SHAPES[n4].sym)}; }
+  var n5=pick(['square','rectangle','triangle','pentagon','hexagon']), isSym=Math.random()<0.5, deg=isSym?pick(SHAPES[n5].symAngles):pick(SHAPES[n5].falseAngles);
+  return {q:'Is the dashed line a line of symmetry? (Would the fold match up?)', vis:shapeSVG(n5,{lines:[{deg:deg}]}), choices:shuffle(['yes','no']), a:isSym?'yes':'no'};
+};
+MJGAMES.nameshape={id:'nameshape',name:'Name That Shape',emoji:'🔷',member:'flip',concept:'shape',
+setup:function(L,st){
+  var pool=L<3?['triangle','square','rectangle','circle']:L<6?['triangle','square','rectangle','pentagon','hexagon','circle']:SHAPE_NAMES; var nm=pick(pool); st.ans=nm; var clue=L>=5&&nm!=='circle'&&Math.random()<0.5;
+  var opts=shuffle([nm].concat(shuffle(pool.filter(function(x){return x!==nm;})).slice(0,L<3?2:3)));
+  return {call:clue?'I have '+SHAPES[nm].sides+' sides. What am I?':'What shape is this?', sub:clue?'Count in your head: 3 triangle, 4 square or rectangle, 5 pentagon, 6 hexagon, 8 octagon.':'Count the sides. Tap the name.',
+    html:(clue?'':'<div class="center">'+shapeSVG(nm,{corners:L>=3})+'</div>')+'<div class="mjcards" id="nsZ" style="grid-template-columns:repeat(2,1fr)"></div>',
+    wire:function(){ $('#nsZ').innerHTML=opts.map(function(o){return '<button class="mjposter nsb" data-v="'+o+'" style="font-size:18px">'+o+'</button>';}).join('');
+      $$('.nsb').forEach(function(b){ b.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(b.dataset.v===st.ans){ tone(ntf(72),.3,'square',.12); mjOK((nm==='circle'?'A circle, no sides at all.':'A '+nm+': '+SHAPES[nm].sides+' sides, '+SHAPES[nm].corners+' corners.')); } else { punch(b); mjNo('That is a '+nm+'. '+(nm==='circle'?'No straight sides.':SHAPES[nm].sides+' sides.')); } }); }); }};
+}};
+MJGAMES.mirrorline={id:'mirrorline',name:'Mirror Line',emoji:'🪞',member:'flip',concept:'shape',
+setup:function(L,st){
+  var nm=pick(L<4?['square','rectangle','triangle']:['square','rectangle','triangle','pentagon','hexagon']), sh=SHAPES[nm], good=pick(sh.symAngles), bads=shuffle(sh.falseAngles).slice(0,L<4?1:2);
+  var lines=shuffle([{deg:good,ok:true}].concat(bads.map(function(d){return {deg:d,ok:false};}))); var letters=['A','B','C']; lines.forEach(function(l,i){l.label=letters[i];}); st.ans=lines.filter(function(l){return l.ok;})[0].label;
+  return {call:'Which dashed line is a TRUE fold?', sub:'Fold the shape on the line. Both halves have to match exactly.',
+    html:'<div class="center">'+shapeSVG(nm,{lines:lines.map(function(l){return {deg:l.deg,label:l.label,c:['#12e2c8','#ff5db1','#ffd158'][letters.indexOf(l.label)]};}),sz:150})+'</div><div class="mjcards" id="mlZ" style="grid-template-columns:repeat('+lines.length+',1fr)"></div>',
+    wire:function(){ $('#mlZ').innerHTML=lines.map(function(l){return '<button class="mjposter mlb" data-v="'+l.label+'" style="font-size:22px">'+l.label+'</button>';}).join('');
+      $$('.mlb').forEach(function(b){ b.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(b.dataset.v===st.ans){ tone(ntf(76),.3,'square',.12); mjOK('Line '+st.ans+' folds the '+nm+' onto itself. Perfect mirror.'); } else { punch(b); mjNo('Fold on '+st.ans+' and the halves match. The others leave a corner sticking out.'); } }); }); }};
+}};
+MJGAMES.foldcount={id:'foldcount',name:'Fold Count',emoji:'🧮',member:'flip',concept:'shape',
+setup:function(L,st){
+  var nm=pick(L<4?['rectangle','square','triangle']:['rectangle','square','triangle','pentagon','hexagon','octagon']), n=SHAPES[nm].sym; st.ans=String(n);
+  var opts=shuffle([n].concat([n+1,Math.max(1,n-1),n*2,n+2].filter(function(v,i,a){return v!==n&&a.indexOf(v)===i;}).slice(0,3))).map(String);
+  return {call:'How many lines of symmetry does a '+nm+' have?', sub:L<4?'The dashed lines are all the true folds. Count them.':'Picture every fold that matches up. Regular shapes have one per side.',
+    html:'<div class="center">'+shapeSVG(nm,{lines:L<4?SHAPES[nm].symAngles.map(function(d){return {deg:d};}):[],sz:140})+'</div><div class="mjcards" id="fcZ"></div>',
+    wire:function(){ $('#fcZ').innerHTML=opts.map(function(o){return '<button class="mjposter fcb" data-v="'+o+'" style="font-size:22px">'+o+'</button>';}).join('');
+      $$('.fcb').forEach(function(b){ b.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(b.dataset.v===st.ans){ tone(ntf(79),.3,'square',.12); mjOK('A '+nm+' has '+n+' lines of symmetry.'); } else { punch(b); mjNo('A '+nm+' folds '+n+' ways. '+(nm==='rectangle'?'Not the diagonals!':'One per side, plus corner-to-corner when it fits.')); } }); }); }};
+}};
+Object.assign(COACH,{
+  nameshape:{member:'flip',verb:'TAP',hint:'tap',title:'🔷 Name That Shape',lines:['Count the sides. That is the whole trick.','3 triangle, 4 square or rectangle, 5 pentagon, 6 hexagon, 8 octagon. TAP it!']},
+  mirrorline:{member:'flip',verb:'TAP',hint:'tap',title:'🪞 Mirror Line',lines:['A line of symmetry is a fold where both halves match.','Only one dashed line is a real fold. TAP its letter!']},
+  foldcount:{member:'flip',verb:'TAP',hint:'tap',title:'🧮 Fold Count',lines:['Some shapes fold lots of ways. A rectangle only folds two.','Count the true folds and TAP the number!']}
+});
+PLAY_RIGS.flip={hint:'Vihuela! Bright strums, in mirrored pairs.',custom:function(el){
+  el.innerHTML='<div class="mjbig" style="font-size:44px">🎸</div><div class="sub center">strum down, strum up</div><div class="row" id="fpStr" style="justify-content:center;gap:8px;margin-top:12px;flex-wrap:wrap"></div>';
+  var chords=[[64,69,72,76],[62,67,71,74],[60,64,67,72],[65,69,72,77]];
+  $('#fpStr').innerHTML=chords.map(function(c,i){return '<button class="mjcymbal fps" data-i="'+i+'" style="font-size:16px;width:74px;height:74px;border-color:#ff9f43">'+['I','V','IV','II'][i]+'</button>';}).join('');
+  $$('.fps').forEach(function(b){ b.addEventListener('click',function(){ ac(); chords[+b.dataset.i].forEach(function(n,k){ later(function(){tone(ntf(n),.3,'triangle',.12);},k*35); }); punch(b); }); });
+}};
+MUSIC_CARDS.flip={elly:'Flip and the Mirrors play in matching pairs. Fold the band in half and it matches. That is symmetry.',body:'A mariachi line stands in a mirror: trumpet on the left, trumpet on the right, violins matching, guitars matching. Fold the stage down the middle and every player lands on a partner. Shapes work the same way. A square folds four ways and always matches. A rectangle only folds two ways. Try folding it corner to corner and a piece sticks out.',example:'Listen: the left side plays a phrase, the right side answers with the exact mirror. Then both together.'};
+MUSIC_DEMOS.flip=function(){ [64,67,71].forEach(function(n,i){later(function(){tone(ntf(n),.25,'triangle',.14);},i*220);}); [71,67,64].forEach(function(n,i){later(function(){tone(ntf(n),.25,'triangle',.14);},900+i*220);}); later(function(){[64,67,71,76].forEach(function(n){tone(ntf(n),.6,'triangle',.1);});},1800); };
+LESSONS.flip={game:function(){startMJ('nameshape');},steps:[
+  {say:'Shapes get their names from their SIDES. Three sides: triangle. Four: square (all equal) or rectangle (long). Five: pentagon. Six: hexagon. Eight: octagon.',vis:'<div class="row" style="justify-content:center;gap:6px;flex-wrap:wrap">'+shapeSVG('triangle',{sz:60})+shapeSVG('square',{sz:60})+shapeSVG('rectangle',{sz:60})+shapeSVG('pentagon',{sz:60})+shapeSVG('hexagon',{sz:60})+shapeSVG('octagon',{sz:60})+'</div>'},
+  {say:'A circle has NO straight sides and no corners. Just one smooth curve all the way around.',vis:shapeSVG('circle',{sz:90})},
+  {say:'A LINE OF SYMMETRY is a fold. Fold the shape on the line and both halves match exactly. This square folds four ways.',vis:shapeSVG('square',{sz:120,lines:[{deg:0},{deg:90},{deg:45},{deg:135}]})},
+  {say:'A rectangle folds only TWO ways. Corner to corner does not match! In my games you name shapes, find the true fold, and count the folds. Mirror, mirror!',vis:'<div class="row" style="justify-content:center;gap:10px">'+shapeSVG('rectangle',{sz:110,lines:[{deg:0},{deg:90}]})+shapeSVG('rectangle',{sz:110,lines:[{deg:30,c:'#ff5db1',label:'✗'}]})+'</div>'}
+]};
+METHOD.shape={steps:[
+  {say:'Name by sides and corners: 3 triangle, 4 quadrilateral (square if all sides equal and corners square, rectangle if opposite sides equal), 5 pentagon, 6 hexagon, 8 octagon. "Regular" means all sides and angles equal.',vis:'<div style="font-size:18px"><b>3 · 4 · 5 · 6 · 8</b></div>'},
+  {say:'Lines of symmetry: a regular shape has as many as it has sides. A rectangle has 2 (through the middles, never the corners). A circle has endless lines, every one through the center.',vis:'<div class="row" style="justify-content:center;gap:8px">'+shapeSVG('pentagon',{sz:80,lines:SHAPES.pentagon.symAngles.map(function(d){return {deg:d};})})+shapeSVG('rectangle',{sz:80,lines:[{deg:0},{deg:90}]})+'</div>'}
+]};
+STEPWALK.shape=function(L){ var nm=pick(['triangle','square','pentagon','hexagon']), sh=SHAPES[nm];
+  return {title:'Sides, corners, name',steps:[
+    {say:'Count the SIDES of this shape.',vis:shapeSVG(nm,{corners:true,sz:120}),choices:shuffle([sh.sides].concat([sh.sides+1,sh.sides-1,sh.sides+2].filter(function(v){return v>=3;})).slice(0,3)),a:sh.sides},
+    {say:'Now the CORNERS (the yellow dots).',choices:shuffle([sh.corners].concat([sh.corners+1,sh.corners-1,sh.corners+2].filter(function(v){return v>=3;})).slice(0,3)),a:sh.corners},
+    {say:sh.sides+' sides and '+sh.corners+' corners. What is it called?',choices:shuffle([nm].concat(shuffle(SHAPE_NAMES.filter(function(x){return x!==nm&&x!=='circle';})).slice(0,2))),a:nm,after:sh.sides+' sides, '+sh.corners+' corners: a '+nm+'!'}]}; };
+function mariachiCharSVG(id,sz){
+  const O='#221a44'; let b='';
+  const eye=(x,y)=>'<circle cx="'+x+'" cy="'+y+'" r="5" fill="'+O+'"/><circle cx="'+(x+2)+'" cy="'+(y-2)+'" r="1.8" fill="#fff"/>';
+  const smile=(x,y,w)=>'<path d="M'+x+' '+y+' q'+(w/2)+' 7 '+w+' 0" stroke="'+O+'" stroke-width="4" fill="none" stroke-linecap="round"/>';
+  const feet=(c)=>'<ellipse cx="55" cy="123" rx="12" ry="6" fill="'+c+'"/><ellipse cx="85" cy="123" rx="12" ry="6" fill="'+c+'"/>';
+  const sombrero=(c)=>'<ellipse cx="70" cy="46" rx="52" ry="12" fill="'+c+'" stroke="#ffd158" stroke-width="3"/><path d="M48 46 q22 -34 44 0 z" fill="'+c+'" stroke="#ffd158" stroke-width="2"/>';
+  const charro=(c)=>'<rect x="40" y="54" width="60" height="66" rx="24" fill="'+c+'"/>'+[0,1,2].map(function(i){return '<circle cx="46" cy="'+(70+i*14)+'" r="3" fill="#ffd158"/><circle cx="94" cy="'+(70+i*14)+'" r="3" fill="#ffd158"/>';}).join('')+'<path d="M62 56 l8 12 l8 -12" fill="#c0392b"/>';
+  if(id==='sol'){ b=feet('#5a2a10')+charro('#1a1a2e')+sombrero('#c0392b')+eye(58,76)+eye(82,76)+'<ellipse cx="70" cy="92" rx="6" ry="4" fill="'+O+'"/><path d="M76 92 h28 l10 -8 v16 l-10 -8" fill="#ffd158" stroke="#a67c00" stroke-width="2"/>'; }
+  else if(id==='luz'){ b=feet('#5a2a10')+charro('#7a1f3f')+sombrero('#1a1a2e')+eye(58,76)+eye(82,76)+smile(60,90,20)+'<ellipse cx="34" cy="98" rx="10" ry="14" fill="#8b5a2b"/><rect x="32" y="60" width="4" height="26" fill="#3a2a1a"/><line x1="18" y1="84" x2="50" y2="112" stroke="#c9a26a" stroke-width="3"/>'; }
+  else if(id==='tito'){ b=feet('#5a2a10')+charro('#2a5a1a')+sombrero('#ffd158')+eye(58,76)+eye(82,76)+smile(60,90,20)+'<ellipse cx="70" cy="114" rx="28" ry="16" fill="#a0522d" stroke="#3a2a1a" stroke-width="2"/><rect x="68" y="70" width="4" height="30" fill="#3a2a1a"/>'; }
+  else { b=feet('#5a2a10')+charro('#c0392b')+sombrero('#ff9f43')+eye(58,76)+eye(82,76)+smile(60,90,20)+'<ellipse cx="96" cy="104" rx="12" ry="16" fill="#a0522d" stroke="#3a2a1a" stroke-width="2"/><rect x="94" y="66" width="4" height="28" fill="#3a2a1a"/><line x1="70" y1="30" x2="70" y2="128" stroke="#12e2c8" stroke-width="2" stroke-dasharray="5 4"/>'; }
+  return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 140 140"><g class="charg">'+b+'</g></svg>';
+}
+addRecruit({id:'flip',name:'Flip',emoji:'🪞',title:'Vihuela',concept:'shape',conceptName:'Shapes & Symmetry',color:'#ff9f43',rig:'vihuela',draw:mariachiCharSVG,crewId:'vih',
+  bio:'The Mirrors stand in matching pairs, left and right. I fold everything in half in my head: shapes, stages, songs. If both halves match, that is symmetry.',
+  lines:['Count the sides. Then you know the name.','Fold it. Do the halves match? Then it is a mirror line.','A rectangle folds two ways. Not four. Not the corners.'],
+  dreams:['Sol wanted the band in one straight row. You let me split it into two mirrored halves. That is why I crossed the line.','Every shape is a fold waiting to happen.','My dream show: the whole crowd folds in half and matches.','A circle folds every way. It is the friendliest shape.','This band stands in pairs. I am staying.'],
+  key:'mirrors',bandName:'The Mirrors',crew:{name:'The Mirrors',members:[
+    {id:'sol',emoji:'🎺',name:'Sol',line:'¡Ay ay ay! Louder!'},{id:'luz',emoji:'🎻',name:'Luz',line:'Sweet and high, sweet and high.'},{id:'tito',emoji:'🎸',name:'Tito',line:'Big guitar, big bottom.'},{id:'vih',emoji:'🪞',name:'Flip',star:true,line:'How many sides? Fold it and see.'}]},
+  loseEmoji:'🎺',loseTitle:'The Mirrors keep their pairs',winLine:'You held the crowd AND named every shape she folded. Flip stepped out of the mirrored line and matched up with you instead.',
+  starHint:'Win the vihuela rounds to fill the recruit spark and get her to cross the line.',btnStyle:'linear-gradient(90deg,#c0392b,#ff9f43)',
+  gigLine:'Flip holds up two fingers, mirrored. "Two halves. One show. It matched."',meetLine:'And Flip on the vihuela, out of The Mirrors. Count the sides, fold it in half: shapes and symmetry.'});
+
+/* ============ v0.76 MUSIC CLASS chapters 6-8: Rests, Long Notes, Note Names ============ */
+var TH_LETTERS=['E','F','G','A','B','C','D','E','F'];
+function noteLetter(pos){ return TH_LETTERS[pos]; }
+TH_CH.push(
+ {id:'rests',emoji:'\uD83E\uDD2B',name:'Rests',member:'boom',blurb:'silence has a count too',
+  steps:[
+   {say:'Music has SILENCE in it too, and the silence still gets counted. This squiggle is a QUARTER REST: one count of quiet.',vis:staffSVG({clef:'treble',ts:'4/4',notes:[{d:'rest',pos:4,label:'(1)'}]})},
+   {say:'Count the rest just like a note, but say it quietly or in your head. 1, (2), 3, 4. Tap \u25B6 and listen for the hole where beat 2 should be.',vis:staffSVG({clef:'treble',ts:'4/4',notes:thRhythmNotes(['q','r','q','q']),idp:'thL'}),play:{rh:['q','r','q','q'],bpm:80}},
+   {say:'Boom does not play on a rest, but he still COUNTS it. That is how the whole band comes back in together.',vis:staffSVG({clef:'treble',ts:'4/4',notes:thRhythmNotes(['q','q','r','r']),idp:'thL'}),play:{rh:['q','q','r','r'],bpm:80}},
+   {say:'How many counts does a quarter rest get?',vis:staffSVG({clef:'treble',notes:[{d:'rest',pos:4}]}),pick:['0','1','2'],ans:'1',good:'One count. Quiet, but counted!'},
+   {say:'Which count is quiet in this measure?',vis:staffSVG({clef:'treble',ts:'4/4',notes:[{d:'q',pos:4,label:'1'},{d:'q',pos:4,label:'2'},{d:'rest',pos:4,label:'?',hi:true},{d:'q',pos:4,label:'4'}]}),pick:['2','3','4'],ans:'3',good:'Count 3 is the rest. Shh, then back in on 4.'},
+   {say:'Rests are part of the music. Play on the notes, stay still on the rests, keep counting the whole time. Try it!'}
+  ],games:['soundsilence','countquiet']},
+ {id:'longnotes',emoji:'\uD83C\uDFB5',name:'Long Notes',member:'bigtub',blurb:'half note 2, dotted half 3, whole 4',
+  steps:[
+   {say:'Some notes last longer than one count. This hollow note with a stem is a HALF NOTE. It gets TWO counts: 1-2.',vis:staffSVG({clef:'treble',ts:'4/4',notes:thRhythmNotes(['h','h']),idp:'thL'}),play:{rh:['h','h'],bpm:80}},
+   {say:'A hollow note with NO stem is a WHOLE NOTE. It fills the whole measure: 1-2-3-4. Tap \u25B6 and hold the sound in your head.',vis:staffSVG({clef:'treble',ts:'4/4',notes:thRhythmNotes(['w']),idp:'thL'}),play:{rh:['w'],bpm:80}},
+   {say:'A DOT after a note adds half its value. A half note (2) with a dot is 3 counts: a DOTTED HALF. 1-2-3.',vis:staffSVG({clef:'treble',ts:'3/4',notes:thRhythmNotes(['dh']),idp:'thL'}),play:{rh:['dh'],bpm:80}},
+   {say:'Mix them: half note (1-2), then two quarters (3, 4). Still four counts!',vis:staffSVG({clef:'treble',ts:'4/4',notes:thRhythmNotes(['h','q','q']),idp:'thL'}),play:{rh:['h','q','q'],bpm:80}},
+   {say:'How many counts does a half note get?',vis:staffSVG({clef:'treble',notes:[{d:'h',pos:4}]}),pick:['1','2','4'],ans:'2',good:'Two counts. Half of a whole!'},
+   {say:'And a whole note?',vis:staffSVG({clef:'treble',notes:[{d:'w',pos:4}]}),pick:['2','3','4'],ans:'4',good:'Four! The whole measure.'},
+   {say:'Quarter 1, half 2, dotted half 3, whole 4. Big Tub loves the long ones. Go hold some notes!'}
+  ],games:['holdit','fillmeasure2']},
+ {id:'notenames',emoji:'\uD83D\uDD24',name:'Note Names',member:'plink',blurb:'the treble staff spells words',
+  steps:[
+   {say:'Every line and space on the treble staff has a LETTER name. The music alphabet is only A to G, then it starts over.',vis:'<div style="font-size:24px"><b>A B C D E F G · A B C ...</b></div>'},
+   {say:'The LINES, bottom to top: E G B D F. Remember it: Every Good Band Deserves Fans!',vis:staffSVG({clef:'treble',notes:[{d:'q',pos:0,label:'E'},{d:'q',pos:2,label:'G'},{d:'q',pos:4,label:'B'},{d:'q',pos:6,label:'D'},{d:'q',pos:8,label:'F'}]})},
+   {say:'The SPACES, bottom to top, spell a word: F A C E. Face!',vis:staffSVG({clef:'treble',notes:[{d:'q',pos:1,label:'F'},{d:'q',pos:3,label:'A'},{d:'q',pos:5,label:'C'},{d:'q',pos:7,label:'E'}]})},
+   {say:'Put them together and the staff climbs the alphabet: E F G A B C D E F. Tap \u25B6 to hear Plink play up the staff.',vis:staffSVG({clef:'treble',notes:TH_LETTERS.map(function(l,i){return {d:'q',pos:i,label:l};})}),hear:[{label:'\uD83D\uDD0A climb the staff',fn:function(){ [64,65,67,69,71,72,74,76,77].forEach(function(n,i){ later(function(){V.bell(n);},i*180); }); }}]},
+   {say:'What is the name of this note? (It is on a LINE.)',vis:staffSVG({clef:'treble',notes:[{d:'q',pos:2,hi:true}]}),pick:['E','G','B'],ans:'G',good:'G! The second line. The treble clef curls around it.'},
+   {say:'And this one? (It is in a SPACE.)',vis:staffSVG({clef:'treble',notes:[{d:'q',pos:3,hi:true}]}),pick:['F','A','C'],ans:'A',good:'A! Second space. F-A-C-E.'},
+   {say:'Lines: Every Good Band Deserves Fans. Spaces: FACE. Now go read some notes, and spell some words while you are at it!'}
+  ],games:['namenote','findnote','spellit']}
+);
+TH_CH.forEach(function(c){TH_BY[c.id]=c;});
+TH_GAMES.soundsilence={id:'soundsilence',ch:'rests',emoji:'\uD83E\uDD2B',name:'Sound or Silence',explain:'Go through the measure in order. Tap PLAY for a note, tap REST for a rest. Every count gets one tap.',
+ setup:function(r,st){
+  var rh=[]; for(var b=0;b<4;b++)rh.push(Math.random()<(r<=2?0.35:0.5)?'r':'q'); if(rh.indexOf('r')<0)rh[R(0,3)]='r'; if(rh.indexOf('q')<0)rh[R(0,3)]='q';
+  var notes=thRhythmNotes(rh,{labels:false}); notes.forEach(function(n){n.label='_';}); st.seq=rh; st.i=0;
+  return {call:'Play or rest? Go in order.',sub:'Notes get a tap on PLAY. Rests get a tap on REST. Count all four.',
+    html:staffSVG({clef:'treble',ts:'4/4',notes:notes,idp:'thL'})+thPlayBtn('\u25B6 Hear it','thHear')+'<div class="row" style="justify-content:center;gap:14px;margin-top:8px"><button class="mjcymbal thss" data-v="q">\uD83E\uDD41<br>PLAY</button><button class="mjcymbal thss" data-v="r" style="border-color:#9d7cff">\uD83E\uDD2B<br>REST</button></div>',
+    wire:function(){ $('#thHear').addEventListener('click',function(){ thPlayRhythm(thRhythmNotes(rh),80,null); });
+      $$('#thGame .thss').forEach(function(b){ b.addEventListener('click',function(){ if(TH.busy||st.i>=4)return; ac(); if(b.dataset.v===st.seq[st.i]){ if(b.dataset.v==='q')drum('kick'); var el=document.getElementById('thL'+st.i); if(el){ el.textContent=b.dataset.v==='q'?String(st.i+1):'('+(st.i+1)+')'; el.setAttribute('fill','#c0392b'); } st.i++; if(st.i>=4)thOK('Every count, sound or silence!'); } else { punch(b); ellyChime(); st.miss=(st.miss||0)+1; if(st.miss>=3)thNo('Count '+(st.i+1)+' is a '+(st.seq[st.i]==='q'?'NOTE, tap PLAY':'REST, tap REST')+'.'); } }); }); }};
+ }};
+TH_GAMES.countquiet={id:'countquiet',ch:'rests',emoji:'\uD83D\uDD22',name:'Count the Quiet',explain:'Rests get counted too. What count is the gold rest on?',
+ setup:function(r,st){
+  var rh=['q','q','q','q']; var ri=R(0,3); rh[ri]='r'; if(r>=4){ var r2=R(0,3); if(r2!==ri)rh[r2]='r'; }
+  var notes=thRhythmNotes(rh,{labels:false}); var gi=rh.indexOf('r'); if(r>=4&&rh.lastIndexOf('r')!==gi&&Math.random()<0.5)gi=rh.lastIndexOf('r'); notes[gi].hi=true; notes[gi].label='?'; st.ans=String(gi+1);
+  return {call:'What count is the gold rest?',sub:'Count every beat, sound or silence.',html:staffSVG({clef:'treble',ts:'4/4',notes:notes})+thPickHTML(['1','2','3','4']),wire:function(){thWirePick(st.ans,'Count '+st.ans+' is quiet!','It is count '+st.ans+'. Rests keep their place in the count.');}};
+ }};
+TH_GAMES.holdit={id:'holdit',ch:'longnotes',emoji:'\u23F1\uFE0F',name:'Hold It',explain:'See the note, then press and HOLD the big button for that many counts. Boom ticks the counts while you hold. Let go on time!',rounds:5,
+ setup:function(r,st){
+  var d=pick(r<=2?['q','h']:['q','h','dh','w']), beats={q:1,h:2,dh:3,w:4}[d]; st.beats=beats; st.held=0; st.done=false;
+  var nm={q:'quarter',h:'half',dh:'dotted half',w:'whole'}[d];
+  return {call:'Hold a '+nm+' note: '+beats+' count'+(beats>1?'s':''),sub:'Press and hold. Count the ticks. Let go after '+beats+'.',
+    html:staffSVG({clef:'treble',ts:'4/4',notes:thRhythmNotes([d])})+'<div class="mjbig" id="thHold">0</div><div class="row" style="justify-content:center"><button class="mjcymbal" id="thHoldBtn" style="width:120px;height:120px;font-size:18px">HOLD</button></div>',
+    wire:function(){ var b=$('#thHoldBtn'), t0=null, tick=null, cnt=0, ms=750;
+      var start=function(e){ e.preventDefault(); if(st.done||TH.busy)return; ac(); cnt=0; $('#thHold').textContent='1'; drum('kick'); cnt=1; tone(ntf(60),.4,'triangle',.15); tick=setInterval(function(){ if(!TH.on){clearInterval(tick);tick=null;return;} cnt++; $('#thHold').textContent=String(cnt); drum(cnt>beats?'hat':'kick'); },ms); };
+      var stop=function(e){ if(tick===null||st.done)return; clearInterval(tick); tick=null; st.done=true; if(cnt===beats)thOK('Held it for '+beats+'. Right on!'); else thNo('That was '+cnt+' count'+(cnt>1?'s':'')+'. A '+nm+' note is '+beats+'.'); };
+      b.addEventListener('pointerdown',start); b.addEventListener('pointerup',stop); b.addEventListener('pointerleave',stop); b.addEventListener('pointercancel',stop); }};
+ }};
+TH_GAMES.fillmeasure2={id:'fillmeasure2',ch:'longnotes',emoji:'\uD83E\uDDF1',name:'Fill It Long',explain:'Fill the measure using long notes too: quarter 1, half 2, dotted half 3, whole 4. Exactly full, then BAR LINE.',
+ setup:function(r,st){
+  var ts=pick(r<=2?['4/4']:['4/4','3/4']), need=+ts.split('/')[0]; st.need=need; st.rh=[]; var val={q:1,h:2,dh:3,w:4};
+  var draw=function(){ var cnt=st.rh.reduce(function(a,d){return a+val[d];},0); $('#thStaff').innerHTML=staffSVG({clef:'treble',ts:ts,notes:thRhythmNotes(st.rh),endBar:false}); $('#thFill').textContent=cnt+' of '+need+' counts'; };
+  return {call:'Fill a measure of '+ts+' with long notes',sub:'Use at least one note longer than a quarter.',
+    html:'<div id="thStaff"></div><div class="mjbig" id="thFill" style="font-size:24px"></div><div class="row" style="justify-content:center;gap:8px;flex-wrap:wrap">'+[['q','quarter',1],['h','half',2],['dh','dotted half',3],['w','whole',4]].map(function(x){return '<button class="choice thadd2" data-d="'+x[0]+'" style="font-size:14px">+ '+x[1]+'<br><small>'+x[2]+'</small></button>';}).join('')+'<button class="choice" id="thUndo" style="font-size:16px">\u21A9</button></div><div class="row" style="justify-content:center;margin-top:10px"><button class="mjcymbal" id="thBar">\uD83C\uDFC1<br>BAR LINE</button></div>',
+    wire:function(){ draw();
+      $$('#thGame .thadd2').forEach(function(b){ b.addEventListener('click',function(){ if(TH.busy)return; ac(); st.rh.push(b.dataset.d); drum('kick'); draw(); }); });
+      $('#thUndo').addEventListener('click',function(){ if(TH.busy)return; ac(); st.rh.pop(); drum('hat'); draw(); });
+      $('#thBar').addEventListener('click',function(){ if(TH.busy)return; ac(); drum('clap'); var n=st.rh.reduce(function(a,d){return a+val[d];},0), longOne=st.rh.some(function(d){return d!=='q';});
+        if(n===need&&longOne){ thPlayRhythm(thRhythmNotes(st.rh),84,null); thOK('Exactly '+need+', with a long note. Full measure!'); }
+        else if(n===need) thNo(need+' counts, but all quarters. Use a half or a whole note!');
+        else thNo(n+' counts. It needs exactly '+need+'.'); }); }};
+ }};
+TH_GAMES.namenote={id:'namenote',ch:'notenames',emoji:'\uD83D\uDD24',name:'Name the Note',explain:'Lines: E G B D F (Every Good Band Deserves Fans). Spaces: F A C E. Which letter is the note on?',
+ setup:function(r,st){
+  var pos=r<=2?pick([0,2,4,6,8]):r<=4?pick([1,3,5,7]):R(0,8); var L=noteLetter(pos); st.ans=L;
+  var others=shuffle(['A','B','C','D','E','F','G'].filter(function(x){return x!==L;})).slice(0,3);
+  return {call:'What note is this?',sub:pos%2===0?'It is on a LINE: E G B D F from the bottom.':'It is in a SPACE: F A C E from the bottom.',html:staffSVG({clef:'treble',notes:[{d:'q',pos:pos,hi:true}]})+thPickHTML(shuffle([L].concat(others))),
+    wire:function(){ thWirePick(L,L+'! '+(pos%2===0?'Line '+(pos/2+1):'Space '+((pos+1)/2))+'.','That one is '+L+'. '+(pos%2===0?'Count the lines from the bottom: E G B D F.':'Count the spaces from the bottom: F A C E.')); V.bell(64+[0,1,3,5,7,8,10,12,13][pos]); }};
+ }};
+TH_GAMES.findnote={id:'findnote',ch:'notenames',emoji:'\uD83D\uDD0D',name:'Find the Note',explain:'I name a note. Three staffs show three different notes. Tap the staff that has the right one.',
+ setup:function(r,st){
+  var pos=r<=2?pick([0,2,4,6,8]):R(0,8), L=noteLetter(pos), cands=[pos]; while(cands.length<3){ var p2=R(0,8); if(noteLetter(p2)!==L&&cands.indexOf(p2)<0)cands.push(p2); } cands=shuffle(cands); st.ans=String(cands.indexOf(pos));
+  return {call:'Which staff shows '+L+'?',sub:'Lines E G B D F, spaces F A C E, bottom to top.',
+    html:'<div class="row" style="justify-content:center;gap:6px;flex-wrap:wrap">'+cands.map(function(p,i){return '<button class="choice thpick" data-v="'+i+'" style="padding:6px;min-width:0">'+staffSVG({clef:'treble',w:110,h:90,notes:[{d:'q',pos:p}]})+'</button>';}).join('')+'</div>',
+    wire:function(){ thWirePick(st.ans,'That is '+L+'!','The '+L+' was the '+['first','second','third'][+st.ans]+' one.'); }};
+ }};
+TH_GAMES.spellit={id:'spellit',ch:'notenames',emoji:'\uD83D\uDD24',name:'Spell It',explain:'Notes spell words! Read each note letter and tap the word.',
+ setup:function(r,st){
+  var words=r<=2?['CAB','BAD','BED','EGG','ADD','BAG']:['FACE','BEAD','CAGE','DEAF','FADE','BABE','EDGE','CAFE','DEED','FEED']; var w=pick(words); st.ans=w;
+  var posFor=function(l){ var ps=[]; TH_LETTERS.forEach(function(x,i){ if(x===l)ps.push(i); }); return pick(ps); };
+  var notes=w.split('').map(function(l){return {d:'q',pos:posFor(l)};});
+  var others=shuffle(words.filter(function(x){return x!==w;})).slice(0,2);
+  return {call:'What word do these notes spell?',sub:'Read each note: line or space, then its letter.',html:staffSVG({clef:'treble',notes:notes})+thPickHTML(shuffle([w].concat(others))),
+    wire:function(){ thWirePick(w,'It spells '+w+'!','Those notes spell '+w+'. Read them one at a time.'); }};
+ }};
+TH_EAR.push(
+ {ch:5,say:'How many counts of quiet is this rest?',vis:function(){return staffSVG({clef:'treble',notes:[{d:'rest',pos:4}]});},pick:['0','1','2'],ans:'1'},
+ {ch:6,say:'How many counts does this note get?',vis:function(){return staffSVG({clef:'treble',notes:[{d:'h',pos:4}]});},pick:['1','2','4'],ans:'2'},
+ {ch:7,say:'What is the name of this note?',vis:function(){return staffSVG({clef:'treble',notes:[{d:'q',pos:2,hi:true}]});},pick:['E','G','B'],ans:'G'}
+);
+ELLY_HINTS['scr-theory']='This is my Music Class! Eight chapters now: staff, clefs, the beat, the &, time signatures, rests, long notes, and note names. Nothing is locked, replay anything.';
+ACH.forEach(function(a){ if(a.id==='theory'){ a.tiers=[{need:3,n:15,g:0},{need:8,n:25,g:1},{need:15,n:50,g:2}]; a.desc='Music Class games with 2+ stars (of 15)'; } });
 
 </script>
 
