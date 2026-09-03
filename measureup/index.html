@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Measure Up">
-<title>Measure Up v0.68</title>
+<title>Measure Up v0.74</title>
 <style>
 :root{
   --bg:#0e0b1e; --panel:#1d1636; --panel2:#28204a; --ink:#f4f0ff; --dim:#a89cd8;
@@ -153,6 +153,13 @@ input.nm{
 .pad:active,.pad.lit{transform:translateY(4px) scale(.97);filter:brightness(1.5);box-shadow:0 1px 0 rgba(0,0,0,.35)}
 /* shop */
 .shopgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.popgrid{display:grid;gap:4px;max-width:300px;margin:8px auto;align-items:center}
+.pgc{appearance:none;border:2px solid #3a2f6e;border-radius:8px;background:#1d1636;height:40px;font-size:22px;cursor:pointer;touch-action:manipulation}
+.pgc.good{background:#1e5c40;border-color:var(--note)}.pgc.badc{background:#5c1e2a;border-color:var(--bad)}
+.pgl{font-weight:900;font-size:13px;text-align:center}
+.venue.rec{border-color:#8ef0c9;box-shadow:0 0 0 2px #8ef0c955}
+.travelveh{animation:travelbob .5s ease-in-out infinite alternate}
+@keyframes travelbob{from{transform:translateX(-10px)}to{transform:translateX(10px)}}
 .shophead{grid-column:1/-1;margin:8px 0 0;font-size:17px}
 .item.locked{opacity:.75;border-style:dashed}
 .item.daily{border-color:#ffd158;box-shadow:0 0 0 2px #ffd15844}
@@ -638,7 +645,7 @@ svg .charg{will-change:transform}
       </div>
     </div>
     <button class="btn small" id="btnStation" style="margin-top:4px">🥁 Echo Beats</button>
-    <button class="btn wide" id="btnGig" style="margin-top:8px">🎤 Play a Show</button>
+    <button class="btn wide" id="btnGig" style="margin-top:8px">🎤 Play a Show · 🗺️ Tour Map</button>
     <button class="btn wide ghost" id="btnShow" style="margin-top:8px">🎶 Band Room: hear us play!</button>
   </div>
   <h2>The Garage</h2>
@@ -932,14 +939,14 @@ svg .charg{will-change:transform}
 <div id="toast"></div>
 <button id="homeBtn" onclick="goHome()" aria-label="Back to Garage">🏠</button>
 <button id="ellyBtn" onclick="openEllyHelp()" aria-label="Ask Elly for help"></button>
-<div id="vbadge">v0.68 · Sep 2</div>
+<div id="vbadge">v0.74 · Sep 2</div>
 
 <script>
 'use strict';
 /* ============ UTILS ============ */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const VERSION='v0.68 · Sep 2';
+const VERSION='v0.74 · Sep 2';
 const RM=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -958,7 +965,7 @@ const DEF={
   flags:{soundcheckOffered:false,introDone:false,coach_kc:false,coach_arc:false,coach_rs:false,coach_gg:false,coach_tt:false,coach_st:false,coach_hp:false,coach_gig:false,lesson_round:false},
   stats:{answers:0,correct:0,bestStreak:0,rounds:0,shows:0,battleWins:0},
   ach:{claimed:{}},
-  theory:{placed:false,start:null,lessons:{},stars:{},known:{}}
+  theory:{placed:false,start:null,lessons:{},stars:{},known:{}}, gigBest:{}
 };
 let S;
 function load(){
@@ -977,6 +984,7 @@ function load(){
     S.cleared=Object.assign({},S.cleared||{});
     if(!S.flags.roscoeCore){ S.flags.roscoeCore=true; S.band.roscoe=true; S.auditioned.roscoe=true; if(!S.skills.patterns)S.skills.patterns=1; }
     if(!S.ach)S.ach={claimed:{}};
+    S.gigBest=Object.assign({},S.gigBest||{}); S.venueLvl=Object.assign({},S.venueLvl||{});
     S.theory=Object.assign({placed:false,start:null,lessons:{},stars:{},known:{}},S.theory||{});
     if(S.stats&&S.stats.battleWins==null)S.stats.battleWins=0;
   }catch(e){ S=JSON.parse(JSON.stringify(DEF)); }
@@ -1108,6 +1116,7 @@ function sCorrect(streak){
 }
 /* ---------- ELLY: the guide who breaks the fourth wall ---------- */
 const ELLY_HINTS={
+ 'scr-gig':'You are the frontman! DANCE on the beat when the ring closes, run to a bandmate when they call you, and HARMONIZE. Bigger venues on the Tour Map have a faster beat and an encore, but pay a lot more.',
  'scr-hub':'This is your Garage. Tap any bandmate to JAM (that is practice), take an AUDITION to find your level, or pass their PROOF to make them join. You do not need anyone to start!',
  'scr-show':'This is the Band Room. Pick a song and the whole crew plays it together. Gain runs the lights! Tap another song any time.',
  'scr-play':'Free play! No score, no rush. Just tap and make sounds. Every bandmate has their own instrument to mess around with.',
@@ -1341,7 +1350,10 @@ function memberSVG(id,sz){
   if(id==='roscoe')return countryCharSVG('banjo',sz);
   if(id==='bigtub')return countryCharSVG('washtub',sz);
   if(id==='shimmer')return ambientCharSVG('glock',sz);
+  if(BY_ID[id]&&BY_ID[id].draw)return BY_ID[id].draw(BY_ID[id].crewId,sz);
   if(id==='axel')return rockCharSVG('guitar',sz);
+  if(id==='reed'&&typeof jazzCharSVG==='function')return jazzCharSVG('sax',sz);
+  if(id==='mika'&&typeof popCharSVG==='function')return popCharSVG('dancer',sz);
   /* v0.24 character pass: everyone has arms, hands, legs, and visibly PLAYS their
      instrument. Garrett's art direction: "how could they hug, let alone play?" */
   sz=sz||120;
@@ -1639,7 +1651,7 @@ function nameify(str){
   return str;
 }
 function flairPick(id){
-  const owned=SHOP.concat(DAILY_VAULT).filter(it=>it.type==='flair'&&S.owned.includes(it.id));
+  const owned=allItems().filter(it=>it.type==='flair'&&S.owned.includes(it.id));
   modal('<div class="center">'+memberSVG(id,90)+'<h2>Flair for '+mName(id)+'</h2></div>'+
     '<p class="sub">Pin something on! (It shows everywhere they do.)</p>'+
     '<div class="row" style="justify-content:center;gap:10px;flex-wrap:wrap">'+
@@ -1859,7 +1871,7 @@ function ellyMemberPair(id){
   '</div>';
 }
 function battleGoals(){
-  var CC=['add','sub','mul','frac','clock','cal','meas','div','neg','skip','money','round','patterns','compare','double','odd'];
+  var CC=Object.keys(CONCEPT_NAMES);
   var coreN=BAND.filter(function(m){return !m.recruit;});
   var joined=coreN.filter(function(m){return S.band[m.id];}).length;
   var golds=CC.filter(function(c){return tierOf(Math.floor(lvlOf(c)))>=2;}).length;
@@ -1924,7 +1936,7 @@ function ellySuggestions(){
   var out=[]; var notIn=BAND.filter(function(m){return !S.band[m.id];});
   if(notIn.length){ var m=notIn[0]; out.push({label:'\uD83C\uDFB8 Jam with '+mName(m.id),fn:"talkTo('"+m.id+"')"}); }
   var joined=BAND.filter(function(m){return S.band[m.id];}).length;
-  if(joined>=1) out.push({label:'\uD83C\uDFA4 Play a show',fn:'startGig()'});
+  if(joined>=1) out.push({label:'\uD83C\uDFA4 Play a show',fn:(S.flags.coach_gig?'openTour()':'startGig()')});
   out.push({label:'\u26A1 Battle board',fn:'openBattle()'});
   if(S.notes>=20 && out.length<3) out.push({label:'\uD83D\uDECD\uFE0F Shop',fn:'openShop()'});
   return out.slice(0,3);
@@ -2292,6 +2304,12 @@ function talkTo(id){
   if(id==='roscoe') btns+='<button class="btn wide" onclick="startMJ(\'rollnext\')">🪕 Roll Next</button>'+
     '<button class="btn wide ghost" onclick="startMJ(\'fillgap\')">🎵 Fill the Gap</button>'+
     '<button class="btn wide ghost" onclick="startMJ(\'stepsize\')">🎼 Find the Step</button>';
+  if(id==='mika') btns+='<button class="btn wide" onclick="startMJ(\'hitmark\')">📍 Hit Your Mark</button>'+
+    '<button class="btn wide ghost" onclick="startMJ(\'formation\')">👯 Formation</button>'+
+    '<button class="btn wide ghost" onclick="startMJ(\'danceroute\')">🗺️ Dance Route</button>';
+  if(id==='reed') btns+='<button class="btn wide" onclick="startMJ(\'sameslice\')">🥧 Same Slice</button>'+
+    '<button class="btn wide ghost" onclick="startMJ(\'notesplit\')">🎼 Note Split</button>'+
+    '<button class="btn wide ghost" onclick="startMJ(\'coolform\')">😎 Cool Form</button>';
   if(id==='axel') btns+='<button class="btn wide" onclick="startMJ(\'backbeat\')">🥁 Backbeat</button>'+
     '<button class="btn wide ghost" onclick="startMJ(\'pairup\')">👯 Pair Up</button>'+
     '<button class="btn wide ghost" onclick="startMJ(\'oddoneout\')">🎯 Odd One Out</button>';
@@ -2304,6 +2322,7 @@ function talkTo(id){
   if(id==='luna') btns+='<button class="btn wide" onclick="startHP()">🐇 Jam: Calendar Hop</button>'+
     '<button class="btn wide ghost" onclick="startMJ(\'tourorder\')">🗺️ Tour Router</button>'+
     '<button class="btn wide ghost" onclick="startMJ(\'countdown\')">📆 Countdown</button>';
+  if(btns.indexOf('startMJ(')<0&&!['boom','luna'].includes(id)){ memberGames(id).forEach((gid,i)=>{ const G=MJGAMES[gid]; btns+='<button class="btn wide'+(i?' ghost':'')+'" onclick="startMJ(\''+gid+'\')">'+G.emoji+' '+G.name+'</button>'; }); }
   // stamp a ✓ on any game this member has already cleared
   memberGames(id).forEach(gid=>{ if(S.cleared[gid]){
     btns=btns.replace(new RegExp('(startMJ\\(\\x27'+gid+'\\x27\\)">[^<]*)</button>'),'$1 ✓</button>');
@@ -2323,7 +2342,7 @@ function talkTo(id){
     }
   }
   modal(
-    '<div class="center">'+memberSVG(m.id,110)+'<h2 style="margin:4px 0">'+m.emoji+' '+mName(id)+' · '+m.title+' <button class="btn ghost small" style="padding:4px 8px;font-size:13px" onclick="renameMember(\''+id+'\')">✏️</button>'+(SHOP.concat(DAILY_VAULT).some(it=>it.type==='flair'&&S.owned.includes(it.id))?'<button class="btn ghost small" style="padding:4px 8px;font-size:13px" onclick="flairPick(\''+id+'\')">🎽</button>':'')+'</h2></div>'+
+    '<div class="center">'+memberSVG(m.id,110)+'<h2 style="margin:4px 0">'+m.emoji+' '+mName(id)+' · '+m.title+' <button class="btn ghost small" style="padding:4px 8px;font-size:13px" onclick="renameMember(\''+id+'\')">✏️</button>'+(allItems().some(it=>it.type==='flair'&&S.owned.includes(it.id))?'<button class="btn ghost small" style="padding:4px 8px;font-size:13px" onclick="flairPick(\''+id+'\')">🎽</button>':'')+'</h2></div>'+
     '<div class="speak">"'+nameify(m.lines[LINE_IX[id]])+'"</div>'+
     '<div class="speak" style="background:#241c48">'+nameify(m.bio)+'</div>'+
     (aud&&!inband?'<p class="sub">Your '+CONCEPT_NAMES[m.concept]+' level: <b>'+Math.floor(lvlOf(m.concept))+'</b> '+starStr(lvlOf(m.concept))+' (re-audition anytime)</p>':'')+
@@ -2342,7 +2361,8 @@ function openCreator(editMode){
   renderCreator();
   show('scr-creator');
 }
-function ownedVals(type){ return SHOP.concat(typeof DAILY_VAULT!=='undefined'?DAILY_VAULT:[]).filter(it=>it.type===type&&S.owned.includes(it.id)).map(it=>it.val); }
+function allItems(){ return SHOP.concat(typeof DAILY_VAULT!=='undefined'?DAILY_VAULT:[], typeof MYSTERY_POOL!=='undefined'?MYSTERY_POOL:[]); }
+function ownedVals(type){ return allItems().filter(it=>it.type===type&&S.owned.includes(it.id)).map(it=>it.val); }
 function renderCreator(){
   $('#creatorPreview').innerHTML=creatureSVG(DRAFT,160);
   punch($('#creatorPreview'));
@@ -3050,6 +3070,7 @@ const SHOP=[
  {id:'pk_tipjar',  type:'perk',   name:'Tip Jar',        rarity:'epic',   notes:250,gold:0, val:'tipjar',  icon:'🫙', desc:'PERK: every right answer in a game pays +1 extra note. Forever.'},
  {id:'pk_encore',  type:'perk',   name:'Encore Charm',   rarity:'epic',   notes:300,gold:0, val:'encore',  icon:'🎟️', desc:'PERK: shows pay 25% more notes.'},
  {id:'pk_backstage',type:'perk',  name:'Backstage Pass', rarity:'epic',   notes:0,  gold:3, val:'backstage',icon:'🎫', desc:'PERK: a silver show now pays a gold record too.'},
+ {id:'pk_bus',     type:'perk',   name:'Tour Bus',       rarity:'epic',   notes:0,  gold:5, val:'bus',     icon:'🚌', desc:'PERK: travel instantly, and a rested band earns 10% more at every show.'},
  {id:'pk_merch',   type:'perk',   name:'Merch Table',    rarity:'epic',   notes:0,  gold:4, val:'merch',   icon:'👕', desc:'PERK: every achievement you claim pays +10 bonus notes.'},
  {id:'col_ocean',  type:'color',  name:'Deep Ocean',     rarity:'common', notes:25, gold:0, val:'#1e6fff', desc:'Cool, calm, and very blue.'},
  {id:'col_sun',    type:'color',  name:'Sunshine',       rarity:'common', notes:25, gold:0, val:'#ffd93d', desc:'Glows even in the garage.'},
@@ -3100,7 +3121,7 @@ const DAILY_VAULT=[
  {id:'dd_bgcave',  type:'stagebg',name:'Crystal Cave',  val:'radial-gradient(circle at 50% 80%,#7fd7ff,#3b2a8a 45%,#120b2e 90%)', notes:70, desc:'A one-day backdrop. Echoes for days.'}
 ];
 function dailyDrop(){ var d=new Date(); var n=Math.floor(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())/86400000); var it=DAILY_VAULT[n%DAILY_VAULT.length]; return Object.assign({rarity:'rare',gold:0,daily:true},it); }
-function shopItemAll(id){ return SHOP.concat(DAILY_VAULT).filter(function(it){return it.id===id;})[0]; }
+function shopItemAll(id){ return allItems().filter(function(it){return it.id===id;})[0]; }
 function hasPerk(v){ return SHOP.some(function(it){return it.type==='perk'&&it.val===v&&S.owned.includes(it.id);}); }
 function perkBonus(){ return hasPerk('tipjar')?1:0; }
 function shopPreview(it){
@@ -4571,7 +4592,9 @@ const MEET_LINES={
   roscoe:'And Roscoe on banjo! He crossed the stage from a rival band. A roll is just a pattern, over and over.',
   bigtub:'And Big Tub on washtub bass, straight out of The Hoedown. High note, low note, he knows which is bigger by ear.',
   shimmer:'And Shimmer on the glockenspiel, drifted over from The Drift. Half the bar, twice as high. Doubling and halving you can hear.',
-  axel:'And Axel on electric guitar, straight out of The Voltage. Kick on the odd beats, snare on the even. The backbeat himself.'
+  axel:'And Axel on electric guitar, straight out of The Voltage. Kick on the odd beats, snare on the even. The backbeat himself.',
+  reed:'And Reed on saxophone, cool as anything, from The Blue Notes. One half, two quarters, four eighths: same time, different names.',
+  mika:'And Mika, singer-dancer, spun straight off The Sparkle\u2019s stage. Every mark on the floor has a name: across first, then up.'
 };
 /* meet sequence is generated from the roster, so new bandmates auto-appear (fallback line if none written) */
 function introMeets(){
@@ -4657,7 +4680,7 @@ $('#btnStart').addEventListener('click',()=>{
 $('#btnShop').addEventListener('click',()=>{sTap();openShop();});
 $('#btnEdit').addEventListener('click',()=>{sTap();openCreator(true);});
 $('#btnStation').addEventListener('click',()=>{sTap();openStation();});
-$('#btnGig').addEventListener('click',()=>{sTap();startGig();});
+$('#btnGig').addEventListener('click',()=>{ if(!S.flags.coach_gig){sTap();startGig();} else openTour(); });
 $('#btnGigExit').addEventListener('click',()=>{GIG.on=false;if(GIG.raf)cancelAnimationFrame(GIG.raf);renderHub();show('scr-hub');});
 load();
 if('serviceWorker' in navigator && (location.protocol==='https:'||location.hostname==='localhost')){
@@ -4665,7 +4688,38 @@ if('serviceWorker' in navigator && (location.protocol==='https:'||location.hostn
 }
 /* test hooks (harmless in prod) */
 /* ============ FRONTMAN GIG (player = singer/dancer out front) ============ */
-const VENUES=[{id:'cafe',name:'The Corner Cafe',emoji:'☕'}];
+const VENUES=[
+ {id:'cafe',   name:'The Corner Cafe', emoji:'☕', vibe:'Cozy. Twelve people and a barista who claps.', best:0,  mult:1,   lead:1050, harms:1, encore:0, bg:'radial-gradient(520px 260px at 50% 0%,rgba(255,180,90,.22),transparent 72%),#2a1f3a', crowd:'☕ The cafe crowd looks up from their mugs...'},
+ {id:'park',   name:'Park Bandshell',  emoji:'🌳', vibe:'Outdoors, picnic blankets, a dog that howls along.', best:2, mult:1.3, lead:1000, harms:2, encore:0, bg:'linear-gradient(180deg,#0f2e2a,#1f5a3a 60%,#2d7a44)', crowd:'🌳 Families spread out on the grass...'},
+ {id:'rink',   name:'Roller Rink',     emoji:'🛼', vibe:'Fast! The crowd is literally rolling.', best:4, mult:1.6, lead:900,  harms:1, encore:1, bg:'radial-gradient(circle at 50% 10%,rgba(255,93,158,.35),transparent 60%),linear-gradient(180deg,#1a0f3a,#4a1466)', crowd:'🛼 Skaters whip past the stage in a blur...'},
+ {id:'rooftop',name:'Rooftop Party',   emoji:'🌆', vibe:'City lights below, the whole sky above.', best:6, mult:2,   lead:900,  harms:2, encore:1, bg:'linear-gradient(180deg,#0b0b2a,#1c2a5e 55%,#3f4f9e)', crowd:'🌆 String lights flicker on over the rooftop...'},
+ {id:'bigtop', name:'The Big Top',     emoji:'🎪', vibe:'Three rings, one stage, zero elephants (they retired).', best:9, mult:2.5, lead:850, harms:2, encore:2, bg:'repeating-linear-gradient(90deg,#7a1f1f 0 30px,#3a2a2a 30px 60px)', crowd:'🎪 The circus crowd stamps on the bleachers...'},
+ {id:'stadium',name:'Thunder Stadium', emoji:'🏟️', vibe:'Forty thousand phones held up. No pressure.', best:12, mult:3, lead:800,  harms:2, encore:3, bg:'radial-gradient(circle at 50% 0%,rgba(255,255,255,.28),transparent 55%),linear-gradient(180deg,#0a0a14,#1f1f38)', crowd:'🏟️ The stadium roars before you even play a note...'}
+];
+const VEN_BY={}; VENUES.forEach(v=>VEN_BY[v.id]=v);
+function gigBestPct(id){ return (S.gigBest&&S.gigBest[id])||0; }
+function venueVehicle(){ return hasPerk('bus')?{emoji:'🚌',name:'the Tour Bus'}:{emoji:'🚐',name:'the Van'}; }
+function openTour(){
+  sTap();
+  const n=BAND.filter(m=>S.band[m.id]).length, veh=venueVehicle();
+  const recV=VENUES.filter(x=>n>=x.best).slice(-1)[0];
+  const cards=VENUES.map(v=>{
+    const best=gigBestPct(v.id), med=best>=85?'🥇':best>=55?'🥈':best>0?'🥉':'';
+    const rec=(v===recV);
+    return '<div class="card venue'+(rec?' rec':'')+'" onclick="travelTo(\''+v.id+'\')" style="padding:10px 12px;cursor:pointer">'+
+      '<div class="row" style="justify-content:space-between;align-items:center;gap:8px"><div><b style="font-size:17px">'+v.emoji+' '+v.name+'</b><div class="sub" style="text-align:left;margin:0">'+v.vibe+'</div></div>'+
+      '<div style="text-align:right;white-space:nowrap"><div style="color:#ffd158;font-weight:800">×'+v.mult+' 🎵</div>'+(med?'<div style="font-size:12px">'+med+' best '+best+'%</div>':'<div style="font-size:11px;color:var(--dim)">never played</div>')+'</div></div>'+
+      '<div class="sub" style="text-align:left;margin:4px 0 0;font-size:12px">'+(v.best?'Best with '+v.best+'+ bandmates':'Great for any band')+(rec?' · <b style="color:#8ef0c9">Elly says: play here!</b>':'')+'</div></div>';
+  }).join('');
+  modal('<div class="center">'+ellySVG(56)+'<h2>🗺️ Tour Map</h2><div class="sub">'+veh.emoji+' You ride in '+veh.name+'. Every venue is open. Bigger rooms, faster beat, longer set, bigger pay.</div></div>'+cards+
+    '<button class="btn wide ghost" onclick="closeModal()">Stay in the Garage</button>');
+}
+function travelTo(id){
+  sTap(); const v=VEN_BY[id]||VENUES[0], veh=venueVehicle();
+  if(!S.flags.coach_gig){ GIG.pendingVenue=v.id; closeModal(); gigSoundcheck(); return; }
+  modal('<div class="center"><div style="font-size:60px" class="travelveh">'+veh.emoji+'</div><h2>Rolling to '+v.emoji+' '+v.name+'</h2><div class="sub">'+nameify(pick(['Boom calls shotgun. Again.','Luna checks the date twice.','Gauge measures the parking spot.','Tock says we are two minutes early.','Everybody sings in the van.']))+'</div></div>');
+  drum('kick'); later(()=>drum('kick'),300); later(()=>{ closeModal(); startGig(v.id); },hasPerk('bus')?500:1300);
+}
 const GIG_LINES={
   boom:'Boom tackle-hugs you. "TOLD you we had a frontman!"',
   rumble:'Rumble gives one slow nod. From Rumble, that is a standing ovation.',
@@ -4682,11 +4736,14 @@ const GIG_LINES={
 const GIG={on:false,teach:false,cues:[],idx:0,hype:0,maxHype:0,cueStart:0,busy:false,raf:0,combo:0,harmTarget:0,venue:null,members:[],_danceLead:1050,_harmNotes:null,_stationAns:null};
 
 /* pure helpers (unit-tested) */
-function gigBuildCues(members){
+function gigBuildCues(members,venue){
+  venue=venue||{harms:1,encore:0};
   const cues=[{t:'dance'}];
   members.forEach((id,i)=>{ cues.push({t:'station',member:id}); if(i<members.length-1)cues.push({t:'dance'}); });
   cues.push({t:'harmonize'});
+  if(venue.harms>1){ cues.push({t:'dance'}); cues.push({t:'harmonize'}); }
   cues.push({t:'dance'});
+  if(venue.encore){ const enc=shuffle(members).slice(0,venue.encore); if(enc.length){ cues.push({t:'dance',encore:true}); enc.forEach(id=>{ cues.push({t:'station',member:id}); cues.push({t:'dance'}); }); } }
   return cues;
 }
 function gigCueMax(t){ return t==='dance'?14:t==='station'?16:18; }
@@ -4695,13 +4752,14 @@ function gigDancePts(q){ return q==='perfect'?14:q==='good'?8:0; }
 function gigResultTier(ratio){ return ratio>=0.85?2:ratio>=0.55?1:0; }
 function gigReward(ratio,mult){ var base=Math.round((10+ratio*30)*(mult||1)); if(typeof hasPerk==='function'&&hasPerk('encore'))base=Math.round(base*1.25); var g=ratio>=0.85?1:0; if(typeof hasPerk==='function'&&hasPerk('backstage')&&ratio>=0.55)g=Math.max(g,1); return {notes:base, gold:g}; }
 
-function startGig(){
+function startGig(venueId){
   closeModal();
   if(!S.flags.coach_gig)return gigSoundcheck();
   GIG.teach=false;
   GIG.members=BAND.filter(m=>S.band[m.id]).map(m=>m.id);
-  GIG.venue=VENUES[0];
-  GIG.cues=gigBuildCues(GIG.members);
+  GIG.venue=VEN_BY[venueId||GIG.pendingVenue]||VENUES[0]; GIG.pendingVenue=null;
+  const gs=$('#gigStage'); if(gs)gs.style.background=GIG.venue.bg||'';
+  GIG.cues=gigBuildCues(GIG.members,GIG.venue);
   GIG.idx=0; GIG.hype=0; GIG.combo=0; GIG.busy=false; GIG.on=true;
   GIG.maxHype=GIG.cues.reduce((s,c)=>s+gigCueMax(c.t),0);
   $('#gigVenue').textContent=GIG.venue.emoji+' '+GIG.venue.name;
@@ -4713,8 +4771,8 @@ function startGig(){
   gigHypeBar();
   let ly=1; if(S.band.combo)ly=Math.max(ly,2); if(S.band.rumble)ly=3;
   grooveLayers(ly); startGroove();
-  $('#gigCap').textContent=GIG.members.length?'Your band takes the stage...':'Just you and the crowd. Own it!';
-  later(gigNextCue,1000);
+  $('#gigCap').textContent=GIG.venue.crowd||(GIG.members.length?'Your band takes the stage...':'Just you and the crowd. Own it!');
+  later(gigNextCue,1400);
 }
 function gigHypeBar(){ const r=GIG.maxHype?Math.min(1,GIG.hype/GIG.maxHype):0; const b=$('#gigHypeBar'); if(b)b.style.width=Math.round(r*100)+'%'; }
 function gigAddHype(pts){ GIG.hype+=pts; GIG.combo=pts>0?GIG.combo+1:0; const c=$('#gigCombo'); if(c)c.textContent=GIG.combo; gigHypeBar(); }
@@ -4732,8 +4790,8 @@ function gigNextCue(){
 }
 /* DANCE: tap on the beat (rhythm, no math) */
 function gigDanceCue(){
-  GIG.busy=false; GIG.cueStart=Date.now(); GIG._danceLead=GIG.teach?1400:1050;
-  $('#gigCap').textContent=GIG.teach?'🎚️ Watch the pink ring. TAP right when it meets the dotted circle!':'🕺 Tap on the beat!';
+  GIG.busy=false; GIG.cueStart=Date.now(); GIG._danceLead=GIG.teach?1400:((GIG.venue&&GIG.venue.lead)||1050);
+  $('#gigCap').textContent=GIG.teach?'🎚️ Watch the pink ring. TAP right when it meets the dotted circle!':((GIG.cues[GIG.idx]&&GIG.cues[GIG.idx].encore)?'📣 ENCORE! They want one more!':'🕺 Tap on the beat!');
   const z=$('#gigZone');
   z.innerHTML='<div class="dancetap" id="danceTap"><div class="tgt"></div><div class="ring" id="danceRing"></div><div class="hitword" id="danceWord"></div></div>';
   const ring=$('#danceRing');
@@ -4828,20 +4886,21 @@ function gigSoundcheckEnd(){
   renderHub(); show('scr-hub');
   modal('<div class="center">'+memberSVG('boom',100)+'<h2>🎚️ Soundcheck done!</h2></div>'+
     '<div class="speak">"THAT is a show! DANCE to the beat, run to your bandmates when they call you, and HARMONIZE. You are ready, frontman."</div>'+
-    '<div class="card center"><b>Hit 🎤 Play a Show for the real crowd!</b></div>'+
-    '<button class="btn wide" onclick="closeModal()">🤘 Ready!</button>');
+    '<div class="card center"><b>Now the real crowd. Pick a venue on the Tour Map!</b></div>'+
+    '<button class="btn wide" onclick="closeModal();openTour()">🗺️ Tour Map</button>');
   sFanfare(); confetti(20);
 }
 function gigEnd(){
   GIG.on=false; if(GIG.raf)cancelAnimationFrame(GIG.raf); stopGroove();
   const ratio=GIG.maxHype?Math.min(1,GIG.hype/GIG.maxHype):0;
-  const tier=gigResultTier(ratio), rw=gigReward(ratio);
+  const v=GIG.venue||VENUES[0], tier=gigResultTier(ratio), rw=gigReward(ratio,(v.mult||1)*(hasPerk('bus')?1.1:1));
   const names=['🎸 Nice first set!','🌟 Great show!','🔥 The crowd went WILD!'];
+  const pct=Math.round(ratio*100); S.gigBest=S.gigBest||{}; const wasBest=pct>(S.gigBest[v.id]||0); if(wasBest)S.gigBest[v.id]=pct;
   addNotes(rw.notes); if(rw.gold)addGold(rw.gold); S.stats.shows=(S.stats.shows||0)+1; save();
   const closer=GIG.members.length?nameify(GIG_LINES[pick(GIG.members)]):'You walk off to your own echo. A crowd of one, but they are on their feet.';
   renderHub(); show('scr-hub');
   modal('<div class="center">'+creatureSVG(S.creature,100)+'<h2>'+names[tier]+'</h2></div>'+
-    '<div class="card center"><b>Crowd '+Math.round(ratio*100)+'%</b> '+['🥉','🥈','🥇'][tier]+
+    '<div class="card center"><div class="sub" style="margin:0 0 2px">'+v.emoji+' '+v.name+(wasBest?' · 🏅 new best here!':'')+'</div><b>Crowd '+pct+'%</b> '+['🥉','🥈','🥇'][tier]+
     '<div class="sub">+'+rw.notes+' 🎵'+(rw.gold?'  ·  +'+rw.gold+' 📀':'')+'</div></div>'+
     '<div class="speak">"'+closer+'"</div>'+
     '<button class="btn wide" onclick="closeModal()">🤘 Take a bow</button>');
@@ -5752,8 +5811,9 @@ function openShow(){
   /* stage arrangement: drummer + horns at BACK, melody in the MIDDLE, front performers at the lip.
      Order the row so it reads like a band on risers, not a wrapping list. */
   const backLine=['doot','gain','boom','elly'];
-  const midLine=['combo','slice','plink','reg','round','roscoe','bigtub','shimmer','axel'];
+  const midLine=['combo','slice','plink','reg','round','roscoe','bigtub','shimmer','axel','reed','mika'];
   const frontLine=['rumble','tock','gauge','luna'];
+  BAND.forEach(m=>{ if(!backLine.includes(m.id)&&!midLine.includes(m.id)&&!frontLine.includes(m.id))midLine.push(m.id); });
   const cell=(id,cls)=>'<span class="perf '+cls+'" id="sm-'+id+'">'+(id==='elly'?ellySVG(52):memberSVG(id,54))+'</span>';
   const roster=BAND.map(m=>m.id).concat('elly');
   const inRow=id=>roster.includes(id);
@@ -5772,7 +5832,7 @@ function openShow(){
   const list=SONGS.filter(sg=>!sg.shopId||S.owned.includes(sg.shopId));
   $('#showList').innerHTML=list.map(sg=>'<button class="btn wide ghost" onclick="showPlay(\''+sg.id+'\')">'+sg.style.split(' ')[0]+' '+sg.title+' <span class="sub">· '+sg.style.split(' ').slice(1).join(' ')+'</span></button>').join('');
   if(SONGS.length>list.length)$('#showList').innerHTML+='<p class="sub center">🛍️ '+(SONGS.length-list.length)+' more song'+(SONGS.length-list.length>1?'s':'')+' waiting at the Gear Shop!</p>';
-  const bgs=SHOP.concat(DAILY_VAULT).filter(it=>it.type==='stagebg'&&S.owned.includes(it.id));
+  const bgs=allItems().filter(it=>it.type==='stagebg'&&S.owned.includes(it.id));
   if(bgs.length)$('#showList').innerHTML+='<div class="row" style="justify-content:center;gap:8px;margin-top:10px;flex-wrap:wrap">'+
     '<button class="btn small ghost" onclick="setStageBG(\'\')">🌑 Classic</button>'+
     bgs.map(it=>'<button class="btn small ghost" onclick="setStageBG(\''+it.id+'\')">'+it.name+'</button>').join('')+'</div>';
@@ -6492,13 +6552,14 @@ var ACH_CC=['add','sub','mul','frac','clock','cal','meas','div','neg','skip','mo
 function achLvlCount(n){ return ACH_CC.filter(function(c){return Math.floor(lvlOf(c))>=n;}).length; }
 var ACH=[
  {id:'gold7',cat:'Mastery',icon:'🥇',name:'Gold Methods',desc:'Skills at Level 7 or higher',tiers:[{need:1,n:15,g:0},{need:5,n:25,g:1},{need:10,n:50,g:2}],cur:function(){return achLvlCount(7);}},
- {id:'medals',cat:'Mastery',icon:'🏅',name:'Medal Collector',desc:'Gold medals earned',tiers:[{need:3,n:15,g:0},{need:8,n:25,g:1},{need:16,n:50,g:2}],cur:function(){return ACH_CC.filter(function(c){return tierOf(Math.floor(lvlOf(c)))>=2;}).length;}},
- {id:'diamond',cat:'Mastery',icon:'💎',name:'Diamond Row',desc:'Skills at Level 10 or higher',tiers:[{need:1,n:30,g:1},{need:5,n:60,g:2},{need:16,n:120,g:4}],cur:function(){return achLvlCount(10);}},
+ {id:'medals',cat:'Mastery',icon:'🏅',name:'Medal Collector',desc:'Gold medals earned',tiers:[{need:3,n:15,g:0},{need:8,n:25,g:1},{need:18,n:50,g:2}],cur:function(){return ACH_CC.filter(function(c){return tierOf(Math.floor(lvlOf(c)))>=2;}).length;}},
+ {id:'diamond',cat:'Mastery',icon:'💎',name:'Diamond Row',desc:'Skills at Level 10 or higher',tiers:[{need:1,n:30,g:1},{need:5,n:60,g:2},{need:18,n:120,g:4}],cur:function(){return achLvlCount(10);}},
  {id:'streak',cat:'Performance',icon:'🔥',name:'Hot Streak',desc:'Best answer streak',tiers:[{need:8,n:10,g:0},{need:15,n:20,g:1},{need:25,n:40,g:2}],cur:function(){return S.stats.bestStreak||0;}},
  {id:'correct',cat:'Performance',icon:'🎯',name:'Note Machine',desc:'Total right answers',tiers:[{need:100,n:15,g:0},{need:300,n:30,g:1},{need:800,n:60,g:2}],cur:function(){return S.stats.correct||0;}},
- {id:'band',cat:'Collection',icon:'🎸',name:'Full House',desc:'Bandmates recruited',tiers:[{need:8,n:10,g:0},{need:13,n:20,g:1},{need:16,n:40,g:2}],cur:function(){return BAND.filter(function(m){return S.band[m.id];}).length;}},
+ {id:'band',cat:'Collection',icon:'🎸',name:'Full House',desc:'Bandmates recruited',tiers:[{need:8,n:10,g:0},{need:13,n:20,g:1},{need:18,n:40,g:2}],cur:function(){return BAND.filter(function(m){return S.band[m.id];}).length;}},
  {id:'gear',cat:'Collection',icon:'🛍️',name:'Gear Head',desc:'Shop items owned',tiers:[{need:6,n:10,g:0},{need:14,n:20,g:1},{need:35,n:35,g:1}],cur:function(){return (S.owned||[]).length;}},
  {id:'shows',cat:'Shows',icon:'🎤',name:'Road Dog',desc:'Shows played',tiers:[{need:3,n:10,g:0},{need:10,n:25,g:1},{need:25,n:50,g:2}],cur:function(){return S.stats.shows||0;}},
+ {id:'venues',cat:'Shows',icon:'🗺️',name:'World Tour',desc:'Venues played on the Tour Map',tiers:[{need:2,n:10,g:0},{need:4,n:25,g:1},{need:6,n:50,g:2}],cur:function(){return Object.keys(S.gigBest||{}).length;}},
  {id:'battles',cat:'Battles',icon:'⚔️',name:'Circuit Champ',desc:'Battles won, rematches count',tiers:[{need:1,n:15,g:0},{need:3,n:25,g:1},{need:6,n:50,g:2}],cur:function(){return S.stats.battleWins||0;}}
 ];
 function achState(a){ for(var i=0;i<a.tiers.length;i++){ if(!S.ach.claimed[a.id+'_'+i])return i; } return -1; }
@@ -7349,6 +7410,909 @@ var _mt=$('#musicTeaser'); if(_mt)_mt.addEventListener('click',openTheory);
 var _thBack=$('#thBack'); if(_thBack)_thBack.addEventListener('click',function(){ if(TH.mode==='lesson'||TH.mode==='game'){ clearTimers(); thMenu(); } else thExit(); });
 var _rh=renderHub; renderHub=function(){ _rh(); var el=$('#thProg'); if(el)el.textContent='\u00B7 '+thProgressText(); };
 Object.assign(window.BQ,{TH:TH,TH_CH:TH_CH,TH_GAMES:TH_GAMES,TH_EAR:TH_EAR,openTheory:openTheory,thMenu:thMenu,thLesson:thLesson,thStartGame:thStartGame,thNext:thNext,thOK:thOK,thNo:thNo,thEnd:thEnd,thEarStart:thEarStart,thEarNext:thEarNext,thEarEnd:thEarEnd,staffSVG:staffSVG,thRhythmNotes:thRhythmNotes,thExit:thExit,thS:thS});
+
+</script>
+<script>
+/* ============ v0.70: THE BLUE NOTES (jazz) + REED on saxophone: EQUIVALENT FRACTIONS ============ */
+CONCEPT_NAMES.eqfrac='Equivalent Fractions';
+DEF.skills.eqfrac=1; if(S&&S.skills&&!S.skills.eqfrac)S.skills.eqfrac=1;
+RIG_NAMES.reed='saxophone';
+BAND.push({id:'reed',name:'Reed',emoji:'🎷',title:'Saxophone',concept:'eqfrac',color:'#f5b942',recruit:true,
+  cfg:{body:'round',col:'#f5b942',eyes:'dot',extra:'none'},
+  bio:'One half, two quarters, four eighths. Same amount of time, three different names. Jazz lives in the space between the names.',
+  lines:['Same note, longer name. Still fits.','Cut the top and the bottom the same way. Still the same slice.','The Blue Notes play it cool. I play it cooler.'],
+  dreams:['Duke wanted every solo the same length. You let me stretch one out and squeeze the next. That is why I walked over.','Half a pie or two quarters, you are still full. Fractions are just different names for the same thing.','My dream solo swaps every note for two shorter ones, and nobody can tell the song changed.','Simplest form is the coolest form. Say it with the fewest notes.','This band lets me breathe. I am staying.']});
+BY_ID.reed=BAND[BAND.length-1];
+/* pie helper: n of d shaded */
+function pieSVG(n,d,sz,col){ sz=sz||64; col=col||'#f5b942'; var c=sz/2, r=sz/2-3, out='<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 '+sz+' '+sz+'"><circle cx="'+c+'" cy="'+c+'" r="'+r+'" fill="#1d1636" stroke="#f4f0ff" stroke-width="2"/>';
+  for(var i=0;i<d;i++){ var a0=-Math.PI/2+i*2*Math.PI/d, a1=a0+2*Math.PI/d; var x0=c+r*Math.cos(a0),y0=c+r*Math.sin(a0),x1=c+r*Math.cos(a1),y1=c+r*Math.sin(a1); var big=(2*Math.PI/d)>Math.PI?1:0;
+    out+='<path d="M'+c+' '+c+' L'+x0+' '+y0+' A'+r+' '+r+' 0 '+big+' 1 '+x1+' '+y1+' Z" fill="'+(i<n?col:'none')+'" stroke="#f4f0ff" stroke-width="1.5"/>'; }
+  return out+'</svg>'; }
+function fracHTML(n,d){ return '<span style="display:inline-block;text-align:center;vertical-align:middle;line-height:1"><b style="display:block;border-bottom:2px solid currentColor;padding:0 4px">'+n+'</b><b style="display:block;padding:0 4px">'+d+'</b></span>'; }
+function gcd(a,b){ return b?gcd(b,a%b):a; }
+/* question generator: 5 tiers */
+QG.eqfrac=function(L){
+  var pairs=[[1,2],[1,3],[1,4],[2,3],[3,4],[2,5],[3,5]];
+  if(L<3){ var p=pick([[1,2],[1,4],[1,3]]), k=pick([2,3]), same=[p[0]*k,p[1]*k], wrong=[[p[0]*k+1,p[1]*k],[p[0],p[1]*k]];
+    var opts=[same].concat(wrong).map(function(f){return f[0]+'/'+f[1];}); opts=shuffle(opts);
+    return {q:'Which pie shows the SAME amount as '+p[0]+'/'+p[1]+'?', vis:'<div class="row" style="justify-content:center;gap:10px;flex-wrap:wrap">'+opts.map(function(o){var f=o.split('/');return '<div class="center">'+pieSVG(+f[0],+f[1],58)+'<div style="font-size:13px">'+o+'</div></div>';}).join('')+'</div>', choices:opts, a:same[0]+'/'+same[1]}; }
+  if(L<5){ var p2=pick([[1,2],[1,3],[1,4],[2,3],[3,4]]), k2=pick([2,3,4]), top=p2[0]*k2, bot=p2[1]*k2;
+    return {q:p2[0]+'/'+p2[1]+' = ?/'+bot, vis:'<div class="row" style="justify-content:center;gap:12px">'+pieSVG(p2[0],p2[1],60)+'<span style="font-size:26px;font-weight:900">=</span>'+pieSVG(0,bot,60)+'</div>', choices:shuffle([top,top+1,Math.max(1,top-1),top+k2].filter(function(v,i,a){return a.indexOf(v)===i;}).slice(0,4)).map(String), a:String(top)}; }
+  if(L<7){ var p3=pick(pairs), k3=pick([2,3,4,5]), b3=p3[1]*k3, t3=p3[0]*k3, ch=[t3,t3+1,t3-1,p3[0]+k3].filter(function(v,i,a){return v>0&&a.indexOf(v)===i;});
+    return {q:p3[0]+'/'+p3[1]+' = ?/'+b3, vis:'<div style="font-size:24px">'+fracHTML(p3[0],p3[1])+' = '+fracHTML('?',b3)+'</div>', choices:shuffle(ch).slice(0,4).map(String), a:String(t3)}; }
+  if(L<9){ var p4=pick(pairs), k4=pick([2,3,4]), n4=p4[0]*k4, d4=p4[1]*k4;
+    var ch4=shuffle([p4[0]+'/'+p4[1], (p4[0]+1)+'/'+p4[1], p4[0]+'/'+(p4[1]+1), n4+'/'+(d4+1)].filter(function(v,i,a){return a.indexOf(v)===i;}));
+    return {q:'Simplest form of '+n4+'/'+d4+'?', vis:'<div style="font-size:24px">'+fracHTML(n4,d4)+'</div>', choices:ch4, a:p4[0]+'/'+p4[1]}; }
+  var p5=pick(pairs), k5=pick([2,3,4]), eq=Math.random()<0.5, n5=p5[0]*k5+(eq?0:pick([-1,1])), d5=p5[1]*k5; if(n5<1)n5=1;
+  return {q:'Is '+p5[0]+'/'+p5[1]+' the same as '+n5+'/'+d5+'?', vis:'<div style="font-size:24px">'+fracHTML(p5[0],p5[1])+' vs '+fracHTML(n5,d5)+'</div>', choices:shuffle(['Same','Different']), a:(n5*p5[1]===p5[0]*d5?'Same':'Different')};
+};
+/* ---- 3 games ---- */
+MJGAMES.sameslice={id:'sameslice',name:'Same Slice',emoji:'🥧',member:'reed',concept:'eqfrac',
+setup:function(L,st){
+  var p=pick(L<3?[[1,2],[1,4],[1,3]]:L<6?[[1,2],[1,3],[2,3],[3,4]]:[[2,3],[3,4],[2,5],[3,5],[1,4]]), k=pick(L<4?[2]:[2,3,4]);
+  var same=[p[0]*k,p[1]*k], seen={}; seen[same.join('/')]=1;
+  var wrongs=[[p[0]*k+1,p[1]*k],[Math.max(1,p[0]*k-1),p[1]*k],[p[0],p[1]*k],[p[0]*k+2,p[1]*k]].filter(function(f){ var key=f.join('/'); if(seen[key]||f[0]>f[1])return false; seen[key]=1; return true; });
+  var opts=shuffle([same].concat(shuffle(wrongs).slice(0,L<5?2:3))); st.ans=same.join('/');
+  return {call:'Which slice matches '+p[0]+'/'+p[1]+'?', sub:'Same AMOUNT of pie, just cut into more pieces.',
+    html:'<div class="center" style="margin:6px 0">'+pieSVG(p[0],p[1],76)+'<div style="font-size:18px"><b>'+p[0]+'/'+p[1]+'</b></div></div><div class="mjcards" id="ssZ" style="grid-template-columns:repeat('+opts.length+',1fr)"></div>',
+    wire:function(){ $('#ssZ').innerHTML=opts.map(function(f){return '<button class="mjposter ssb" data-v="'+f.join('/')+'" style="padding:8px">'+pieSVG(f[0],f[1],62)+'<div>'+f[0]+'/'+f[1]+'</div></button>';}).join('');
+      $$('.ssb').forEach(function(b){ b.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(b.dataset.v===st.ans){ tone(ntf(67),.3,'sawtooth',.14); mjOK(st.ans+' is the same slice as '+p[0]+'/'+p[1]+'. Different name, same pie!'); } else { punch(b); mjNo('Look at how much is SHADED. '+st.ans+' matches '+p[0]+'/'+p[1]+'.'); } }); }); }};
+}};
+MJGAMES.notesplit={id:'notesplit',name:'Note Split',emoji:'🎼',member:'reed',concept:'eqfrac',
+setup:function(L,st){
+  var base=pick(L<3?[[1,2]]:L<6?[[1,2],[1,4],[3,4]]:[[1,2],[3,4],[2,3],[1,3]]), bot=base[1]*pick(L<4?[2]:L<7?[2,3]:[2,3,4]);
+  st.need=base[0]*bot/base[1]; st.got=0; st.bot=bot;
+  var bar=function(){ var s=''; for(var i=0;i<bot;i++)s+='<button class="mjbar nsb" data-i="'+i+'" style="width:'+Math.max(22,Math.floor(240/bot)-4)+'px;height:44px;margin:2px;border-radius:6px;border:2px solid #f5b942;background:'+(i<st.got?'#f5b942':'#1d1636')+'"></button>'; return s; };
+  return {call:base[0]+'/'+base[1]+' of the bar = ?/'+bot, sub:'Reed swaps long notes for short ones. Shade the SAME amount with the smaller pieces, then blow.',
+    html:'<div class="center" style="margin:6px 0">'+pieSVG(base[0],base[1],60)+'<div style="font-size:15px">'+base[0]+'/'+base[1]+'</div></div><div class="center" id="nsBar" style="margin:8px 0">'+bar()+'</div><div class="mjbig" id="nsCnt" style="font-size:24px">0/'+bot+'</div><div class="row" style="justify-content:center"><button class="mjcymbal" id="mjLock">🎷<br>BLOW</button></div>',
+    wire:function(){ var wireBar=function(){ $$('#nsBar .nsb').forEach(function(b){ b.addEventListener('click',function(){ if(MJ.busy)return; ac(); var i=+b.dataset.i; st.got=(i<st.got)?i:i+1; tone(ntf(60+i),.12,'triangle',.2); $('#nsBar').innerHTML=bar(); $('#nsCnt').textContent=st.got+'/'+bot; wireBar(); }); }); }; wireBar();
+      $('#mjLock').addEventListener('click',function(){ if(MJ.busy)return; ac(); if(st.got===st.need){ tone(ntf(65),.5,'sawtooth',.16); tone(ntf(72),.5,'sawtooth',.1); mjOK(base[0]+'/'+base[1]+' = '+st.need+'/'+bot+'. Same amount, smaller notes!'); } else { punch($('#mjLock')); mjNo('You shaded '+st.got+'/'+bot+'. '+base[0]+'/'+base[1]+' of '+bot+' pieces is '+st.need+'.'); } }); }};
+}};
+MJGAMES.coolform={id:'coolform',name:'Cool Form',emoji:'😎',member:'reed',concept:'eqfrac',
+setup:function(L,st){
+  var pairs=L<4?[[1,2],[1,3],[1,4]]:L<7?[[1,2],[1,3],[2,3],[3,4],[1,4]]:[[2,3],[3,4],[2,5],[3,5],[1,4],[3,8]]; var p=pick(pairs), k=pick(L<4?[2]:L<7?[2,3]:[2,3,4,5]);
+  var n=p[0]*k, d=p[1]*k; st.ans=p[0]+'/'+p[1]; st.k=k;
+  var opts=shuffle([st.ans,(p[0]+1)+'/'+p[1],p[0]+'/'+(p[1]+1),n+'/'+(d-1)].filter(function(v,i,a){return a.indexOf(v)===i;}).slice(0,L<4?3:4));
+  return {call:'Say '+n+'/'+d+' the COOL way', sub:'Divide the top and the bottom by the SAME number until they cannot shrink. That is simplest form.',
+    html:'<div class="center" style="font-size:26px;margin:8px 0">'+fracHTML(n,d)+'</div><div class="sub center">hint: both divide by '+k+'</div><div class="mjcards" id="cfZ"></div>',
+    wire:function(){ $('#cfZ').innerHTML=opts.map(function(o){return '<button class="mjposter cfb" data-v="'+o+'" style="font-size:22px">'+o+'</button>';}).join('');
+      $$('.cfb').forEach(function(b){ b.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(b.dataset.v===st.ans){ tone(ntf(63),.2,'sawtooth',.14); tone(ntf(70),.4,'sawtooth',.14,.15); mjOK(n+'/'+d+' ÷ '+k+' top and bottom = '+st.ans+'. Cool.'); } else { punch(b); mjNo('Divide '+n+' and '+d+' both by '+k+'. You get '+st.ans+'.'); } }); }); }};
+}};
+Object.assign(COACH,{
+  sameslice:{member:'reed',verb:'TAP',hint:'tap',title:'🥧 Same Slice',lines:['Half a pie and two quarters of a pie are the SAME amount.','Look at how much is shaded, then TAP the pie that matches.']},
+  notesplit:{member:'reed',verb:'TAP',hint:'tap',title:'🎼 Note Split',lines:['I swap one long note for a few short ones. Same length of time.','TAP the small pieces to shade the same amount as the big fraction, then BLOW.']},
+  coolform:{member:'reed',verb:'TAP',hint:'tap',title:'😎 Cool Form',lines:['4/8 is a mouthful. 1/2 says the same thing, cooler.','Divide top and bottom by the same number, and TAP the simplest form.']}
+});
+PLAY_RIGS.reed={hint:'Blues scale. Hold a note, then squeeze the next one in.',custom:function(el){
+  el.innerHTML='<div class="mjbig" style="font-size:44px">🎷</div><div class="sub center">the blues scale, low to high</div><div class="row" id="rdStr" style="justify-content:center;gap:8px;margin-top:12px;flex-wrap:wrap"></div>';
+  var notes=[60,63,65,66,67,70,72];
+  $('#rdStr').innerHTML=notes.map(function(n,i){return '<button class="mjcymbal rds" data-n="'+n+'" style="font-size:16px;width:74px;height:74px;border-color:#b8860b">'+(i+1)+'</button>';}).join('');
+  $$('.rds').forEach(function(b){ b.addEventListener('click',function(){ ac(); var n=+b.dataset.n; tone(ntf(n),.55,'sawtooth',.16); tone(ntf(n)*1.005,.55,'square',.05); punch(b); }); });
+}};
+MUSIC_CARDS.reed={elly:'Reed shows equivalent fractions with note values. Same time, different names.',body:'A half note lasts 2 beats. Two quarter notes also last 2 beats. Four eighth notes? Still 2 beats. 1/2 = 2/4 = 4/8. Jazz players swap them all night long, and the song never gets longer or shorter.',example:'Listen: one long note, then two medium, then four quick ones. Every line takes the same time.'};
+MUSIC_DEMOS.reed=function(){ tone(ntf(65),1.1,'sawtooth',.16); later(function(){tone(ntf(65),.5,'sawtooth',.16);},1300); later(function(){tone(ntf(65),.5,'sawtooth',.16);},1900); [2600,2900,3200,3500].forEach(function(d){ later(function(){tone(ntf(65),.24,'sawtooth',.16);},d); }); };
+LESSONS.reed={game:function(){startMJ('sameslice');},steps:[
+  {say:'Half a pie is half a pie, whether you cut it in 2 big pieces or 4 small ones. 1/2 and 2/4 are EQUIVALENT: the same amount.',vis:'<div class="row" style="justify-content:center;gap:12px">'+pieSVG(1,2,64)+'<b style="font-size:24px">=</b>'+pieSVG(2,4,64)+'</div>'},
+  {say:'The trick: multiply the top AND the bottom by the same number. 1/2 times 2 on top and bottom is 2/4. Times 4 is 4/8. Same slice, more pieces.',vis:'<div style="font-size:22px"><b>1/2 = 2/4 = 4/8</b></div>'},
+  {say:'It works backwards too. Divide top and bottom by the same number and the fraction gets its simplest, coolest name. 6/8 becomes 3/4.',vis:'<div style="font-size:22px"><b>6/8 ÷ 2 = 3/4</b></div>'},
+  {say:'On my sax, a half note is two quarter notes is four eighth notes. Same time on the clock. In my games you match slices, split notes, and find the cool form. Let us swing!',vis:'<div style="font-size:22px"><b>𝅗𝅥 = ♩♩ = ♪♪♪♪</b></div>'}
+]};
+METHOD.eqfrac={steps:[
+  {say:'Equivalent fractions are the same amount with different names. To make one, multiply the top and the bottom by the SAME number.',vis:'<div style="font-size:22px"><b>2/3 × 2 = 4/6</b></div>'},
+  {say:'To find the simplest form, divide top and bottom by the biggest number that goes into both. 8/12: both divide by 4, so it is 2/3.',vis:'<div style="font-size:22px"><b>8/12 ÷ 4 = 2/3</b></div>'}
+]};
+STEPWALK.eqfrac=function(L){ var p=pick([[1,2],[2,3],[3,4],[1,3]]), k=pick([2,3,4]), n=p[0]*k, d=p[1]*k;
+  return {title:'Shrink it the same on top and bottom',steps:[
+    {say:'Simplify '+n+'/'+d+'. What number goes into BOTH '+n+' and '+d+'?',vis:'<div style="font-size:26px">'+fracHTML(n,d)+'</div>',choices:shuffle([k].concat([k+1,k+2,Math.max(2,k-1),k+3].filter(function(v,i,a){return v!==k&&a.indexOf(v)===i;}).slice(0,2))),a:k},
+    {say:'Divide the TOP: '+n+' ÷ '+k+' = ?',choices:numChoices(p[0],2),a:p[0]},
+    {say:'Divide the BOTTOM: '+d+' ÷ '+k+' = ?',choices:numChoices(p[1],2),a:p[1],after:n+'/'+d+' = '+p[0]+'/'+p[1]+'. Simplest form!'}]}; };
+/* ---- crew art: The Blue Notes (navy + brass) ---- */
+function jazzCharSVG(id,sz){
+  const O='#221a44'; let b='';
+  const eye=(x,y)=>'<circle cx="'+x+'" cy="'+y+'" r="5" fill="'+O+'"/><circle cx="'+(x+2)+'" cy="'+(y-2)+'" r="1.8" fill="#fff"/>';
+  const cool=(x,y)=>'<rect x="'+(x-8)+'" y="'+(y-5)+'" width="16" height="9" rx="3" fill="'+O+'"/>';
+  const smile=(x,y,w)=>'<path d="M'+x+' '+y+' q'+(w/2)+' 6 '+w+' 0" stroke="'+O+'" stroke-width="4" fill="none" stroke-linecap="round"/>';
+  const feet=(c)=>'<ellipse cx="55" cy="123" rx="12" ry="6" fill="'+c+'"/><ellipse cx="85" cy="123" rx="12" ry="6" fill="'+c+'"/>';
+  if(id==='duke'){ const c='#2c3e7a';
+    b=feet('#1f2c5c')+'<rect x="40" y="44" width="60" height="76" rx="26" fill="'+c+'"/>'+'<path d="M44 52 q26 -22 52 0" fill="#1a2350"/>'+
+      cool(58,68)+cool(82,68)+smile(60,86,20)+
+      '<path d="M104 118 c-14 -8 -14 -44 0 -52 c10 -6 18 6 14 14 c-4 8 -12 6 -10 14 c2 8 10 8 8 18 c-2 8 -8 10 -12 6" fill="#8b5a2b" stroke="#4a2e12" stroke-width="2"/><line x1="110" y1="60" x2="110" y2="112" stroke="#e8d8a0" stroke-width="1.5"/>';
+  } else if(id==='sable'){ const c='#7a3e9d';
+    b=feet('#5a2a78')+'<circle cx="70" cy="72" r="34" fill="'+c+'"/>'+'<ellipse cx="70" cy="44" rx="30" ry="9" fill="#2a1f55"/><rect x="52" y="24" width="36" height="22" rx="8" fill="#2a1f55"/>'+
+      eye(58,70)+eye(82,70)+'<ellipse cx="70" cy="90" rx="7" ry="5" fill="'+O+'"/>'+
+      '<path d="M76 90 h30 l10 -8 v16 l-10 -8" fill="#f1c40f" stroke="#a67c00" stroke-width="2"/><circle cx="116" cy="90" r="6" fill="#c9a227"/>';
+  } else if(id==='brush'){ const c='#1f8a70';
+    b=feet('#146650')+'<rect x="36" y="50" width="68" height="68" rx="30" fill="'+c+'"/>'+
+      eye(58,74)+eye(82,74)+smile(62,92,16)+
+      '<ellipse cx="70" cy="112" rx="40" ry="10" fill="#e8e0c8" stroke="#8a7a50" stroke-width="2"/>'+
+      '<path d="M30 60 l14 40 M28 62 l8 40 M32 58 l20 40" stroke="#c9b06a" stroke-width="2.5" stroke-linecap="round"/><path d="M110 60 l-14 40 M112 62 l-8 40 M108 58 l-20 40" stroke="#c9b06a" stroke-width="2.5" stroke-linecap="round"/>';
+  } else { const c='#f5b942'; /* sax: Reed */
+    b=feet('#c98f1e')+'<circle cx="70" cy="68" r="34" fill="'+c+'"/>'+'<ellipse cx="70" cy="40" rx="26" ry="8" fill="#2a1f55"/><rect x="54" y="22" width="32" height="20" rx="6" fill="#2a1f55"/><rect x="44" y="38" width="52" height="4" rx="2" fill="#f4f0ff"/>'+
+      cool(58,66)+cool(82,66)+'<ellipse cx="70" cy="86" rx="6" ry="4" fill="'+O+'"/>'+
+      '<path d="M76 86 c14 0 18 10 18 26 c0 14 -12 18 -20 12 c-6 -5 -2 -12 4 -10" fill="none" stroke="#e0a020" stroke-width="7" stroke-linecap="round"/><path d="M76 86 c14 0 18 10 18 26 c0 14 -12 18 -20 12 c-6 -5 -2 -12 4 -10" fill="none" stroke="#ffd86b" stroke-width="3" stroke-linecap="round"/>'+
+      '<circle cx="90" cy="100" r="2.2" fill="#8a5a0a"/><circle cx="92" cy="108" r="2.2" fill="#8a5a0a"/><circle cx="90" cy="116" r="2.2" fill="#8a5a0a"/>';
+  }
+  return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 140 140"><g class="charg">'+b+'</g></svg>';
+}
+var JAZZ_CREW={ name:'The Blue Notes', members:[
+  {id:'duke',emoji:'🎻',name:'Duke',line:'Play it smooth, kid. Smooth.'},
+  {id:'sable',emoji:'🎺',name:'Sable',line:'Can you hear the space between the notes?'},
+  {id:'brush',emoji:'🥁',name:'Brush',line:'Shhhh. Brushes only. Feel it.'},
+  {id:'sax',emoji:'🎷',name:'Reed',star:true,line:'Half note, two quarters. Same thing. Dig?'}
+]};
+RIVALS.push({key:'bluenotes',name:'The Blue Notes',crew:JAZZ_CREW,recruit:'reed',skill:'eqfrac',impress:'🎷',flag:'jazz_beaten',draw:jazzCharSVG,
+   loseEmoji:'🎩',loseTitle:'The Blue Notes keep it cool',winEmoji:'🎷',winTitle:'Reed joins the band!',
+   winLine:'You held the room AND matched every one of those same-slice calls. Reed tipped a hat to the Blue Notes and strolled over to your side.',
+   newLine:'New bandmate: Reed on Saxophone. New skill: Equivalent Fractions. Go say hi in the Garage!',
+   already:'Reed is already in your band.',meet:'Meet Reed in the Garage',
+   starHint:'Win the saxophone rounds to fill the recruit spark and get them to walk over.',btnStyle:'linear-gradient(90deg,#2c3e7a,#f5b942)'});
+ACH_CC.push('eqfrac');
+if(typeof GIG_LINES!=='undefined')GIG_LINES.reed='Reed slides the sax strap off. "Cool set, frontman. Coolest form."';
+
+</script>
+<script>
+/* ============ v0.71: THE SPARKLE (pop) + MIKA, singer-dancer: COORDINATE GRID ============ */
+CONCEPT_NAMES.coord='Coordinate Grid';
+DEF.skills.coord=1; if(S&&S.skills&&!S.skills.coord)S.skills.coord=1;
+RIG_NAMES.mika='voice';
+BAND.push({id:'mika',name:'Mika',emoji:'🎤',title:'Singer-Dancer',concept:'coord',color:'#ff7ad9',recruit:true,
+  cfg:{body:'round',col:'#ff7ad9',eyes:'dot',extra:'none'},
+  bio:'Five, six, seven, eight! Every dancer has a mark on the stage: across first, then up. Hit your mark on the count and the whole crowd sees the shape.',
+  lines:['Across first, THEN up. Never the other way.','Hit your mark on 8. Every time.','The Sparkle had the moves. I had the map.'],
+  dreams:['Kiki wanted every dancer glued to center stage. You let me use the whole grid. That is why I walked over.','A stage is just graph paper with lights. Every spot has a name.','My dream number: twelve dancers, twelve marks, one perfect shape on the count of 8.','Across, then up. Say it with me until it is a song.','This band gives me room to move. I am staying.']});
+BY_ID.mika=BAND[BAND.length-1];
+/* stage grid: n x n, origin bottom-left. marks = [{x,y,e:'emoji',hi:bool}] */
+function gridSVG(n,marks,o){ o=o||{}; var cell=o.cell||34, pad=22, W=pad+n*cell+8, H=n*cell+pad+8, s='<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="max-width:'+W+'px;display:block;margin:0 auto">';
+  s+='<rect x="'+pad+'" y="4" width="'+(n*cell)+'" height="'+(n*cell)+'" rx="6" fill="#1d1636" stroke="#9d7cff" stroke-width="2"/>';
+  for(var i=0;i<=n;i++){ s+='<line x1="'+(pad+i*cell)+'" y1="4" x2="'+(pad+i*cell)+'" y2="'+(4+n*cell)+'" stroke="#3a2f6e" stroke-width="1"/><line x1="'+pad+'" y1="'+(4+i*cell)+'" x2="'+(pad+n*cell)+'" y2="'+(4+i*cell)+'" stroke="#3a2f6e" stroke-width="1"/>'; }
+  for(var x=0;x<n;x++)s+='<text x="'+(pad+x*cell+cell/2)+'" y="'+(H-4)+'" text-anchor="middle" font-size="13" font-weight="900" fill="#ffd158">'+x+'</text>';
+  for(var y=0;y<n;y++)s+='<text x="'+(pad-6)+'" y="'+(4+(n-1-y)*cell+cell/2+5)+'" text-anchor="end" font-size="13" font-weight="900" fill="#8ef0c9">'+y+'</text>';
+  (marks||[]).forEach(function(m){ var cx=pad+m.x*cell+cell/2, cy=4+(n-1-m.y)*cell+cell/2; if(m.hi)s+='<circle cx="'+cx+'" cy="'+cy+'" r="'+(cell/2-2)+'" fill="#ffd158" opacity=".35"/>'; if(m.path)s+='<circle cx="'+cx+'" cy="'+cy+'" r="5" fill="#ff7ad9"/>'; else s+='<text x="'+cx+'" y="'+(cy+7)+'" text-anchor="middle" font-size="'+(cell*.6)+'">'+(m.e||'⭐')+'</text>'; });
+  if(o.arrow){ var a=o.arrow, ax=pad+a.x0*cell+cell/2, ay=4+(n-1-a.y0)*cell+cell/2, bx=pad+a.x1*cell+cell/2, by=4+(n-1-a.y1)*cell+cell/2; s+='<line x1="'+ax+'" y1="'+ay+'" x2="'+bx+'" y2="'+ay+'" stroke="#ffd158" stroke-width="3" stroke-dasharray="4 3"/><line x1="'+bx+'" y1="'+ay+'" x2="'+bx+'" y2="'+by+'" stroke="#8ef0c9" stroke-width="3" stroke-dasharray="4 3"/>'; }
+  return s+'</svg>'; }
+function gridButtons(n,id){ var h='<div class="popgrid" id="'+id+'" style="grid-template-columns:22px repeat('+n+',1fr)">'; for(var y=n-1;y>=0;y--){ h+='<div class="pgl" style="color:#8ef0c9">'+y+'</div>'; for(var x=0;x<n;x++)h+='<button class="pgc" data-x="'+x+'" data-y="'+y+'"></button>'; } h+='<div></div>'; for(var x2=0;x2<n;x2++)h+='<div class="pgl" style="color:#ffd158">'+x2+'</div>'; return h+'</div>'; }
+var POP_DANCERS=['💃','🕺','🌟','🎤','👯'];
+function coordStr(x,y){ return '('+x+', '+y+')'; }
+QG.coord=function(L){
+  var n=L<3?3:L<6?4:L<9?5:6, x=R(0,n-1), y=R(0,n-1);
+  var mkWrong=function(ax,ay,cands){ var out=[], seen={}; seen[coordStr(ax,ay)]=1; cands.forEach(function(c){ var k=coordStr(Math.max(0,Math.min(n-1,c[0])),Math.max(0,Math.min(n-1,c[1]))); if(!seen[k]){seen[k]=1;out.push(k);} }); var tries=0; while(out.length<3&&tries++<40){ var k2=coordStr(R(0,n-1),R(0,n-1)); if(!seen[k2]){seen[k2]=1;out.push(k2);} } return out; };
+  if(L<3||(L<7&&Math.random()<0.5)){ var wrong=mkWrong(x,y,[[y,x],[x+1,y],[x,y+1],[x-1,y],[x,y-1]]);
+    return {q:'Where is the dancer? Across first, then up.', vis:gridSVG(n,[{x:x,y:y,e:'💃'}],{cell:26}), choices:shuffle([coordStr(x,y)].concat(shuffle(wrong).slice(0,3))), a:coordStr(x,y)}; }
+  if(L<9){ var dx=R(1,Math.max(1,n-1-x)), dy=R(0,n-1-y); if(x+dx>n-1)dx=0; var ex=x+dx, ey=y+dy; var w2=mkWrong(ex,ey,[[ey,ex],[x+dy,y+dx],[ex+1,ey],[ex,ey-1],[ex-1,ey]]);
+    return {q:'Start at '+coordStr(x,y)+'. Go right '+dx+', up '+dy+'. Where do you land?', vis:gridSVG(n,[{x:x,y:y,e:'💃'}],{cell:26}), choices:shuffle([coordStr(ex,ey)].concat(shuffle(w2).slice(0,3))), a:coordStr(ex,ey)}; }
+  var x2=R(0,n-1), y2=R(0,n-1); while(x2===x&&y2===y){x2=R(0,n-1);}
+  var ddx=x2-x, ddy=y2-y, a3=(ddx>=0?'right '+ddx:'left '+(-ddx))+', '+(ddy>=0?'up '+ddy:'down '+(-ddy));
+  var w3=[(ddy>=0?'right '+ddy:'left '+(-ddy))+', '+(ddx>=0?'up '+ddx:'down '+(-ddx)),(ddx>=0?'right '+(ddx+1):'left '+(-ddx+1))+', '+(ddy>=0?'up '+ddy:'down '+(-ddy)),(ddx>=0?'left '+ddx:'right '+(-ddx))+', '+(ddy>=0?'down '+ddy:'up '+(-ddy))].filter(function(v,i,a){return v!==a3&&a.indexOf(v)===i;});
+  return {q:'Get from 💃 to ⭐. Which moves?', vis:gridSVG(n,[{x:x,y:y,e:'💃'},{x:x2,y:y2,e:'⭐'}],{cell:26}), choices:shuffle([a3].concat(w3).slice(0,4)), a:a3};
+};
+function wireGrid(gid,st,onTap){ $$('#'+gid+' .pgc').forEach(function(b){ b.addEventListener('click',function(){ if(MJ.busy)return; ac(); onTap(+b.dataset.x,+b.dataset.y,b); }); }); }
+MJGAMES.hitmark={id:'hitmark',name:'Hit Your Mark',emoji:'📍',member:'mika',concept:'coord',
+setup:function(L,st){
+  var n=L<3?3:L<6?4:L<9?5:6, x=R(0,n-1), y=R(0,n-1); st.x=x; st.y=y;
+  return {call:'Mika\u2019s mark is '+coordStr(x,y), sub:'Across '+x+' (yellow), then up '+y+' (green). Tap the square!',
+    html:gridButtons(n,'hmG'),
+    wire:function(){ wireGrid('hmG',st,function(tx,ty,b){ if(tx===x&&ty===y){ b.textContent='💃'; b.classList.add('good'); drum('snare'); mjOK('Right on the mark! '+coordStr(x,y)+' on the count of 8.'); } else { b.classList.add('badc'); punch(b); var g=$$('#hmG .pgc').filter(function(q){return +q.dataset.x===x&&+q.dataset.y===y;})[0]; if(g){g.textContent='💃';g.classList.add('good');} mjNo('That was '+coordStr(tx,ty)+'. Across '+x+' first, THEN up '+y+'.'); } }); }};
+}};
+MJGAMES.formation={id:'formation',name:'Formation',emoji:'👯',member:'mika',concept:'coord',
+setup:function(L,st){
+  var n=L<3?3:L<6?4:5, k=L<3?2:L<7?3:4, marks=[], used={};
+  while(marks.length<k){ var x=R(0,n-1), y=R(0,n-1), key=x+','+y; if(used[key])continue; used[key]=1; marks.push({x:x,y:y,e:POP_DANCERS[marks.length]}); }
+  var tgt=pick(marks); st.ans=coordStr(tgt.x,tgt.y);
+  var opts=shuffle(marks.map(function(m){return coordStr(m.x,m.y);}).concat(marks.length<4?[coordStr(tgt.y,tgt.x)]:[]).filter(function(v,i,a){return a.indexOf(v)===i;})).slice(0,4);
+  return {call:'Where is '+tgt.e+'?', sub:'Read the dancer\u2019s spot: across first, then up.',
+    html:gridSVG(n,marks,{cell:30})+'<div class="mjcards" id="fmZ"></div>',
+    wire:function(){ $('#fmZ').innerHTML=opts.map(function(o){return '<button class="mjposter fmb" data-v="'+o+'" style="font-size:20px">'+o+'</button>';}).join('');
+      $$('.fmb').forEach(function(b){ b.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(b.dataset.v===st.ans){ drum('clap'); mjOK(tgt.e+' is at '+st.ans+'. Formation locked!'); } else { punch(b); mjNo(tgt.e+' is at '+st.ans+'. Count across along the bottom first.'); } }); }); }};
+}};
+MJGAMES.danceroute={id:'danceroute',name:'Dance Route',emoji:'🗺️',member:'mika',concept:'coord',
+setup:function(L,st){
+  var n=L<4?4:L<8?5:6, x=R(0,n-2), y=R(0,n-2), dx=R(1,n-1-x), dy=R(L<3?0:1,n-1-y); if(L>=7&&Math.random()<0.5){ x=R(1,n-1); dx=-R(1,x); }
+  var ex=x+dx, ey=y+dy; st.ex=ex; st.ey=ey;
+  return {call:'Start at '+coordStr(x,y)+'. '+(dx>=0?'Right '+dx:'Left '+(-dx))+', then up '+dy+'.', sub:'Follow the route with your finger, then tap where Mika lands.',
+    html:gridButtons(n,'drG'),
+    wire:function(){ var s0=$$('#drG .pgc').filter(function(q){return +q.dataset.x===x&&+q.dataset.y===y;})[0]; if(s0){s0.textContent='💃';s0.style.background='#3a2f6e';}
+      wireGrid('drG',st,function(tx,ty,b){ if(tx===ex&&ty===ey){ b.textContent='⭐'; b.classList.add('good'); drum('snare'); mjOK('Landed on '+coordStr(ex,ey)+'! Five, six, seven, EIGHT.'); } else { b.classList.add('badc'); punch(b); var g=$$('#drG .pgc').filter(function(q){return +q.dataset.x===ex&&+q.dataset.y===ey;})[0]; if(g){g.textContent='⭐';g.classList.add('good');} mjNo('Across '+(dx>=0?'+':'')+dx+' makes '+ex+', up '+dy+' makes '+ey+'. That is '+coordStr(ex,ey)+'.'); } }); }};
+}};
+Object.assign(COACH,{
+  hitmark:{member:'mika',verb:'TAP',hint:'tap',title:'📍 Hit Your Mark',lines:['Every spot on the stage has a name: (across, up).','Count across the bottom first, then up the side, and TAP the square!']},
+  formation:{member:'mika',verb:'TAP',hint:'tap',title:'👯 Formation',lines:['The dancers are already on their marks.','Find the one I ask for and TAP its (across, up) name!']},
+  danceroute:{member:'mika',verb:'TAP',hint:'tap',title:'🗺️ Dance Route',lines:['Start on a mark, then move right and up.','Add the moves to the numbers and TAP where you land!']}
+});
+PLAY_RIGS.mika={hint:'Sing it! Five notes, and 8 counts to hit them on.',custom:function(el){
+  el.innerHTML='<div class="mjbig" style="font-size:44px">🎤</div><div class="sub center">oohs and ahhs, low to high</div><div class="row" id="mkStr" style="justify-content:center;gap:8px;margin-top:12px;flex-wrap:wrap"></div>';
+  var notes=[60,62,64,67,69,72];
+  $('#mkStr').innerHTML=notes.map(function(n,i){return '<button class="mjcymbal mks" data-n="'+n+'" style="font-size:16px;width:74px;height:74px;border-color:#ff7ad9">'+['ooh','ooh','ahh','ahh','hey','yeah'][i]+'</button>';}).join('');
+  $$('.mks').forEach(function(b){ b.addEventListener('click',function(){ ac(); var n=+b.dataset.n; tone(ntf(n),.6,'sine',.2); tone(ntf(n)*1.003,.6,'triangle',.08); later(function(){tone(ntf(n+12),.35,'sine',.05);},120); punch(b); }); });
+}};
+MUSIC_CARDS.mika={elly:'Mika shows the coordinate grid with the stage itself. Every dancer has an address.',body:'Pop choreography is counted in 8s: five, six, seven, eight! And the stage is a grid. A dancer\u2019s mark is written across first, then up, like (3, 2). On the count of 8 everybody hits their mark and the crowd sees the shape.',example:'Listen: 8 counts, and the snare cracks on 8. That is the moment every dancer lands on their (across, up).'};
+MUSIC_DEMOS.mika=function(){ [0,1,2,3,4,5,6,7].forEach(function(i){ later(function(){ drum(i===7?'snare':'hat'); if(i>=4)tone(ntf(72+(i-4)*2),.15,'sine',.12); },i*260); }); };
+LESSONS.mika={game:function(){startMJ('hitmark');},steps:[
+  {say:'The stage is a grid. The numbers along the BOTTOM count across. The numbers up the SIDE count up.',vis:gridSVG(4,[],{cell:30})},
+  {say:'A mark is written (across, up). This dancer is at (3, 1): across 3, up 1. Across ALWAYS comes first.',vis:gridSVG(4,[{x:3,y:1,e:'💃',hi:true}],{cell:30})},
+  {say:'Careful: (1, 3) is a different spot! Across 1, up 3. Swap the numbers and you are on the wrong mark.',vis:gridSVG(4,[{x:1,y:3,e:'💃',hi:true},{x:3,y:1,e:'⭐'}],{cell:30})},
+  {say:'Choreo counts 5, 6, 7, 8, and on 8 you hit your mark. In my games you tap marks, read formations, and follow routes. Ready? Five, six, seven, eight!',vis:'<div style="font-size:24px"><b>5 6 7 <span style="color:#ff7ad9">8</span>!</b></div>'}
+]};
+METHOD.coord={steps:[
+  {say:'Reading a mark: start at (0, 0) in the bottom-left corner. Count ACROSS along the bottom to the first number, then count UP to the second. Say it: across, then up.',vis:gridSVG(4,[{x:2,y:3,e:'💃',hi:true}],{cell:30,arrow:{x0:0,y0:0,x1:2,y1:3}})},
+  {say:'A route is just adding. Right adds to the across number, up adds to the up number. (1, 2) right 3 and up 1 lands on (4, 3).',vis:'<div style="font-size:22px"><b>(1, 2) → right 3, up 1 → (4, 3)</b></div>'}
+]};
+STEPWALK.coord=function(L){ var x=R(0,2), y=R(0,2), dx=R(1,3), dy=R(1,3);
+  return {title:'Right adds across, up adds up',steps:[
+    {say:'Start at '+coordStr(x,y)+', go right '+dx+'. What is the new ACROSS number?',vis:gridSVG(6,[{x:x,y:y,e:'💃'}],{cell:26}),choices:numChoices(x+dx,2),a:x+dx},
+    {say:'Now go up '+dy+'. What is the new UP number?',choices:numChoices(y+dy,2),a:y+dy},
+    {say:'So the mark is (across, up) = ?',choices:shuffle([coordStr(x+dx,y+dy),coordStr(y+dy,x+dx),coordStr(x+dx,y)]).filter(function(v,i,a){return a.indexOf(v)===i;}),a:coordStr(x+dx,y+dy),after:'Right adds across, up adds up. '+coordStr(x+dx,y+dy)+'!'}]}; };
+/* ---- crew art: The Sparkle (pink, teal, gold, glitter) ---- */
+function popCharSVG(id,sz){
+  const O='#221a44'; let b='';
+  const eye=(x,y)=>'<circle cx="'+x+'" cy="'+y+'" r="5" fill="'+O+'"/><circle cx="'+(x+2)+'" cy="'+(y-2)+'" r="1.8" fill="#fff"/>';
+  const star=(x,y,c)=>'<path d="M'+x+' '+(y-6)+' l2 4 4 0 -3 3 1 4 -4 -2 -4 2 1 -4 -3 -3 4 0 z" fill="'+c+'"/>';
+  const smile=(x,y,w)=>'<path d="M'+x+' '+y+' q'+(w/2)+' 7 '+w+' 0" stroke="'+O+'" stroke-width="4" fill="none" stroke-linecap="round"/>';
+  const feet=(c)=>'<ellipse cx="55" cy="123" rx="12" ry="6" fill="'+c+'"/><ellipse cx="85" cy="123" rx="12" ry="6" fill="'+c+'"/>';
+  if(id==='kiki'){ const c='#ff5db1';
+    b=feet('#d6398f')+'<circle cx="70" cy="70" r="34" fill="'+c+'"/>'+'<path d="M36 70 q10 -44 34 -40 q26 -4 34 40 q-10 -20 -34 -18 q-24 -2 -34 18" fill="#ffd158"/>'+
+      eye(58,70)+eye(82,70)+'<ellipse cx="70" cy="88" rx="6" ry="5" fill="'+O+'"/>'+
+      '<path d="M40 60 q-4 24 20 28" fill="none" stroke="#221a44" stroke-width="3"/><circle cx="60" cy="90" r="5" fill="#221a44"/>'+star(98,44,'#fff')+star(44,40,'#fff');
+  } else if(id==='pulse'){ const c='#12e2c8';
+    b=feet('#0ea896')+'<rect x="36" y="46" width="68" height="74" rx="28" fill="'+c+'"/>'+
+      eye(58,72)+eye(82,72)+smile(60,88,20)+
+      '<rect x="46" y="100" width="48" height="18" rx="4" fill="#221a44"/>'+[0,1,2,3].map(i=>'<rect x="'+(50+i*11)+'" y="104" width="8" height="10" rx="2" fill="'+['#ff5db1','#ffd158','#8ef0c9','#9d7cff'][i]+'"/>').join('');
+  } else if(id==='glitz'){ const c='#9d7cff';
+    b=feet('#7a5bd6')+'<circle cx="70" cy="72" r="34" fill="'+c+'"/>'+'<ellipse cx="70" cy="46" rx="30" ry="12" fill="#ffd158"/>'+
+      eye(58,72)+eye(82,72)+smile(60,90,20)+
+      '<rect x="30" y="86" width="72" height="16" rx="4" transform="rotate(-18 66 94)" fill="#f4f0ff" stroke="#221a44" stroke-width="2"/>'+[0,1,2,3,4,5].map(i=>'<rect x="'+(36+i*11)+'" y="88" width="6" height="12" transform="rotate(-18 66 94)" fill="'+(i%2?'#221a44':'#f4f0ff')+'" stroke="#221a44" stroke-width="1"/>').join('')+
+      star(104,60,'#fff')+star(40,58,'#fff');
+  } else { const c='#ff7ad9'; /* dancer: Mika */
+    b=feet('#d94fb5')+'<circle cx="70" cy="70" r="34" fill="'+c+'"/>'+'<path d="M38 66 q6 -40 32 -38 q26 -2 32 38 q-8 -16 -32 -16 q-24 0 -32 16" fill="#2a1f55"/>'+
+      eye(58,70)+eye(82,70)+'<path d="M58 86 q12 10 24 0" stroke="'+O+'" stroke-width="4" fill="none" stroke-linecap="round"/>'+
+      '<path d="M44 54 q-6 20 14 28" fill="none" stroke="#221a44" stroke-width="2.5"/><circle cx="58" cy="84" r="4" fill="#221a44"/>'+
+      '<path d="M104 78 l14 -14 M104 78 l4 18" stroke="'+c+'" stroke-width="8" stroke-linecap="round"/><path d="M36 78 l-14 -14" stroke="'+c+'" stroke-width="8" stroke-linecap="round"/>'+
+      star(112,52,'#ffd158')+star(28,54,'#ffd158')+star(96,110,'#fff');
+  }
+  return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 140 140"><g class="charg">'+b+'</g></svg>';
+}
+var POP_CREW={ name:'The Sparkle', members:[
+  {id:'kiki',emoji:'🎤',name:'Kiki',line:'Center stage is MINE, sweetie.'},
+  {id:'pulse',emoji:'🎛️',name:'Pulse',line:'Drop on 8. Always on 8.'},
+  {id:'glitz',emoji:'🎹',name:'Glitz',line:'Sparkle harder!'},
+  {id:'dancer',emoji:'💃',name:'Mika',star:true,line:'Across first, then up. Hit your mark!'}
+]};
+RIVALS.push({key:'sparkle',name:'The Sparkle',crew:POP_CREW,recruit:'mika',skill:'coord',impress:'💃',flag:'pop_beaten',draw:popCharSVG,
+   loseEmoji:'✨',loseTitle:'The Sparkle steals the spotlight',winEmoji:'💃',winTitle:'Mika joins the band!',
+   winLine:'You held the crowd AND hit every mark she called. Mika spun off the Sparkle\u2019s stage and landed on yours on the count of 8.',
+   newLine:'New bandmate: Mika, singer-dancer. New skill: Coordinate Grid. Go say hi in the Garage!',
+   already:'Mika is already in your band.',meet:'Meet Mika in the Garage',
+   starHint:'Win the dance-mark rounds to fill the recruit spark and get her to switch stages.',btnStyle:'linear-gradient(90deg,#ff5db1,#12e2c8)'});
+ACH_CC.push('coord');
+if(typeof GIG_LINES!=='undefined')GIG_LINES.mika='Mika hits her final mark right next to you. "Five, six, seven, EIGHT. Nailed it."';
+
+/* ============ v0.71 ECONOMY: Mystery Crate, Pressing Plant, venue upgrades, medal progress ============ */
+var MYSTERY_POOL=['🦊','🐼','🐨','🐯','🦁','🐮','🐷','🐵','🐔','🐧','🦆','🦅','🦄','🐝','🐞','🦀','🐙','🐢','🦎','🐬','🐳','🌵','🌻','🌸','🍄','🍎','🍌','🍓','🍉','🍪','🧁','🍦','⚽','🏀','🎯','🎲','🎮','🎧','📸','🔮','🧲','🪐','🌈','🔥','💫','🎈','🎁','🏆'].map(function(e,i){ return {id:'mc_'+i,type:'flair',name:'Crate Flair '+e,val:e,notes:0,rarity:'rare',desc:'From a Mystery Crate.'}; });
+var CRATE_COST=60, PRESS_COST=250;
+function crateOwned(){ return MYSTERY_POOL.filter(function(it){return S.owned.includes(it.id);}).length; }
+function openCrate(){
+  sTap(); var left=MYSTERY_POOL.filter(function(it){return !S.owned.includes(it.id);});
+  if(!left.length){ toast('You found every crate flair! 🏆'); return; }
+  if(S.notes<CRATE_COST){ toast('Need '+CRATE_COST+' 🎵 for a crate'); return; }
+  S.notes-=CRATE_COST; var it=pick(left); S.owned.push(it.id); S.stats.crates=(S.stats.crates||0)+1; save();
+  drum('kick'); later(function(){drum('snare');},200); sFanfare(); confetti(24);
+  modal('<div class="center"><div style="font-size:52px">📦</div><h2>Crate opened!</h2><div style="font-size:64px;margin:6px 0">'+it.val+'</div><div class="sub">'+it.name+' · '+crateOwned()+'/'+MYSTERY_POOL.length+' found</div></div>'+
+    '<div class="speak"><b>Elly:</b> \u201CPin it on anybody: tap a bandmate, then 🎽.\u201D</div>'+
+    '<button class="btn wide" onclick="closeModal();openCrate()">📦 Another ('+CRATE_COST+' 🎵)</button><button class="btn wide ghost" onclick="closeModal();openShop()">Back to the shop</button>');
+}
+function pressRecord(){ sTap(); if(S.notes<PRESS_COST){ toast('Need '+PRESS_COST+' 🎵 to press a record'); return; } S.notes-=PRESS_COST; S.stats.pressed=(S.stats.pressed||0)+1; addGold(1); sFanfare(); confetti(18); toast('📀 Pressed a gold record!'); openShop(); }
+/* venue upgrades: 3 levels each, +0.15 pay per level */
+var VEN_UP_COST=[150,250,400];
+function venueLvl(id){ return (S.venueLvl&&S.venueLvl[id])||0; }
+function venueMult(v){ return (v.mult||1)+0.15*venueLvl(v.id); }
+function upgradeVenue(id){ sTap(); var v=VEN_BY[id], lv=venueLvl(id); if(!v||lv>=3)return; var cost=VEN_UP_COST[lv]; if(S.notes<cost){ toast('Need '+cost+' 🎵'); return; }
+  S.notes-=cost; S.venueLvl=S.venueLvl||{}; S.venueLvl[id]=lv+1; save(); sFanfare(); confetti(16); toast(v.emoji+' '+v.name+' upgraded to Lv'+(lv+1)+'! Pays ×'+venueMult(v).toFixed(2)); openTour(); }
+/* patch the shop: crate + press sections, medal progress on locked cards */
+var _openShop=openShop;
+openShop=function(){ _openShop();
+  var g=$('#shopGrid'); if(!g)return;
+  var head=document.createElement('div'); head.className='shophead'; head.innerHTML='<b>📦 Mystery Crate &amp; 🏭 Pressing Plant</b><div class="sub" style="margin:0;text-align:left">Always something to spend notes on.</div>';
+  var crate=document.createElement('div'); crate.className='item'; var left=MYSTERY_POOL.length-crateOwned();
+  crate.innerHTML='<span class="rar rare">RANDOM</span><div style="font-size:32px">📦</div><div style="font-weight:900">Mystery Crate</div><div class="tt" style="color:#a89cd8;font-size:12px;min-height:30px">A surprise flair you cannot buy any other way. '+crateOwned()+'/'+MYSTERY_POOL.length+' found.</div>';
+  var cb=document.createElement('button'); cb.className='btn small wide'; cb.textContent=left?('Open 🎵 '+CRATE_COST):'All found! 🏆'; cb.disabled=!left||S.notes<CRATE_COST; cb.addEventListener('click',openCrate); crate.appendChild(cb);
+  var press=document.createElement('div'); press.className='item';
+  press.innerHTML='<span class="rar epic">GOLD</span><div style="font-size:32px">📀</div><div style="font-weight:900">Press a Gold Record</div><div class="tt" style="color:#a89cd8;font-size:12px;min-height:30px">Turn '+PRESS_COST+' notes into 1 gold record. Pressed so far: '+(S.stats.pressed||0)+'.</div>';
+  var pb=document.createElement('button'); pb.className='btn small wide'; pb.textContent='Press 🎵 '+PRESS_COST; pb.disabled=S.notes<PRESS_COST; pb.addEventListener('click',pressRecord); press.appendChild(pb);
+  var first=g.querySelector('.shophead'); g.insertBefore(head,first); g.insertBefore(crate,first); g.insertBefore(press,first);
+  /* medal progress */
+  $$('#shopGrid .item.locked').forEach(function(card){ var name=card.querySelector('div[style*="font-weight:900"]'); var it=SHOP.filter(function(x){return x.ach&&name&&x.name===name.textContent;})[0]; if(!it)return; var fam=it.ach.split('_')[0], tier=+it.ach.split('_')[1], a=ACH.filter(function(x){return x.id===fam;})[0]; if(!a)return; var cur=Math.min(a.cur(),a.tiers[tier].need), need=a.tiers[tier].need; var tt=card.querySelector('.tt[style*="ffd158"]'); if(tt)tt.innerHTML+='<div style="color:#8ef0c9;font-weight:800">'+cur+' of '+need+' · '+a.desc.toLowerCase()+(cur>=need?' · claim it on the Wall!':'')+'</div>'; });
+};
+/* patch the tour map: upgrade button + upgraded pay */
+var _openTour=openTour;
+openTour=function(){ _openTour();
+  $$('#mbox .venue').forEach(function(card,i){ var v=VENUES[i]; if(!v)return; var lv=venueLvl(v.id); var mult=card.querySelector('div[style*="ffd158"]'); if(mult)mult.textContent='×'+venueMult(v).toFixed(2)+' 🎵'+(lv?' · Lv'+lv:'');
+    var row=document.createElement('div'); row.className="row"; row.style.cssText='justify-content:flex-end;margin-top:6px'; row.innerHTML=lv>=3?'<span class="sub" style="margin:0;font-size:12px;color:#ffd158">⭐ Maxed out</span>':'<button class="btn ghost small" style="font-size:13px;padding:6px 10px">⬆ Upgrade · '+VEN_UP_COST[lv]+' 🎵</button>';
+    var b=row.querySelector('button'); if(b){ b.disabled=S.notes<VEN_UP_COST[lv]; b.addEventListener('click',function(e){ e.stopPropagation(); upgradeVenue(v.id); }); }
+    card.appendChild(row); });
+};
+var _gigEnd=gigEnd;
+gigEnd=function(){ if(GIG.venue){ var v=GIG.venue, lv=venueLvl(v.id); if(lv&&!v._up){ v=Object.assign({},v,{mult:venueMult(v),_up:true}); GIG.venue=v; } } _gigEnd(); };
+if(!S.venueLvl)S.venueLvl={};
+ACH.push({id:'crates',cat:'Collection',icon:'📦',name:'Crate Digger',desc:'Mystery Crate flair found',tiers:[{need:8,n:20,g:0},{need:24,n:40,g:1},{need:48,n:80,g:2}],cur:crateOwned});
+function syncBandCounts(){ ACH.forEach(function(a){ if(a.id==='band'||a.id==='medals'||a.id==='diamond')a.tiers[2].need=BAND.length; }); }
+/* addRecruit: one call registers a whole rival band + its recruit. Module still defines QG/games/COACH/rig/card/demo/lesson/method/stepwalk/crew art. */
+function addRecruit(c){
+  CONCEPT_NAMES[c.concept]=c.conceptName; DEF.skills[c.concept]=1; if(S&&S.skills&&!S.skills[c.concept])S.skills[c.concept]=1;
+  RIG_NAMES[c.id]=c.rig; var m={id:c.id,name:c.name,emoji:c.emoji,title:c.title,concept:c.concept,color:c.color,recruit:true,cfg:{body:'round',col:c.color,eyes:'dot',extra:'none'},bio:c.bio,lines:c.lines,dreams:c.dreams,draw:c.draw,crewId:c.crewId};
+  BAND.push(m); BY_ID[c.id]=m; ACH_CC.push(c.concept); if(c.gigLine)GIG_LINES[c.id]=c.gigLine; if(c.meetLine)MEET_LINES[c.id]=c.meetLine;
+  RIVALS.push({key:c.key,name:c.bandName,crew:c.crew,recruit:c.id,skill:c.concept,impress:c.emoji,flag:c.key+'_beaten',draw:c.draw,
+    loseEmoji:c.loseEmoji,loseTitle:c.loseTitle,winEmoji:c.emoji,winTitle:c.name+' joins the band!',winLine:c.winLine,
+    newLine:'New bandmate: '+c.name+', '+c.title+'. New skill: '+c.conceptName+'. Go say hi in the Garage!',already:c.name+' is already in your band.',meet:'Meet '+c.name+' in the Garage',starHint:c.starHint,btnStyle:c.btnStyle});
+  syncBandCounts();
+}
+syncBandCounts();
+Object.assign(window.BQ,{addRecruit:addRecruit,openCrate:openCrate,pressRecord:pressRecord,upgradeVenue:upgradeVenue,venueMult:venueMult,MYSTERY_POOL:MYSTERY_POOL,gridSVG:gridSVG});
+
+</script>
+<script>
+/* ============ v0.72 BAND: THE BRASS LINE (marching) + CADENCE on piccolo: PLACE VALUE ============ */
+function pvBlocks(n){ var h=Math.floor(n/100), t=Math.floor(n%100/10), o=n%10, s='<div class="row" style="justify-content:center;gap:10px;align-items:flex-end;flex-wrap:wrap">';
+  if(h)s+='<div class="center"><div style="display:grid;grid-template-columns:repeat('+Math.min(h,5)+',1fr);gap:3px">'+Array(h).fill('<div style="width:26px;height:26px;background:#c0392b;border-radius:4px;display:grid;grid-template-columns:repeat(10,1fr)">'+Array(100).fill('<i style="border:.5px solid #ffffff55"></i>').join('')+'</div>').join('')+'</div><div class="sub" style="margin:2px 0 0">'+h+' hundred'+(h>1?'s':'')+'</div></div>';
+  if(t)s+='<div class="center"><div style="display:flex;gap:3px">'+Array(t).fill('<div style="width:7px;height:52px;background:#ffd158;border-radius:2px"></div>').join('')+'</div><div class="sub" style="margin:2px 0 0">'+t+' ten'+(t>1?'s':'')+'</div></div>';
+  if(o)s+='<div class="center"><div style="display:grid;grid-template-columns:repeat(5,1fr);gap:3px">'+Array(o).fill('<div style="width:9px;height:9px;background:#8ef0c9;border-radius:2px"></div>').join('')+'</div><div class="sub" style="margin:2px 0 0">'+o+' one'+(o>1?'s':'')+'</div></div>';
+  return s+'</div>'; }
+function pvDigits(n,hiIdx){ var d=String(n).split(''); return '<div style="font-size:34px;letter-spacing:6px">'+d.map(function(c,i){return '<b style="'+(i===hiIdx?'color:#ffd158;text-decoration:underline':'')+'">'+c+'</b>';}).join('')+'</div>'; }
+var PV_NAMES=['ones','tens','hundreds','thousands','ten-thousands'];
+QG.place=function(L){
+  var digits=L<3?2:L<5?3:L<7?4:5, n=R(Math.pow(10,digits-1)+1,Math.pow(10,digits)-1), str=String(n), i=R(0,digits-1), placeFromRight=digits-1-i, d=+str[i];
+  if(L<3||Math.random()<0.5){ return {q:'Which place is the gold digit in?', vis:pvDigits(n,i), choices:shuffle([PV_NAMES[placeFromRight]].concat(shuffle(PV_NAMES.slice(0,digits).filter(function(v){return v!==PV_NAMES[placeFromRight];})).slice(0,3))), a:PV_NAMES[placeFromRight]}; }
+  if(L<8){ var val=d*Math.pow(10,placeFromRight); return {q:'What is the gold digit WORTH?', vis:pvDigits(n,i), choices:shuffle([val,d,val*10,Math.max(1,val/10)].map(String).filter(function(v,k,a){return a.indexOf(v)===k;})).slice(0,4), a:String(val)}; }
+  var parts=[]; for(var k=0;k<digits;k++){ var dd=+str[k]; if(dd)parts.push(dd*Math.pow(10,digits-1-k)); }
+  return {q:'Which number is '+parts.join(' + ')+'?', vis:'', choices:shuffle([n,n+Math.pow(10,R(0,digits-1)),n-1,+String(n).split('').reverse().join('')].map(String).filter(function(v,k,a){return a.indexOf(v)===k;})).slice(0,4), a:String(n)};
+};
+MJGAMES.rankfile={id:'rankfile',name:'Rank & File',emoji:'🎺',member:'cadence',concept:'place',
+setup:function(L,st){
+  var digits=L<3?2:L<6?3:L<9?4:5, n=R(Math.pow(10,digits-1)+1,Math.pow(10,digits)-1), str=String(n), place=R(0,digits-1); st.ans=str[digits-1-place];
+  return {call:'Which digit is in the '+PV_NAMES[place].toUpperCase()+' place?', sub:'Ones on the right. Then tens, hundreds, thousands, marching left.',
+    html:'<div class="center" style="font-size:38px;letter-spacing:6px"><b>'+str+'</b></div><div class="mjcards" id="rfZ" style="grid-template-columns:repeat('+digits+',1fr)"></div>',
+    wire:function(){ $('#rfZ').innerHTML=str.split('').map(function(c,i){return '<button class="mjposter rfb" data-i="'+i+'" style="font-size:26px">'+c+'</button>';}).join('');
+      $$('.rfb').forEach(function(b){ b.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(+b.dataset.i===digits-1-place){ drum('snare'); mjOK(b.textContent+' is in the '+PV_NAMES[place]+' place. Rank and file!'); } else { punch(b); mjNo('Count from the RIGHT: ones, tens, hundreds. The '+PV_NAMES[place]+' digit is '+st.ans+'.'); } }); }); }};
+}};
+MJGAMES.buildnum={id:'buildnum',name:'Build the Number',emoji:'🧱',member:'cadence',concept:'place',
+setup:function(L,st){
+  var digits=L<4?2:L<8?3:4, n=R(Math.pow(10,digits-1)+1,Math.pow(10,digits)-1); st.n=n; st.cur=0;
+  var str=String(n), words=[]; for(var k=0;k<digits;k++){ var dd=+str[k]; if(dd)words.push(dd+' '+PV_NAMES[digits-1-k]); }
+  var draw=function(){ $('#bnCur').textContent=st.cur; };
+  return {call:'Build: '+words.join(', '), sub:'Tap the blocks to add hundreds, tens, and ones. Then march it in.',
+    html:'<div class="mjbig" id="bnCur" style="font-size:40px">0</div><div class="row" style="justify-content:center;gap:8px;flex-wrap:wrap">'+[1000,100,10,1].slice(4-digits).map(function(v){return '<button class="choice bnb" data-v="'+v+'" style="font-size:16px;min-width:70px">+'+v+'</button>';}).join('')+'<button class="choice" id="bnUndo" style="font-size:16px">↩</button></div><div class="row" style="justify-content:center;margin-top:10px"><button class="mjcymbal" id="bnGo">🥁<br>MARCH</button></div>',
+    wire:function(){ st.hist=[]; $$('.bnb').forEach(function(b){ b.addEventListener('click',function(){ if(MJ.busy)return; ac(); st.cur+=+b.dataset.v; st.hist.push(+b.dataset.v); drum('hat'); draw(); }); });
+      $('#bnUndo').addEventListener('click',function(){ if(MJ.busy||!st.hist.length)return; ac(); st.cur-=st.hist.pop(); draw(); });
+      $('#bnGo').addEventListener('click',function(){ if(MJ.busy)return; ac(); if(st.cur===n){ drum('snare'); mjOK(words.join(' + ')+' = '+n+'. In step!'); } else { punch($('#bnGo')); mjNo('You built '+st.cur+'. '+words.join(', ')+' makes '+n+'.'); } }); }};
+}};
+MJGAMES.expand={id:'expand',name:'Spread Out',emoji:'📣',member:'cadence',concept:'place',
+setup:function(L,st){
+  var digits=L<4?2:L<8?3:4, n=R(Math.pow(10,digits-1)+1,Math.pow(10,digits)-1), str=String(n), parts=[]; for(var k=0;k<digits;k++){ var dd=+str[k]; if(dd)parts.push(dd*Math.pow(10,digits-1-k)); }
+  var ans=parts.join(' + '), wrongs=[str.split('').map(function(c){return +c;}).filter(Boolean).join(' + '), parts.map(function(v){return v*10;}).join(' + '), parts.slice().reverse().join(' + ')].filter(function(v,i,a){return v!==ans&&a.indexOf(v)===i;});
+  st.ans=ans; var opts=shuffle([ans].concat(wrongs).slice(0,4));
+  return {call:'Spread out '+n+' into its places', sub:'Every digit stands in its own rank: hundreds, tens, ones.',
+    html:pvBlocks(n>999?n%1000:n)+'<div class="mjcards" id="exZ" style="grid-template-columns:1fr"></div>',
+    wire:function(){ $('#exZ').innerHTML=opts.map(function(o){return '<button class="mjposter exb" data-v="'+o+'" style="font-size:18px">'+o+'</button>';}).join('');
+      $$('.exb').forEach(function(b){ b.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(b.dataset.v===st.ans){ drum('snare'); mjOK(n+' = '+ans+'. Every rank counted!'); } else { punch(b); mjNo(n+' spreads out to '+ans+'.'); } }); }); }};
+}};
+Object.assign(COACH,{
+  rankfile:{member:'cadence',verb:'TAP',hint:'tap',title:'🎺 Rank & File',lines:['Every digit stands in a place: ones, tens, hundreds, thousands.','Count from the RIGHT and TAP the digit I call!']},
+  buildnum:{member:'cadence',verb:'TAP',hint:'tap',title:'🧱 Build the Number',lines:['3 hundreds, 4 tens, 7 ones makes 347.','TAP the blocks to build the number I call, then MARCH.']},
+  expand:{member:'cadence',verb:'TAP',hint:'tap',title:'📣 Spread Out',lines:['347 is 300 + 40 + 7. That is expanded form.','TAP the line that spreads the number into its places.']}
+});
+PLAY_RIGS.cadence={hint:'Piccolo! Highest voice in the band. Tap fast for a trill.',custom:function(el){
+  el.innerHTML='<div class="mjbig" style="font-size:44px">🎶</div><div class="sub center">piccolo, way up high</div><div class="row" id="cdStr" style="justify-content:center;gap:8px;margin-top:12px;flex-wrap:wrap"></div>';
+  var notes=[84,86,88,89,91,93,95];
+  $('#cdStr').innerHTML=notes.map(function(n,i){return '<button class="mjcymbal cds" data-n="'+n+'" style="font-size:16px;width:70px;height:70px;border-color:#c0392b">'+(i+1)+'</button>';}).join('');
+  $$('.cds').forEach(function(b){ b.addEventListener('click',function(){ ac(); var n=+b.dataset.n; tone(ntf(n),.25,'triangle',.2); tone(ntf(n+12),.25,'sine',.06); punch(b); }); });
+}};
+MUSIC_CARDS.cadence={elly:'Cadence shows place value with the band on the field. Ranks of ten!',body:'A marching band lines up in ranks. One rank is 10 players. Ten ranks make a block of 100. So 347 players on the field is 3 blocks, 4 ranks, and 7 singles. Each digit tells you how many of its size to line up.',example:'Listen: the drum major counts the field in: HUNDREDS, TENS, ONES. Big drum for hundreds, snare for tens, click for ones.'};
+MUSIC_DEMOS.cadence=function(){ [0,1,2].forEach(function(i){later(function(){drum('kick');},i*260);}); [0,1,2,3].forEach(function(i){later(function(){drum('snare');},900+i*200);}); [0,1,2,3,4,5,6].forEach(function(i){later(function(){drum('hat');},1800+i*140);}); };
+LESSONS.cadence={game:function(){startMJ('rankfile');},steps:[
+  {say:'Every digit in a number stands in a PLACE. Start from the RIGHT: ones, then tens, then hundreds.',vis:'<div style="font-size:24px"><b>3 4 7</b><br><span class="sub">hundreds · tens · ones</span></div>'},
+  {say:'347 means 3 hundreds, 4 tens, and 7 ones. Look at the blocks: three big blocks, four sticks, seven singles.',vis:pvBlocks(347)},
+  {say:'The same digit is worth different amounts in different places. The 4 in 347 is 40. The 4 in 437 is 400!',vis:'<div style="font-size:22px"><b>3<span style="color:#ffd158">4</span>7 → 40 &nbsp;&nbsp; <span style="color:#ffd158">4</span>37 → 400</b></div>'},
+  {say:'On the field, one rank is 10 marchers and ten ranks are a block of 100. In my games you find digits, build numbers, and spread them out. Forward, march!',vis:'<div style="font-size:22px"><b>347 = 300 + 40 + 7</b></div>'}
+]};
+METHOD.place={steps:[
+  {say:'To read any place: count from the RIGHT. Ones, tens, hundreds, thousands, ten-thousands. A digit\u2019s VALUE is the digit times its place.',vis:'<div style="font-size:22px"><b>2<span style="color:#ffd158">5</span>,318 → 5 × 1,000 = 5,000</b></div>'},
+  {say:'Expanded form spreads a number into its places and adds them back. Zeros skip their rank: 4,062 = 4,000 + 60 + 2.',vis:'<div style="font-size:22px"><b>4,062 = 4,000 + 60 + 2</b></div>'}
+]};
+STEPWALK.place=function(L){ var n=R(101,999), str=String(n), h=+str[0], t=+str[1], o=+str[2];
+  return {title:'Ones, tens, hundreds, from the right',steps:[
+    {say:'In '+n+', which digit is in the ONES place (the far right)?',vis:pvDigits(n,-1),choices:shuffle([h,t,o].filter(function(v,i,a){return a.indexOf(v)===i;}).concat([o+1]).slice(0,3)),a:o},
+    {say:'Which digit is in the TENS place (middle)?',choices:shuffle([h,t,o,t+1].filter(function(v,i,a){return a.indexOf(v)===i;}).slice(0,3)),a:t},
+    {say:'So '+n+' = '+h+' hundreds + '+t+' tens + '+o+' ones. What is the '+h+' worth?',choices:shuffle([h*100,h*10,h]),a:h*100,after:n+' = '+(h*100)+' + '+(t*10)+' + '+o+'. Rank and file!'}]}; };
+function brassCharSVG(id,sz){
+  const O='#221a44'; let b='';
+  const eye=(x,y)=>'<circle cx="'+x+'" cy="'+y+'" r="5" fill="'+O+'"/><circle cx="'+(x+2)+'" cy="'+(y-2)+'" r="1.8" fill="#fff"/>';
+  const smile=(x,y,w)=>'<path d="M'+x+' '+y+' q'+(w/2)+' 6 '+w+' 0" stroke="'+O+'" stroke-width="4" fill="none" stroke-linecap="round"/>';
+  const feet=(c)=>'<ellipse cx="55" cy="123" rx="12" ry="6" fill="'+c+'"/><ellipse cx="85" cy="123" rx="12" ry="6" fill="'+c+'"/>';
+  const shako=(c)=>'<rect x="46" y="14" width="48" height="30" rx="6" fill="'+c+'"/><rect x="44" y="40" width="52" height="6" rx="3" fill="#ffd158"/><path d="M70 14 l0 -10" stroke="#f4f0ff" stroke-width="5" stroke-linecap="round"/><circle cx="70" cy="4" r="5" fill="#f4f0ff"/>';
+  const coat=(c)=>'<rect x="38" y="48" width="64" height="70" rx="26" fill="'+c+'"/><path d="M52 60 h36 M52 76 h36 M52 92 h36" stroke="#ffd158" stroke-width="3"/>';
+  if(id==='major'){ b=feet('#7a1f1f')+coat('#c0392b')+shako('#c0392b')+eye(58,70)+eye(82,70)+smile(60,86,20)+'<line x1="110" y1="120" x2="120" y2="40" stroke="#f4f0ff" stroke-width="4" stroke-linecap="round"/><circle cx="120" cy="38" r="6" fill="#ffd158"/>'; }
+  else if(id==='snap'){ b=feet('#1f3a7a')+coat('#2c4fa3')+shako('#2c4fa3')+eye(58,70)+eye(82,70)+'<path d="M60 88 h20" stroke="'+O+'" stroke-width="4" stroke-linecap="round"/>'+'<ellipse cx="70" cy="112" rx="34" ry="10" fill="#e8e0c8" stroke="#8a7a50" stroke-width="2"/><line x1="40" y1="90" x2="60" y2="108" stroke="#c9b06a" stroke-width="3"/><line x1="100" y1="90" x2="80" y2="108" stroke="#c9b06a" stroke-width="3"/>'; }
+  else if(id==='sousa'){ b=feet('#5a4a10')+coat('#8a6d1a')+shako('#8a6d1a')+eye(58,70)+eye(82,70)+smile(60,86,20)+'<circle cx="104" cy="48" r="26" fill="none" stroke="#ffd158" stroke-width="8"/><circle cx="104" cy="48" r="14" fill="#ffe9a0"/>'; }
+  else { b=feet('#8a3a1a')+coat('#e67e22')+shako('#e67e22')+eye(58,70)+eye(82,70)+'<ellipse cx="70" cy="88" rx="5" ry="4" fill="'+O+'"/>'+'<line x1="74" y1="88" x2="122" y2="80" stroke="#f4f0ff" stroke-width="6" stroke-linecap="round"/><circle cx="90" cy="85" r="1.8" fill="'+O+'"/><circle cx="100" cy="83" r="1.8" fill="'+O+'"/><circle cx="110" cy="82" r="1.8" fill="'+O+'"/>'; }
+  return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 140 140"><g class="charg">'+b+'</g></svg>';
+}
+addRecruit({id:'cadence',name:'Cadence',emoji:'🎶',title:'Piccolo',concept:'place',conceptName:'Place Value',color:'#e67e22',rig:'piccolo',draw:brassCharSVG,crewId:'picc',
+  bio:'Highest voice on the field. I count the band in ranks of ten: ones in the front, tens behind them, hundreds in a block. Every digit has a place to stand.',
+  lines:['Ones, tens, hundreds. From the right. Always.','The 4 in 347 is forty. Say it like you mean it.','The Brass Line marches straight. I like a little zig-zag.'],
+  dreams:['Major wanted every marcher in the same rank. You let me stand in the front and the back. That is why I broke formation.','A number is a parade. Each digit is a rank of a different size.','My dream field show spells a five-digit number, one block at a time.','Zero still holds a place. An empty rank is still a rank.','This band keeps its ranks straight and lets me fly. I am staying.'],
+  key:'brass',bandName:'The Brass Line',crew:{name:'The Brass Line',members:[
+    {id:'major',emoji:'🪄',name:'Major',line:'Band! Ten-HUT!'},{id:'snap',emoji:'🥁',name:'Snap',line:'Left, left, left-right-left!'},{id:'sousa',emoji:'🎺',name:'Sousa',line:'Bwaaaamp.'},{id:'picc',emoji:'🎶',name:'Cadence',star:true,line:'Ones, tens, hundreds. Which rank?'}]},
+  loseEmoji:'🎺',loseTitle:'The Brass Line holds formation',winLine:'You held the crowd AND called every rank right. Cadence broke from the line, piccolo high, and fell in beside you.',
+  starHint:'Win the piccolo rounds to fill the recruit spark and get her to break formation.',btnStyle:'linear-gradient(90deg,#c0392b,#e67e22)',
+  gigLine:'Cadence plays a trill so high the lights flicker. "Front rank, frontman."',meetLine:'And Cadence on piccolo, straight out of The Brass Line. Ones, tens, hundreds: every digit stands in its rank.'});
+
+/* ============ v0.72 BAND: MIRROR BALL (disco) + LUMI on the light floor: AREA & PERIMETER ============ */
+function floorSVG(w,h,o){ o=o||{}; var cell=o.cell||30, pad=8, W=w*cell+pad*2, H=h*cell+pad*2, s='<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="max-width:'+W+'px;display:block;margin:0 auto">';
+  var cols=['#ff5db1','#ffd158','#12e2c8','#9d7cff'];
+  for(var y=0;y<h;y++)for(var x=0;x<w;x++){ var lit=!o.mask||o.mask(x,y); s+='<rect x="'+(pad+x*cell+1)+'" y="'+(pad+y*cell+1)+'" width="'+(cell-2)+'" height="'+(cell-2)+'" rx="4" fill="'+(lit?cols[(x+y)%4]:'#1d1636')+'" opacity="'+(lit?'.9':'.5')+'"/>'; }
+  if(o.edge)s+='<rect x="'+pad+'" y="'+pad+'" width="'+(w*cell)+'" height="'+(h*cell)+'" fill="none" stroke="#f4f0ff" stroke-width="4" stroke-dasharray="6 4"/>';
+  if(o.labels){ s+='<text x="'+(pad+w*cell/2)+'" y="'+(H-1)+'" text-anchor="middle" font-size="12" font-weight="900" fill="#ffd158">'+w+'</text><text x="'+(W-2)+'" y="'+(pad+h*cell/2+4)+'" text-anchor="end" font-size="12" font-weight="900" fill="#8ef0c9">'+h+'</text>'; }
+  return s+'</svg>'; }
+QG.area=function(L){
+  var w=R(2,L<3?4:L<6?6:8), h=R(2,L<3?3:L<6?5:7), A=w*h, P=2*(w+h);
+  if(L<3||(L<5&&Math.random()<0.5)) return {q:'How many tiles light up?', vis:floorSVG(w,h,{cell:22}), choices:shuffle([A,A+w,A-h,w+h].filter(function(v,i,a){return v>0&&a.indexOf(v)===i;})).slice(0,4).map(String), a:String(A)};
+  if(L<5) return {q:'Area of a '+w+' by '+h+' floor?', vis:floorSVG(w,h,{cell:22,labels:true}), choices:shuffle([A,P,A+w,w+h].filter(function(v,i,a){return a.indexOf(v)===i;})).slice(0,4).map(String), a:String(A)};
+  if(L<7) return {q:'How long is the rope around the floor (perimeter)?', vis:floorSVG(w,h,{cell:22,labels:true,edge:true}), choices:shuffle([P,A,w+h,P+2].filter(function(v,i,a){return a.indexOf(v)===i;})).slice(0,4).map(String), a:String(P)};
+  if(L<9){ var askA=Math.random()<0.5; return {q:(askA?'Area':'Perimeter')+' of a '+w+' by '+h+' floor?', vis:floorSVG(w,h,{cell:20,labels:true,edge:!askA}), choices:shuffle([A,P,w+h,A+P].filter(function(v,i,a){return a.indexOf(v)===i;})).slice(0,4).map(String), a:String(askA?A:P)}; }
+  return {q:'Area is '+A+' and one side is '+w+'. How long is the other side?', vis:floorSVG(w,h,{cell:20,mask:function(){return true;}}), choices:shuffle([h,w,A-w,h+1].filter(function(v,i,a){return v>0&&a.indexOf(v)===i;})).slice(0,4).map(String), a:String(h)};
+};
+MJGAMES.tilecount={id:'tilecount',name:'Tile Count',emoji:'🟪',member:'lumi',concept:'area',
+setup:function(L,st){
+  var w=R(2,L<3?4:L<6?6:8), h=R(2,L<3?3:L<6?5:6), A=w*h; st.ans=String(A);
+  var opts=shuffle([A,A+w,A-h,2*(w+h)].filter(function(v,i,a){return v>0&&a.indexOf(v)===i;})).slice(0,4);
+  return {call:'How many tiles? '+(L>=4?'('+w+' across, '+h+' down)':''), sub:L<4?'Count every lit square. Or count a row, then count the rows!':'Rows times columns. '+w+' × '+h+'.',
+    html:floorSVG(w,h,{cell:30,labels:L>=4})+'<div class="mjcards" id="tcZ"></div>',
+    wire:function(){ $('#tcZ').innerHTML=opts.map(function(o){return '<button class="mjposter tcb" data-v="'+o+'" style="font-size:24px">'+o+'</button>';}).join('');
+      $$('.tcb').forEach(function(b){ b.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(b.dataset.v===st.ans){ drum('kick'); mjOK(w+' × '+h+' = '+A+' tiles. The floor is lit!'); } else { punch(b); mjNo(w+' across times '+h+' down is '+A+'. That is the AREA.'); } }); }); }};
+}};
+MJGAMES.ropeline={id:'ropeline',name:'Rope Line',emoji:'🪢',member:'lumi',concept:'area',
+setup:function(L,st){
+  var w=R(2,L<3?4:L<6?6:9), h=R(1,L<3?3:L<6?5:7), P=2*(w+h); st.ans=String(P);
+  var opts=shuffle([P,w*h,w+h,P-2].filter(function(v,i,a){return v>0&&a.indexOf(v)===i;})).slice(0,4);
+  return {call:'How long is the velvet rope? ('+w+' by '+h+')', sub:'Walk all the way around the edge. Two long sides plus two short sides.',
+    html:floorSVG(w,h,{cell:28,labels:true,edge:true})+'<div class="mjcards" id="rlZ"></div>',
+    wire:function(){ $('#rlZ').innerHTML=opts.map(function(o){return '<button class="mjposter rlb" data-v="'+o+'" style="font-size:24px">'+o+'</button>';}).join('');
+      $$('.rlb').forEach(function(b){ b.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(b.dataset.v===st.ans){ drum('clap'); mjOK(w+' + '+h+' + '+w+' + '+h+' = '+P+'. That is the PERIMETER.'); } else { punch(b); mjNo('Around the edge: '+w+' + '+h+' + '+w+' + '+h+' = '+P+'.'); } }); }); }};
+}};
+MJGAMES.buildfloor={id:'buildfloor',name:'Build the Floor',emoji:'✨',member:'lumi',concept:'area',
+setup:function(L,st){
+  var wantA=L<5, w=R(2,L<3?4:6), h=R(2,L<3?3:5), target=wantA?w*h:2*(w+h); st.w=2; st.h=2; st.target=target; st.wantA=wantA;
+  var draw=function(){ $('#bfFloor').innerHTML=floorSVG(st.w,st.h,{cell:24,labels:true,edge:!wantA}); var cur=wantA?st.w*st.h:2*(st.w+st.h); $('#bfCur').textContent=(wantA?'area ':'perimeter ')+cur; };
+  return {call:'Build a floor with '+(wantA?'AREA':'PERIMETER')+' '+target, sub:wantA?'Any rectangle with '+target+' tiles works!':'Any rectangle whose rope is '+target+' long works!',
+    html:'<div id="bfFloor"></div><div class="mjbig" id="bfCur" style="font-size:22px"></div><div class="row" style="justify-content:center;gap:8px;flex-wrap:wrap"><button class="choice bfb" data-d="w" data-v="1" style="font-size:15px">wider +</button><button class="choice bfb" data-d="w" data-v="-1" style="font-size:15px">narrower −</button><button class="choice bfb" data-d="h" data-v="1" style="font-size:15px">taller +</button><button class="choice bfb" data-d="h" data-v="-1" style="font-size:15px">shorter −</button></div><div class="row" style="justify-content:center;margin-top:10px"><button class="mjcymbal" id="bfGo">🪩<br>LIGHT IT</button></div>',
+    wire:function(){ draw(); $$('.bfb').forEach(function(b){ b.addEventListener('click',function(){ if(MJ.busy)return; ac(); var d=b.dataset.d, v=+b.dataset.v; st[d]=Math.max(1,Math.min(10,st[d]+v)); drum('hat'); draw(); }); });
+      $('#bfGo').addEventListener('click',function(){ if(MJ.busy)return; ac(); var cur=wantA?st.w*st.h:2*(st.w+st.h); if(cur===target){ drum('kick'); confetti(12); mjOK(st.w+' by '+st.h+' gives '+(wantA?'area':'perimeter')+' '+target+'. Floor is LIT!'); } else { punch($('#bfGo')); mjNo('That floor has '+(wantA?'area':'perimeter')+' '+cur+'. Try '+w+' by '+h+'.'); } }); }};
+}};
+Object.assign(COACH,{
+  tilecount:{member:'lumi',verb:'TAP',hint:'tap',title:'🟪 Tile Count',lines:['Area is how many tiles fill the floor.','Count a row, count the rows, multiply, and TAP the number!']},
+  ropeline:{member:'lumi',verb:'TAP',hint:'tap',title:'🪢 Rope Line',lines:['Perimeter is the walk all the way around the edge.','Add all four sides and TAP the rope length!']},
+  buildfloor:{member:'lumi',verb:'TAP',hint:'tap',title:'✨ Build the Floor',lines:['I give you a number. You build a floor that matches it.','Stretch it wider or taller, then LIGHT IT!']}
+});
+PLAY_RIGS.lumi={hint:'A light-up floor. Every tile is a disco chord.',custom:function(el){
+  el.innerHTML='<div class="mjbig" style="font-size:44px">🪩</div><div class="sub center">tap the tiles</div><div class="popgrid" id="lmG" style="grid-template-columns:repeat(4,1fr);max-width:260px"></div>';
+  var chords=[[60,64,67],[62,65,69],[64,67,71],[65,69,72],[67,71,74],[69,72,76],[71,74,77],[72,76,79]], cols=['#ff5db1','#ffd158','#12e2c8','#9d7cff'];
+  $('#lmG').innerHTML=chords.map(function(c,i){return '<button class="pgc lmt" data-i="'+i+'" style="height:54px;background:'+cols[i%4]+'55;border-color:'+cols[i%4]+'"></button>';}).join('');
+  $$('.lmt').forEach(function(b){ b.addEventListener('click',function(){ ac(); chords[+b.dataset.i].forEach(function(n){ tone(ntf(n),.4,'triangle',.12); }); drum('hat'); punch(b); }); });
+}};
+MUSIC_CARDS.lumi={elly:'Lumi runs the light-up dance floor, and that floor is a grid. Area and perimeter you can dance on.',body:'A disco floor is rows of square tiles. Count the tiles inside and you have the AREA: 4 across times 3 down is 12 tiles. Walk the velvet rope around the edge and you have the PERIMETER: 4 + 3 + 4 + 3 is 14. Same floor, two different measurements.',example:'Listen: the tiles light up in rows, four hits per row, three rows. Then the rope walk around the edge, one click per step.'};
+MUSIC_DEMOS.lumi=function(){ for(var r=0;r<3;r++)for(var c=0;c<4;c++)later(function(){drum('kick');},(r*4+c)*150); [0,1,2,3,4,5,6,7,8,9,10,11,12,13].forEach(function(i){ later(function(){drum('hat');},2100+i*110); }); };
+LESSONS.lumi={game:function(){startMJ('tilecount');},steps:[
+  {say:'My dance floor is made of square tiles. AREA is how many tiles fill it up. Count them: 4 across, 3 down, 12 tiles!',vis:floorSVG(4,3,{cell:30,labels:true})},
+  {say:'The fast way: rows times columns. 4 × 3 = 12. Area is always length times width.',vis:'<div style="font-size:22px"><b>4 × 3 = 12 tiles</b></div>'},
+  {say:'PERIMETER is different: it is the velvet rope AROUND the floor. Walk the edge: 4 + 3 + 4 + 3 = 14.',vis:floorSVG(4,3,{cell:30,labels:true,edge:true})},
+  {say:'Area fills the inside, perimeter wraps the outside. In my games you count tiles, measure rope, and build floors. Lights on!',vis:'<div style="font-size:20px"><b>area = inside · perimeter = around</b></div>'}
+]};
+METHOD.area={steps:[
+  {say:'Area of a rectangle: length × width. Perimeter: add all four sides, or 2 × (length + width). Write the formula before you plug in numbers.',vis:'<div style="font-size:20px"><b>A = l × w &nbsp;&nbsp; P = 2 × (l + w)</b></div>'},
+  {say:'Missing side? Work backwards. Area 24 and one side 4: 24 ÷ 4 = 6. Perimeter 20 and one side 4: half of 20 is 10, minus 4 is 6.',vis:'<div style="font-size:20px"><b>24 ÷ 4 = 6 &nbsp;&nbsp; 20 ÷ 2 − 4 = 6</b></div>'}
+]};
+STEPWALK.area=function(L){ var w=R(2,6), h=R(2,5);
+  return {title:'Inside times, around adds',steps:[
+    {say:'A floor is '+w+' across and '+h+' down. Area is across TIMES down. '+w+' × '+h+' = ?',vis:floorSVG(w,h,{cell:24,labels:true}),choices:numChoices(w*h,3),a:w*h},
+    {say:'Now the rope around it. '+w+' + '+h+' = ?',choices:numChoices(w+h,2),a:w+h},
+    {say:'Two long sides and two short sides, so double it. '+(w+h)+' × 2 = ?',choices:numChoices(2*(w+h),3),a:2*(w+h),after:'Area '+(w*h)+', perimeter '+(2*(w+h))+'. Inside times, around adds!'}]}; };
+function discoCharSVG(id,sz){
+  const O='#221a44'; let b='';
+  const eye=(x,y)=>'<circle cx="'+x+'" cy="'+y+'" r="5" fill="'+O+'"/><circle cx="'+(x+2)+'" cy="'+(y-2)+'" r="1.8" fill="#fff"/>';
+  const smile=(x,y,w)=>'<path d="M'+x+' '+y+' q'+(w/2)+' 7 '+w+' 0" stroke="'+O+'" stroke-width="4" fill="none" stroke-linecap="round"/>';
+  const feet=(c)=>'<ellipse cx="55" cy="123" rx="14" ry="6" fill="'+c+'"/><ellipse cx="85" cy="123" rx="14" ry="6" fill="'+c+'"/>';
+  const shades=(x,y)=>'<rect x="'+(x-9)+'" y="'+(y-5)+'" width="18" height="10" rx="4" fill="'+O+'"/>';
+  if(id==='fever'){ b=feet('#8a2e6a')+'<circle cx="70" cy="72" r="34" fill="#ff5db1"/><circle cx="70" cy="52" r="36" fill="#3a2a5e"/><circle cx="70" cy="76" r="26" fill="#ff5db1"/>'+eye(60,74)+eye(80,74)+smile(62,88,16)+'<rect x="60" y="100" width="20" height="8" rx="3" fill="#ffd158"/>'; }
+  else if(id==='groove'){ b=feet('#0e7a6a')+'<rect x="38" y="46" width="64" height="74" rx="30" fill="#12e2c8"/>'+shades(58,70)+shades(82,70)+smile(60,88,20)+'<path d="M100 118 c-14 -8 -14 -44 0 -52 c8 -4 14 4 10 12 c-4 8 -10 6 -8 14 c2 8 8 8 6 18" fill="#8b5a2b" stroke="#4a2e12" stroke-width="2"/>'; }
+  else if(id==='strut'){ b=feet('#6a4a10')+'<circle cx="70" cy="72" r="34" fill="#ffd158"/>'+eye(58,70)+eye(82,70)+smile(60,88,20)+'<path d="M40 70 q-10 -40 30 -36 q40 -4 30 36 q-6 -18 -30 -16 q-24 -2 -30 16" fill="#f4f0ff"/>'+'<path d="M36 104 l-14 -18 M104 104 l14 -18" stroke="#ffd158" stroke-width="10" stroke-linecap="round"/>'; }
+  else { b=feet('#5a3a9e')+'<circle cx="70" cy="72" r="34" fill="#9d7cff"/>'+shades(58,70)+shades(82,70)+smile(60,88,20)+
+      '<circle cx="70" cy="30" r="16" fill="#e8e8f0"/>'+[[-8,-8],[0,-8],[8,-8],[-8,0],[0,0],[8,0],[-8,8],[0,8],[8,8]].map(function(p){return '<rect x="'+(70+p[0]-3)+'" y="'+(30+p[1]-3)+'" width="6" height="6" fill="'+['#ff5db1','#ffd158','#12e2c8'][Math.abs(p[0]+p[1])%3]+'" opacity=".9"/>';}).join('')+'<line x1="70" y1="14" x2="70" y2="6" stroke="#f4f0ff" stroke-width="2"/>';
+  }
+  return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 140 140"><g class="charg">'+b+'</g></svg>';
+}
+addRecruit({id:'lumi',name:'Lumi',emoji:'🪩',title:'Light Floor',concept:'area',conceptName:'Area & Perimeter',color:'#9d7cff',rig:'light floor',draw:discoCharSVG,crewId:'ball',
+  bio:'I run the light-up floor. Every tile is a square, every floor is a rectangle, and I know exactly how many tiles are inside and how much rope goes around. Count the tiles, then dance on them.',
+  lines:['Rows times columns. That is the whole floor.','Perimeter is the walk. Area is the party.','Mirror Ball never let me light more than the middle square.'],
+  dreams:['Fever kept everyone in a 2 by 2 square. You opened up the whole floor. That is why I moved my lights over.','A floor is a multiplication problem you can stand on.','My dream floor: 10 by 10, one hundred tiles, every one a different color.','The rope is not the room. The room is what is inside.','This band dances on every tile. I am staying.'],
+  key:'disco',bandName:'Mirror Ball',crew:{name:'Mirror Ball',members:[
+    {id:'fever',emoji:'🎤',name:'Fever',line:'Are you ready to BOOGIE?'},{id:'groove',emoji:'🎸',name:'Groove',line:'Get down. Stay down.'},{id:'strut',emoji:'🎻',name:'Strut',line:'Strings! Sweeping!'},{id:'ball',emoji:'🪩',name:'Lumi',star:true,line:'How many tiles? Count them, honey.'}]},
+  loseEmoji:'🪩',loseTitle:'Mirror Ball keeps the floor',winLine:'You held the crowd AND counted every floor she called. Lumi lit a path of tiles straight to your stage and walked it.',
+  starHint:'Win the light-floor rounds to fill the recruit spark and get her to switch floors.',btnStyle:'linear-gradient(90deg,#ff5db1,#9d7cff)',
+  gigLine:'Lumi lights the whole floor at once. "Every tile, frontman. Every single one."',meetLine:'And Lumi on the light floor, straight out of Mirror Ball. Tiles inside, rope around: area and perimeter you can dance on.'});
+
+</script>
+<script>
+/* ============ v0.73 BAND: THE CYPHER (hip-hop) + FLOW on the sampler: DECIMALS ============ */
+function decBar(v,o){ o=o||{}; var w=o.w||240, tenths=Math.round(v*10), s='<div class="center"><div style="display:inline-flex;gap:2px;padding:4px;background:#1d1636;border-radius:8px">'; for(var i=0;i<10;i++)s+='<div style="width:'+(w/10-2)+'px;height:26px;border-radius:3px;background:'+(i<tenths?'#ff7a3d':'#2a1f55')+'"></div>'; return s+'</div>'+(o.label!==false?'<div class="sub" style="margin:2px 0 0">'+tenths+' tenths lit</div>':'')+'</div>'; }
+function d1(v){ return (Math.round(v*100)/100).toFixed(String(v).indexOf('.')>=0&&String(v).split('.')[1].length>1?2:1); }
+function moneyish(v){ return v.toFixed(2); }
+QG.decimal=function(L){
+  if(L<3){ var t=R(1,9); return {q:'How many tenths are lit? Say it as a decimal.', vis:decBar(t/10,{label:false}), choices:shuffle(['0.'+t, String(t), '0.'+((t+1)%10||1), t+'.0'].filter(function(v,i,a){return a.indexOf(v)===i;})).slice(0,4), a:'0.'+t}; }
+  if(L<5){ var w=R(0,3), tt=R(1,9), v=w+'.'+tt; return {q:'Which is '+v+' in words?', vis:'<div style="font-size:30px"><b>'+v+'</b></div>', choices:shuffle([w+' and '+tt+' tenths', w+' and '+tt+' hundredths', (w+tt)+' tenths', tt+' and '+w+' tenths']).filter(function(x,i,a){return a.indexOf(x)===i;}).slice(0,4), a:w+' and '+tt+' tenths'}; }
+  if(L<7){ var a=R(1,9)/10, b=R(1,9)/10; while(b===a)b=R(1,9)/10; var big=Math.max(a,b); return {q:'Which is BIGGER?', vis:'', choices:shuffle([a.toFixed(1),b.toFixed(1)]), a:big.toFixed(1)}; }
+  if(L<9){ var x=R(1,9)/10, y=R(1,9)/10, sum=Math.round((x+y)*10)/10; return {q:x.toFixed(1)+' + '+y.toFixed(1)+' = ?', vis:'', choices:shuffle([sum,sum+0.1,sum-0.1,Math.round((x+y)*10)].map(function(n){return n.toFixed(1);}).filter(function(v,i,a){return a.indexOf(v)===i;})).slice(0,4), a:sum.toFixed(1)}; }
+  var h1=R(10,99)/100, h2=R(10,99)/100; while(h2===h1)h2=R(10,99)/100; return {q:'Which is bigger, '+h1.toFixed(2)+' or '+h2.toFixed(2)+'?', vis:'', choices:shuffle([h1.toFixed(2),h2.toFixed(2)]), a:Math.max(h1,h2).toFixed(2)};
+};
+MJGAMES.tenthsbar={id:'tenthsbar',name:'Tenths Bar',emoji:'🎚️',member:'flow',concept:'decimal',
+setup:function(L,st){
+  var whole=L<4?0:R(0,2), t=R(1,9), ans=whole+'.'+t; st.ans=ans;
+  var opts=shuffle([ans, whole+'.'+((t+1)%10||1), String(whole*10+t), (whole+1)+'.'+t].filter(function(v,i,a){return a.indexOf(v)===i;})).slice(0,4);
+  return {call:'Read the bar as a decimal', sub:'Each lit pad is ONE TENTH. '+(whole?whole+' whole bar'+(whole>1?'s':'')+' plus the tenths.':'Ten pads make one whole.'),
+    html:(whole?'<div class="sub center">'+whole+' full bar'+(whole>1?'s':'')+' + this:</div>':'')+decBar(t/10,{label:false})+'<div class="mjcards" id="tbZ"></div>',
+    wire:function(){ $('#tbZ').innerHTML=opts.map(function(o){return '<button class="mjposter tbb" data-v="'+o+'" style="font-size:24px">'+o+'</button>';}).join('');
+      $$('.tbb').forEach(function(b){ b.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(b.dataset.v===st.ans){ drum('kick'); mjOK(t+' tenths lit = '+ans+'. Point stays after the whole!'); } else { punch(b); mjNo('Count the lit pads: '+t+'. That is '+ans+'.'); } }); }); }};
+}};
+MJGAMES.dropbeat={id:'dropbeat',name:'Drop Point',emoji:'🎯',member:'flow',concept:'decimal',
+setup:function(L,st){
+  var a=R(1,L<4?5:9)/10, b=R(1,L<4?4:9)/10, sum=Math.round((a+b)*10)/10; st.ans=sum.toFixed(1);
+  var opts=shuffle([sum.toFixed(1),String(Math.round((a+b)*10)),(sum+0.1).toFixed(1),Math.abs(sum-0.1).toFixed(1)].filter(function(v,i,a2){return a2.indexOf(v)===i;})).slice(0,4);
+  return {call:a.toFixed(1)+' + '+b.toFixed(1)+' = ?', sub:'Line up the points, add the tenths. Ten tenths carry into a whole.',
+    html:'<div class="row" style="justify-content:center;gap:16px">'+decBar(a,{w:150})+'<b style="font-size:28px">+</b>'+decBar(b,{w:150})+'</div><div class="mjcards" id="dpZ"></div>',
+    wire:function(){ $('#dpZ').innerHTML=opts.map(function(o){return '<button class="mjposter dpb" data-v="'+o+'" style="font-size:24px">'+o+'</button>';}).join('');
+      $$('.dpb').forEach(function(b2){ b2.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(b2.dataset.v===st.ans){ drum('snare'); mjOK(a.toFixed(1)+' + '+b.toFixed(1)+' = '+st.ans+'. Point dropped right.'); } else { punch(b2); mjNo((a*10)+' tenths + '+(b*10)+' tenths = '+Math.round(sum*10)+' tenths = '+st.ans+'.'); } }); }); }};
+}};
+MJGAMES.biggerbeat={id:'biggerbeat',name:'Bigger Beat',emoji:'⚖️',member:'flow',concept:'decimal',
+setup:function(L,st){
+  var pr=L<4?1:2, a=R(1,pr===1?9:99)/Math.pow(10,pr), b=R(1,pr===1?9:99)/Math.pow(10,pr); while(a===b)b=R(1,pr===1?9:99)/Math.pow(10,pr);
+  if(L>=7&&Math.random()<0.5){ a=R(1,9)/10; b=R(10,99)/100; while(a===b)b=R(10,99)/100; }
+  var A=a.toFixed(String(a).split('.')[1].length), B=b.toFixed(String(b).split('.')[1].length); st.ans=(a>b?A:B);
+  return {call:'Which beat is BIGGER?', sub:'Compare the tenths first. Same tenths? Then look at hundredths. 0.5 beats 0.45!',
+    html:'<div class="mjcards" id="bbZ2"></div>',
+    wire:function(){ $('#bbZ2').innerHTML=[A,B].map(function(o){return '<button class="mjposter bb2" data-v="'+o+'" style="font-size:30px">'+o+'</button>';}).join('');
+      $$('.bb2').forEach(function(b2){ b2.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(b2.dataset.v===st.ans){ drum('kick'); mjOK(st.ans+' is bigger. More tenths wins.'); } else { punch(b2); mjNo(st.ans+' is bigger. Check the tenths place first.'); } }); }); }};
+}};
+Object.assign(COACH,{
+  tenthsbar:{member:'flow',verb:'TAP',hint:'tap',title:'🎚️ Tenths Bar',lines:['My sampler has ten pads in a bar. Each pad is one tenth: 0.1.','Count the lit pads and TAP the decimal!']},
+  dropbeat:{member:'flow',verb:'TAP',hint:'tap',title:'🎯 Drop Point',lines:['Adding decimals is adding tenths. 0.4 + 0.3 is 7 tenths.','Ten tenths make a whole. TAP the total!']},
+  biggerbeat:{member:'flow',verb:'TAP',hint:'tap',title:'⚖️ Bigger Beat',lines:['Compare tenths first. 0.7 beats 0.4.','If the tenths tie, check hundredths. TAP the bigger one!']}
+});
+PLAY_RIGS.flow={hint:'A sampler. Each pad is a tenth of the bar. Tap a beat!',custom:function(el){
+  el.innerHTML='<div class="mjbig" style="font-size:44px">🎛️</div><div class="sub center">ten pads, one bar</div><div class="popgrid" id="flG" style="grid-template-columns:repeat(5,1fr);max-width:280px"></div>';
+  var kit=['kick','snare','hat','kick','clap','hat','snare','kick','clap','snare'];
+  $('#flG').innerHTML=kit.map(function(k,i){return '<button class="pgc flp" data-k="'+k+'" style="height:52px;border-color:#ff7a3d;font-size:12px;color:#ffe9b0">0.'+(i+1)%10+'</button>';}).join('');
+  $$('.flp').forEach(function(b){ b.addEventListener('click',function(){ ac(); drum(b.dataset.k); punch(b); }); });
+}};
+MUSIC_CARDS.flow={elly:'Flow chops beats on a sampler, and the sampler grid is tenths. Decimals you can bounce to.',body:'One bar of a beat is a WHOLE. Flow\u2019s sampler splits it into 10 pads, so each pad is one tenth: 0.1. Light 4 pads and you have 0.4 of the bar. A snare on 0.5 is right in the middle. Two bars and three pads? 2.3. The point just says where the whole stops and the tenths start.',example:'Listen: ten hats, one per tenth, with the kick on 0.0 and the snare on 0.5.'};
+MUSIC_DEMOS.flow=function(){ for(var i=0;i<10;i++)later(function(){drum('hat');},i*160); later(function(){drum('kick');},0); later(function(){drum('snare');},800); later(function(){drum('kick');},1600); later(function(){drum('snare');},2400); };
+LESSONS.flow={game:function(){startMJ('tenthsbar');},steps:[
+  {say:'A DECIMAL is a number with a point. Left of the point: wholes. Right of the point: the pieces. My sampler bar has 10 pads, so each pad is one tenth.',vis:decBar(0.1)},
+  {say:'Light 4 pads and you have 0.4 of the bar. Say it: zero point four. Four tenths.',vis:decBar(0.4)},
+  {say:'A full bar is 1.0. Two full bars plus 3 pads is 2.3. Wholes before the point, tenths after.',vis:'<div style="font-size:24px"><b>2.3 = 2 wholes + 3 tenths</b></div>'},
+  {say:'Bigger tenths means bigger number: 0.7 beats 0.4. In my games you read bars, add tenths, and pick the bigger beat. Drop it!',vis:'<div style="font-size:22px"><b>0.7 > 0.4</b></div>'}
+]};
+METHOD.decimal={steps:[
+  {say:'Place value keeps going past the point: tenths, then hundredths. 0.45 is 4 tenths and 5 hundredths. Compare decimals by lining up the points and reading left to right.',vis:'<div style="font-size:20px"><b>0.5 vs 0.45 → 5 tenths beats 4 tenths</b></div>'},
+  {say:'To add or subtract, line up the points and work the columns. Ten tenths carry into one whole: 0.6 + 0.7 = 1.3.',vis:'<div style="font-size:20px"><b>0.6 + 0.7 = 1.3</b></div>'}
+]};
+STEPWALK.decimal=function(L){ var a=R(2,9), b=R(2,9), s=a+b;
+  return {title:'Add the tenths, carry the whole',steps:[
+    {say:'0.'+a+' + 0.'+b+'. First, how many tenths is that in total? '+a+' + '+b+' = ?',vis:'<div style="font-size:24px"><b>0.'+a+' + 0.'+b+'</b></div>',choices:numChoices(s,2),a:s},
+    {say:s+' tenths. Ten tenths make one whole. How many wholes?',choices:shuffle([Math.floor(s/10),Math.floor(s/10)+1,s]).filter(function(v,i,arr){return arr.indexOf(v)===i;}),a:Math.floor(s/10)},
+    {say:'And how many tenths are left over after the whole'+(Math.floor(s/10)!==1?'s':'')+'?',choices:numChoices(s%10,2),a:s%10,after:'0.'+a+' + 0.'+b+' = '+(s/10).toFixed(1)+'. Point dropped!'}]}; };
+function hiphopCharSVG(id,sz){
+  const O='#221a44'; let b='';
+  const eye=(x,y)=>'<circle cx="'+x+'" cy="'+y+'" r="5" fill="'+O+'"/><circle cx="'+(x+2)+'" cy="'+(y-2)+'" r="1.8" fill="#fff"/>';
+  const smile=(x,y,w)=>'<path d="M'+x+' '+y+' q'+(w/2)+' 6 '+w+' 0" stroke="'+O+'" stroke-width="4" fill="none" stroke-linecap="round"/>';
+  const feet=(c)=>'<ellipse cx="55" cy="123" rx="14" ry="7" fill="'+c+'"/><ellipse cx="85" cy="123" rx="14" ry="7" fill="'+c+'"/>';
+  const cap=(c)=>'<path d="M40 52 q30 -34 60 0 z" fill="'+c+'"/><rect x="30" y="48" width="56" height="8" rx="4" fill="'+c+'"/>';
+  if(id==='mc'){ b=feet('#1a1a2e')+'<rect x="38" y="54" width="64" height="66" rx="24" fill="#ff7a3d"/>'+cap('#221a44')+eye(58,72)+eye(82,72)+'<ellipse cx="70" cy="90" rx="7" ry="5" fill="'+O+'"/><line x1="76" y1="92" x2="104" y2="110" stroke="#444" stroke-width="5" stroke-linecap="round"/><circle cx="106" cy="112" r="7" fill="#222"/>'; }
+  else if(id==='scratch'){ b=feet('#1a1a2e')+'<circle cx="70" cy="72" r="34" fill="#12e2c8"/>'+'<rect x="40" y="56" width="60" height="12" rx="6" fill="'+O+'"/><circle cx="34" cy="62" r="8" fill="'+O+'"/><circle cx="106" cy="62" r="8" fill="'+O+'"/>'+smile(60,90,20)+'<circle cx="70" cy="114" r="12" fill="#333"/><circle cx="70" cy="114" r="4" fill="#ffd158"/>'; }
+  else if(id==='boombox'){ b=feet('#1a1a2e')+'<rect x="26" y="50" width="88" height="66" rx="10" fill="#555"/><circle cx="48" cy="86" r="16" fill="#222"/><circle cx="48" cy="86" r="6" fill="#ffd158"/><circle cx="92" cy="86" r="16" fill="#222"/><circle cx="92" cy="86" r="6" fill="#ffd158"/><rect x="60" y="58" width="20" height="10" rx="2" fill="#12e2c8"/><path d="M40 50 q30 -20 60 0" fill="none" stroke="#777" stroke-width="5"/>'+eye(62,64)+eye(78,64); }
+  else { b=feet('#1a1a2e')+'<circle cx="70" cy="72" r="34" fill="#ff7a3d"/>'+cap('#9d7cff')+eye(58,72)+eye(82,72)+smile(60,88,20)+'<rect x="44" y="100" width="52" height="18" rx="4" fill="#222"/>'+[0,1,2,3,4].map(function(i){return '<rect x="'+(48+i*10)+'" y="104" width="7" height="10" rx="1" fill="'+(i<3?'#ff7a3d':'#444')+'"/>';}).join('')+'<rect x="104" y="60" width="10" height="20" rx="3" fill="#ffd158"/>'; }
+  return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 140 140"><g class="charg">'+b+'</g></svg>';
+}
+addRecruit({id:'flow',name:'Flow',emoji:'🎛️',title:'Sampler',concept:'decimal',conceptName:'Decimals',color:'#ff7a3d',rig:'sampler',draw:hiphopCharSVG,crewId:'pads',
+  bio:'Ten pads in a bar. Every pad is a tenth. I chop the beat at 0.5, drop the snare at 0.7, and the point tells me where the whole stops.',
+  lines:['Point stays put. Tenths do the moving.','0.5 is dead center. Always.','The Cypher only rapped in whole bars. I chop.'],
+  dreams:['MC wanted every hit right on the whole number. You let me hit the tenths. That is why I unplugged.','A bar is a whole. The pads are the pieces. That is all a decimal is.','My dream beat lands on 0.3 and 0.7 and nowhere else.','Ten tenths and you roll over. Like an odometer.','This band lets me chop it fine. I am staying.'],
+  key:'cypher',bandName:'The Cypher',crew:{name:'The Cypher',members:[
+    {id:'mc',emoji:'🎤',name:'MC Verse',line:'Yo. Can you keep up?'},{id:'scratch',emoji:'💿',name:'Scratch',line:'Wicka-wicka. Wicka.'},{id:'boombox',emoji:'📻',name:'Boombox',line:'BASS. ALL. THE. BASS.'},{id:'pads',emoji:'🎛️',name:'Flow',star:true,line:'Which pad? Read the tenths.'}]},
+  loseEmoji:'🎤',loseTitle:'The Cypher keeps the mic',winLine:'You held the crowd AND read every tenth she called. Flow unplugged the sampler and plugged it in on your side of the stage.',
+  starHint:'Win the sampler rounds to fill the recruit spark and get her to switch cyphers.',btnStyle:'linear-gradient(90deg,#ff7a3d,#12e2c8)',
+  gigLine:'Flow taps one last pad. "0.9 of a perfect set. I am rounding up."',meetLine:'And Flow on the sampler, straight out of The Cypher. Ten pads to a bar, every pad a tenth: decimals you can bounce to.'});
+
+/* ============ v0.73 BAND: CIRCUIT (techno) + GLITCH on the randomizer: PROBABILITY ============ */
+var PROB_WORDS=['impossible','unlikely','even chance','likely','certain'];
+function spinnerSVG(parts,sz){ sz=sz||96; var tot=parts.reduce(function(a,p){return a+p.n;},0), c=sz/2, r=sz/2-3, ang=-Math.PI/2, s='<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 '+sz+' '+sz+'">';
+  parts.forEach(function(p){ var a1=ang+p.n/tot*2*Math.PI, big=(a1-ang)>Math.PI?1:0; if(p.n===tot){ s+='<circle cx="'+c+'" cy="'+c+'" r="'+r+'" fill="'+p.c+'"/>'; } else if(p.n>0){ s+='<path d="M'+c+' '+c+' L'+(c+r*Math.cos(ang))+' '+(c+r*Math.sin(ang))+' A'+r+' '+r+' 0 '+big+' 1 '+(c+r*Math.cos(a1))+' '+(c+r*Math.sin(a1))+' Z" fill="'+p.c+'" stroke="#1d1636" stroke-width="2"/>'; } ang=a1; });
+  return s+'<circle cx="'+c+'" cy="'+c+'" r="4" fill="#f4f0ff"/><path d="M'+c+' '+(c-r-2)+' l-5 -8 h10 z" fill="#f4f0ff"/></svg>'; }
+function probWord(p){ return p<=0?'impossible':p<0.5?'unlikely':p===0.5?'even chance':p<1?'likely':'certain'; }
+QG.prob=function(L){
+  if(L<3){ var pk=pick([[8,0],[6,2],[4,4],[2,6],[0,8]]), pr=pk[0]/8; return {q:'The spinner lands on PINK. How likely?', vis:spinnerSVG([{n:pk[0],c:'#ff5db1'},{n:pk[1],c:'#3a2f6e'}]), choices:shuffle([probWord(pr)].concat(shuffle(PROB_WORDS.filter(function(w){return w!==probWord(pr);})).slice(0,3))), a:probWord(pr)}; }
+  if(L<5){ var pinks=R(1,5), blues=R(1,5), tot=pinks+blues; return {q:pinks+' pink pads, '+blues+' blue pads. Chance of pink?', vis:spinnerSVG([{n:pinks,c:'#ff5db1'},{n:blues,c:'#12e2c8'}]), choices:shuffle([pinks+' out of '+tot, blues+' out of '+tot, pinks+' out of '+blues, tot+' out of '+pinks].filter(function(v,i,a){return a.indexOf(v)===i;})).slice(0,4), a:pinks+' out of '+tot}; }
+  if(L<7){ var A=R(1,5), B=R(1,5); while(B===A)B=R(1,5); var t2=A+B; return {q:'Which is MORE likely: pink ('+A+' of '+t2+') or blue ('+B+' of '+t2+')?', vis:spinnerSVG([{n:A,c:'#ff5db1'},{n:B,c:'#12e2c8'}]), choices:shuffle(['pink','blue']), a:(A>B?'pink':'blue')}; }
+  if(L<9){ var n=R(2,6), tot2=R(n+1,8); var fr=n+'/'+tot2; return {q:'Pink is '+n+' of '+tot2+' pads. Chance of pink as a fraction?', vis:spinnerSVG([{n:n,c:'#ff5db1'},{n:tot2-n,c:'#3a2f6e'}]), choices:shuffle([fr,(tot2-n)+'/'+tot2,tot2+'/'+n,n+'/'+(tot2-n)].filter(function(v,i,a){return a.indexOf(v)===i;})).slice(0,4), a:fr}; }
+  var sp=R(1,3), st=8; return {q:'The spinner is spun 8 times. Pink is '+sp+' of 8 pads. About how many pinks would you EXPECT?', vis:spinnerSVG([{n:sp,c:'#ff5db1'},{n:8-sp,c:'#3a2f6e'}]), choices:shuffle([sp,sp+2,8-sp,8].map(String).filter(function(v,i,a){return a.indexOf(v)===i;})).slice(0,4), a:String(sp)};
+};
+MJGAMES.spinodds={id:'spinodds',name:'Spin Odds',emoji:'🎡',member:'glitch',concept:'prob',
+setup:function(L,st){
+  var pk=L<3?pick([[8,0],[6,2],[4,4],[2,6],[0,8]]):[R(0,8),0]; pk[1]=8-pk[0]; var pr=pk[0]/8; st.ans=probWord(pr);
+  var opts=shuffle([st.ans].concat(shuffle(PROB_WORDS.filter(function(w){return w!==st.ans;})).slice(0,L<4?2:3)));
+  return {call:'Landing on PINK is...', sub:pk[0]+' of 8 pads are pink. None = impossible, all = certain, half = even chance.',
+    html:'<div class="center">'+spinnerSVG([{n:pk[0],c:'#ff5db1'},{n:pk[1],c:'#3a2f6e'}],110)+'</div><div class="mjcards" id="soZ" style="grid-template-columns:repeat(2,1fr)"></div>',
+    wire:function(){ $('#soZ').innerHTML=opts.map(function(o){return '<button class="mjposter sob" data-v="'+o+'" style="font-size:18px">'+o+'</button>';}).join('');
+      $$('.sob').forEach(function(b){ b.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(b.dataset.v===st.ans){ drum('hat'); later(function(){drum('kick');},150); mjOK(pk[0]+' of 8 pink: '+st.ans+'.'); } else { punch(b); mjNo(pk[0]+' of 8 is '+st.ans+'. '+(pr===0?'No pink at all!':pr===1?'ALL pink!':pr===0.5?'Exactly half.':pr<0.5?'Less than half.':'More than half.')); } }); }); }};
+}};
+MJGAMES.padpick={id:'padpick',name:'Pad Pick',emoji:'🎛️',member:'glitch',concept:'prob',
+setup:function(L,st){
+  var pinks=R(1,L<4?4:6), blues=R(1,L<4?4:6), tot=pinks+blues; st.ans=pinks+' out of '+tot;
+  var opts=shuffle([st.ans, blues+' out of '+tot, pinks+' out of '+blues, tot+' out of '+pinks].filter(function(v,i,a){return a.indexOf(v)===i;})).slice(0,L<4?3:4);
+  var pads=''; for(var i=0;i<tot;i++)pads+='<span style="display:inline-block;width:26px;height:26px;border-radius:6px;margin:3px;background:'+(i<pinks?'#ff5db1':'#12e2c8')+'"></span>';
+  return {call:'Glitch hits a random pad. Chance it is PINK?', sub:'Count the pink pads, then count ALL the pads. Pink out of all.',
+    html:'<div class="center" style="max-width:240px;margin:6px auto">'+pads+'</div><div class="mjcards" id="ppZ"></div>',
+    wire:function(){ $('#ppZ').innerHTML=opts.map(function(o){return '<button class="mjposter ppb" data-v="'+o+'" style="font-size:18px">'+o+'</button>';}).join('');
+      $$('.ppb').forEach(function(b){ b.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(b.dataset.v===st.ans){ drum('kick'); mjOK(pinks+' pink of '+tot+' pads. '+pinks+' out of '+tot+'!'); } else { punch(b); mjNo(pinks+' pink, '+tot+' total: '+st.ans+'.'); } }); }); }};
+}};
+MJGAMES.randomrun={id:'randomrun',name:'Random Run',emoji:'🎲',member:'glitch',concept:'prob',
+setup:function(L,st){
+  var A=R(1,6), B=R(1,6); while(B===A)B=R(1,6); var tot=A+B; st.ans=A>B?'pink':'blue'; st.spins=0; st.hits={pink:0,blue:0};
+  return {call:'Which color will the randomizer hit MORE?', sub:'Pink has '+A+' pads, blue has '+B+'. Spin a few times if you like, then pick.',
+    html:'<div class="center" id="rrSp">'+spinnerSVG([{n:A,c:'#ff5db1'},{n:B,c:'#12e2c8'}],110)+'</div><div class="mjbig" id="rrTally" style="font-size:18px">pink 0 · blue 0</div><div class="row" style="justify-content:center"><button class="btn small" id="rrSpin">🎲 spin</button></div><div class="mjcards" id="rrZ" style="grid-template-columns:repeat(2,1fr)"></div>',
+    wire:function(){ $('#rrSpin').addEventListener('click',function(){ if(MJ.busy)return; ac(); drum('hat'); var r=Math.random()<A/tot?'pink':'blue'; st.hits[r]++; $('#rrTally').textContent='pink '+st.hits.pink+' · blue '+st.hits.blue; });
+      $('#rrZ').innerHTML=['pink','blue'].map(function(o){return '<button class="mjposter rrb" data-v="'+o+'" style="font-size:22px;background:'+(o==='pink'?'#ff5db133':'#12e2c833')+'">'+o+'</button>';}).join('');
+      $$('.rrb').forEach(function(b){ b.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(b.dataset.v===st.ans){ drum('kick'); mjOK(st.ans+' has more pads ('+Math.max(A,B)+' vs '+Math.min(A,B)+'), so it hits more.'); } else { punch(b); mjNo(st.ans+' has '+Math.max(A,B)+' pads, more than '+Math.min(A,B)+'. More pads, more hits.'); } }); }); }};
+}};
+Object.assign(COACH,{
+  spinodds:{member:'glitch',verb:'TAP',hint:'tap',title:'🎡 Spin Odds',lines:['My randomizer is a spinner. More pink = more likely to land on pink.','Look at how much is pink and TAP the word: impossible, unlikely, even, likely, certain.']},
+  padpick:{member:'glitch',verb:'TAP',hint:'tap',title:'🎛️ Pad Pick',lines:['Chance is pink pads OUT OF all pads.','Count both and TAP the odds!']},
+  randomrun:{member:'glitch',verb:'TAP',hint:'tap',title:'🎲 Random Run',lines:['More pads means more hits, most of the time.','Spin a few, watch the tally, then TAP the color that wins!']}
+});
+PLAY_RIGS.glitch={hint:'A randomizer! Every tap picks a random synth blip. Hold the groove.',custom:function(el){
+  el.innerHTML='<div class="mjbig" style="font-size:44px">🎲</div><div class="sub center">tap: random blip · hold: random run</div><div class="row" style="justify-content:center;gap:10px;margin-top:12px"><button class="mjcymbal" id="glOne">🎲<br>BLIP</button><button class="mjcymbal" id="glRun" style="border-color:#12e2c8">🎛️<br>RUN ×8</button></div>';
+  var blip=function(){ var n=pick([60,63,67,70,72,75,79]); tone(ntf(n),.15,'square',.14); };
+  $('#glOne').addEventListener('click',function(){ ac(); blip(); punch($('#glOne')); });
+  $('#glRun').addEventListener('click',function(){ ac(); for(var i=0;i<8;i++)later(function(){ drum('hat'); blip(); },i*130); punch($('#glRun')); });
+}};
+MUSIC_CARDS.glitch={elly:'Glitch runs a randomizer, so every show is a roll of the dice. That is probability.',body:'Techno loves a randomizer: a knob that picks the next blip by chance. If 3 of 4 pads are a kick, the next hit is LIKELY a kick, 3 out of 4. If every pad is a kick, it is CERTAIN. If none are, impossible. Probability is just counting the ways it can happen out of all the ways.',example:'Listen: eight random blips. Some land on the kick, some on the blip. Spin it again and it comes out different!'};
+MUSIC_DEMOS.glitch=function(){ for(var i=0;i<8;i++)later(function(){ if(Math.random()<0.75)drum('kick'); else tone(ntf(pick([72,75,79])),.12,'square',.14); drum('hat'); },i*220); };
+LESSONS.glitch={game:function(){startMJ('spinodds');},steps:[
+  {say:'PROBABILITY is how likely something is. My randomizer is a spinner. All pink? Landing on pink is CERTAIN. No pink? IMPOSSIBLE.',vis:'<div class="row" style="justify-content:center;gap:16px">'+spinnerSVG([{n:8,c:'#ff5db1'}],80)+spinnerSVG([{n:8,c:'#3a2f6e'}],80)+'</div>'},
+  {say:'Half pink is an EVEN CHANCE, like a coin flip. More than half is LIKELY. Less than half is UNLIKELY.',vis:'<div class="row" style="justify-content:center;gap:12px">'+spinnerSVG([{n:4,c:'#ff5db1'},{n:4,c:'#3a2f6e'}],70)+spinnerSVG([{n:6,c:'#ff5db1'},{n:2,c:'#3a2f6e'}],70)+spinnerSVG([{n:2,c:'#ff5db1'},{n:6,c:'#3a2f6e'}],70)+'</div>'},
+  {say:'You can say it with numbers: 3 pink pads out of 8 pads is 3 out of 8. Count the ways it can happen, out of all the ways.',vis:spinnerSVG([{n:3,c:'#ff5db1'},{n:5,c:'#3a2f6e'}],90)},
+  {say:'In my games you read spinners, count pads, and predict what the randomizer hits most. Roll it!',vis:'<div style="font-size:22px"><b>impossible → unlikely → even → likely → certain</b></div>'}
+]};
+METHOD.prob={steps:[
+  {say:'Probability = ways it CAN happen ÷ all possible outcomes. 3 pink of 8 pads is 3/8. Write it as a fraction, and remember it is always between 0 (impossible) and 1 (certain).',vis:'<div style="font-size:20px"><b>P(pink) = 3/8</b></div>'},
+  {say:'To predict: multiply the probability by the number of tries. 3/8 pink, spun 8 times, expect about 3 pinks. Real spins wobble around it, and that is normal.',vis:'<div style="font-size:20px"><b>3/8 × 8 spins ≈ 3 pinks</b></div>'}
+]};
+STEPWALK.prob=function(L){ var p=R(1,5), b=R(1,5), t=p+b;
+  return {title:'Ways it can happen, out of all the ways',steps:[
+    {say:'A spinner has '+p+' pink pads and '+b+' blue pads. How many pads in ALL?',vis:spinnerSVG([{n:p,c:'#ff5db1'},{n:b,c:'#12e2c8'}],90),choices:numChoices(t,2),a:t},
+    {say:'How many of those are pink?',choices:numChoices(p,2),a:p},
+    {say:'So the chance of pink is pink out of all: ?',choices:shuffle([p+'/'+t,b+'/'+t,t+'/'+p]),a:p+'/'+t,after:'P(pink) = '+p+'/'+t+'. '+(p>b?'Likely!':p<b?'Unlikely!':'Even chance!')}]}; };
+function technoCharSVG(id,sz){
+  const O='#221a44'; let b='';
+  const led=(x,y,c)=>'<circle cx="'+x+'" cy="'+y+'" r="4" fill="'+c+'"/>';
+  const visor=(x,y,w)=>'<rect x="'+x+'" y="'+y+'" width="'+w+'" height="12" rx="6" fill="'+O+'"/><rect x="'+(x+6)+'" y="'+(y+3)+'" width="'+(w-12)+'" height="6" rx="3" fill="#12e2c8" opacity=".9"/>';
+  const feet=(c)=>'<rect x="42" y="114" width="24" height="12" rx="6" fill="'+c+'"/><rect x="74" y="114" width="24" height="12" rx="6" fill="'+c+'"/>';
+  if(id==='volt'){ b=feet('#0b3a3a')+'<rect x="40" y="46" width="60" height="70" rx="14" fill="#12e2c8"/>'+visor(46,64,48)+'<path d="M64 84 h12" stroke="'+O+'" stroke-width="4" stroke-linecap="round"/>'+led(50,100,'#ff5db1')+led(62,100,'#ffd158')+led(74,100,'#ff5db1')+led(86,100,'#ffd158')+'<path d="M70 46 v-14 l8 -8" fill="none" stroke="#12e2c8" stroke-width="4" stroke-linecap="round"/>'; }
+  else if(id==='sub'){ b=feet('#2a1f55')+'<circle cx="70" cy="76" r="38" fill="#9d7cff"/>'+visor(44,68,52)+'<circle cx="70" cy="100" r="10" fill="'+O+'"/><circle cx="70" cy="100" r="4" fill="#ff5db1"/><path d="M40 100 q-8 -14 0 -28 M100 100 q8 -14 0 -28" fill="none" stroke="#9d7cff" stroke-width="5" opacity=".6"/>'; }
+  else if(id==='strobe'){ b=feet('#3a3a0b')+'<rect x="36" y="50" width="68" height="66" rx="30" fill="#ffd158"/>'+visor(46,68,48)+'<path d="M60 90 q10 8 20 0" stroke="'+O+'" stroke-width="4" fill="none" stroke-linecap="round"/>'+[0,1,2,3,4,5].map(function(i){ var a=i*Math.PI/3; return '<line x1="'+(70+36*Math.cos(a))+'" y1="'+(50+36*Math.sin(a)*0.4)+'" x2="'+(70+50*Math.cos(a))+'" y2="'+(50+50*Math.sin(a)*0.4-6)+'" stroke="#fff" stroke-width="3" stroke-linecap="round"/>'; }).join(''); }
+  else { b=feet('#5a1e3a')+'<rect x="40" y="46" width="60" height="70" rx="18" fill="#ff5db1"/>'+visor(46,64,48)+'<rect x="52" y="86" width="36" height="20" rx="4" fill="'+O+'"/>'+[0,1,2,3,4,5].map(function(i){return '<rect x="'+(55+(i%3)*11)+'" y="'+(89+Math.floor(i/3)*8)+'" width="8" height="6" rx="1" fill="'+['#12e2c8','#ffd158','#ff5db1'][(i*7)%3]+'"/>';}).join('')+'<path d="M100 60 l14 -6 l-4 12" fill="none" stroke="#ffd158" stroke-width="3" stroke-linecap="round"/>'; }
+  return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 140 140"><g class="charg">'+b+'</g></svg>';
+}
+addRecruit({id:'glitch',name:'Glitch',emoji:'🎲',title:'Randomizer',concept:'prob',conceptName:'Probability',color:'#ff5db1',rig:'randomizer',draw:technoCharSVG,crewId:'rng',
+  bio:'I run the randomizer. Every hit is a spin. More pink pads, more pink hits. I never know what comes next, but I always know how likely it is.',
+  lines:['Ways it can happen, out of all the ways.','Half pink is a coin flip. Nothing more, nothing less.','Circuit wanted it locked on the grid. I want it to surprise me.'],
+  dreams:['Volt wanted every beat exactly where it was last time. You let me roll the dice. That is why I rerouted.','Certain is 1. Impossible is 0. Everything fun is in between.','My dream set: a spinner with a hundred pads and the crowd guessing every hit.','Likely is not certain. That is why we keep spinning.','This band lets the dice roll. I am staying.'],
+  key:'circuit',bandName:'Circuit',crew:{name:'Circuit',members:[
+    {id:'volt',emoji:'⚡',name:'Volt',line:'Four on the floor. Forever.'},{id:'sub',emoji:'🔊',name:'Sub',line:'Can you feel that? No? Louder.'},{id:'strobe',emoji:'💡',name:'Strobe',line:'Blink. Blink. Blink.'},{id:'rng',emoji:'🎲',name:'Glitch',star:true,line:'Likely or unlikely? Read the spinner.'}]},
+  loseEmoji:'⚡',loseTitle:'Circuit stays locked in',winLine:'You held the crowd AND called every spin right. Glitch rerouted the randomizer to your stage mid-drop.',
+  starHint:'Win the randomizer rounds to fill the recruit spark and get them to reroute.',btnStyle:'linear-gradient(90deg,#12e2c8,#ff5db1)',
+  gigLine:'Glitch spins one more time. "Certain. That set was certain."',meetLine:'And Glitch on the randomizer, rerouted out of Circuit. Likely, unlikely, certain: probability you can dance to.'});
+
+</script>
+<script>
+/* ============ v0.74 BAND: THE QUARTET (classical) + VIOLA on viola: ANGLES ============ */
+function angleSVG(deg,o){ o=o||{}; var sz=o.sz||120, cx=sz*0.28, cy=sz*0.72, r=sz*0.6, a=-deg*Math.PI/180, x2=cx+r*Math.cos(a), y2=cy+r*Math.sin(a);
+  var arcR=sz*0.18, ax=cx+arcR, ay=cy, bx=cx+arcR*Math.cos(a), by=cy+arcR*Math.sin(a), big=deg>180?1:0;
+  var s='<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 '+sz+' '+sz+'">';
+  if(deg===90)s+='<path d="M'+(cx+14)+' '+cy+' L'+(cx+14)+' '+(cy-14)+' L'+cx+' '+(cy-14)+'" fill="none" stroke="#ffd158" stroke-width="2"/>';
+  else s+='<path d="M'+ax+' '+ay+' A'+arcR+' '+arcR+' 0 '+big+' 0 '+bx+' '+by+'" fill="none" stroke="#ffd158" stroke-width="3"/>';
+  s+='<line x1="'+cx+'" y1="'+cy+'" x2="'+(cx+r)+'" y2="'+cy+'" stroke="#f4f0ff" stroke-width="4" stroke-linecap="round"/><line x1="'+cx+'" y1="'+cy+'" x2="'+x2+'" y2="'+y2+'" stroke="#c9a26a" stroke-width="4" stroke-linecap="round"/><circle cx="'+cx+'" cy="'+cy+'" r="4" fill="#ffd158"/>';
+  if(o.label)s+='<text x="'+(cx+arcR+8)+'" y="'+(cy-arcR)+'" font-size="14" font-weight="900" fill="#ffd158">'+deg+'°</text>';
+  return s+'</svg>'; }
+function angleType(d){ return d<90?'acute':d===90?'right':d<180?'obtuse':d===180?'straight':'reflex'; }
+var ANGLE_TYPES=['acute','right','obtuse','straight'];
+QG.angle=function(L){
+  var pool=L<3?[30,45,60,90,120,150]:L<6?[20,35,50,70,90,100,130,160,180]:[15,25,40,55,75,90,95,110,135,165,180];
+  var d=pick(pool);
+  if(L<5||(L<8&&Math.random()<0.5)) return {q:'What kind of angle is this?', vis:angleSVG(d), choices:shuffle([angleType(d)].concat(shuffle(ANGLE_TYPES.filter(function(t){return t!==angleType(d);})).slice(0,L<3?2:3))), a:angleType(d)};
+  if(L<8){ var est=[30,45,60,90,120,150,180]; var dd=pick(est); return {q:'About how many degrees?', vis:angleSVG(dd), choices:shuffle([dd].concat(shuffle(est.filter(function(x){return x!==dd;})).slice(0,3))).map(String), a:String(dd)}; }
+  if(L<10){ var known=pick([30,40,45,50,60,70]); return {q:'Two angles make a right angle (90°). One is '+known+'°. The other?', vis:angleSVG(90), choices:shuffle([90-known,known,180-known,90+known].filter(function(v,i,a){return a.indexOf(v)===i;})).map(String), a:String(90-known)}; }
+  var k2=pick([40,60,75,90,110,120,135]); return {q:'Two angles make a straight line (180°). One is '+k2+'°. The other?', vis:angleSVG(180), choices:shuffle([180-k2,k2,90-Math.min(89,k2),360-k2].filter(function(v,i,a){return v>0&&a.indexOf(v)===i;})).map(String), a:String(180-k2)};
+};
+MJGAMES.bowangle={id:'bowangle',name:'Bow Angle',emoji:'🎻',member:'viola',concept:'angle',
+setup:function(L,st){
+  var pool=L<3?[30,45,90,120,150]:L<6?[20,45,70,90,110,140,180]:[15,40,60,90,100,125,160,180]; var d=pick(pool); st.ans=angleType(d);
+  var opts=shuffle([st.ans].concat(shuffle(ANGLE_TYPES.filter(function(t){return t!==st.ans;})).slice(0,L<3?2:3)));
+  return {call:'Name the bow angle', sub:'Smaller than a corner: acute. Exactly a corner: right. Wider than a corner: obtuse. Flat: straight.',
+    html:'<div class="center">'+angleSVG(d,{sz:140})+'</div><div class="mjcards" id="baZ" style="grid-template-columns:repeat(2,1fr)"></div>',
+    wire:function(){ $('#baZ').innerHTML=opts.map(function(o){return '<button class="mjposter bab" data-v="'+o+'" style="font-size:20px">'+o+'</button>';}).join('');
+      $$('.bab').forEach(function(b){ b.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(b.dataset.v===st.ans){ tone(ntf(69),.5,'sawtooth',.1); mjOK(d+'° is '+st.ans+'. Bow held just right.'); } else { punch(b); mjNo(d+'° is '+st.ans+'. Compare it to a square corner (90°).'); } }); }); }};
+}};
+MJGAMES.degreeguess={id:'degreeguess',name:'Degree Guess',emoji:'📐',member:'viola',concept:'angle',
+setup:function(L,st){
+  var est=L<4?[30,45,90,135,180]:L<7?[30,45,60,90,120,150,180]:[15,30,45,60,75,90,105,120,135,150,165,180]; var d=pick(est); st.ans=String(d);
+  var opts=shuffle([d].concat(shuffle(est.filter(function(x){return x!==d;})).slice(0,3))).map(String);
+  return {call:'How many degrees?', sub:'A square corner is 90. Flat is 180. Half a corner is 45.',
+    html:'<div class="center">'+angleSVG(d,{sz:140})+'</div><div class="mjcards" id="dgZ"></div>',
+    wire:function(){ $('#dgZ').innerHTML=opts.map(function(o){return '<button class="mjposter dgb" data-v="'+o+'" style="font-size:22px">'+o+'°</button>';}).join('');
+      $$('.dgb').forEach(function(b){ b.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(b.dataset.v===st.ans){ tone(ntf(72),.4,'sawtooth',.1); mjOK(d+'°! Perfect pitch for angles.'); } else { punch(b); mjNo('That one is '+d+'°. '+(d<90?'Less than a corner.':d===90?'Exactly a corner.':d<180?'More than a corner, less than flat.':'Perfectly flat.')); } }); }); }};
+}};
+MJGAMES.cornerfill={id:'cornerfill',name:'Corner Fill',emoji:'🧩',member:'viola',concept:'angle',
+setup:function(L,st){
+  var total=L<5?90:pick([90,180]), known=total===90?pick([20,30,40,45,50,60,70]):pick([40,60,75,90,110,120,135]); st.ans=String(total-known);
+  var opts=shuffle([total-known,known,total,Math.abs(total-known-10)].filter(function(v,i,a){return v>0&&a.indexOf(v)===i;})).slice(0,4).map(String);
+  return {call:'Fill the '+(total===90?'corner':'line')+': '+known+'° + ? = '+total+'°', sub:(total===90?'A square corner is 90°.':'A straight line is 180°.')+' Subtract to find the missing piece.',
+    html:'<div class="center">'+angleSVG(total,{sz:130})+'</div><div class="mjcards" id="cfZ2"></div>',
+    wire:function(){ $('#cfZ2').innerHTML=opts.map(function(o){return '<button class="mjposter cfb2" data-v="'+o+'" style="font-size:22px">'+o+'°</button>';}).join('');
+      $$('.cfb2').forEach(function(b){ b.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(b.dataset.v===st.ans){ tone(ntf(76),.4,'sawtooth',.1); mjOK(known+' + '+st.ans+' = '+total+'. The corner is full.'); } else { punch(b); mjNo(total+' − '+known+' = '+st.ans+'.'); } }); }); }};
+}};
+Object.assign(COACH,{
+  bowangle:{member:'viola',verb:'TAP',hint:'tap',title:'🎻 Bow Angle',lines:['Compare every angle to a square corner.','Smaller is acute, bigger is obtuse, exact is right. TAP the name!']},
+  degreeguess:{member:'viola',verb:'TAP',hint:'tap',title:'📐 Degree Guess',lines:['A corner is 90°, flat is 180°, half a corner is 45°.','Look at the angle and TAP the degrees!']},
+  cornerfill:{member:'viola',verb:'TAP',hint:'tap',title:'🧩 Corner Fill',lines:['Two angles can share a corner or a line.','Subtract the one you know from 90 or 180 and TAP the rest!']}
+});
+PLAY_RIGS.viola={hint:'Long bow strokes. Hold a note and let it sing.',custom:function(el){
+  el.innerHTML='<div class="mjbig" style="font-size:44px">🎻</div><div class="sub center">four strings, warm and low</div><div class="row" id="vaStr" style="justify-content:center;gap:8px;margin-top:12px;flex-wrap:wrap"></div>';
+  var notes=[48,55,62,69,72,76];
+  $('#vaStr').innerHTML=notes.map(function(n,i){return '<button class="mjcymbal vas" data-n="'+n+'" style="font-size:16px;width:70px;height:70px;border-color:#c9a26a">'+['C','G','D','A','C','E'][i]+'</button>';}).join('');
+  $$('.vas').forEach(function(b){ b.addEventListener('click',function(){ ac(); var n=+b.dataset.n; tone(ntf(n),1.1,'sawtooth',.1); tone(ntf(n)*1.002,1.1,'triangle',.06); punch(b); }); });
+}};
+MUSIC_CARDS.viola={elly:'Viola shows angles with the bow. Every stroke is an angle against the string.',body:'A bow crosses the string at an angle. Straight across is a RIGHT angle, 90°, the cleanest sound. Tilt it a little: ACUTE, under 90. Lean it way over: OBTUSE, over 90. And the conductor\u2019s arms sweep from flat (180°) up to a point. Angles are how much something turns.',example:'Listen: a right-angle stroke rings clean, an acute stroke whispers, an obtuse stroke growls.'};
+MUSIC_DEMOS.viola=function(){ tone(ntf(62),1,'sawtooth',.12); later(function(){tone(ntf(62),1,'sine',.1);},1200); later(function(){tone(ntf(50),1,'sawtooth',.16);},2400); };
+LESSONS.viola={game:function(){startMJ('bowangle');},steps:[
+  {say:'An ANGLE is a turn between two lines that meet at a point. We measure it in degrees. A square corner is 90 degrees: a RIGHT angle.',vis:angleSVG(90,{label:true})},
+  {say:'Smaller than a corner is ACUTE. Sharp, like a bow tip. 45° is acute.',vis:angleSVG(45,{label:true})},
+  {say:'Wider than a corner is OBTUSE. Lazy and open. 130° is obtuse.',vis:angleSVG(130,{label:true})},
+  {say:'All the way flat is a STRAIGHT angle: 180°. In my games you name angles, guess degrees, and fill corners. Bows up!',vis:angleSVG(180,{label:true})}
+]};
+METHOD.angle={steps:[
+  {say:'Benchmarks: 90° corner, 180° flat, 360° full turn. Estimate any angle by comparing to those. Halfway to the corner is 45°, halfway between corner and flat is 135°.',vis:'<div class="row" style="justify-content:center;gap:6px">'+angleSVG(45,{sz:80,label:true})+angleSVG(90,{sz:80,label:true})+angleSVG(135,{sz:80,label:true})+'</div>'},
+  {say:'Angles on a line add to 180°. Angles in a corner add to 90°. Missing one? Subtract the known angle from the total.',vis:'<div style="font-size:20px"><b>180 − 110 = 70 &nbsp;&nbsp; 90 − 35 = 55</b></div>'}
+]};
+STEPWALK.angle=function(L){ var k=pick([30,40,50,60,70]);
+  return {title:'Corner adds to 90, line adds to 180',steps:[
+    {say:'Two angles share a square corner. What does a square corner measure?',vis:angleSVG(90,{sz:110}),choices:shuffle([90,180,45]),a:90},
+    {say:'One of the two angles is '+k+'°. Subtract it from 90: 90 − '+k+' = ?',choices:numChoices(90-k,10),a:90-k},
+    {say:'So the other angle is '+(90-k)+'°. Is that acute, right, or obtuse?',choices:shuffle(['acute','right','obtuse']),a:'acute',after:k+'° + '+(90-k)+'° = 90°. Corner filled!'}]}; };
+function quartetCharSVG(id,sz){
+  const O='#221a44'; let b='';
+  const eye=(x,y)=>'<circle cx="'+x+'" cy="'+y+'" r="5" fill="'+O+'"/><circle cx="'+(x+2)+'" cy="'+(y-2)+'" r="1.8" fill="#fff"/>';
+  const calm=(x,y)=>'<path d="M'+x+' '+y+' q6 4 12 0" stroke="'+O+'" stroke-width="4" fill="none" stroke-linecap="round"/>';
+  const smile=(x,y,w)=>'<path d="M'+x+' '+y+' q'+(w/2)+' 6 '+w+' 0" stroke="'+O+'" stroke-width="4" fill="none" stroke-linecap="round"/>';
+  const feet=(c)=>'<ellipse cx="55" cy="123" rx="12" ry="6" fill="'+c+'"/><ellipse cx="85" cy="123" rx="12" ry="6" fill="'+c+'"/>';
+  const tux=(c)=>'<rect x="38" y="50" width="64" height="70" rx="26" fill="'+c+'"/><path d="M60 52 l10 20 l10 -20" fill="#f4f0ff"/><path d="M64 56 h12 l-6 6 z" fill="#c0392b"/>';
+  const bow=(x1,y1,x2,y2)=>'<line x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'" stroke="#c9a26a" stroke-width="3" stroke-linecap="round"/>';
+  const fiddle=(x,y,c)=>'<ellipse cx="'+x+'" cy="'+y+'" rx="12" ry="16" fill="'+c+'"/><ellipse cx="'+x+'" cy="'+(y-14)+'" rx="9" ry="10" fill="'+c+'"/><rect x="'+(x-2)+'" y="'+(y-40)+'" width="4" height="30" fill="#3a2a1a"/>';
+  if(id==='vin'){ b=feet('#1a1a2e')+tux('#2a2a3e')+eye(58,72)+eye(82,72)+calm(64,88)+fiddle(104,92,'#8b5a2b')+bow(90,70,124,110); }
+  else if(id==='cello'){ b=feet('#1a1a2e')+tux('#3a2a4e')+eye(58,72)+eye(82,72)+smile(60,88,20)+'<ellipse cx="70" cy="118" rx="22" ry="20" fill="#8b5a2b"/><ellipse cx="70" cy="100" rx="14" ry="12" fill="#8b5a2b"/><rect x="68" y="60" width="4" height="40" fill="#3a2a1a"/>'; }
+  else if(id==='maestro'){ b=feet('#1a1a2e')+tux('#1a1a2e')+eye(58,72)+eye(82,72)+'<ellipse cx="70" cy="90" rx="6" ry="4" fill="'+O+'"/>'+'<path d="M40 52 q30 -20 60 0 l-4 -14 h-52 z" fill="#1a1a2e"/><line x1="104" y1="90" x2="128" y2="40" stroke="#f4f0ff" stroke-width="3" stroke-linecap="round"/>'; }
+  else { b=feet('#5a2a2a')+tux('#7a1f3f')+eye(58,72)+eye(82,72)+smile(60,88,20)+fiddle(36,96,'#a0522d')+bow(24,70,56,118)+'<path d="M50 40 q20 -20 40 0" fill="none" stroke="#ffd158" stroke-width="4" stroke-linecap="round"/>'; }
+  return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 140 140"><g class="charg">'+b+'</g></svg>';
+}
+addRecruit({id:'viola',name:'Viola',emoji:'🎻',title:'Viola',concept:'angle',conceptName:'Angles',color:'#c9a26a',rig:'viola',draw:quartetCharSVG,crewId:'va',
+  bio:'The bow meets the string at an angle. Ninety degrees sings. Tilt it and the tone changes. I hear angles before I see them.',
+  lines:['Compare it to a corner. Always.','Ninety is clean. Forty-five is a whisper.','The Quartet sits in a perfect square. I like a wider angle.'],
+  dreams:['Maestro wanted every bow at exactly ninety. You let me lean. That is why I stood up from the square.','Two angles on a line always add to a hundred eighty. Music and math, both in balance.','My dream piece sweeps from acute to obtuse and back, one long bow.','A right angle is not right or wrong. It is just square.','This band lets me tilt the bow. I am staying.'],
+  key:'quartet',bandName:'The Quartet',crew:{name:'The Quartet',members:[
+    {id:'vin',emoji:'🎻',name:'Vincenzo',line:'Posture, please.'},{id:'cello',emoji:'🎻',name:'Cello',line:'Mmm. Low. Long.'},{id:'maestro',emoji:'🪄',name:'Maestro',line:'And... a-ONE.'},{id:'va',emoji:'🎻',name:'Viola',star:true,line:'Acute, right, or obtuse? Look at the bow.'}]},
+  loseEmoji:'🎼',loseTitle:'The Quartet holds the hall',winLine:'You held the hall AND named every angle she bowed. Viola stood, bowed politely to the Quartet, and crossed to your side.',
+  starHint:'Win the viola rounds to fill the recruit spark and get her to leave the square.',btnStyle:'linear-gradient(90deg,#2a2a3e,#c9a26a)',
+  gigLine:'Viola lowers her bow at a perfect right angle. "Ninety degrees of applause."',meetLine:'And Viola on viola, out of The Quartet. Acute, right, obtuse: the bow shows every angle.'});
+
+/* ============ v0.74 BAND: THE CHOIR (gospel) + GRACE, choir leader: MEAN & MEDIAN ============ */
+function choirBars(vals,o){ o=o||{}; var mx=Math.max.apply(null,vals), s='<div class="row" style="justify-content:center;gap:8px;align-items:flex-end;height:110px">';
+  vals.forEach(function(v,i){ s+='<div class="center"><div style="width:26px;height:'+Math.max(8,Math.round(v/mx*84))+'px;background:'+(o.hi===i?'#ffd158':'#9d7cff')+';border-radius:6px 6px 2px 2px"></div><div style="font-size:13px;font-weight:900;margin-top:2px">'+v+'</div></div>'; });
+  return s+'</div>'; }
+function optsWith(ans,others,n){ var seen={}; seen[String(ans)]=1; var out=[]; others.forEach(function(o){ if(!seen[String(o)]){ seen[String(o)]=1; out.push(o); } }); return shuffle([ans].concat(out.slice(0,(n||4)-1))); }
+function meanOf(a){ return a.reduce(function(x,y){return x+y;},0)/a.length; }
+function medianOf(a){ var b=a.slice().sort(function(x,y){return x-y;}), m=Math.floor(b.length/2); return b.length%2?b[m]:(b[m-1]+b[m])/2; }
+function evenMeanSet(n,lo,hi){ var a; do{ a=[]; for(var i=0;i<n;i++)a.push(R(lo,hi)); }while(meanOf(a)%1!==0); return a; }
+QG.stats=function(L){
+  if(L<3){ var a=[1,2,3,4,5,6].sort(function(){return Math.random()-0.5;}).slice(0,3); var hi=Math.max.apply(null,a); return {q:'Three singers hold their notes for these seconds. Which is the LONGEST?', vis:choirBars(a), choices:shuffle(a.map(String)), a:String(hi)}; }
+  if(L<5){ var b=evenMeanSet(3,1,8), m=meanOf(b); return {q:'Share the seconds evenly. What is the MEAN (average)?', vis:choirBars(b), choices:shuffle([m,m+1,Math.max(1,m-1),b.reduce(function(x,y){return x+y;},0)].filter(function(v,i,arr){return arr.indexOf(v)===i;})).slice(0,4).map(String), a:String(m)}; }
+  if(L<7){ var c=shuffle([1,2,3,4,5,6,7,8,9]).slice(0,3); var md=medianOf(c); return {q:'Line the singers up from shortest to longest. What is the MIDDLE value (median)?', vis:choirBars(c), choices:optsWith(md,c.concat([meanOf(c)]),4).map(String), a:String(md)}; }
+  if(L<9){ var d=evenMeanSet(4,2,10), m2=meanOf(d); return {q:'Four singers. What is the mean?', vis:choirBars(d), choices:shuffle([m2,m2+1,m2-1,Math.max.apply(null,d)].filter(function(v,i,arr){return v>0&&arr.indexOf(v)===i;})).slice(0,4).map(String), a:String(m2)}; }
+  var e=shuffle([1,2,3,4,5,6,7,8,9]).slice(0,5), md2=medianOf(e); return {q:'Five singers. What is the MEDIAN?', vis:choirBars(e), choices:optsWith(md2,e,4).map(String), a:String(md2)};
+};
+MJGAMES.evenout={id:'evenout',name:'Even Out',emoji:'⚖️',member:'grace',concept:'stats',
+setup:function(L,st){
+  var n=L<4?3:L<8?4:5, a=evenMeanSet(n,1,L<4?6:9), m=meanOf(a); st.ans=String(m);
+  var opts=shuffle([m,m+1,Math.max(1,m-1),a.reduce(function(x,y){return x+y;},0)].filter(function(v,i,arr){return arr.indexOf(v)===i;})).slice(0,4).map(String);
+  return {call:'Even out the choir. What is the MEAN?', sub:'Add all the seconds, then share them equally: total ÷ '+n+'.',
+    html:choirBars(a)+'<div class="mjcards" id="eoZ"></div>',
+    wire:function(){ $('#eoZ').innerHTML=opts.map(function(o){return '<button class="mjposter eob" data-v="'+o+'" style="font-size:22px">'+o+'</button>';}).join('');
+      $$('.eob').forEach(function(b){ b.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(b.dataset.v===st.ans){ [60,64,67].forEach(function(nn){tone(ntf(nn),.6,'triangle',.1);}); mjOK(a.join(' + ')+' = '+a.reduce(function(x,y){return x+y;},0)+', ÷ '+n+' = '+m+'. Everyone sings '+m+'.'); } else { punch(b); mjNo('Total '+a.reduce(function(x,y){return x+y;},0)+' ÷ '+n+' singers = '+m+'.'); } }); }); }};
+}};
+MJGAMES.middlevoice={id:'middlevoice',name:'Middle Voice',emoji:'🎙️',member:'grace',concept:'stats',
+setup:function(L,st){
+  var n=L<5?3:5, a=shuffle([1,2,3,4,5,6,7,8,9]).slice(0,n); var md=medianOf(a); st.ans=String(md);
+  var opts=optsWith(md,shuffle(a).concat([meanOf(a),md+1]),4).map(String);
+  return {call:'Find the MIDDLE voice (median)', sub:'Sort the singers shortest to longest first. The median is the one in the middle.',
+    html:choirBars(a)+'<div class="sub center">sorted: '+a.slice().sort(function(x,y){return x-y;}).join(' · ')+'</div><div class="mjcards" id="mvZ"></div>',
+    wire:function(){ $('#mvZ').innerHTML=opts.map(function(o){return '<button class="mjposter mvb" data-v="'+o+'" style="font-size:22px">'+o+'</button>';}).join('');
+      $$('.mvb').forEach(function(b){ b.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(b.dataset.v===st.ans){ tone(ntf(67),.6,'triangle',.12); mjOK('Sorted, the middle one is '+md+'. That is the median.'); } else { punch(b); mjNo('Sort them: '+a.slice().sort(function(x,y){return x-y;}).join(', ')+'. The middle is '+md+'.'); } }); }); }};
+}};
+MJGAMES.balancenote={id:'balancenote',name:'Balance Note',emoji:'🎵',member:'grace',concept:'stats',
+setup:function(L,st){
+  var n=L<5?3:4, target=R(3,7), a=[]; for(var i=0;i<n-1;i++)a.push(R(1,9)); var need=target*n-a.reduce(function(x,y){return x+y;},0); while(need<1||need>12){ a=[]; for(var k=0;k<n-1;k++)a.push(R(1,9)); need=target*n-a.reduce(function(x,y){return x+y;},0); } st.ans=String(need);
+  var opts=shuffle([need,need+1,Math.max(1,need-1),target].filter(function(v,i,arr){return arr.indexOf(v)===i;})).slice(0,4).map(String);
+  return {call:'Grace wants a mean of '+target+'. How long must the last singer hold?', sub:'Mean × singers = total needed. Subtract what the others already sang.',
+    html:choirBars(a.concat([0])).replace('>0</div>','>?</div>')+'<div class="mjcards" id="bnZ2"></div>',
+    wire:function(){ $('#bnZ2').innerHTML=opts.map(function(o){return '<button class="mjposter bnb2" data-v="'+o+'" style="font-size:22px">'+o+'</button>';}).join('');
+      $$('.bnb2').forEach(function(b){ b.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(b.dataset.v===st.ans){ [60,64,67,72].forEach(function(nn){tone(ntf(nn),.7,'triangle',.1);}); mjOK(target+' × '+n+' = '+(target*n)+', minus '+a.reduce(function(x,y){return x+y;},0)+' = '+need+'. Balanced!'); } else { punch(b); mjNo('Need '+(target*n)+' total. '+(target*n)+' − '+a.reduce(function(x,y){return x+y;},0)+' = '+need+'.'); } }); }); }};
+}};
+Object.assign(COACH,{
+  evenout:{member:'grace',verb:'TAP',hint:'tap',title:'⚖️ Even Out',lines:['The mean shares everything out equally.','Add them all, divide by how many, and TAP the average!']},
+  middlevoice:{member:'grace',verb:'TAP',hint:'tap',title:'🎙️ Middle Voice',lines:['The median is the middle one, after you sort.','Line them up, find the middle, TAP it!']},
+  balancenote:{member:'grace',verb:'TAP',hint:'tap',title:'🎵 Balance Note',lines:['I know the mean I want. You find the missing singer.','Mean times singers, minus what is sung. TAP it!']}
+});
+PLAY_RIGS.grace={hint:'A choir! Each pad is a section. Stack them for a chord.',custom:function(el){
+  el.innerHTML='<div class="mjbig" style="font-size:44px">🎶</div><div class="sub center">bass · tenor · alto · soprano</div><div class="row" id="grStr" style="justify-content:center;gap:8px;margin-top:12px;flex-wrap:wrap"></div>';
+  var parts=[[48,'bass'],[55,'tenor'],[64,'alto'],[72,'soprano']];
+  $('#grStr').innerHTML=parts.map(function(p){return '<button class="mjcymbal grs" data-n="'+p[0]+'" style="font-size:13px;width:74px;height:74px;border-color:#ffd158">'+p[1]+'</button>';}).join('')+'<button class="mjcymbal" id="grAll" style="width:74px;height:74px;border-color:#8ef0c9;font-size:13px">ALL</button>';
+  var sing=function(n){ tone(ntf(n),1.2,'sine',.16); tone(ntf(n)*1.004,1.2,'triangle',.06); };
+  $$('.grs').forEach(function(b){ b.addEventListener('click',function(){ ac(); sing(+b.dataset.n); punch(b); }); });
+  $('#grAll').addEventListener('click',function(){ ac(); parts.forEach(function(p){sing(p[0]);}); punch($('#grAll')); });
+}};
+MUSIC_CARDS.grace={elly:'Grace leads a choir, and a choir is where the average lives. Mean and median you can hear.',body:'A choir needs balance. If one singer holds a note 9 seconds and another 3, Grace evens them out: 9 + 3 is 12, shared by 2 is 6 each. That is the MEAN. And when she lines the singers up shortest to longest, the one in the middle is the MEDIAN. Balance in the middle, blend in the mean.',example:'Listen: three voices at different lengths, then all three at the average. Same total breath, perfectly blended.'};
+MUSIC_DEMOS.grace=function(){ tone(ntf(60),.4,'triangle',.14); later(function(){tone(ntf(64),1.2,'triangle',.14);},500); later(function(){tone(ntf(67),.8,'triangle',.14);},1800); later(function(){[60,64,67].forEach(function(n){tone(ntf(n),.8,'triangle',.12);});},2800); };
+LESSONS.grace={game:function(){startMJ('evenout');},steps:[
+  {say:'Three singers hold a note: 2, 4, and 6 seconds. The MEAN is what each would sing if we shared it out evenly.',vis:choirBars([2,4,6])},
+  {say:'Add them all: 2 + 4 + 6 = 12. Share by 3 singers: 12 ÷ 3 = 4. The mean is 4. Everyone at 4 uses the same total breath.',vis:choirBars([4,4,4])},
+  {say:'The MEDIAN is different. Line the singers up shortest to longest and take the MIDDLE one. For 2, 4, 6 the middle is 4.',vis:choirBars([2,4,6],{hi:1})},
+  {say:'Mean = share evenly. Median = the middle one when sorted. In my games you even out the choir, find the middle voice, and balance a missing note. Lift every voice!',vis:'<div style="font-size:20px"><b>mean = total ÷ count · median = middle of the sorted list</b></div>'}
+]};
+METHOD.stats={steps:[
+  {say:'MEAN: add everything, divide by how many. MEDIAN: sort, then take the middle (with an even count, average the two middles). MODE: the most common value.',vis:'<div style="font-size:18px"><b>3, 7, 5, 9 → mean 6 · median 6 · sorted 3 5 7 9</b></div>'},
+  {say:'Missing value for a target mean: multiply the mean by the count to get the total you need, then subtract what you already have.',vis:'<div style="font-size:20px"><b>mean 5 × 4 singers = 20 − (3 + 6 + 7) = 4</b></div>'}
+]};
+STEPWALK.stats=function(L){ var a=evenMeanSet(3,2,9), tot=a.reduce(function(x,y){return x+y;},0), m=tot/3;
+  return {title:'Add them all, share them out',steps:[
+    {say:'Three singers: '+a.join(', ')+' seconds. Add them all. What is the total?',vis:choirBars(a),choices:numChoices(tot,3),a:tot},
+    {say:'How many singers share that total?',choices:shuffle([3,2,tot]),a:3},
+    {say:tot+' ÷ 3 = ? That is the mean.',choices:numChoices(m,2),a:m,after:'Mean = '+m+'. Every voice, one blend.'}]}; };
+function choirCharSVG(id,sz){
+  const O='#221a44'; let b='';
+  const eye=(x,y)=>'<circle cx="'+x+'" cy="'+y+'" r="5" fill="'+O+'"/><circle cx="'+(x+2)+'" cy="'+(y-2)+'" r="1.8" fill="#fff"/>';
+  const sing=(x,y)=>'<ellipse cx="'+x+'" cy="'+y+'" rx="7" ry="9" fill="'+O+'"/>';
+  const feet=(c)=>'<ellipse cx="55" cy="123" rx="12" ry="6" fill="'+c+'"/><ellipse cx="85" cy="123" rx="12" ry="6" fill="'+c+'"/>';
+  const robe=(c)=>'<path d="M44 60 q26 -30 52 0 l14 60 h-80 z" fill="'+c+'"/><path d="M62 62 l8 12 l8 -12" fill="#ffd158"/>';
+  if(id==='amen'){ b=feet('#3a1a5e')+robe('#6a3ab0')+eye(58,70)+eye(82,70)+sing(70,90)+'<path d="M36 96 l-12 -24 M104 96 l12 -24" stroke="#6a3ab0" stroke-width="10" stroke-linecap="round"/>'; }
+  else if(id==='hallel'){ b=feet('#5e3a1a')+robe('#b06a3a')+eye(58,70)+eye(82,70)+'<path d="M60 88 q10 8 20 0" stroke="'+O+'" stroke-width="4" fill="none" stroke-linecap="round"/>'+'<circle cx="110" cy="100" r="14" fill="#f4f0ff" stroke="#ffd158" stroke-width="3"/><circle cx="110" cy="100" r="6" fill="#ffd158"/>'; }
+  else if(id==='organ'){ b=feet('#1a3a5e')+robe('#3a6ab0')+eye(58,70)+eye(82,70)+'<path d="M60 88 h20" stroke="'+O+'" stroke-width="4" stroke-linecap="round"/>'+'<rect x="30" y="100" width="80" height="18" rx="4" fill="#f4f0ff"/>'+[0,1,2,3,4,5,6].map(function(i){return '<rect x="'+(34+i*11)+'" y="100" width="6" height="11" fill="'+O+'"/>';}).join('')+'<path d="M40 100 v-24 M56 100 v-32 M72 100 v-36 M88 100 v-32 M104 100 v-24" stroke="#c9b06a" stroke-width="4"/>'; }
+  else { b=feet('#5e1a3a')+robe('#c0392b')+eye(58,70)+eye(82,70)+sing(70,90)+'<path d="M36 90 l-14 -30 M104 90 l14 -30" stroke="#c0392b" stroke-width="10" stroke-linecap="round"/><circle cx="22" cy="56" r="7" fill="#ffd158"/><circle cx="118" cy="56" r="7" fill="#ffd158"/>'+'<path d="M52 40 q18 -14 36 0" fill="none" stroke="#ffd158" stroke-width="4" stroke-linecap="round"/>'; }
+  return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 140 140"><g class="charg">'+b+'</g></svg>';
+}
+addRecruit({id:'grace',name:'Grace',emoji:'🎶',title:'Choir Leader',concept:'stats',conceptName:'Mean & Median',color:'#c0392b',rig:'choir',draw:choirCharSVG,crewId:'lead',
+  bio:'I lead the choir. Nobody sings alone and nobody sings too long. I add every voice up and share it out even, and I always know which voice is in the middle.',
+  lines:['Add them all. Share them out. That is the mean.','Sort first. THEN find the middle.','The Choir sang beautifully. It just never let anybody stand out.'],
+  dreams:['Amen wanted every voice identical. You let the choir have a middle AND an average. That is why I stepped down from the riser.','A choir is a set of numbers that breathes together.','My dream is a hundred voices with a mean of one long note.','The loudest voice is not the middle voice. Sort before you decide.','This band balances every voice. I am staying.'],
+  key:'choir',bandName:'The Choir',crew:{name:'The Choir',members:[
+    {id:'amen',emoji:'🙌',name:'Amen',line:'Lift every voice!'},{id:'hallel',emoji:'🥁',name:'Hallel',line:'Clap on TWO and FOUR!'},{id:'organ',emoji:'🎹',name:'Reverend Keys',line:'Let the organ speak.'},{id:'lead',emoji:'🎶',name:'Grace',star:true,line:'Add them up, share them out. What is the mean?'}]},
+  loseEmoji:'🙌',loseTitle:'The Choir raises the roof',winLine:'You held the room AND balanced every voice she called. Grace stepped down from the riser, arms wide, and joined your line.',
+  starHint:'Win the choir rounds to fill the recruit spark and get her to step down from the riser.',btnStyle:'linear-gradient(90deg,#6a3ab0,#c0392b)',
+  gigLine:'Grace lifts both arms. "Every voice. One blend. Frontman, that was the mean of all of us."',meetLine:'And Grace, who leads the choir, stepped down from The Choir\u2019s riser. Add them up, share them out: mean and median you can hear.'});
 
 </script>
 
