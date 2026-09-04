@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Measure Up">
-<title>Measure Up v0.76</title>
+<title>Measure Up v0.77</title>
 <style>
 :root{
   --bg:#0e0b1e; --panel:#1d1636; --panel2:#28204a; --ink:#f4f0ff; --dim:#a89cd8;
@@ -927,14 +927,14 @@ svg .charg{will-change:transform}
 <div id="toast"></div>
 <button id="homeBtn" onclick="goHome()" aria-label="Back to Garage">🏠</button>
 <button id="ellyBtn" onclick="openEllyHelp()" aria-label="Ask Elly for help"></button>
-<div id="vbadge">v0.76 · Sep 3</div>
+<div id="vbadge">v0.77 · Sep 3</div>
 
 <script>
 'use strict';
 /* ============ UTILS ============ */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const VERSION='v0.76 · Sep 3';
+const VERSION='v0.77 · Sep 3';
 const RM=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -949,7 +949,7 @@ const DEF={
   v:1, creature:null, notes:0, gold:0,
   skills:{add:1,sub:1,mul:1,frac:1,clock:1,cal:1,meas:1,div:1,neg:1,skip:1,money:1,round:1,patterns:1,compare:1,double:1,odd:1},
   auditioned:{}, band:{}, owned:[], proofs:{}, met:{}, plays:{}, memberNames:{}, memberGear:{}, cleared:{},
-  equipped:{drumskin:'classic'},
+  equipped:{drumskin:'classic',voice:{}},
   flags:{soundcheckOffered:false,introDone:false,coach_kc:false,coach_arc:false,coach_rs:false,coach_gg:false,coach_tt:false,coach_st:false,coach_hp:false,coach_gig:false,lesson_round:false},
   stats:{answers:0,correct:0,bestStreak:0,rounds:0,shows:0,battleWins:0},
   ach:{claimed:{}},
@@ -963,7 +963,7 @@ function load(){
     S.skills=Object.assign({},DEF.skills,S.skills||{});
     S.flags=Object.assign({},DEF.flags,S.flags||{});
     S.stats=Object.assign({},DEF.stats,S.stats||{});
-    S.equipped=Object.assign({},DEF.equipped,S.equipped||{});
+    S.equipped=Object.assign({},DEF.equipped,S.equipped||{}); if(!S.equipped.voice)S.equipped.voice={};
     S.proofs=Object.assign({},S.proofs||{});
     S.met=Object.assign({},S.met||{});
     S.plays=Object.assign({},S.plays||{});
@@ -1024,7 +1024,7 @@ const DRUMS={
   hat(t){ noiseHit(t,.045,'highpass',7500,.28); },
   clap(t){ for(let i=0;i<3;i++)noiseHit(t+i*.012,.05,'bandpass',1300,.3); noiseHit(t+.03,.14,'bandpass',1100,.22); }
 };
-function drum(name,when){ const a=ac(); if(!a)return; const t=a.currentTime+(when||0); (DRUMS[name]||DRUMS.kick)(t); }
+function drum(name,when){ const a=ac(); if(!a)return; const t=a.currentTime+(when||0); if(typeof drumKit==='function'){ drumKit((S.equipped.voice&&S.equipped.voice.boom)||'default')(name,t); } else (DRUMS[name]||DRUMS.kick)(t); }
 function tone(freq,dur,type,vol,when){
   const a=ac(); if(!a)return; const t=a.currentTime+(when||0);
   const o=a.createOscillator(); o.type=type||'triangle'; o.frequency.value=freq;
@@ -2312,6 +2312,7 @@ function talkTo(id){
   }});
   btns+='<button class="btn wide ghost" onclick="openMusicCard(\''+id+'\')">'+(PRACTICAL[id]?'🛠️ On the Road':'🎵 How this is music')+'</button>';
   btns+='<button class="btn wide ghost" onclick="openPlay(\''+id+'\')">🎵 Play my '+RIG_NAMES[id]+'</button>';
+  if(typeof memberHasVoices==='function'&&memberHasVoices(id)&&ownedVoicesFor(id).length) btns+='<button class="btn wide ghost" onclick="openVoicePick(\''+id+'\')">🎚️ '+(VOICE_LABELS[id]||'Sound')+': '+voiceName(id)+'</button>';
   btns+='<button class="btn wide '+((id==='boom'||id==='slice')?'ghost':'')+'" onclick="startAudition(\''+id+'\')">'+(S.auditioned[id]?'🎤 Play for me again! (re-place level)':'🎤 Placement audition')+'</button>';
   { const cc=m.concept, p=proofCount(cc);
     if(p<3){
@@ -3116,6 +3117,7 @@ function shopPreview(it){
   if(it.type==='song')return '<div style="font-size:30px">🎼</div>';
   if(it.type==='showfx')return '<div style="font-size:30px">'+(it.val==='lights'?'💡':'🎊')+'</div>';
   if(it.type==='voicepack')return '<div style="font-size:30px">🎚️</div>';
+  if(it.type==='voice')return '<div style="font-size:30px">🎚️</div>';
   return '<div style="font-size:30px">🥁⚡</div>';
 }
 function shopCard(it,opts){
@@ -3130,7 +3132,7 @@ function shopCard(it,opts){
     (locked?'<div class="tt" style="color:#ffd158;font-size:12px;font-weight:800">🔒 Earn '+it.achName+' on Manny\u2019s Wall</div>':'');
   const b=document.createElement('button');
   b.className='btn small wide'+(owned?' ghost':'');
-  b.textContent=locked?'🔒 Locked':owned?(it.type==='drumskin'?(S.equipped.drumskin===it.val?'Equipped ✔':'Equip'):'Owned ✔'):('Buy '+cost);
+  b.textContent=locked?'🔒 Locked':owned?(it.type==='voice'?(equippedVoice(it.who)===it.val?'On ✔':'Try it'):it.type==='drumskin'?(S.equipped.drumskin===it.val?'Equipped ✔':'Equip'):'Owned ✔'):('Buy '+cost);
   b.disabled=locked||(!owned&&!can);
   b.addEventListener('click',e=>{
     if(locked)return;
@@ -3138,6 +3140,7 @@ function shopCard(it,opts){
       if(it.type==='drumskin'){S.equipped.drumskin=(S.equipped.drumskin===it.val?'classic':it.val);save();drum('kick');openShop();}
       else if(it.type==='flair')toast('Pin it on a bandmate: tap them, then 🎽');
       else if(it.type==='stagebg')toast('Pick it in the Band Room!');
+      else if(it.type==='voice'){ openVoicePick(it.who); return; }
       else if(it.type==='perk')toast('Perk is ON. It works by itself.');
       else toast('Equip it in the 🎨 editor!');
       return;
@@ -3147,6 +3150,7 @@ function shopCard(it,opts){
     sFanfare(); confetti(20); punch(d);
     toast('Got it! '+it.name+' 🎉');
     if(it.type==='drumskin'){S.equipped.drumskin=it.val;save();later(()=>drum('kick'),300);}
+    if(it.type==='voice'){ if(!S.equipped.voice)S.equipped.voice={}; S.equipped.voice[it.who]=it.val; save(); later(()=>openVoicePick(it.who),200); }
     openShop();
   });
   d.appendChild(b);
@@ -5579,7 +5583,7 @@ function xyloHTML(n){
     h+='<button class="mjbar" data-b="'+i+'" style="height:'+len+'px;background:'+XYLO_COLORS[(i-1)%8]+'">'+i+'</button>'; }
   return h+'</div>';
 }
-function xyloRing(i){ V.bell(XYLO_MIDI[(i-1)%XYLO_MIDI.length]); }
+function xyloRing(i){ if(typeof mNote==='function')mNote('plink',XYLO_MIDI[(i-1)%XYLO_MIDI.length]); else V.bell(XYLO_MIDI[(i-1)%XYLO_MIDI.length]); }
 
 /* ---------- PLINK 1: HOP THE BARS (skip count forward) ---------- */
 MJGAMES.hopbars={id:'hopbars',name:'Hop the Bars',emoji:'🐸',member:'plink',concept:'skip',
@@ -5891,12 +5895,12 @@ function showPlay(id){
   SHOW.evtCount=evts.length;
   evts.forEach(ev=>{ const st=ev[0],kind=ev[1],e=ev[2],who=ev[3];
     showLater(()=>{ if(!SHOW.on)return;
-      if(kind==='kick')V.kick(); else if(kind==='snare')V.snare(); else if(kind==='hatc')V.hat(false);
+      if(kind==='kick')mDrum('boom','kick'); else if(kind==='snare')mDrum('boom','snare'); else if(kind==='hatc')mDrum('boom','hat');
       else if(kind==='hato')V.hat(true); else if(kind==='clap')V.clap(); else if(kind==='scratch')V.scratch();
-      else if(kind==='bass')V.bass(e[1]); else if(kind==='b808')V.b808(e[1]);
-      else if(kind==='strum')e[1].forEach((m,i)=>V.pluck(m,i*.03));
-      else if(kind==='lead')V.lead(e[1],e[2]||.22); else if(kind==='horn')V.horn(e[1],e[2]||.35);
-      else if(kind==='bell')V.bell(e[1]);
+      else if(kind==='bass')mNote('rumble',e[1]); else if(kind==='b808')V.b808(e[1]);
+      else if(kind==='strum')e[1].forEach((m,i)=>mNote('slice',m,.4,i*.03));
+      else if(kind==='lead')mNote('combo',e[1],e[2]||.22); else if(kind==='horn')mNote('doot',e[1],e[2]||.35);
+      else if(kind==='bell')mNote('plink',e[1]);
       else if(kind==='perc'){ if(e[1]==='block')tone(1250,.06,'sine',.3); else if(e[1]==='bell')V.bell(88); else {V.hat(true);V.bell(84);} }
       else if(kind==='fx'){ if(e[1]==='riser')V.sweep(true); else V.scratch(); }
       else if(kind==='coin'){ V.bell(72); tone(1200,.05,'square',.15); }
@@ -5918,9 +5922,9 @@ const PLAY_RIGS={
   boom:{hint:'Tap the kit. You are the beat.',pads:[
     {label:'🦶<br>KICK',fn:()=>V.kick()},{label:'🥁<br>SNARE',fn:()=>V.snare()},{label:'🎩<br>HAT',fn:()=>V.hat(false)},
     {label:'🎩<br>OPEN',fn:()=>V.hat(true)},{label:'👏<br>CLAP',fn:()=>V.clap()},{label:'💥<br>808',fn:()=>V.b808(36)}]},
-  rumble:{hint:'Low notes. Feel them in your feet.',pads:[33,36,38,40,43,45,48,50].map(m=>({label:'〰️<br>'+m,fn:()=>V.bass(m)}))},
-  combo:{hint:'One octave. Every song hides in here.',pads:[['C',60],['D',62],['E',64],['F',65],['G',67],['A',69],['B',71],['C',72]].map(p=>({label:'🎹<br>'+p[0],fn:()=>V.pluck(p[1])}))},
-  slice:{hint:'Tap a chord to STRUM it!',pads:[['C',[48,55,60,64]],['G',[43,50,59,67]],['Am',[45,52,60,64]],['F',[41,48,57,65]]].map(c=>({label:'🎸<br>'+c[0],fn:()=>c[1].forEach((m,i)=>V.pluck(m,i*.035))}))},
+  rumble:{hint:'Low notes. Feel them in your feet.',pads:[33,36,38,40,43,45,48,50].map(m=>({label:'〰️<br>'+m,fn:()=>mNote('rumble',m)}))},
+  combo:{hint:'One octave. Every song hides in here.',pads:[['C',60],['D',62],['E',64],['F',65],['G',67],['A',69],['B',71],['C',72]].map(p=>({label:'🎹<br>'+p[0],fn:()=>mNote('combo',p[1],.3)}))},
+  slice:{hint:'Tap a chord to STRUM it!',pads:[['C',[48,55,60,64]],['G',[43,50,59,67]],['Am',[45,52,60,64]],['F',[41,48,57,65]]].map(c=>({label:'🎸<br>'+c[0],fn:()=>c[1].forEach((m,i)=>mNote('slice',m,.4,i*.035))}))},
   tock:{hint:'Run the decks. Drop it!',pads:[
     {label:'🌀<br>SCRATCH',fn:()=>V.scratch()},{label:'⬆️<br>RISER',fn:()=>V.sweep(true)},
     {label:'⬇️<br>DROP',fn:()=>{V.kick();V.b808(31);}},{label:'📢<br>HORN',fn:()=>{V.lead(76,.4);V.lead(74,.4);}}]},
@@ -5930,7 +5934,7 @@ const PLAY_RIGS={
   luna:{hint:'Keep the whole room on time.',pads:[
     {label:'🪘<br>TAMB',fn:()=>{V.hat(true);V.bell(84);}},{label:'👏<br>CLAP',fn:()=>V.clap()},
     {label:'🎶<br>WHISTLE',fn:()=>{V.lead(88,.2);later(()=>V.lead(91,.2),120);}},{label:'🥁<br>SNAP',fn:()=>V.snare()}]},
-  doot:{hint:'One breath. Split it into notes.',pads:[['C',60],['E',64],['G',67],['A',69],['C',72],['D',74]].map(p=>({label:'🎺<br>'+p[0],fn:()=>V.horn(p[1],.45)}))},
+  doot:{hint:'One breath. Split it into notes.',pads:[['C',60],['E',64],['G',67],['A',69],['C',72],['D',74]].map(p=>({label:'🎺<br>'+p[0],fn:()=>mNote('doot',p[1],.45)}))},
   gain:{hint:'Slide the fader. Hear the number line.',custom(el){
     el.innerHTML='<div class="center"><span id="rigFad">'+faderHTML(0,-9,9)+'</span></div>'+
       '<div class="mjbig" style="font-size:30px" id="rigFv">0</div>'+
@@ -8602,6 +8606,127 @@ TH_EAR.push(
 );
 ELLY_HINTS['scr-theory']='This is my Music Class! Eight chapters now: staff, clefs, the beat, the &, time signatures, rests, long notes, and note names. Nothing is locked, replay anything.';
 ACH.forEach(function(a){ if(a.id==='theory'){ a.tiers=[{need:3,n:15,g:0},{need:8,n:25,g:1},{need:15,n:50,g:2}]; a.desc='Music Class games with 2+ stars (of 15)'; } });
+
+</script>
+<script>
+/* ============ v0.77: INSTRUMENT CASES — per-member swappable sound ============ */
+/* One consistent system: S.equipped.voice[member] picks a variant. Default is always free.
+   Boom's old global drumskin folds in here (migrated below). Every member's rig, games,
+   and Band Room part read their equipped voice through VBANK. */
+if(!S.equipped.voice)S.equipped.voice={};
+/* migrate the retired global laser drumskin into Boom's per-member kit */
+(function(){ if(S.equipped.drumskin==='laser'&&!S.equipped.voice.boom){ S.equipped.voice.boom='laser'; } if(S.owned.includes('skin_laser')&&!S.owned.includes('kit_laser'))S.owned.push('kit_laser'); })();
+
+/* --- drum variants: each returns a function(name,t) that plays kick/snare/hat/clap in a style --- */
+function drumKit(style){
+  return function(name,t){ var a=ac(); if(!a)return; t=t==null?a.currentTime:t;
+    if(name==='kick'){
+      if(style==='laser'){ oscHit(t,.22,'square',420,55,.5); noiseHit(t,.03,'highpass',3000,.15); }
+      else if(style==='chip'){ oscHit(t,.14,'square',300,90,.5); }
+      else if(style==='vinyl'){ oscHit(t,.26,'sine',120,40,.9); noiseHit(t,.05,'lowpass',400,.25); }
+      else if(style==='hand'){ oscHit(t,.3,'sine',180,90,.7); }
+      else { oscHit(t,.24,'sine',160,42,.85); noiseHit(t,.02,'highpass',2500,.2); }
+    } else if(name==='snare'){
+      if(style==='laser'){ oscHit(t,.12,'square',900,300,.3); noiseHit(t,.14,'highpass',2600,.4); }
+      else if(style==='chip'){ noiseHit(t,.09,'highpass',2000,.4); oscHit(t,.06,'square',400,300,.2); }
+      else if(style==='vinyl'){ noiseHit(t,.13,'bandpass',1400,.35); oscHit(t,.08,'triangle',180,120,.25); }
+      else if(style==='hand'){ oscHit(t,.14,'triangle',330,150,.4); noiseHit(t,.05,'bandpass',2200,.15); }
+      else { oscHit(t,.1,'triangle',210,140,.3); noiseHit(t,.16,'highpass',1700,.4); }
+    } else if(name==='hat'){
+      if(style==='chip')noiseHit(t,.03,'highpass',9000,.22);
+      else if(style==='vinyl')noiseHit(t,.05,'bandpass',6000,.2);
+      else if(style==='hand')noiseHit(t,.035,'highpass',5500,.18);
+      else if(style==='laser')noiseHit(t,.04,'highpass',8500,.24);
+      else noiseHit(t,.045,'highpass',7500,.28);
+    } else if(name==='clap'){ for(var i=0;i<3;i++)noiseHit(t+i*.012,.05,'bandpass',style==='hand'?900:1300,.3); noiseHit(t+.03,.14,'bandpass',1100,.22); }
+  };
+}
+/* --- melodic variants: reshape a single note V-call by member's instrument family --- */
+function voiceNote(fam,style){
+  /* fam = base instrument; returns fn(midi,dur,when) */
+  return function(m,dur,when){ var a=ac(); if(!a)return; var t=a.currentTime+(when||0), f=ntf(m);
+    var mk=function(type,vol,d,filt){ var o=a.createOscillator(); o.type=type; o.frequency.value=f;
+      var g=a.createGain(); g.gain.setValueAtTime(.0001,t); g.gain.linearRampToValueAtTime(vol,t+.01); g.gain.exponentialRampToValueAtTime(.001,t+d);
+      var last=o; if(filt){ filt.frequency.value=filt._f||1200; o.connect(filt); last=filt; } o.connect(filt||g); (filt?filt:o).connect(g); g.connect(MASTER); o.start(t); o.stop(t+d+.05); return o; };
+    if(fam==='bass'){
+      if(style==='upright'){ var o=a.createOscillator(),lp=a.createBiquadFilter(),g=a.createGain(); o.type='triangle'; o.frequency.value=f; lp.type='lowpass'; lp.frequency.value=500; g.gain.setValueAtTime(.5,t); g.gain.exponentialRampToValueAtTime(.001,t+.28); o.connect(lp); lp.connect(g); g.connect(MASTER); o.start(t); o.stop(t+.3); }
+      else if(style==='synthb'){ var o2=a.createOscillator(),g2=a.createGain(); o2.type='square'; o2.frequency.value=f; g2.gain.setValueAtTime(.0001,t); g2.gain.linearRampToValueAtTime(.4,t+.01); g2.gain.exponentialRampToValueAtTime(.001,t+.34); o2.connect(g2); g2.connect(MASTER); o2.start(t); o2.stop(t+.36); }
+      else if(style==='fuzzb'){ var o3=a.createOscillator(),ws=a.createWaveShaper(),g3=a.createGain(); var c=new Float32Array(256); for(var i=0;i<256;i++){var x=i/128-1;c[i]=Math.tanh(x*4);} ws.curve=c; o3.type='sawtooth'; o3.frequency.value=f; g3.gain.setValueAtTime(.0001,t); g3.gain.linearRampToValueAtTime(.32,t+.01); g3.gain.exponentialRampToValueAtTime(.001,t+.32); o3.connect(ws); ws.connect(g3); g3.connect(MASTER); o3.start(t); o3.stop(t+.34); }
+      else V.bass(m);
+    } else if(fam==='keys'){
+      if(style==='crystal'){ V.bell(m); }
+      else if(style==='organ'){ [1,2,3].forEach(function(h,i){ var o=a.createOscillator(),g=a.createGain(); o.type='sine'; o.frequency.value=f*h; g.gain.setValueAtTime(.0001,t); g.gain.linearRampToValueAtTime(.16/(i+1),t+.02); g.gain.exponentialRampToValueAtTime(.001,t+(dur||.3)); o.connect(g); g.connect(MASTER); o.start(t); o.stop(t+(dur||.3)+.05); }); }
+      else if(style==='musicbox'){ var o=a.createOscillator(),g=a.createGain(); o.type='sine'; o.frequency.value=f*2; g.gain.setValueAtTime(.3,t); g.gain.exponentialRampToValueAtTime(.001,t+.5); o.connect(g); g.connect(MASTER); o.start(t); o.stop(t+.52); var o2b=a.createOscillator(),g2b=a.createGain(); o2b.type='sine'; o2b.frequency.value=f*3.01; g2b.gain.setValueAtTime(.08,t); g2b.gain.exponentialRampToValueAtTime(.001,t+.25); o2b.connect(g2b); g2b.connect(MASTER); o2b.start(t); o2b.stop(t+.27); }
+      else V.pluck(m,when);
+    } else if(fam==='guitar'){
+      if(style==='clean'){ var o=a.createOscillator(),lp=a.createBiquadFilter(),g=a.createGain(); o.type='triangle'; o.frequency.value=f; lp.type='lowpass'; lp.frequency.value=2600; g.gain.setValueAtTime(.3,t); g.gain.exponentialRampToValueAtTime(.001,t+.4); o.connect(lp); lp.connect(g); g.connect(MASTER); o.start(t); o.stop(t+.42); }
+      else if(style==='twang'){ var o5=a.createOscillator(),lp5=a.createBiquadFilter(),g5=a.createGain(); o5.type='sawtooth'; o5.frequency.value=f; lp5.type='lowpass'; lp5.frequency.setValueAtTime(4200,t); lp5.frequency.exponentialRampToValueAtTime(900,t+.2); g5.gain.setValueAtTime(.26,t); g5.gain.exponentialRampToValueAtTime(.001,t+.3); o5.connect(lp5); lp5.connect(g5); g5.connect(MASTER); o5.start(t); o5.stop(t+.32); }
+      else if(style==='dist'){ var o6=a.createOscillator(),ws6=a.createWaveShaper(),g6=a.createGain(); var c6=new Float32Array(256); for(var j=0;j<256;j++){var y=j/128-1;c6[j]=Math.tanh(y*6);} ws6.curve=c6; o6.type='sawtooth'; o6.frequency.value=f; g6.gain.setValueAtTime(.0001,t); g6.gain.linearRampToValueAtTime(.22,t+.01); g6.gain.exponentialRampToValueAtTime(.001,t+.45); o6.connect(ws6); ws6.connect(g6); g6.connect(MASTER); o6.start(t); o6.stop(t+.47); }
+      else V.pluck(m,when);
+    } else if(fam==='horn'){
+      if(style==='muted'){ var o=a.createOscillator(),lp=a.createBiquadFilter(),g=a.createGain(); o.type='sawtooth'; o.frequency.value=f; lp.type='lowpass'; lp.frequency.value=1100; g.gain.setValueAtTime(.0001,t); g.gain.linearRampToValueAtTime(.2,t+.04); g.gain.exponentialRampToValueAtTime(.001,t+(dur||.4)); o.connect(lp); lp.connect(g); g.connect(MASTER); o.start(t); o.stop(t+(dur||.4)+.05); }
+      else if(style==='tuba'){ V.horn(m-12,dur); }
+      else V.horn(m,dur);
+    } else if(fam==='bell'){
+      if(style==='glockb'){ var o=a.createOscillator(),g=a.createGain(); o.type='sine'; o.frequency.value=f*2; g.gain.setValueAtTime(.3,t); g.gain.exponentialRampToValueAtTime(.001,t+.4); o.connect(g); g.connect(MASTER); o.start(t); o.stop(t+.42); }
+      else if(style==='marimba'){ var o8=a.createOscillator(),g8=a.createGain(); o8.type='sine'; o8.frequency.value=f; g8.gain.setValueAtTime(.35,t); g8.gain.exponentialRampToValueAtTime(.001,t+.22); o8.connect(g8); g8.connect(MASTER); o8.start(t); o8.stop(t+.24); }
+      else V.bell(m);
+    } else V.pluck(m,when);
+  };
+}
+/* the family each core member's instrument belongs to */
+var MEMBER_FAM={rumble:'bass',combo:'keys',slice:'guitar',doot:'horn',plink:'bell',roscoe:'keys'};
+/* per-member voice call: mVoice(who).note(midi,dur,when) OR .drum(name,t) */
+function equippedVoice(who){ return (S.equipped.voice&&S.equipped.voice[who])||'default'; }
+function mDrum(who,name,t){ (who==='boom'||who==null)?drumKit(equippedVoice('boom'))(name,t):drumKit('default')(name,t); }
+function mNote(who,m,dur,when){ var fam=MEMBER_FAM[who]; if(!fam){ V.pluck(m,when); return; } voiceNote(fam,equippedVoice(who))(m,dur,when); }
+
+/* --- shop items: one Instrument Case per core member (default is free, always owned) --- */
+var VOICE_ITEMS=[
+ {id:'kit_laser',  who:'boom',  style:'laser',   name:'Laser Kit',      notes:50,  desc:'Boom\u2019s drums go zappy and electric.'},
+ {id:'kit_chip',   who:'boom',  style:'chip',    name:'8-Bit Kit',      notes:60,  desc:'Boom\u2019s drums, straight out of a video game.'},
+ {id:'kit_vinyl',  who:'boom',  style:'vinyl',   name:'Boom-Bap Kit',   notes:60,  desc:'Warm, dusty old-record drums.'},
+ {id:'kit_hand',   who:'boom',  style:'hand',    name:'Hand-Drum Kit',  notes:60,  desc:'Congas and bongos. All hands.'},
+ {id:'v_upright',  who:'rumble',style:'upright', name:'Upright Bass',    notes:60,  desc:'Rumble goes deep and woody.'},
+ {id:'v_synthb',   who:'rumble',style:'synthb',  name:'Synth Bass',      notes:60,  desc:'Rumble buzzes like a spaceship.'},
+ {id:'v_fuzzb',    who:'rumble',style:'fuzzb',   name:'Fuzz Bass',       notes:60,  desc:'Rumble gets crunchy and growly.'},
+ {id:'v_crystal',  who:'combo', style:'crystal', name:'Crystal Keys',    notes:60,  desc:'Combo\u2019s keys sparkle like bells.'},
+ {id:'v_organ',    who:'combo', style:'organ',   name:'Organ',          notes:60,  desc:'Combo fills the room like a church organ.'},
+ {id:'v_musicbox', who:'combo', style:'musicbox',name:'Music Box',       notes:60,  desc:'Combo goes tiny and twinkly.'},
+ {id:'v_clean',    who:'slice', style:'clean',   name:'Clean Guitar',    notes:60,  desc:'Slice plays smooth and mellow.'},
+ {id:'v_twang',    who:'slice', style:'twang',   name:'Twangy Guitar',   notes:60,  desc:'Slice gets a country twang.'},
+ {id:'v_dist',     who:'slice', style:'dist',    name:'Distortion',      notes:60,  desc:'Slice cranks it up loud and fuzzy.'},
+ {id:'v_muted',    who:'doot',  style:'muted',   name:'Muted Horn',      notes:60,  desc:'Doot plays soft and jazzy.'},
+ {id:'v_tuba',     who:'doot',  style:'tuba',    name:'Tuba',           notes:60,  desc:'Doot drops way down low. Oompah!'},
+ {id:'v_glockb',   who:'plink', style:'glockb',  name:'Glockenspiel',    notes:60,  desc:'Plink rings bright and shiny.'},
+ {id:'v_marimba',  who:'plink', style:'marimba', name:'Marimba',        notes:60,  desc:'Plink goes warm and wooden.'}
+];
+VOICE_ITEMS.forEach(function(it){ SHOP.push({id:it.id,type:'voice',who:it.who,val:it.style,name:it.name,rarity:'rare',notes:it.notes,gold:0,desc:it.desc}); });
+/* retire the old standalone drumskin card so there's ONE system */
+(function(){ var i=SHOP.findIndex(function(x){return x.id==='skin_laser';}); if(i>=0)SHOP.splice(i,1); })();
+
+var VOICE_LABELS={boom:'Kit',rumble:'Bass',combo:'Keys',slice:'Guitar',doot:'Horn',plink:'Mallets'};
+function memberHasVoices(who){ return SHOP.some(function(it){return it.type==='voice'&&it.who===who;}); }
+function ownedVoicesFor(who){ return SHOP.filter(function(it){return it.type==='voice'&&it.who===who&&S.owned.includes(it.id);}); }
+function voiceName(who){ var v=equippedVoice(who); if(v==='default')return 'Classic '+RIG_NAMES[who]; var it=SHOP.filter(function(x){return x.type==='voice'&&x.who===who&&x.val===v;})[0]; return it?it.name:'Classic'; }
+function previewVoice(who){ var m={boom:function(){mDrum('boom','kick');later(function(){mDrum('boom','snare');},200);later(function(){mDrum('boom','hat');},380);},
+  rumble:function(){mNote('rumble',36);later(function(){mNote('rumble',31);},260);},
+  combo:function(){[60,64,67].forEach(function(n,i){later(function(){mNote('combo',n,.3);},i*140);});},
+  slice:function(){[48,55,60,64].forEach(function(n,i){mNote('slice',n,.4,i*.04);});},
+  doot:function(){mNote('doot',67,.4);later(function(){mNote('doot',72,.5);},350);},
+  plink:function(){[72,76,79,84].forEach(function(n,i){later(function(){mNote('plink',n,.3);},i*130);});}}[who]; if(m)m(); }
+function openVoicePick(who){
+  sTap(); var owned=ownedVoicesFor(who), cur=equippedVoice(who);
+  var opts=[{val:'default',name:'Classic '+RIG_NAMES[who],owned:true}].concat(owned.map(function(it){return {val:it.val,name:it.name,owned:true};}));
+  var body='<div class="center">'+memberSVG(who,80)+'<h2>\uD83C\uDF9A\uFE0F '+mName(who)+'\u2019s '+(VOICE_LABELS[who]||'Sound')+'</h2><div class="sub">Tap a sound to hear it. It changes '+mName(who)+' everywhere: play, games, and the Band Room.</div></div>';
+  body+=opts.map(function(o){ var on=(o.val===cur);
+    return '<button class="btn wide'+(on?'':' ghost')+'" onclick="pickVoice(\''+who+'\',\''+o.val+'\')">'+(on?'\u2714 ':'')+o.name+'</button>'; }).join('');
+  var missing=SHOP.filter(function(it){return it.type==='voice'&&it.who===who&&!S.owned.includes(it.id);});
+  if(missing.length)body+='<div class="sub" style="margin-top:8px">More in the \uD83D\uDECD\uFE0F Shop: '+missing.map(function(it){return it.name;}).join(', ')+'</div>';
+  modal(body+'<button class="btn wide ghost" onclick="closeModal()">Done</button>');
+}
+function pickVoice(who,val){ sTap(); if(!S.equipped.voice)S.equipped.voice={}; if(val==='default')delete S.equipped.voice[who]; else S.equipped.voice[who]=val; save(); previewVoice(who); openVoicePick(who); }
+window.BQ&&Object.assign(window.BQ,{openVoicePick:openVoicePick,pickVoice:pickVoice,mNote:mNote,mDrum:mDrum,equippedVoice:equippedVoice});
 
 </script>
 
