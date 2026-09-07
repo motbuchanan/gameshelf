@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Measure Up">
-<title>Measure Up v0.77</title>
+<title>Measure Up v0.79</title>
 <style>
 :root{
   --bg:#0e0b1e; --panel:#1d1636; --panel2:#28204a; --ink:#f4f0ff; --dim:#a89cd8;
@@ -927,14 +927,14 @@ svg .charg{will-change:transform}
 <div id="toast"></div>
 <button id="homeBtn" onclick="goHome()" aria-label="Back to Garage">🏠</button>
 <button id="ellyBtn" onclick="openEllyHelp()" aria-label="Ask Elly for help"></button>
-<div id="vbadge">v0.77 · Sep 3</div>
+<div id="vbadge">v0.79 · Sep 3</div>
 
 <script>
 'use strict';
 /* ============ UTILS ============ */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const VERSION='v0.77 · Sep 3';
+const VERSION='v0.79 · Sep 3';
 const RM=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -1865,7 +1865,8 @@ function battleGoals(){
     {icon:'\uD83C\uDFB8',name:'Full Band',desc:'Recruit every bandmate',cur:joined,max:coreN.length},
     {icon:'\uD83E\uDD47',name:'Go for Gold',desc:'Earn 3 gold medals',cur:golds,max:3},
     {icon:'\uD83C\uDFAF',name:'Game Master',desc:'Star every game for 4 bandmates',cur:masters,max:4},
-    {icon:'\uD83C\uDFA4',name:'Road Warrior',desc:'Play 3 shows',cur:shows,max:3}
+    {icon:'\uD83C\uDFA4',name:'Road Warrior',desc:'Play 3 shows',cur:shows,max:3},
+    {icon:'\uD83C\uDF0C',name:'Cosmic Orchestra',desc:'Recruit rival bandmates toward the finale',cur:BAND.filter(function(m){return m.recruit&&S.band[m.id];}).length,max:RIVALS.length}
   ];
 }
 function battleDone(){ return battleGoals().filter(function(g){return g.cur>=g.max;}).length; }
@@ -1876,6 +1877,14 @@ var BATTLE_HINTS=[
  'Word is the first challengers are already tuning up. Get your band tight and they cannot ignore you.',
  '\uD83C\uDF1F You are ready! The first rival band is stepping up to the stage. Time to show them what the Garage can do!'
 ];
+/* Cosmic Orchestra myth — revealed by how many recruits you have collected. The Conductor is coming. */
+var COSMIC_HINTS=[
+ {need:3,line:'\uD83C\uDF0C A rumor drifts through the Garage: somewhere past the last rival waits the COSMIC ORCHESTRA \u2014 every kind of music, all at once.'},
+ {need:6,line:'\uD83C\uDF0C They say the Cosmic Orchestra has no leader yet. It is waiting for a CONDUCTOR \u2014 the one who writes the pieces and points the baton.'},
+ {need:9,line:'\uD83C\uDF0C The more players you gather, the louder the rumor grows. The Conductor is listening for a band big enough to play the whole galaxy at once.'},
+ {need:12,line:'\uD83C\uDF0C You are close. Keep collecting. When your band is complete, the Conductor will raise the baton and the Cosmic Orchestra will finally play.'}
+];
+function cosmicRevealed(){ var n=BAND.filter(function(m){return m.recruit&&S.band[m.id];}).length; return COSMIC_HINTS.filter(function(h){return n>=h.need;}); }
 function openBattle(){
   sTap();
   var goals=battleGoals(), done=goals.filter(function(g){return g.cur>=g.max;}).length;
@@ -1883,6 +1892,7 @@ function openBattle(){
   var rc=1; if(joined>=1)rc=2; if(joined>=3)rc=3; if(joined>=6)rc=4; if(done>=goals.length)rc=5;
   var reveal=BATTLE_HINTS.slice(0,rc);
   var hh=reveal.map(function(t,i){return '<p'+((i===reveal.length-1&&rc>1)?' class="newhint"':'')+'>'+t+'</p>';}).join('');
+  var cosmic=cosmicRevealed(); if(cosmic.length){ hh+='<p class="newhint" style="color:#c9b8ff">'+cosmic[cosmic.length-1].line+'</p>'; }
   var gg=goals.map(function(g){
     var c=Math.min(g.cur,g.max), ok=c>=g.max, pct=Math.round(c/g.max*100);
     return '<div class="bgoal'+(ok?' done':'')+'"><div class="bgtop"><span>'+(ok?'\u2705':g.icon)+' '+g.name+'</span><span class="bgnum">'+c+'/'+g.max+'</span></div>'+
@@ -1912,7 +1922,9 @@ var ELLY_TIPS=[
  'A pattern that repeats is the secret behind almost every catchy tune.',
  'Every star you earn makes your band stronger for the Battle of the Bands.',
  'Stuck on a game? Tap me any time and I will give you a hint.',
- 'Play a show now and then. It pays notes AND builds toward your goals.'
+ 'Play a show now and then. It pays notes AND builds toward your goals.',
+ 'They say a Conductor is out there, writing music for a band big enough to fill the sky. Keep recruiting...',
+ 'The Cosmic Orchestra is only a rumor for now. Every rival you beat brings it closer.'
 ];
 var ELLY_POP_LAST=0, ELLY_TIP_IX=0;
 function ellyDismiss(){ var e=document.getElementById('ellyPop'); if(e)e.remove(); }
@@ -2736,7 +2748,7 @@ function adjust(concept,correct,fast,auditionMode){
   /* Non-audition slopes target the researched ~80% success band:
      steady-state success = dn/(up+dn) -> 0.55/0.67 = 82% (0.55/0.75 = 73% on fast).
      Old tuning (0.2/0.25) steered kids to ~55% success - too punishing. */
-  const up=auditionMode?(fast?1.0:0.8):(fast?0.2:0.12);
+  const up=auditionMode?(fast?0.8:0.6):(fast?0.2:0.12);
   const dn=auditionMode?0.5:0.55;
   let v=(S.skills[concept]||1)+(correct?up:-dn);
   S.skills[concept]=Math.max(1,Math.min(capOf(concept),v));
@@ -2745,7 +2757,7 @@ function adjust(concept,correct,fast,auditionMode){
 
 /* ============ QUIZ ENGINE (auditions + battles + soundcheck) ============ */
 let QZ=null;
-function runQuiz(cfg){
+function runQuiz(cfg){ cfg._first=true;
   QZ=Object.assign({idx:0,streak:0,respect:0,askedAt:0,busy:false,seen:new Set()},cfg);
   $('#quizBarWrap').classList.toggle('resp',cfg.mode==='battle');
   $('#quizStreak').textContent='🔥 0';
@@ -2761,7 +2773,7 @@ function nextQ(){
   QZ.busy=false;
   $('#quizFeed').textContent='';
   const m=BY_ID[QZ.member];
-  const L=Math.max(Math.floor(lvlOf(m.concept)), QZ.forceL||0);
+  const L=QZ.forceL||(QZ._first&&QZ.startL!=null?QZ.startL:Math.floor(lvlOf(m.concept))); QZ._first=false;
   let item=QG[m.concept](L);
   for(let tries=0;tries<10&&QZ.seen.has(item.q);tries++){ item=QG[m.concept](L); }
   QZ.seen.add(item.q);
@@ -2851,7 +2863,7 @@ function startAudition(id){
   if(id==='gain'&&gainLessonGate(function(){startAudition(id);}))return;
   closeModal();
   const m=BY_ID[id];
-  runQuiz({mode:'audition',member:id,count:5,onDone(){
+  runQuiz({mode:'audition',member:id,count:5,startL:Math.max(1,Math.floor(lvlOf(m.concept))-1),onDone(){
     S.auditioned[id]=true; save();
     const lvl=lvlOf(m.concept);
     const ready=(id==='boom');
@@ -2925,6 +2937,15 @@ let BATTLE_ID='boom';
 function startBattle(id){
   closeModal(); BATTLE_ID=id;
   const m=BY_ID[id], p=proofCount(m.concept);
+  // before a tough proof, make sure the method lesson is offered first (not after he fails)
+  if(p>=1 && (LESSONS[id]||METHOD[m.concept]) && !S.flags['proofprep_'+id+'_'+p]){
+    S.flags['proofprep_'+id+'_'+p]=true; save();
+    modal('<div class="center">'+memberSVG(id,90)+'<h2>\u26A1 Proof '+PROOF_NAMES[p]+' is tough</h2></div>'+
+      '<div class="speak"><b>Elly:</b> \u201CThis one is harder. Want to run through the trick with '+mName(id)+' first? It really helps.\u201D</div>'+
+      (METHOD[m.concept]?'<button class="btn wide" onclick="closeModal();openGoldLesson(\''+id+'\')">\uD83D\uDCD6 Show me the trick first</button>':'<button class="btn wide" onclick="closeModal();openLesson(\''+id+'\')">\uD83D\uDCD6 Show me first</button>')+
+      '<button class="btn wide ghost" onclick="closeModal();startBattle(\''+id+'\')">I\u2019m ready, bring the proof</button>');
+    return;
+  }
   const intro=(id==='boom')?PROOF_INTRO[p]:proofIntro(id,p);
   modal(
     '<div class="center">'+memberSVG(id,110)+'<h2>⚡ Proof '+PROOF_NAMES[p]+'</h2></div>'+
@@ -2936,7 +2957,11 @@ function startBattle(id){
 function battleGo(){
   closeModal();
   const m=BY_ID[BATTLE_ID], p=proofCount(m.concept);
-  runQuiz({mode:'battle',member:BATTLE_ID,count:99,forceL:[0,7,9][p]});
+  var cc=BY_ID[BATTLE_ID].concept, lv=Math.floor(lvlOf(cc));
+  // proof floors: bronze meets you where you are, silver +1, gold +2 — capped so it never leaps past your level
+  var floor=[Math.max(1,lv-1),Math.min(lv+1,7),Math.min(lv+2,9)][p];
+  var forceL=Math.max(floor, Math.min(lv, [6,8,10][p]));
+  runQuiz({mode:'battle',member:BATTLE_ID,count:99,forceL:forceL});
 }
 /* generic proof flavor for the nine non-Boom members, in their own voice */
 function proofIntro(id,p){
@@ -8727,6 +8752,226 @@ function openVoicePick(who){
 }
 function pickVoice(who,val){ sTap(); if(!S.equipped.voice)S.equipped.voice={}; if(val==='default')delete S.equipped.voice[who]; else S.equipped.voice[who]=val; save(); previewVoice(who); openVoicePick(who); }
 window.BQ&&Object.assign(window.BQ,{openVoicePick:openVoicePick,pickVoice:pickVoice,mNote:mNote,mDrum:mDrum,equippedVoice:equippedVoice});
+
+</script>
+<script>
+/* ============ v0.79 BAND: NEON GRID (synthwave) + PIXEL on the synth: DATA & GRAPHS ============ */
+function barGraphSVG(data,o){ o=o||{}; var W=o.w||280, H=o.h||150, pad=28, bw=(W-pad-8)/data.length, mx=Math.max.apply(null,data.map(function(d){return d.v;}))||1;
+  var s='<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="max-width:'+W+'px;display:block;margin:0 auto">';
+  s+='<line x1="'+pad+'" y1="6" x2="'+pad+'" y2="'+(H-22)+'" stroke="#6f52c9" stroke-width="2"/><line x1="'+pad+'" y1="'+(H-22)+'" x2="'+(W-4)+'" y2="'+(H-22)+'" stroke="#6f52c9" stroke-width="2"/>';
+  for(var g=1;g<=mx;g++){ var gy=(H-22)-(g/mx)*(H-34); s+='<line x1="'+(pad-3)+'" y1="'+gy+'" x2="'+(W-4)+'" y2="'+gy+'" stroke="#2a1f55" stroke-width="1"/><text x="'+(pad-6)+'" y="'+(gy+4)+'" text-anchor="end" font-size="10" fill="#8ef0c9">'+g+'</text>'; }
+  data.forEach(function(d,i){ var bh=(d.v/mx)*(H-34), x=pad+4+i*bw, y=(H-22)-bh;
+    s+='<rect x="'+x+'" y="'+y+'" width="'+(bw-8)+'" height="'+bh+'" rx="4" fill="'+(o.hi===i?'#ffd158':(d.c||'#ff5db1'))+'"/>';
+    if(o.vals)s+='<text x="'+(x+(bw-8)/2)+'" y="'+(y-4)+'" text-anchor="middle" font-size="12" font-weight="900" fill="#f4f0ff">'+d.v+'</text>';
+    s+='<text x="'+(x+(bw-8)/2)+'" y="'+(H-8)+'" text-anchor="middle" font-size="12">'+d.e+'</text>'; });
+  return s+'</svg>'; }
+function pictoSVG(data,per){ per=per||1; var s='<div style="max-width:280px;margin:0 auto">';
+  data.forEach(function(d){ s+='<div class="row" style="justify-content:flex-start;gap:6px;align-items:center;margin:4px 0"><span style="width:26px;font-size:20px">'+d.e+'</span><span style="font-size:18px;letter-spacing:2px">'+Array(d.v).fill('\uD83C\uDFB5').join('')+'</span></div>'; });
+  return s+'<div class="sub" style="text-align:center">each \uD83C\uDFB5 = '+per+'</div></div>'; }
+var GRAPH_ITEMS=[{e:'\uD83C\uDFB8',n:'guitar'},{e:'\uD83E\uDD41',n:'drums'},{e:'\uD83C\uDFB9',n:'keys'},{e:'\uD83C\uDFA4',n:'mic'},{e:'\uD83C\uDFBA',n:'horn'},{e:'\uD83C\uDFBB',n:'strings'}];
+function randData(k,lo,hi){ var pool=shuffle(GRAPH_ITEMS).slice(0,k); return pool.map(function(p){return {e:p.e,n:p.n,v:R(lo,hi)};}); }
+QG.graph=function(L){
+  var k=L<4?3:L<7?4:5, data=randData(k,1,L<4?5:8);
+  if(L<3){ var top=data.slice().sort(function(a,b){return b.v-a.v;})[0]; return {q:'Which has the MOST votes?', vis:barGraphSVG(data,{vals:true}), choices:shuffle(data.map(function(d){return d.e;})), a:top.e}; }
+  if(L<5){ var one=pick(data); return {q:'How many votes for '+one.e+'?', vis:barGraphSVG(data,{vals:false}), choices:shuffle([one.v,one.v+1,Math.max(0,one.v-1),one.v+2].filter(function(v,i,a){return a.indexOf(v)===i;})).slice(0,4).map(String), a:String(one.v)}; }
+  if(L<7){ var srt=data.slice().sort(function(a,b){return b.v-a.v;}); var a2=srt[0], b2=srt[1]; return {q:'How many MORE votes does '+a2.e+' have than '+b2.e+'?', vis:barGraphSVG(data,{vals:true}), choices:shuffle([a2.v-b2.v,a2.v+b2.v,a2.v-b2.v+1,Math.max(0,a2.v-b2.v-1)].filter(function(v,i,a){return v>=0&&a.indexOf(v)===i;})).slice(0,4).map(String), a:String(a2.v-b2.v)}; }
+  if(L<9){ var tot=data.reduce(function(x,d){return x+d.v;},0); return {q:'How many votes ALTOGETHER?', vis:barGraphSVG(data,{vals:true}), choices:shuffle([tot,tot+1,tot-2,tot+3].filter(function(v,i,a){return v>0&&a.indexOf(v)===i;})).slice(0,4).map(String), a:String(tot)}; }
+  var per=pick([2,5]), pd=randData(3,2,5); var one2=pick(pd); return {q:'Each \uD83C\uDFB5 = '+per+' fans. How many fans for '+one2.e+'?', vis:pictoSVG(pd,per), choices:shuffle([one2.v*per,one2.v,one2.v*per+per,(one2.v-1)*per].filter(function(v,i,a){return v>0&&a.indexOf(v)===i;})).slice(0,4).map(String), a:String(one2.v*per)};
+};
+MJGAMES.chartread={id:'chartread',name:'Chart Reader',emoji:'\uD83D\uDCCA',member:'pixel',concept:'graph',
+setup:function(L,st){
+  var k=L<4?3:L<7?4:5, data=randData(k,1,L<4?5:9), mode=L<3?'most':L<5?'read':L<7?'diff':'total';
+  if(mode==='most'){ st.ans=data.slice().sort(function(a,b){return b.v-a.v;})[0].e; }
+  else if(mode==='read'){ st.one=pick(data); st.ans=String(st.one.v); }
+  else if(mode==='diff'){ var srt=data.slice().sort(function(a,b){return b.v-a.v;}); st.a2=srt[0]; st.b2=srt[1]; st.ans=String(srt[0].v-srt[1].v); }
+  else { st.ans=String(data.reduce(function(x,d){return x+d.v;},0)); }
+  var call={most:'Which bar is TALLEST?',read:'How many for '+(st.one&&st.one.e)+'?',diff:'How many more '+(st.a2&&st.a2.e)+' than '+(st.b2&&st.b2.e)+'?',total:'How many in ALL?'}[mode];
+  var opts; if(mode==='most')opts=shuffle(data.map(function(d){return d.e;}));
+  else if(mode==='read')opts=shuffle([st.one.v,st.one.v+1,Math.max(0,st.one.v-1),st.one.v+2].filter(function(v,i,a){return a.indexOf(v)===i;})).slice(0,4).map(String);
+  else if(mode==='diff')opts=shuffle([+st.ans,+st.ans+1,Math.max(0,+st.ans-1),+st.ans+2].filter(function(v,i,a){return v>=0&&a.indexOf(v)===i;})).slice(0,4).map(String);
+  else opts=shuffle([+st.ans,+st.ans+1,+st.ans-2,+st.ans+3].filter(function(v,i,a){return v>0&&a.indexOf(v)===i;})).slice(0,4).map(String);
+  return {call:call, sub:mode==='most'?'The tallest bar has the most.':mode==='read'?'Read across to the number on the side.':mode==='diff'?'Find both bars, then subtract.':'Add every bar together.',
+    html:barGraphSVG(data,{vals:mode!=='read'})+'<div class="mjcards" id="crZ" style="grid-template-columns:repeat('+Math.min(4,opts.length)+',1fr)"></div>',
+    wire:function(){ $('#crZ').innerHTML=opts.map(function(o){return '<button class="mjposter crb" data-v="'+o+'" style="font-size:22px">'+o+'</button>';}).join('');
+      $$('.crb').forEach(function(b){ b.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(b.dataset.v===st.ans){ mNote&&mNote('combo',72,.2); tone(880,.12,'square',.16); mjOK('Read it right off the chart!'); } else { punch(b); mjNo('Look again: the answer is '+st.ans+'.'); } }); }); }};
+}};
+MJGAMES.buildbar={id:'buildbar',name:'Build the Bar',emoji:'\uD83D\uDCC8',member:'pixel',concept:'graph',
+setup:function(L,st){
+  var one=pick(GRAPH_ITEMS), target=R(2,L<5?5:8); st.target=target; st.cur=0;
+  var draw=function(){ $('#bbGraph').innerHTML=barGraphSVG([{e:one.e,v:st.cur,c:'#12e2c8'}],{w:120,h:150,vals:true}); $('#bbC').textContent=st.cur+' of '+target; };
+  return {call:'Make the '+one.e+' bar show '+target, sub:'Tap + to raise the bar, − to lower it, until it reaches '+target+'.',
+    html:'<div id="bbGraph"></div><div class="mjbig" id="bbC" style="font-size:22px"></div><div class="row" style="justify-content:center;gap:10px"><button class="choice" id="bbUp" style="font-size:22px">+</button><button class="choice" id="bbDn" style="font-size:22px">\u2212</button></div><div class="row" style="justify-content:center;margin-top:10px"><button class="mjcymbal" id="bbGo">\uD83D\uDCCA<br>PLOT IT</button></div>',
+    wire:function(){ draw(); $('#bbUp').addEventListener('click',function(){ if(MJ.busy)return; ac(); if(st.cur<12){st.cur++;tone(440+st.cur*40,.1,'square',.14);} draw(); });
+      $('#bbDn').addEventListener('click',function(){ if(MJ.busy)return; ac(); if(st.cur>0){st.cur--;tone(440+st.cur*40,.1,'square',.14);} draw(); });
+      $('#bbGo').addEventListener('click',function(){ if(MJ.busy)return; ac(); if(st.cur===target){ mjOK('Bar plotted at '+target+'!'); } else { punch($('#bbGo')); mjNo('It needs to reach '+target+'. You are at '+st.cur+'.'); } }); }};
+}};
+MJGAMES.tallyup={id:'tallyup',name:'Tally Up',emoji:'\u270B',member:'pixel',concept:'graph',
+setup:function(L,st){
+  var n=R(L<4?4:7,L<4?11:24); st.n=n; st.ans=String(n);
+  var groups=Math.floor(n/5), rem=n%5, tally='';
+  for(var g=0;g<groups;g++)tally+='<span style="display:inline-block;margin:4px;font-size:26px;letter-spacing:-2px">\uD83E\uDD1A</span>';
+  if(rem)tally+='<span style="display:inline-block;margin:4px;font-size:26px">'+Array(rem).fill('|').join('')+'</span>';
+  return {call:'Count the tally marks', sub:'Each bundle \uD83E\uDD1A is 5. Count the fives, then the extras.',
+    html:'<div class="center" style="font-size:22px;max-width:280px;margin:8px auto">'+tally+'</div><div class="sub center">'+groups+' bundle'+(groups!==1?'s':'')+' of 5'+(rem?' + '+rem:'')+'</div><div class="mjcards" id="tuZ"></div>',
+    wire:function(){ var opts=shuffle([n,n+1,n-1,n+5].filter(function(v,i,a){return v>0&&a.indexOf(v)===i;})).slice(0,4);
+      $('#tuZ').innerHTML=opts.map(function(o){return '<button class="mjposter tub" data-v="'+o+'" style="font-size:22px">'+o+'</button>';}).join('');
+      $$('.tub').forEach(function(b){ b.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(+b.dataset.v===n){ tone(880,.12,'square',.16); mjOK(groups+' fives'+(rem?' + '+rem:'')+' = '+n+'!'); } else { punch(b); mjNo(groups+' × 5'+(rem?' + '+rem:'')+' = '+n+'.'); } }); }); }};
+}};
+Object.assign(COACH,{
+  chartread:{member:'pixel',verb:'TAP',hint:'tap',title:'\uD83D\uDCCA Chart Reader',lines:['A bar graph turns votes into towers. Taller means more.','Read the chart and TAP the answer!']},
+  buildbar:{member:'pixel',verb:'TAP',hint:'tap',title:'\uD83D\uDCC8 Build the Bar',lines:['A bar graph shows an amount as a height.','Raise the bar to the number I call, then PLOT it!']},
+  tallyup:{member:'pixel',verb:'TAP',hint:'tap',title:'\u270B Tally Up',lines:['Tally marks come in bundles of five.','Count the bundles by 5, add the extras, TAP the total!']}
+});
+PLAY_RIGS.pixel={hint:'A synth grid. Every pad is a neon blip.',custom:function(el){
+  el.innerHTML='<div class="mjbig" style="font-size:44px">\uD83C\uDF9B\uFE0F</div><div class="sub center">neon arpeggio</div><div class="popgrid" id="pxG" style="grid-template-columns:repeat(4,1fr);max-width:260px"></div>';
+  var notes=[60,63,65,67,70,72,75,79], cols=['#ff5db1','#12e2c8','#9d7cff','#ffd158'];
+  $('#pxG').innerHTML=notes.map(function(n,i){return '<button class="pgc pxb" data-n="'+n+'" style="height:52px;background:'+cols[i%4]+'44;border-color:'+cols[i%4]+'"></button>';}).join('');
+  $$('.pxb').forEach(function(b){ b.addEventListener('click',function(){ ac(); tone(ntf(+b.dataset.n),.22,'square',.14); tone(ntf(+b.dataset.n)*1.005,.22,'sawtooth',.05); punch(b); }); });
+}};
+MUSIC_CARDS.pixel={elly:'Pixel builds songs on a grid of lights, and that grid is a graph. Bars you can dance to.',body:'A synth sequencer is a bar graph you can hear. Each column is a step, and the taller the light stack, the louder or higher that step plays. Pixel reads crowd votes the same way: line up the bars, and the tallest one wins. A graph just turns numbers into heights so your eyes can see which is biggest at a glance.',example:'Listen: four bars, four heights, four different notes. The tallest bar is the loudest hit.'};
+MUSIC_DEMOS.pixel=function(){ [60,64,67,72].forEach(function(n,i){ later(function(){ tone(ntf(n),.18,'square',.14); },i*200); }); later(function(){ [60,64,67,72].forEach(function(n){tone(ntf(n),.4,'square',.1);}); },900); };
+LESSONS.pixel={game:function(){startMJ('chartread');},steps:[
+  {say:'A BAR GRAPH turns numbers into towers. The taller the bar, the bigger the number. This shows what the band voted to play.',vis:barGraphSVG(randData(4,2,7),{vals:true})},
+  {say:'To read one bar, look across to the number on the side. This guitar got exactly its height in votes.',vis:barGraphSVG([{e:'\uD83C\uDFB8',v:5,c:'#ff5db1'},{e:'\uD83E\uDD41',v:3},{e:'\uD83C\uDFB9',v:7}],{hi:0,vals:false})},
+  {say:'To compare, look at which bar is taller, and by how much. Subtract the two heights to find HOW MANY MORE.',vis:barGraphSVG([{e:'\uD83C\uDFB8',v:6},{e:'\uD83E\uDD41',v:2,c:'#ffd158'}],{vals:true})},
+  {say:'A PICTOGRAPH uses a picture for a number. If each \uD83C\uDFB5 is 5 fans, three of them means 15. In my games you read charts, build bars, and count tallies. Plot it!',vis:pictoSVG([{e:'\uD83C\uDFB8',v:3},{e:'\uD83C\uDFA4',v:2}],5)}
+]};
+METHOD.graph={steps:[
+  {say:'Read a bar graph in three steps: find the bar, follow it up to its top, read straight across to the number on the side (the axis). "How many more" means subtract two bars.',vis:barGraphSVG([{e:'\uD83C\uDFB8',v:6},{e:'\uD83C\uDFB9',v:4,c:'#ffd158'}],{vals:true})},
+  {say:'Scaled graphs count by more than one. If each step of the axis (or each \uD83C\uDFB5) is 5, multiply the height by 5 to get the real amount.',vis:'<div style="font-size:20px"><b>3 symbols \u00D7 5 = 15</b></div>'}
+]};
+STEPWALK.graph=function(L){ var d=randData(3,2,7).sort(function(a,b){return b.v-a.v;});
+  return {title:'Find the bars, then subtract',steps:[
+    {say:'Which is the TALLEST bar?',vis:barGraphSVG(d,{vals:true}),choices:shuffle(d.map(function(x){return x.e;})),a:d[0].e},
+    {say:d[0].e+' has '+d[0].v+'. How many does '+d[1].e+' have?',choices:numChoices(d[1].v,2).filter(function(v){return v>=0;}).slice(0,3),a:d[1].v},
+    {say:'How many MORE does '+d[0].e+' have? '+d[0].v+' \u2212 '+d[1].v+' = ?',choices:numChoices(d[0].v-d[1].v,2).filter(function(v){return v>=0;}).slice(0,3),a:d[0].v-d[1].v,after:d[0].v+' \u2212 '+d[1].v+' = '+(d[0].v-d[1].v)+' more!'}]}; };
+function synthCharSVG(id,sz){
+  const O='#221a44'; let b='';
+  const visor=(x,y,w,c)=>'<rect x="'+x+'" y="'+y+'" width="'+w+'" height="12" rx="6" fill="'+O+'"/><rect x="'+(x+5)+'" y="'+(y+3)+'" width="'+(w-10)+'" height="6" rx="3" fill="'+(c||'#12e2c8')+'"/>';
+  const feet=(c)=>'<rect x="42" y="116" width="24" height="10" rx="5" fill="'+c+'"/><rect x="74" y="116" width="24" height="10" rx="5" fill="'+c+'"/>';
+  const eye=(x,y,c)=>'<circle cx="'+x+'" cy="'+y+'" r="4" fill="'+(c||'#12e2c8')+'"/>';
+  if(id==='wave'){ b=feet('#3a1a5e')+'<rect x="40" y="48" width="60" height="70" rx="16" fill="#ff5db1"/>'+visor(46,66,48,'#12e2c8')+'<path d="M50 92 q10 8 20 0 q10 -8 20 0" stroke="'+O+'" stroke-width="3" fill="none"/><path d="M70 48 v-14 l10 -6" stroke="#ff5db1" stroke-width="4" fill="none" stroke-linecap="round"/>'; }
+  else if(id==='pulse2'){ b=feet('#0e3a5e')+'<circle cx="70" cy="74" r="34" fill="#12e2c8"/>'+visor(48,68,44,'#ff5db1')+'<rect x="54" y="92" width="32" height="6" rx="3" fill="'+O+'"/>'+[0,1,2,3,4].map(function(i){return '<rect x="'+(52+i*8)+'" y="'+(100+(i%2?-6:0))+'" width="5" height="10" fill="#ffd158"/>';}).join(''); }
+  else if(id==='laser'){ b=feet('#5a1a3a')+'<rect x="42" y="50" width="56" height="68" rx="14" fill="#9d7cff"/>'+visor(48,68,44,'#ffd158')+'<path d="M50 94 h40" stroke="'+O+'" stroke-width="3"/><line x1="30" y1="60" x2="14" y2="50" stroke="#ff5db1" stroke-width="3"/><line x1="110" y1="60" x2="126" y2="50" stroke="#12e2c8" stroke-width="3"/>'; }
+  else { b=feet('#3a3a0b')+'<rect x="40" y="50" width="60" height="68" rx="16" fill="#2a2a4e"/>'+visor(46,66,48,'#ff5db1')+eye(70,90,'#12e2c8')+'<rect x="30" y="102" width="80" height="14" rx="3" fill="#12121e"/>'+[0,1,2,3,4,5,6,7].map(function(i){return '<rect x="'+(34+i*9)+'" y="'+(114-([6,3,8,4,7,5,9,2][i]))+'" width="6" height="'+([6,3,8,4,7,5,9,2][i])+'" fill="'+['#ff5db1','#12e2c8','#ffd158','#9d7cff'][i%4]+'"/>';}).join('')+'<path d="M104 58 l14 -6 l-3 10" fill="none" stroke="#12e2c8" stroke-width="3"/>'; }
+  return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 140 140"><g class="charg">'+b+'</g></svg>';
+}
+addRecruit({id:'pixel',name:'Pixel',emoji:'\uD83C\uDF9B\uFE0F',title:'Synth',concept:'graph',conceptName:'Data & Graphs',color:'#2a2a4e',rig:'synth',draw:synthCharSVG,crewId:'grid',
+  bio:'My whole song is a grid of lights. Tall bars are loud, short bars are quiet. I can read any chart in one look, because a graph is just numbers turned into heights.',
+  lines:['Tallest bar wins. Every time.','How many more? Subtract the two bars.','Neon Grid played in straight lines. I like to read them.'],
+  dreams:['Wave wanted every bar the same height. You let me build a real graph, tall and short. That is why I lit up your stage.','A song is data you can dance to.','My dream screen: a hundred bars, every one a different fan count.','A picture can stand for five, or ten, or a hundred. Just read the key.','This band reads the room. I am staying.'],
+  key:'neongrid',bandName:'Neon Grid',crew:{name:'Neon Grid',members:[
+    {id:'wave',emoji:'\uD83C\uDF0A',name:'Wave',line:'Ride the synth wave!'},{id:'pulse2',emoji:'\uD83D\uDCA0',name:'Byte',line:'Four on the floor, forever.'},{id:'laser',emoji:'\u2728',name:'Prism',line:'Lasers UP!'},{id:'grid',emoji:'\uD83C\uDF9B\uFE0F',name:'Pixel',star:true,line:'Which bar is tallest? Read it.'}]},
+  loseEmoji:'\uD83C\uDF10',loseTitle:'Neon Grid keeps the screen',winLine:'You held the crowd AND read every chart she flashed. Pixel unplugged from Neon Grid\u2019s wall and lit up your stage instead.',
+  starHint:'Win the synth rounds to fill the recruit spark and get her to switch grids.',btnStyle:'linear-gradient(90deg,#ff5db1,#12e2c8)',
+  gigLine:'Pixel freezes the light grid on one tall bar. "That crowd? Off the chart, frontman."',meetLine:'And Pixel on the synth, out of Neon Grid. A graph is just numbers turned into heights: data you can dance to.'});
+
+/* ============ v0.79 BAND: THE HOLLOW (folk) + WILLOW on the fiddle: FACTORS & MULTIPLES ============ */
+function dotGrid(rows,cols,o){ o=o||{}; var s='<div style="display:inline-grid;grid-template-columns:repeat('+cols+',1fr);gap:5px;padding:6px">';
+  for(var i=0;i<rows*cols;i++)s+='<div style="width:18px;height:18px;border-radius:50%;background:'+(o.c||'#8ac926')+'"></div>';
+  return s+'</div>'; }
+function factorsOf(n){ var f=[]; for(var i=1;i<=n;i++)if(n%i===0)f.push(i); return f; }
+function multiplesOf(n,k){ var m=[]; for(var i=1;i<=k;i++)m.push(n*i); return m; }
+QG.factor=function(L){
+  if(L<3){ var a=R(2,5), b=R(2,5), n=a*b; return {q:'This many dots in '+a+' equal rows. How many in EACH row?', vis:dotGrid(a,b), choices:shuffle([b,b+1,Math.max(1,b-1),a].filter(function(v,i,ar){return ar.indexOf(v)===i;})).slice(0,4).map(String), a:String(b)}; }
+  if(L<5){ var base=pick([2,3,4,5,10]), k=R(3,6), seq=multiplesOf(base,k); var miss=seq[k-1]; seq[k-1]='?'; return {q:'Count by '+base+'s. What comes next?', vis:'<div style="font-size:24px"><b>'+seq.join(', ')+'</b></div>', choices:shuffle([miss,miss+base,miss-base,miss+1].filter(function(v,i,ar){return v>0&&ar.indexOf(v)===i;})).slice(0,4).map(String), a:String(miss)}; }
+  if(L<7){ var n2=pick([6,8,9,10,12,15,16]), cand=R(2,6), isF=(n2%cand===0); return {q:'Does '+cand+' divide evenly into '+n2+'? (Is it a factor?)', vis:'<div style="font-size:22px"><b>'+n2+' \u00F7 '+cand+'</b></div>', choices:shuffle(['yes','no']), a:isF?'yes':'no'}; }
+  if(L<9){ var n3=pick([12,16,18,20,24]), fs=factorsOf(n3), notf=[]; for(var x=2;x<n3;x++)if(n3%x!==0)notf.push(x); var showF=Math.random()<0.5; var val=showF?pick(fs.filter(function(v){return v>1&&v<n3;})):pick(notf);
+    return {q:'Is '+val+' a factor of '+n3+'?', vis:dotGrid(1,1,{})&&'<div style="font-size:22px"><b>'+n3+'</b></div>', choices:shuffle(['factor','not a factor']), a:(n3%val===0?'factor':'not a factor')}; }
+  var a4=pick([2,3,4,6]), b4=pick([2,3,4,6]); while(b4===a4)b4=pick([2,3,4,6]); var lcm=a4*b4/gcd(a4,b4);
+  return {q:'Count by '+a4+'s and by '+b4+'s. What is the FIRST number you say in BOTH?', vis:'<div class="sub">'+multiplesOf(a4,4).join(', ')+' ... &nbsp; '+multiplesOf(b4,4).join(', ')+' ...</div>', choices:shuffle([lcm,lcm+a4,a4*b4,lcm-a4].filter(function(v,i,ar){return v>0&&ar.indexOf(v)===i;})).slice(0,4).map(String), a:String(lcm)};
+};
+MJGAMES.equalrows={id:'equalrows',name:'Equal Rows',emoji:'\uD83C\uDF3E',member:'willow',concept:'factor',
+setup:function(L,st){
+  var a=R(2,L<4?4:6), b=R(2,L<4?5:6), n=a*b; st.ans=String(b);
+  return {call:n+' seeds in '+a+' equal rows. How many per row?', sub:'Share the seeds into '+a+' rows. Count how many land in one row.',
+    html:'<div class="center" style="margin:6px 0">'+dotGrid(a,b)+'</div><div class="mjcards" id="erZ"></div>',
+    wire:function(){ var opts=shuffle([b,b+1,Math.max(1,b-1),a].filter(function(v,i,ar){return ar.indexOf(v)===i;})).slice(0,4);
+      $('#erZ').innerHTML=opts.map(function(o){return '<button class="mjposter erb" data-v="'+o+'" style="font-size:22px">'+o+'</button>';}).join('');
+      $$('.erb').forEach(function(bt){ bt.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(bt.dataset.v===st.ans){ mNote&&mNote('slice',64,.3); mjOK(a+' rows of '+b+' makes '+n+'. '+a+' and '+b+' are factors of '+n+'!'); } else { punch(bt); mjNo(n+' shared into '+a+' rows is '+b+' each.'); } }); }); }};
+}};
+MJGAMES.countby={id:'countby',name:'Count By',emoji:'\uD83E\uDE95',member:'willow',concept:'factor',
+setup:function(L,st){
+  var base=pick(L<4?[2,5,10]:[2,3,4,5,6,10]), k=R(4,6), seq=multiplesOf(base,k), miss=seq[k-1]; st.ans=String(miss); seq[k-1]='?';
+  return {call:'Count by '+base+'s: what comes next?', sub:'Each hop adds '+base+'. Keep the beat going.',
+    html:'<div class="center" style="font-size:24px;margin:10px 0"><b>'+seq.join(' \u2192 ')+'</b></div><div class="mjcards" id="cbZ"></div>',
+    wire:function(){ var opts=shuffle([miss,miss+base,miss-base,miss+1].filter(function(v,i,ar){return v>0&&ar.indexOf(v)===i;})).slice(0,4);
+      $('#cbZ').innerHTML=opts.map(function(o){return '<button class="mjposter cbb" data-v="'+o+'" style="font-size:22px">'+o+'</button>';}).join('');
+      $$('.cbb').forEach(function(bt){ bt.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(bt.dataset.v===st.ans){ mNote&&mNote('slice',67,.3); mjOK(seq.slice(0,k-1).join(', ')+', '+miss+'. Right on the beat!'); } else { punch(bt); mjNo('Add '+base+' to '+(miss-base)+' to get '+miss+'.'); } }); }); }};
+}};
+MJGAMES.factorpick={id:'factorpick',name:'Factor or Not',emoji:'\uD83E\uDD4D',member:'willow',concept:'factor',
+setup:function(L,st){
+  var n=pick(L<5?[6,8,10,12]:[12,15,16,18,20,24]), isF=Math.random()<0.5, val;
+  if(isF){ var fs=factorsOf(n).filter(function(v){return v>1&&v<n;}); val=pick(fs); } else { var nf=[]; for(var x=2;x<n;x++)if(n%x!==0)nf.push(x); val=pick(nf); }
+  st.ans=(n%val===0?'factor':'not'); 
+  return {call:'Is '+val+' a factor of '+n+'?', sub:'A factor divides evenly, with nothing left over. '+n+' \u00F7 '+val+' \u2014 does it come out even?',
+    html:'<div class="center" style="font-size:30px;margin:8px 0"><b>'+n+' \u00F7 '+val+'</b></div><div class="mjcards" id="fpZ" style="grid-template-columns:repeat(2,1fr)"></div>',
+    wire:function(){ $('#fpZ').innerHTML=[['factor','\u2705 factor'],['not','\u274C not a factor']].map(function(o){return '<button class="mjposter fpb" data-v="'+o[0]+'" style="font-size:16px">'+o[1]+'</button>';}).join('');
+      $$('.fpb').forEach(function(bt){ bt.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(bt.dataset.v===st.ans){ mNote&&mNote('slice',60,.3); mjOK(n%val===0?(val+' goes into '+n+' exactly '+(n/val)+' times. Factor!'):(val+' leaves a remainder. Not a factor.')); } else { punch(bt); mjNo(n%val===0?(val+' × '+(n/val)+' = '+n+', so it IS a factor.'):(n+' \u00F7 '+val+' leaves a remainder, so it is NOT.')); } }); }); }};
+}};
+Object.assign(COACH,{
+  equalrows:{member:'willow',verb:'TAP',hint:'tap',title:'\uD83C\uDF3E Equal Rows',lines:['Factors are the ways you can share into equal rows.','Count how many land in one row and TAP it!']},
+  countby:{member:'willow',verb:'TAP',hint:'tap',title:'\uD83E\uDE95 Count By',lines:['Multiples are what you say when you skip-count.','Add the same number each hop and TAP what comes next!']},
+  factorpick:{member:'willow',verb:'TAP',hint:'tap',title:'\uD83E\uDD4D Factor or Not',lines:['A factor divides with nothing left over.','Does it come out even? TAP factor or not!']}
+});
+PLAY_RIGS.willow={hint:'Old-time fiddle. Saw the bow, one long note.',custom:function(el){
+  el.innerHTML='<div class="mjbig" style="font-size:44px">\uD83C\uDFBB</div><div class="sub center">high and lonesome</div><div class="row" id="wlStr" style="justify-content:center;gap:8px;margin-top:12px;flex-wrap:wrap"></div>';
+  var notes=[55,57,60,62,64,67,69];
+  $('#wlStr').innerHTML=notes.map(function(n,i){return '<button class="mjcymbal wls" data-n="'+n+'" style="font-size:16px;width:70px;height:70px;border-color:#8ac926">'+(i+1)+'</button>';}).join('');
+  $$('.wls').forEach(function(b){ b.addEventListener('click',function(){ ac(); var n=+b.dataset.n; tone(ntf(n),.6,'sawtooth',.1); tone(ntf(n)*1.004,.6,'triangle',.06); punch(b); }); });
+}};
+MUSIC_CARDS.willow={elly:'Willow plays reels that line up every few beats. Factors and multiples you can stomp to.',body:'A folk reel repeats in even groups. Willow counts the beats and knows a phrase lands cleanly every 2, every 4, every 8: those are multiples. And when the whole band splits into equal circles for a dance, the sizes that work are the factors of the group. 12 dancers make 2 rows of 6, or 3 rows of 4, or 4 rows of 3. The numbers that divide evenly are the ones that dance.',example:'Listen: a phrase every 4 beats, then every 6, and they meet again at 12. That is a common multiple you can hear.'};
+MUSIC_DEMOS.willow=function(){ [0,4,8].forEach(function(d){ later(function(){tone(ntf(60),.3,'sawtooth',.12);},d*180); }); [0,6,12].forEach(function(d){ later(function(){tone(ntf(67),.3,'sawtooth',.1);},900+d*120); }); later(function(){tone(ntf(72),.5,'sawtooth',.12);},2400); };
+LESSONS.willow={game:function(){startMJ('equalrows');},steps:[
+  {say:'FACTORS are the numbers that share evenly. 12 seeds make 3 equal rows of 4, so 3 and 4 are factors of 12.',vis:'<div class="center">'+dotGrid(3,4)+'</div>'},
+  {say:'Same 12 seeds also make 2 rows of 6, or 4 rows of 3. Every way that comes out EVEN gives you a pair of factors.',vis:'<div class="row" style="justify-content:center;gap:14px">'+dotGrid(2,6)+dotGrid(4,3,{c:'#ffd158'})+'</div>'},
+  {say:'MULTIPLES are what you get skip-counting: the multiples of 4 are 4, 8, 12, 16... You already do this counting by 5s and 10s!',vis:'<div style="font-size:22px"><b>4, 8, 12, 16, 20 ...</b></div>'},
+  {say:'A factor divides evenly (nothing left over). A multiple is the count-by list. In my games you share into rows, count by, and spot factors. Kick up your heels!',vis:'<div style="font-size:20px"><b>factors of 12: 1 2 3 4 6 12</b></div>'}
+]};
+METHOD.factor={steps:[
+  {say:'To find factors of a number, try dividing by 1, 2, 3... and keep the ones that come out EVEN (no remainder). Factors come in pairs: 12 = 1\u00D712 = 2\u00D76 = 3\u00D74.',vis:'<div style="font-size:18px"><b>12: 1&12, 2&6, 3&4</b></div>'},
+  {say:'Multiples are the skip-count list: multiples of 6 are 6, 12, 18, 24. A COMMON multiple of two numbers is the first one that appears in both lists.',vis:'<div style="font-size:18px"><b>4,8,<u>12</u> &nbsp; 6,<u>12</u> \u2192 12</b></div>'}
+]};
+STEPWALK.factor=function(L){ var a=pick([2,3,4]), b=pick([3,4,5]), n=a*b;
+  return {title:'Even rows means factors',steps:[
+    {say:n+' seeds in '+a+' equal rows. How many seeds in each row?',vis:'<div class="center">'+dotGrid(a,b)+'</div>',choices:numChoices(b,2).filter(function(v){return v>=1;}).slice(0,3),a:b},
+    {say:'So '+a+' \u00D7 '+b+' = '+n+'. That makes '+a+' and '+b+' both...',choices:shuffle(['factors of '+n,'bigger than '+n,'not related']),a:'factors of '+n},
+    {say:'Is '+(b+1)+' a factor of '+n+'? Does it share evenly?',choices:shuffle(['yes','no']),a:(n%(b+1)===0?'yes':'no'),after:a+' and '+b+' divide '+n+' evenly. Those are its factors!'}]}; };
+function folkCharSVG(id,sz){
+  const O='#221a44'; let b='';
+  const eye=(x,y)=>'<circle cx="'+x+'" cy="'+y+'" r="5" fill="'+O+'"/><circle cx="'+(x+2)+'" cy="'+(y-2)+'" r="1.8" fill="#fff"/>';
+  const smile=(x,y,w)=>'<path d="M'+x+' '+y+' q'+(w/2)+' 6 '+w+' 0" stroke="'+O+'" stroke-width="4" fill="none" stroke-linecap="round"/>';
+  const feet=(c)=>'<ellipse cx="55" cy="123" rx="12" ry="6" fill="'+c+'"/><ellipse cx="85" cy="123" rx="12" ry="6" fill="'+c+'"/>';
+  const hat=(c)=>'<ellipse cx="70" cy="46" rx="40" ry="8" fill="'+c+'"/><path d="M50 46 q20 -30 40 0 z" fill="'+c+'"/>';
+  const vest=(c)=>'<rect x="40" y="54" width="60" height="64" rx="22" fill="'+c+'"/><path d="M60 56 l10 18 l10 -18" fill="#3a2a1a"/><rect x="66" y="56" width="8" height="50" fill="#3a2a1a"/>';
+  if(id==='banjoe'){ b=feet('#3a2a10')+vest('#c98f3a')+hat('#7a5a2a')+eye(58,74)+eye(82,74)+smile(60,90,20)+'<circle cx="104" cy="100" r="16" fill="#f4e6c8" stroke="#8a6d2a" stroke-width="3"/><rect x="102" y="60" width="4" height="30" fill="#3a2a1a"/>'; }
+  else if(id==='reedy'){ b=feet('#3a2a10')+vest('#6a8a3a')+hat('#4a6a2a')+eye(58,74)+eye(82,74)+'<ellipse cx="70" cy="90" rx="6" ry="4" fill="'+O+'"/><rect x="76" y="88" width="26" height="6" rx="2" fill="#8a6d2a"/><circle cx="106" cy="91" r="4" fill="#3a2a1a"/>'; }
+  else if(id==='stomp'){ b=feet('#3a2a10')+vest('#8a5a3a')+hat('#5a3a2a')+eye(58,74)+eye(82,74)+smile(60,90,20)+'<rect x="44" y="104" width="52" height="16" rx="3" fill="#a0784a"/><rect x="50" y="98" width="40" height="8" rx="2" fill="#c98f3a"/>'; }
+  else { b=feet('#3a2a10')+vest('#a0522d')+hat('#7a3a2a')+eye(58,74)+eye(82,74)+smile(60,90,20)+'<ellipse cx="34" cy="92" rx="11" ry="15" fill="#c98f3a" stroke="#7a5a2a" stroke-width="2"/><rect x="32" y="56" width="4" height="26" fill="#3a2a1a"/><line x1="18" y1="80" x2="50" y2="108" stroke="#e8d8a0" stroke-width="2"/><path d="M50 40 q20 -14 40 0" fill="none" stroke="#ffd158" stroke-width="3" stroke-linecap="round"/>'; }
+  return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 140 140"><g class="charg">'+b+'</g></svg>';
+}
+addRecruit({id:'willow',name:'Willow',emoji:'\uD83C\uDFBB',title:'Fiddle',concept:'factor',conceptName:'Factors & Multiples',color:'#8ac926',rig:'fiddle',draw:folkCharSVG,crewId:'fid',
+  bio:'Old-time reels line up in even groups. I count the beats and know a phrase lands clean every 2, every 4, every 8. When the dancers split into even circles, those sizes are the factors.',
+  lines:['Even rows, every time. Those are the factors.','Skip-count and you are naming multiples.','The Hollow played one long drone. I like a number that divides.'],
+  dreams:['Banjoe wanted one big circle of dancers. You let me split them into even rows. That is why I fiddled my way over.','A reel is multiplication you can stomp to.','My dream dance: twelve folks, and every even circle that fits.','A factor shares clean. A remainder means try another.','This band dances in even rows. I am staying.'],
+  key:'hollow',bandName:'The Hollow',crew:{name:'The Hollow',members:[
+    {id:'banjoe',emoji:'\uD83E\uDE95',name:'Banjoe',line:'Roll them fingers, now!'},{id:'reedy',emoji:'\uD83C\uDFBA',name:'Reedy',line:'Squeeze it, wheeze it!'},{id:'stomp',emoji:'\uD83E\uDD35',name:'Stomp',line:'Stomp on the ONE!'},{id:'fid',emoji:'\uD83C\uDFBB',name:'Willow',star:true,line:'Even rows? Those are the factors.'}]},
+  loseEmoji:'\uD83C\uDF3E',loseTitle:'The Hollow holds the barn',winLine:'You held the crowd AND split every count into even rows. Willow tucked the fiddle under her chin and sawed her way to your side.',
+  starHint:'Win the fiddle rounds to fill the recruit spark and get her to fiddle her way over.',btnStyle:'linear-gradient(90deg,#8a5a3a,#8ac926)',
+  gigLine:'Willow saws one last long note. "Twelve rows, all even. That is a factor of a good time."',meetLine:'And Willow on the fiddle, out of The Hollow. Even rows are factors, skip-counts are multiples: numbers you can stomp to.'});
+
+/* ============ v0.79: name the Conductor, deepen the Cosmic Orchestra myth ============ */
+var CONDUCTOR_NAME='Maestro Vox';
+COSMIC_HINTS.length=0;
+COSMIC_HINTS.push(
+ {need:3,line:'\uD83C\uDF0C A rumor drifts through the Garage: past the last rival waits the COSMIC ORCHESTRA \u2014 every kind of music, all at once.'},
+ {need:5,line:'\uD83C\uDF0C They whisper a name: '+CONDUCTOR_NAME+'. A conductor with no baton \u2014 he shapes the music with his HANDS, and the notes pour right out of his mouth.'},
+ {need:7,line:'\uD83C\uDF0C '+CONDUCTOR_NAME+' is said to breathe out whole melodies and sweep them into the air with a wave. He is waiting for a band big enough to play them.'},
+ {need:9,line:'\uD83C\uDF0C The more players you gather, the louder the rumor. '+CONDUCTOR_NAME+' is listening for a band that can fill the whole galaxy with sound.'},
+ {need:11,line:'\uD83C\uDF0C Almost there. When your band is complete, '+CONDUCTOR_NAME+' will raise his hands, sing the first note, and the Cosmic Orchestra will finally play.'}
+);
+ELLY_TIPS.push('They say '+CONDUCTOR_NAME+' the Conductor sings his music straight out of his mouth and shapes it with his hands. Keep recruiting and he might find you.');
+ELLY_TIPS.push('The Cosmic Orchestra is still a rumor. Every rival you beat brings '+CONDUCTOR_NAME+' one step closer.');
 
 </script>
 
