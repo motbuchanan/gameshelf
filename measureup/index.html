@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Measure Up">
-<title>Measure Up v0.79</title>
+<title>Measure Up v0.80</title>
 <style>
 :root{
   --bg:#0e0b1e; --panel:#1d1636; --panel2:#28204a; --ink:#f4f0ff; --dim:#a89cd8;
@@ -927,14 +927,14 @@ svg .charg{will-change:transform}
 <div id="toast"></div>
 <button id="homeBtn" onclick="goHome()" aria-label="Back to Garage">🏠</button>
 <button id="ellyBtn" onclick="openEllyHelp()" aria-label="Ask Elly for help"></button>
-<div id="vbadge">v0.79 · Sep 3</div>
+<div id="vbadge">v0.80 · Sep 3</div>
 
 <script>
 'use strict';
 /* ============ UTILS ============ */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const VERSION='v0.79 · Sep 3';
+const VERSION='v0.80 · Sep 3';
 const RM=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -5922,10 +5922,11 @@ function showPlay(id){
     showLater(()=>{ if(!SHOW.on)return;
       if(kind==='kick')mDrum('boom','kick'); else if(kind==='snare')mDrum('boom','snare'); else if(kind==='hatc')mDrum('boom','hat');
       else if(kind==='hato')V.hat(true); else if(kind==='clap')V.clap(); else if(kind==='scratch')V.scratch();
-      else if(kind==='bass')mNote('rumble',e[1]); else if(kind==='b808')V.b808(e[1]);
-      else if(kind==='strum')e[1].forEach((m,i)=>mNote('slice',m,.4,i*.03));
-      else if(kind==='lead')mNote('combo',e[1],e[2]||.22); else if(kind==='horn')mNote('doot',e[1],e[2]||.35);
-      else if(kind==='bell')mNote('plink',e[1]);
+      else if(kind==='bass'){ if(window.__songVoice)window.__songVoice('bass',who,e); else mNote('rumble',e[1]); } else if(kind==='b808')V.b808(e[1]);
+      else if(kind==='strum'){ if(window.__songVoice)window.__songVoice('strum',who,e); else e[1].forEach((m,i)=>mNote('slice',m,.4,i*.03)); }
+      else if(kind==='lead'){ if(window.__songVoice)window.__songVoice('lead',who,e); else mNote('combo',e[1],e[2]||.22); }
+      else if(kind==='horn'){ if(window.__songVoice)window.__songVoice('horn',who,e); else mNote('doot',e[1],e[2]||.35); }
+      else if(kind==='bell'){ if(window.__songVoice)window.__songVoice('bell',who,e); else mNote('plink',e[1]); }
       else if(kind==='perc'){ if(e[1]==='block')tone(1250,.06,'sine',.3); else if(e[1]==='bell')V.bell(88); else {V.hat(true);V.bell(84);} }
       else if(kind==='fx'){ if(e[1]==='riser')V.sweep(true); else V.scratch(); }
       else if(kind==='coin'){ V.bell(72); tone(1200,.05,'square',.15); }
@@ -8972,6 +8973,185 @@ COSMIC_HINTS.push(
 );
 ELLY_TIPS.push('They say '+CONDUCTOR_NAME+' the Conductor sings his music straight out of his mouth and shapes it with his hands. Keep recruiting and he might find you.');
 ELLY_TIPS.push('The Cosmic Orchestra is still a rumor. Every rival you beat brings '+CONDUCTOR_NAME+' one step closer.');
+
+</script>
+<script>
+/* ============ v0.80: RECRUIT PARITY (song voices + instrument cases) + BLUES BAND ============ */
+
+/* ---- 1. give every recruit an instrument FAMILY so mNote() renders their real voice ---- */
+Object.assign(MEMBER_FAM,{
+  reed:'horn', mika:'voicep', cadence:'bell', lumi:'bell', flow:'keys', glitch:'keys',
+  viola:'strings', grace:'voicep', dub:'bass', flip:'strings', pixel:'keys', willow:'strings',
+  bigtub:'bass', shimmer:'bell', axel:'guitar', roscoe:'keys',
+  /* new blues recruit */ reese:'harp'
+});
+/* extend voiceNote() with the two new families recruits use (strings, voicep, harp) via a wrapper */
+var _voiceNote=voiceNote;
+voiceNote=function(fam,style){
+  if(fam==='strings'){ return function(m,dur,when){ var a=ac(); if(!a)return; var t=a.currentTime+(when||0),o=a.createOscillator(),o2=a.createOscillator(),g=a.createGain();
+    o.type='sawtooth'; o.frequency.value=ntf(m); o2.type='triangle'; o2.frequency.value=ntf(m)*1.004;
+    g.gain.setValueAtTime(.0001,t); g.gain.linearRampToValueAtTime(.14,t+.04); g.gain.exponentialRampToValueAtTime(.001,t+(dur||.5));
+    o.connect(g); o2.connect(g); g.connect(MASTER); o.start(t); o2.start(t); o.stop(t+(dur||.5)+.05); o2.stop(t+(dur||.5)+.05); }; }
+  if(fam==='voicep'){ return function(m,dur,when){ var a=ac(); if(!a)return; var t=a.currentTime+(when||0),o=a.createOscillator(),g=a.createGain(),lp=a.createBiquadFilter();
+    o.type='sine'; o.frequency.value=ntf(m); lp.type='lowpass'; lp.frequency.value=1600;
+    g.gain.setValueAtTime(.0001,t); g.gain.linearRampToValueAtTime(.2,t+.05); g.gain.exponentialRampToValueAtTime(.001,t+(dur||.5));
+    o.connect(lp); lp.connect(g); g.connect(MASTER); o.start(t); o.stop(t+(dur||.5)+.05);
+    var o2=a.createOscillator(),g2=a.createGain(); o2.type='sine'; o2.frequency.value=ntf(m)*2.005; g2.gain.setValueAtTime(.05,t); g2.gain.exponentialRampToValueAtTime(.001,t+(dur||.4)); o2.connect(g2); g2.connect(MASTER); o2.start(t); o2.stop(t+(dur||.4)); }; }
+  if(fam==='harp'){ return function(m,dur,when){ var a=ac(); if(!a)return; var t=a.currentTime+(when||0),o=a.createOscillator(),g=a.createGain(),v=a.createOscillator(),vg=a.createGain();
+    /* harmonica: reedy square with a little vibrato and breath */
+    o.type='square'; o.frequency.value=ntf(m); v.frequency.value=6; vg.gain.value=3.5; v.connect(vg); vg.connect(o.frequency);
+    g.gain.setValueAtTime(.0001,t); g.gain.linearRampToValueAtTime(style==='wail'?.2:.15,t+.05); g.gain.exponentialRampToValueAtTime(.001,t+(dur||.45)*(style==='mellow'?1.3:1));
+    var lp=a.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=style==='wail'?2600:style==='mellow'?1000:1500;
+    o.connect(lp); lp.connect(g); g.connect(MASTER); o.start(t); v.start(t); o.stop(t+(dur||.45)+.05); v.stop(t+(dur||.45)+.05); }; }
+  return _voiceNote(fam,style);
+};
+/* mNote already routes any member through voiceNote(MEMBER_FAM[who], equippedVoice(who)) — recruits now covered */
+
+/* ---- 2. Band Room: dispatch lead/strum/bell/horn by the event's WHO, not a hardcoded member ---- */
+/* replaces the fixed mNote('combo'...) etc so each member's part sounds like their instrument */
+window.__songVoice=function(kind,who,e){
+  if(kind==='lead')mNote(who||'combo', e[1], e[2]||.22);
+  else if(kind==='strum'){ var arr=e[1]; if(Array.isArray(arr))arr.forEach(function(mm,i){ mNote(who||'slice', mm, .4, i*.03); }); else mNote(who||'slice', arr, .4); }
+  else if(kind==='bass')mNote(who||'rumble', e[1]);
+  else if(kind==='horn')mNote(who||'doot', e[1], e[2]||.35);
+  else if(kind==='bell')mNote(who||'plink', e[1]);
+};
+
+/* ---- 3. Instrument Cases for the 15 rival recruits (2 each) ---- */
+var RECRUIT_VOICES=[
+ {who:'bigtub', styles:[['thump','Deep Thump'],['slap','Slap Bass']]},
+ {who:'shimmer',styles:[['glockb','Bright Bells'],['marimba','Warm Marimba']]},
+ {who:'axel',   styles:[['clean','Clean Tone'],['dist','Heavy Distortion']]},
+ {who:'reed',   styles:[['muted','Muted Sax'],['wail','Wailing Sax']]},
+ {who:'mika',   styles:[['choir','Choir Ahh'],['robo','Robot Voice']]},
+ {who:'cadence',styles:[['glockb','Piccolo Bright'],['marimba','Mellow Mallet']]},
+ {who:'lumi',   styles:[['glockb','Neon Chime'],['marimba','Soft Tone']]},
+ {who:'flow',   styles:[['crystal','Crystal Pad'],['organ','Deep Organ']]},
+ {who:'glitch', styles:[['crystal','Glass Synth'],['musicbox','Toy Synth']]},
+ {who:'viola',  styles:[['warm','Warm Bow'],['bright','Bright Bow']]},
+ {who:'grace',  styles:[['choir','Full Choir'],['solo','Solo Voice']]},
+ {who:'dub',    styles:[['upright','Upright'],['synthb','Dub Synth']]},
+ {who:'flip',   styles:[['warm','Soft Strum'],['bright','Bright Strum']]},
+ {who:'pixel',  styles:[['crystal','Vapor Pad'],['musicbox','Chip Lead']]},
+ {who:'willow', styles:[['warm','Old-Time'],['bright','High Lonesome']]},
+ {who:'reese',  styles:[['wail','Wailing Harp'],['mellow','Mellow Harp']]}
+];
+RECRUIT_VOICES.forEach(function(rv){
+  rv.styles.forEach(function(st,i){
+    SHOP.push({id:'rv_'+rv.who+'_'+st[0],type:'voice',who:rv.who,val:st[0],name:st[1],rarity:'rare',notes:55,gold:0,
+      desc:'A new sound for '+ (BY_ID[rv.who]?BY_ID[rv.who].name:rv.who) +'\u2019s '+(RIG_NAMES[rv.who]||'instrument')+'.'});
+  });
+});
+/* voicep sub-styles used above (choir/robo/solo) + strings sub-styles (warm/bright) + bass (thump/slap): extend voiceNote once more */
+var _voiceNote2=voiceNote;
+voiceNote=function(fam,style){
+  if(fam==='voicep'&&(style==='choir'||style==='robo'||style==='solo')){ return function(m,dur,when){ var a=ac(); if(!a)return; var t=a.currentTime+(when||0);
+    if(style==='robo'){ var o=a.createOscillator(),g=a.createGain(); o.type='square'; o.frequency.value=ntf(m); var lfo=a.createOscillator(),lg=a.createGain(); lfo.frequency.value=22; lg.gain.value=.5; lfo.connect(lg); lg.connect(g.gain); g.gain.setValueAtTime(.16,t); g.gain.exponentialRampToValueAtTime(.001,t+(dur||.4)); o.connect(g); g.connect(MASTER); o.start(t); lfo.start(t); o.stop(t+(dur||.4)); lfo.stop(t+(dur||.4)); return; }
+    var voices=style==='choir'?[0,4,7]:[0]; voices.forEach(function(iv){ var o=a.createOscillator(),g=a.createGain(); o.type='sine'; o.frequency.value=ntf(m+iv); g.gain.setValueAtTime(.0001,t); g.gain.linearRampToValueAtTime(.14/voices.length+.06,t+.06); g.gain.exponentialRampToValueAtTime(.001,t+(dur||.55)); o.connect(g); g.connect(MASTER); o.start(t); o.stop(t+(dur||.55)+.05); }); }; }
+  if(fam==='strings'&&(style==='warm'||style==='bright')){ return function(m,dur,when){ var a=ac(); if(!a)return; var t=a.currentTime+(when||0),o=a.createOscillator(),g=a.createGain(),lp=a.createBiquadFilter();
+    o.type='sawtooth'; o.frequency.value=ntf(m); lp.type='lowpass'; lp.frequency.value=style==='bright'?3200:1200;
+    g.gain.setValueAtTime(.0001,t); g.gain.linearRampToValueAtTime(.13,t+.04); g.gain.exponentialRampToValueAtTime(.001,t+(dur||.5)); o.connect(lp); lp.connect(g); g.connect(MASTER); o.start(t); o.stop(t+(dur||.5)+.05); }; }
+  if(fam==='bass'&&(style==='thump'||style==='slap')){ return function(m,dur,when){ var a=ac(); if(!a)return; var t=a.currentTime+(when||0),o=a.createOscillator(),lp=a.createBiquadFilter(),g=a.createGain();
+    o.type=style==='slap'?'square':'sine'; o.frequency.value=ntf(m); lp.type='lowpass'; lp.frequency.value=style==='slap'?900:420;
+    g.gain.setValueAtTime(.5,t); g.gain.exponentialRampToValueAtTime(.001,t+(style==='slap'?.2:.3)); o.connect(lp); lp.connect(g); g.connect(MASTER); o.start(t); o.stop(t+.34); }; }
+  return _voiceNote2(fam,style);
+};
+/* labels for the recruit voice button */
+Object.assign(VOICE_LABELS,{bigtub:'Bass',shimmer:'Bells',axel:'Guitar',reed:'Sax',mika:'Voice',cadence:'Piccolo',lumi:'Chime',flow:'Pad',glitch:'Synth',viola:'Bow',grace:'Voice',dub:'Bass',flip:'Strum',pixel:'Synth',willow:'Fiddle',reese:'Harp'});
+
+/* ============ BLUES BAND: BACKPORCH BLUES + REESE on harmonica: COLUMN ADD & SUBTRACT ============ */
+/* concept 'column' = stacking ones and tens, carrying and borrowing */
+function colSVG(a,b,op,o){ o=o||{}; var A=String(a).padStart(2,' '), B=String(b).padStart(2,' ');
+  var cell=function(ch,hi){ return '<td style="font-size:30px;font-weight:900;font-family:monospace;padding:0 6px;color:'+(hi?'#ffd158':'#f4f0ff')+'">'+(ch===' '?'&nbsp;':ch)+'</td>'; };
+  var s='<table style="margin:6px auto;border-collapse:collapse"><tr><td></td>'+cell(A[0],o.hi==='tens')+cell(A[1],o.hi==='ones')+'</tr>';
+  s+='<tr><td style="font-size:26px;font-weight:900;color:#8ac926">'+op+'</td>'+cell(B[0],o.hi==='tens')+cell(B[1],o.hi==='ones')+'</tr>';
+  s+='<tr><td colspan="3"><div style="border-top:3px solid #8ac926;margin:2px 0"></div></td></tr>';
+  if(o.ans!=null){ var R2=String(o.ans).padStart(3,' '); s+='<tr><td></td>'+cell(R2[0]).replace('padding:0 6px','padding:0 3px')+cell(R2[1])+cell(R2[2])+'</tr>'; }
+  return s+'</table>'; }
+function numColChoices(ans){ var set=new Set([ans]); var d=[1,10,-1,-10,9,11]; var i=0; while(set.size<4&&i<d.length){ var v=ans+d[i++]; if(v>=0)set.add(v); } return shuffle(Array.from(set)).map(String); }
+QG.column=function(L){
+  if(L<3){ var at=R(1,4),ao=R(0,4),b=R(1,9-ao); var a=at*10+ao; return {q:'Stack and add the ones column.', vis:colSVG(a,b,'+',{hi:'ones'}), choices:numColChoices(a+b), a:String(a+b)}; }
+  if(L<5){ var at=R(1,4),ao=R(0,4),bt=R(1,4),bo=R(0,9-ao); var a2=at*10+ao,b2=bt*10+bo; return {q:'Add the columns: ones first, then tens.', vis:colSVG(a2,b2,'+'), choices:numColChoices(a2+b2), a:String(a2+b2)}; }
+  if(L<7){ var at=R(1,4),ao=R(2,9),bt=R(1,4),bo=R(11-ao,9); var a3=at*10+ao,b3=bt*10+bo; return {q:'Add with a CARRY: ones make more than 9!', vis:colSVG(a3,b3,'+'), choices:numColChoices(a3+b3), a:String(a3+b3)}; }
+  if(L<9){ var at=R(3,7), ao=R(0,4), bo=R(ao+1,9), bt=R(1,at-1); var a4=at*10+ao, b4=bt*10+bo; return {q:'Subtract with a BORROW: not enough ones on top!', vis:colSVG(a4,b4,'\u2212'), choices:numColChoices(a4-b4), a:String(a4-b4)}; }
+  var carry=Math.random()<0.5; if(carry){ var at2=R(2,5),ao2=R(3,9),bt2=R(1,4),bo2=R(10-ao2,9); var a5=at2*10+ao2,b5=bt2*10+bo2; return {q:'Add these two-digit numbers.', vis:colSVG(a5,b5,'+'), choices:numColChoices(a5+b5), a:String(a5+b5)}; } else { var at3=R(4,9),ao3=R(0,4),bo3=R(ao3+1,9),bt3=R(1,at3-1); var a6=at3*10+ao3,b6=bt3*10+bo3; return {q:'Subtract these two-digit numbers.', vis:colSVG(a6,b6,'\u2212'), choices:numColChoices(a6-b6), a:String(a6-b6)}; }
+};
+MJGAMES.stackem={id:'stackem',name:'Stack the Ones',emoji:'\uD83E\uDE97',member:'reese',concept:'column',
+setup:function(L,st){
+  var at=R(1,L<4?4:7),ao=R(0,9),b=R(1,9); if(L<4){ ao=R(0,4); b=R(1,9-ao); } var a=at*10+ao, ones=(a%10)+b, carry=ones>9; st.ans=String(a+b);
+  return {call:(a%10)+' ones + '+b+' ones = ?', sub:carry?'More than 9! Write the ones, carry the ten.':'Add just the ones column first.',
+    html:colSVG(a,b,'+',{hi:'ones'})+'<div class="mjcards" id="skZ"></div>',
+    wire:function(){ var opts=numColChoices(a+b); $('#skZ').innerHTML=opts.map(function(o){return '<button class="mjposter skb" data-v="'+o+'" style="font-size:22px">'+o+'</button>';}).join('');
+      $$('.skb').forEach(function(bt){ bt.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(bt.dataset.v===st.ans){ mNote&&mNote('reese',64,.4); mjOK(a+' + '+b+' = '+(a+b)+'. Stacked clean!'); } else { punch(bt); mjNo('Ones: '+(a%10)+'+'+b+'='+ones+'. '+(carry?'Carry the ten! ':'')+'Total '+(a+b)+'.'); } }); }); }};
+}};
+MJGAMES.carryone={id:'carryone',name:'Carry the One',emoji:'\uD83C\uDFB5',member:'reese',concept:'column',
+setup:function(L,st){
+  var at=R(1,L<5?4:8), ao=R(L<6?5:1,9), bt=R(1,L<5?4:8), bo=(L<6)?R(10-ao,9):R(1,9); var a=at*10+ao, b=bt*10+bo; st.ans=String(a+b);
+  return {call:a+' + '+b+' = ?', sub:'Ones first. If they pass 9, carry a ten to the next column.',
+    html:colSVG(a,b,'+')+'<div class="mjcards" id="coZ"></div>',
+    wire:function(){ var opts=numColChoices(a+b); $('#coZ').innerHTML=opts.map(function(o){return '<button class="mjposter cob" data-v="'+o+'" style="font-size:22px">'+o+'</button>';}).join('');
+      $$('.cob').forEach(function(bt){ bt.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(bt.dataset.v===st.ans){ mNote&&mNote('reese',67,.4); mjOK((a%10)+'+'+(b%10)+'='+((a%10)+(b%10))+' ones, carry, then the tens. '+(a+b)+'!'); } else { punch(bt); mjNo('Ones make '+((a%10)+(b%10))+'. Carry the ten. Answer '+(a+b)+'.'); } }); }); }};
+}};
+MJGAMES.borrowit={id:'borrowit',name:'Borrow a Ten',emoji:'\uD83E\uDD1D',member:'reese',concept:'column',
+setup:function(L,st){
+  var at=R(L<5?3:4,L<5?5:9), ao=R(0,4), bo=(L<6)?R(ao+1,9):R(0,9), bt=R(1,at-1); var a=at*10+ao, b=bt*10+bo; st.ans=String(a-b);
+  var needBorrow=(a%10)<(b%10);
+  return {call:a+' \u2212 '+b+' = ?', sub:needBorrow?'Not enough ones on top! Borrow a ten to make more ones.':'Subtract the ones, then the tens.',
+    html:colSVG(a,b,'\u2212')+'<div class="mjcards" id="boZ"></div>',
+    wire:function(){ var opts=numColChoices(a-b); $('#boZ').innerHTML=opts.map(function(o){return '<button class="mjposter bob" data-v="'+o+'" style="font-size:22px">'+o+'</button>';}).join('');
+      $$('.bob').forEach(function(bt){ bt.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(bt.dataset.v===st.ans){ mNote&&mNote('reese',60,.4); mjOK(a+' \u2212 '+b+' = '+(a-b)+'. '+(needBorrow?'Borrowed clean!':'Nice and easy.')); } else { punch(bt); mjNo(needBorrow?('Borrow a ten: '+(a%10)+' becomes '+((a%10)+10)+'. Answer '+(a-b)+'.'):(a-b+' is the difference.')); } }); }); }};
+}};
+Object.assign(COACH,{
+  stackem:{member:'reese',verb:'TAP',hint:'tap',title:'\uD83E\uDE97 Stack the Ones',lines:['Line up the ones under the ones. Add that column first.','If it passes 9, carry a ten. TAP the total!']},
+  carryone:{member:'reese',verb:'TAP',hint:'tap',title:'\uD83C\uDFB5 Carry the One',lines:['Ones column first, then the tens.','When the ones pass 9, carry one ten over. TAP the answer!']},
+  borrowit:{member:'reese',verb:'TAP',hint:'tap',title:'\uD83E\uDD1D Borrow a Ten',lines:['Not enough ones up top? Borrow a ten to make ten more ones.','Then subtract. TAP the difference!']}
+});
+PLAY_RIGS.reese={hint:'Blues harp. Bend the notes, make it cry.',custom:function(el){
+  el.innerHTML='<div class="mjbig" style="font-size:44px">\uD83C\uDFB5</div><div class="sub center">draw and blow</div><div class="row" id="reStr" style="justify-content:center;gap:8px;margin-top:12px;flex-wrap:wrap"></div>';
+  var notes=[60,63,65,66,67,70,72];
+  $('#reStr').innerHTML=notes.map(function(n,i){return '<button class="mjcymbal res" data-n="'+n+'" style="font-size:16px;width:70px;height:70px;border-color:#c98f3a">'+(i+1)+'</button>';}).join('');
+  $$('.res').forEach(function(b){ b.addEventListener('click',function(){ ac(); mNote('reese',+b.dataset.n,.5); punch(b); }); });
+}};
+MUSIC_CARDS.reese={elly:'Reese plays 12-bar blues, and the blues is counted in columns. Stacking numbers, just like the bars.',body:'The blues has a shape: 12 bars, stacked in neat columns of 4. Reese counts them like you stack numbers to add: line up the ones under the ones, the tens under the tens. When one column fills up past 9, you carry to the next, the same way the blues rolls from one line of the verse into the next. Line it up, add the column, carry over.',example:'Listen: four bars, four bars, four bars. Each stack of four rolls into the next, like carrying a ten.'};
+MUSIC_DEMOS.reese=function(){ [60,63,65].forEach(function(n,i){ later(function(){ mNote('reese',n,.35); },i*260); }); later(function(){ mNote('reese',67,.6,0); },900); later(function(){ mNote('reese',66,.4,0); },1500); later(function(){ mNote('reese',65,.7,0); },1900); };
+LESSONS.reese={game:function(){startMJ('stackem');},steps:[
+  {say:'To add big numbers, STACK them: ones under ones, tens under tens. Then add one column at a time, starting with the ones.',vis:colSVG(23,14,'+',{ans:37})},
+  {say:'Add the ones first: 3 + 4 = 7. Then the tens: 2 + 1 = 3. That makes 37.',vis:colSVG(23,14,'+',{hi:'ones',ans:37})},
+  {say:'Sometimes the ones add up past 9. 8 + 5 = 13! Write the 3, and CARRY the 1 ten over to the tens column.',vis:colSVG(28,15,'+',{hi:'ones',ans:43})},
+  {say:'Subtracting works the same, but if the top ones are too small, you BORROW a ten. In my games you stack, carry, and borrow. Let us play the blues!',vis:colSVG(42,17,'\u2212',{ans:25})}
+]};
+METHOD.column={steps:[
+  {say:'Line up the place-value columns. Add the ones; if the sum is 10 or more, write the ones digit and carry 1 to the tens. Then add the tens (including any carry).',vis:colSVG(47,38,'+',{ans:85})},
+  {say:'To subtract, if the top ones are smaller than the bottom, borrow: take 1 ten from the tens column (it becomes 10 ones), then subtract. Check by adding back.',vis:colSVG(52,27,'\u2212',{ans:25})}
+]};
+STEPWALK.column=function(L){ var at=R(1,4),ao=R(2,9),bt=R(1,4),bo=R(11-ao,9); var a=at*10+ao,b=bt*10+bo;
+  return {title:'Ones first, carry, then tens',steps:[
+    {say:'Add the ONES column: '+(a%10)+' + '+(b%10)+' = ?',vis:colSVG(a,b,'+',{hi:'ones'}),choices:numChoices((a%10)+(b%10),3),a:(a%10)+(b%10)},
+    {say:(a%10)+(b%10)+' is more than 9, so we carry 1 ten. Now the TENS: '+Math.floor(a/10)+' + '+Math.floor(b/10)+' + 1 = ?',choices:numChoices(Math.floor(a/10)+Math.floor(b/10)+1,2),a:Math.floor(a/10)+Math.floor(b/10)+1},
+    {say:'Put it together: '+a+' + '+b+' = ?',choices:numColChoices(a+b),a:a+b,after:a+' + '+b+' = '+(a+b)+'. Ones, carry, tens!'}]}; };
+function bluesCharSVG(id,sz){
+  const O='#221a44'; let b='';
+  const eye=(x,y)=>'<circle cx="'+x+'" cy="'+y+'" r="5" fill="'+O+'"/><circle cx="'+(x+2)+'" cy="'+(y-2)+'" r="1.8" fill="#fff"/>';
+  const shades=(x,y)=>'<rect x="'+(x-9)+'" y="'+(y-5)+'" width="18" height="10" rx="4" fill="'+O+'"/><rect x="'+(x-7)+'" y="'+(y-3)+'" width="6" height="4" fill="#3a3a5a"/>';
+  const smile=(x,y,w)=>'<path d="M'+x+' '+y+' q'+(w/2)+' 5 '+w+' 0" stroke="'+O+'" stroke-width="4" fill="none" stroke-linecap="round"/>';
+  const feet=(c)=>'<ellipse cx="55" cy="123" rx="12" ry="6" fill="'+c+'"/><ellipse cx="85" cy="123" rx="12" ry="6" fill="'+c+'"/>';
+  const hat=(c)=>'<ellipse cx="70" cy="42" rx="42" ry="9" fill="'+c+'"/><rect x="50" y="18" width="40" height="26" rx="4" fill="'+c+'"/><rect x="50" y="36" width="40" height="5" fill="#ffd158"/>';
+  const suit=(c)=>'<rect x="40" y="52" width="60" height="66" rx="22" fill="'+c+'"/><path d="M60 54 l10 16 l10 -16" fill="#f4f0ff"/><rect x="66" y="54" width="8" height="46" fill="#3a3a5a"/>';
+  if(id==='slim'){ b=feet('#1a1a2e')+suit('#3a2a5e')+hat('#2a1a4e')+shades(58,74)+shades(82,74)+smile(60,92,20)+'<path d="M104 110 c-14 -8 -14 -44 0 -52 c8 -4 14 4 10 12 c-4 8 -10 6 -8 14 c2 8 8 8 6 18" fill="#8b5a2b" stroke="#4a2e12" stroke-width="2"/>'; }
+  else if(id==='mabel'){ b=feet('#1a1a2e')+suit('#7a1f4f')+hat('#5a1a3a')+eye(58,74)+eye(82,74)+'<ellipse cx="70" cy="92" rx="7" ry="5" fill="'+O+'"/><circle cx="104" cy="96" r="14" fill="#f4f0ff" stroke="#ffd158" stroke-width="3"/><circle cx="104" cy="96" r="5" fill="#ffd158"/>'; }
+  else if(id==='doc'){ b=feet('#1a1a2e')+suit('#2a3a5e')+hat('#1a2a4e')+shades(58,74)+shades(82,74)+smile(60,92,20)+'<rect x="30" y="102" width="80" height="16" rx="3" fill="#f4f0ff"/>'+[0,1,2,3,4,5,6].map(function(i){return '<rect x="'+(34+i*11)+'" y="102" width="6" height="11" fill="'+O+'"/>';}).join(''); }
+  else { b=feet('#1a1a2e')+suit('#4a3a2a')+hat('#3a2a1a')+shades(58,74)+shades(82,74)+'<rect x="52" y="88" width="36" height="12" rx="4" fill="#c0c0c8" stroke="#8a8a9a" stroke-width="1.5"/>'+[0,1,2,3,4,5,6,7,8].map(function(i){return '<rect x="'+(54+i*3.6)+'" y="90" width="2" height="8" fill="#5a5a6a"/>';}).join('')+'<path d="M50 40 q20 -12 40 0" fill="none" stroke="#ffd158" stroke-width="3" stroke-linecap="round"/>'; }
+  return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 140 140"><g class="charg">'+b+'</g></svg>';
+}
+addRecruit({id:'reese',name:'Reese',emoji:'\uD83C\uDFB5',title:'Harmonica',concept:'column',conceptName:'Column Add & Subtract',color:'#4a3a2a',rig:'harmonica',draw:bluesCharSVG,crewId:'harp',
+  bio:'Twelve-bar blues, stacked in neat columns of four. I count numbers the same way I count bars: line up the ones, line up the tens, and carry when a column fills up past nine.',
+  lines:['Ones under ones, tens under tens. Stack it.','Column fills past nine? Carry a ten on over.','Backporch played it loose. I like my columns lined up.'],
+  dreams:['Slim wanted it all by ear, no counting. You let me stack the columns clean. That is why I moseyed over.','A verse of blues is a stack of numbers you can hum.','My dream is a hundred-bar blues that carries over, again and again.','Not enough on top? Borrow a ten. Same as the blues borrows a bar.','This band keeps its columns straight. I am staying.'],
+  key:'backporch',bandName:'Backporch Blues',crew:{name:'Backporch Blues',members:[
+    {id:'slim',emoji:'\uD83C\uDFB8',name:'Slim',line:'Slow it down, now. Feel it.'},{id:'mabel',emoji:'\uD83C\uDFB9',name:'Mabel',line:'These keys have seen some things.'},{id:'doc',emoji:'\uD83C\uDFB9',name:'Doc',line:'Let the piano moan.'},{id:'harp',emoji:'\uD83C\uDFB5',name:'Reese',star:true,line:'Line up them columns. Carry the ten.'}]},
+  loseEmoji:'\uD83C\uDF19',loseTitle:'Backporch Blues keeps the porch',winLine:'You held the crowd AND stacked every column clean. Reese cupped the harp, blew one long bent note, and ambled onto your porch.',
+  starHint:'Win the harmonica rounds to fill the recruit spark and get Reese to mosey over.',btnStyle:'linear-gradient(90deg,#3a2a5e,#c98f3a)',
+  gigLine:'Reese blows one long, bent note. "Twelve bars, all lined up. Mighty fine, frontman."',meetLine:'And Reese on the harmonica, out of Backporch Blues. Twelve bars stack in columns, just like the ones and tens you carry.'});
 
 </script>
 
