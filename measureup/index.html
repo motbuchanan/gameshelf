@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Measure Up">
-<title>Measure Up v0.85</title>
+<title>Measure Up v0.87</title>
 <style>
 :root{
   --bg:#0e0b1e; --panel:#1d1636; --panel2:#28204a; --ink:#f4f0ff; --dim:#a89cd8;
@@ -928,14 +928,14 @@ svg .charg{will-change:transform}
 <div id="toast"></div>
 <button id="homeBtn" onclick="goHome()" aria-label="Back to Garage">🏠</button>
 <button id="ellyBtn" onclick="openEllyHelp()" aria-label="Ask Elly for help"></button>
-<div id="vbadge">v0.85 · Sep 8</div>
+<div id="vbadge">v0.87 · Sep 8</div>
 
 <script>
 'use strict';
 /* ============ UTILS ============ */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const VERSION='v0.85 · Sep 8';
+const VERSION='v0.87 · Sep 8';
 const RM=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -9665,6 +9665,182 @@ function abSet(st,x,y){ var dx=x-st.cx, dy=st.cy-y; var ang=Math.atan2(Math.max(
 jamCoach('aimbow','viola','\uD83C\uDFBB Aim the Bow',['Angles are how far you turn. Flat is 0, square corner is 90, all the way over is 180.','DRAG the bow to the angle I call, then let go to play it!'],'DRAG','drag');
 
 Object.assign(HEADLINE_JAM,{lumi:'lightfloor',flow:'fillmeter',viola:'aimbow'});
+Object.keys(HEADLINE_JAM).forEach(function(id){ if(LESSONS[id])LESSONS[id].game=function(){ startJam(HEADLINE_JAM[id]); }; });
+
+</script>
+<script>
+/* ============ v0.86: jams 11-13 — Glitch SPIN & CATCH, Grace LEVEL THE CHOIR, Pixel PUMP THE BARS ============ */
+
+/* JAM 11: GLITCH — SPIN & CATCH (Probability). Verb: predict, then FLICK the spinner and see where it lands. */
+jamRegister({id:'spincatch',title:'Spin & Catch',member:'glitch',concept:'prob',emoji:'\uD83C\uDFA1',scoreWord:'spin score',roundLabel:'Spin',
+  newRound:function(J){ var L=J.L(), st=J.state;
+    var pinks=L<3?pick([1,3,5,7]):R(1,7), tot=8; st.pinks=pinks; st.tot=tot; st.phase='predict'; st.ang=0; st.vel=0; st.spins=0; st.picked=null; st.done=false;
+    st.cx=J.W/2; st.cy=J.H/2+10; st.r=Math.min(J.W,J.H)*0.3;
+    var q=L<5?'more':'less'; st.q=q; st.ansWord=(pinks>tot/2)?'pink':(pinks<tot/2?'blue':'even');
+    J.call('Pink is '+pinks+' of 8 pads. Predict, then spin!','Which color is the spinner MORE likely to hit? Tap your guess, then flick the wheel.');
+    J.msg('Tap PINK or BLUE for your prediction.');
+  },
+  draw:function(J,ctx,dt){ var st=J.state; if(!st.r)return; var cx=st.cx,cy=st.cy,r=st.r,tot=st.tot;
+    if(st.phase==='spin'&&!st.done){ st.ang+=st.vel*dt; st.vel*=Math.pow(0.35,dt); if(st.vel<0.15){ st.vel=0; st.done=true; var a=((-st.ang)%(Math.PI*2)+Math.PI*2)%(Math.PI*2); var idx=Math.floor(a/(Math.PI*2)*tot); var landed=idx<st.pinks?'pink':'blue'; st.landed=landed; drum('kick');
+        var pred=st.picked; var likely=st.ansWord; var predRight=(likely==='even')?true:(pred===likely);
+        if(predRight){ mNote('glitch',72,.3); J.win('Landed '+landed+'. '+(likely==='even'?'Even odds, any guess is fair.':pred.toUpperCase()+' was the smart bet: '+st.pinks+' of 8.')); }
+        else J.miss('Landed '+landed+'. '+likely.toUpperCase()+' was more likely: '+(likely==='pink'?st.pinks:tot-st.pinks)+' of 8 pads.'); } }
+    for(var i=0;i<tot;i++){ var a0=st.ang+i*2*Math.PI/tot, a1=a0+2*Math.PI/tot; ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,a0,a1); ctx.closePath(); ctx.fillStyle=i<st.pinks?'#ff5db1':'#12e2c8'; ctx.fill(); ctx.strokeStyle='#1d1636'; ctx.lineWidth=3; ctx.stroke(); }
+    ctx.beginPath(); ctx.arc(cx,cy,10,0,Math.PI*2); ctx.fillStyle='#f4f0ff'; ctx.fill();
+    ctx.beginPath(); ctx.moveTo(cx-12,cy-r-4); ctx.lineTo(cx+12,cy-r-4); ctx.lineTo(cx,cy-r+16); ctx.closePath(); ctx.fillStyle='#ffd158'; ctx.fill();
+    jkText(ctx,st.pinks+' pink \u00B7 '+(tot-st.pinks)+' blue',J.W/2,60,20,'#f4f0ff');
+    if(st.phase==='predict'){ st.bp={x:J.W/2-130,y:J.H-80,w:120,h:48}; st.bb={x:J.W/2+10,y:J.H-80,w:120,h:48}; jkRound(ctx,st.bp.x,st.bp.y,120,48,12,'#ff5db1'); jkText(ctx,'PINK',J.W/2-70,J.H-56,18,'#1d1636'); jkRound(ctx,st.bb.x,st.bb.y,120,48,12,'#12e2c8'); jkText(ctx,'BLUE',J.W/2+70,J.H-56,18,'#1d1636'); }
+    else if(!st.done){ jkText(ctx,'You picked '+st.picked.toUpperCase()+'. Flick the wheel!',J.W/2,J.H-60,16,'#ffd158'); }
+    else jkText(ctx,'\u2192 '+st.landed.toUpperCase(),J.W/2,J.H-60,22,st.landed==='pink'?'#ff5db1':'#12e2c8');
+  },
+  onDown:function(J,x,y){ var st=J.state; if(!st.r||st.done)return;
+    if(st.phase==='predict'){ if(jkHit(x,y,st.bp)){ st.picked='pink'; st.phase='spin'; tone(700,.06,'square',.12); J.msg('Now flick the wheel!'); } else if(jkHit(x,y,st.bb)){ st.picked='blue'; st.phase='spin'; tone(500,.06,'square',.12); J.msg('Now flick the wheel!'); } return; }
+    st.fx=x; st.fy=y; st.ft=performance.now(); },
+  onMove:function(J,x,y){},
+  onUp:function(J,x,y){ var st=J.state; if(st.phase!=='spin'||st.done||st.fx==null)return; var dt=Math.max(30,performance.now()-st.ft); var d=jkDist(st.fx,st.fy,x,y); st.fx=null; if(d<20){ J.msg('Flick harder! Swipe across the wheel.'); return; } st.vel=Math.min(30,8+d/dt*40); for(var i=0;i<6;i++)later(function(){drum('hat');},i*90); }
+});
+jamCoach('spincatch','glitch','\uD83C\uDFA1 Spin & Catch',['More pink pads means pink is MORE LIKELY. That is probability.','TAP your prediction, then FLICK the wheel and see where it lands!'],'FLICK','swipe');
+
+/* JAM 12: GRACE — LEVEL THE CHOIR (Mean & Median). Verb: DRAG singer sliders until they are even; the mean is the level line. */
+jamRegister({id:'levelchoir',title:'Level the Choir',member:'grace',concept:'stats',emoji:'\u2696\uFE0F',scoreWord:'blend score',roundLabel:'Blend',
+  newRound:function(J){ var L=J.L(), st=J.state;
+    var n=L<3?3:L<6?4:5, vals=evenMeanSet(n,1,L<3?6:9); st.vals=vals; st.orig=vals.slice(); st.mean=meanOf(vals); st.total=vals.reduce(function(a,b){return a+b;},0); st.n=n;
+    st.drag=-1; st.done=false; st.colW=Math.min(70,(J.W-60)/n); st.gx=(J.W-st.colW*n)/2; st.base=J.H-90; st.unit=Math.min(28,(J.H-260)/10);
+    J.call('Even out the choir: total '+st.total+' shared by '+n,'Drag the singers up or down until they ALL hold the same. The total breath stays '+st.total+'.');
+    J.msg('Drag singers until every voice is the same.');
+  },
+  draw:function(J,ctx,dt){ var st=J.state; if(!st.vals)return; var n=st.n;
+    var meanY=st.base-st.mean*st.unit; ctx.setLineDash([6,4]); ctx.strokeStyle='#ffd158'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(st.gx-10,meanY); ctx.lineTo(st.gx+n*st.colW+10,meanY); ctx.stroke(); ctx.setLineDash([]); jkText(ctx,'mean '+st.mean,st.gx+n*st.colW+8,meanY-12,12,'#ffd158','right');
+    st.vals.forEach(function(v,i){ var x=st.gx+i*st.colW+8, h=v*st.unit, y=st.base-h; jkRound(ctx,x,y,st.colW-16,h,8,i===st.drag?'#c9b8ff':'#9d7cff','#1d1636',2); jkText(ctx,String(v),x+(st.colW-16)/2,y-14,16,'#f4f0ff'); jkText(ctx,['\uD83C\uDFA4','\uD83C\uDFB6','\uD83C\uDFA4','\uD83C\uDFB6','\uD83C\uDFA4'][i],x+(st.colW-16)/2,st.base+18,18); });
+    var cur=st.vals.reduce(function(a,b){return a+b;},0); jkText(ctx,'total '+cur+(cur===st.total?'':' (must be '+st.total+')'),J.W/2,60,16,cur===st.total?'#a89cd8':'#ff5d5d');
+    st.go={x:J.W/2-60,y:J.H-48,w:120,h:36}; jkRound(ctx,st.go.x,st.go.y,120,36,10,'#c0392b'); jkText(ctx,'SING \uD83C\uDFB6',J.W/2,J.H-30,15,'#fff');
+  },
+  onDown:function(J,x,y){ var st=J.state; if(!st.vals||st.done)return;
+    if(st.go&&jkHit(x,y,st.go)){ var cur=st.vals.reduce(function(a,b){return a+b;},0); var even=st.vals.every(function(v){return v===st.vals[0];}); drum('clap');
+      if(even&&cur===st.total){ st.done=true; [60,64,67].forEach(function(nn){mNote('grace',nn,.8);}); J.win('Every voice at '+st.vals[0]+'. '+st.total+' \u00F7 '+st.n+' = '+st.mean+'. Blended!'); }
+      else if(cur!==st.total) J.miss('Total is '+cur+', but it must stay '+st.total+'. Take from tall, give to short.');
+      else J.miss('Not even yet: '+st.vals.join(', ')+'. Every singer needs '+st.mean+'.'); return; }
+    var i=Math.floor((x-st.gx)/st.colW); if(i>=0&&i<st.n){ st.drag=i; } },
+  onMove:function(J,x,y){ var st=J.state; if(st.drag<0||st.done)return; var v=Math.round((st.base-y)/st.unit); v=Math.max(0,Math.min(10,v)); if(v!==st.vals[st.drag]){ st.vals[st.drag]=v; tone(300+v*40,.03,'sine',.08); } },
+  onUp:function(J,x,y){ var st=J.state; st.drag=-1; }
+});
+jamCoach('levelchoir','grace','\u2696\uFE0F Level the Choir',['The mean shares the total out evenly. Take from the tall voices, give to the short ones.','DRAG the singers until they are all the same height, then SING!'],'DRAG','drag');
+
+/* JAM 13: PIXEL — PUMP THE BARS (Data & Graphs). Verb: TAP to pump each bar up to its number before the beat drops. */
+jamRegister({id:'pumpbars',title:'Pump the Bars',member:'pixel',concept:'graph',emoji:'\uD83D\uDCC8',scoreWord:'chart score',roundLabel:'Chart',
+  newRound:function(J){ var L=J.L(), st=J.state;
+    var k=L<3?3:L<6?4:5, data=randData(k,1,L<3?5:8); st.data=data; st.cur=data.map(function(){return 0;}); st.done=false; st.k=k;
+    st.colW=Math.min(72,(J.W-60)/k); st.gx=(J.W-st.colW*k)/2; st.base=J.H-100; st.unit=Math.min(30,(J.H-260)/9); st.timer=J.gentle()?20:(L<6?15:11); st.pulse=0;
+    var list=data.map(function(d){return d.e+' '+d.v;}).join(' \u00B7 ');
+    J.call('Chart the votes: '+list,'Tap each bar to pump it up to its number. Tap the top to let air out. Beat drops in '+Math.round(st.timer)+'s!',function(){ st.running=true; });
+    J.msg('Tap a bar to pump. Match every number.');
+  },
+  draw:function(J,ctx,dt){ var st=J.state; if(!st.data)return; var k=st.k;
+    if(st.running&&!st.done){ st.timer-=dt; st.pulse+=dt; if(st.timer<=0){ st.done=true; pbCheck(J); } }
+    for(var g=1;g<=9;g++){ var gy=st.base-g*st.unit; ctx.strokeStyle='#2a1f55'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(st.gx-8,gy); ctx.lineTo(st.gx+k*st.colW+8,gy); ctx.stroke(); jkText(ctx,String(g),st.gx-16,gy,10,'#8ef0c9'); }
+    st.data.forEach(function(d,i){ var x=st.gx+i*st.colW+8, h=st.cur[i]*st.unit, y=st.base-h; var ok=st.cur[i]===d.v; jkRound(ctx,x,y,st.colW-16,Math.max(2,h),6,ok?'#7dff8a':'#ff5db1','#1d1636',2); jkText(ctx,d.e,x+(st.colW-16)/2,st.base+20,20); jkText(ctx,String(st.cur[i]),x+(st.colW-16)/2,y-12,14,'#f4f0ff'); jkText(ctx,'\u2192'+d.v,x+(st.colW-16)/2,st.base+42,12,'#ffd158'); });
+    jkText(ctx,'beat drops in '+Math.max(0,Math.ceil(st.timer))+'s',J.W/2,60,18,st.timer<4?'#ff5d5d':'#a89cd8');
+    st.go={x:J.W/2-60,y:J.H-48,w:120,h:36}; jkRound(ctx,st.go.x,st.go.y,120,36,10,'#12e2c8'); jkText(ctx,'DROP IT \uD83C\uDF9B\uFE0F',J.W/2,J.H-30,15,'#0e3a3a');
+  },
+  onDown:function(J,x,y){ var st=J.state; if(!st.data||st.done)return;
+    if(st.go&&jkHit(x,y,st.go)){ st.done=true; pbCheck(J); return; }
+    var i=Math.floor((x-st.gx)/st.colW); if(i<0||i>=st.k)return; var topY=st.base-st.cur[i]*st.unit;
+    if(y<topY-6&&st.cur[i]>0){ st.cur[i]--; tone(300,.04,'square',.1); } else if(st.cur[i]<9){ st.cur[i]++; tone(400+st.cur[i]*40,.05,'square',.12); drum('hat'); } },
+  onMove:function(J,x,y){}, onUp:function(J,x,y){}
+});
+function pbCheck(J){ var st=J.state; var ok=st.data.every(function(d,i){return st.cur[i]===d.v;}); drum('kick'); if(ok){ mNote('pixel',72,.3); J.win('Every bar matches. Chart is LIVE!'); } else { var off=st.data.filter(function(d,i){return st.cur[i]!==d.v;}).map(function(d){return d.e+' needs '+d.v;}).join(', '); J.miss('Not quite: '+off+'.'); } }
+jamCoach('pumpbars','pixel','\uD83D\uDCC8 Pump the Bars',['A bar graph shows each number as a height.','TAP each bar to pump it up to its number, before the beat drops!'],'TAP','tap');
+
+Object.assign(HEADLINE_JAM,{glitch:'spincatch',grace:'levelchoir',pixel:'pumpbars'});
+Object.keys(HEADLINE_JAM).forEach(function(id){ if(LESSONS[id])LESSONS[id].game=function(){ startJam(HEADLINE_JAM[id]); }; });
+
+</script>
+<script>
+/* ============ v0.87: jams 14-16 — Doot SPLIT THE BREATH, Gain RIDE THE FADER, Plink BAR HOP ============ */
+
+/* JAM 14: DOOT — SPLIT THE BREATH (Division). Verb: HOLD to fill a breath, then TAP N times to split it into equal note-bursts. */
+jamRegister({id:'splitbreath',title:'Split the Breath',member:'doot',concept:'div',emoji:'\uD83C\uDFBA',scoreWord:'breath score',roundLabel:'Breath',
+  newRound:function(J){ var L=J.L(), st=J.state;
+    var parts=R(2,L<3?3:L<6?4:6), each=R(1,L<3?4:L<6?6:9), total=parts*each; st.total=total; st.parts=parts; st.each=each;
+    st.phase='fill'; st.breath=0; st.holding=false; st.notes=[]; st.done=false; st.speed=J.gentle()?4:6;
+    J.call('Split '+total+' beats of breath into '+parts+' equal notes','Hold to fill the breath to '+total+', then tap '+parts+' times. Each note gets the same share. How many beats each?');
+    J.msg('HOLD to fill to '+total+'.');
+  },
+  draw:function(J,ctx,dt){ var st=J.state; if(!st.total)return; var W=J.W,H=J.H;
+    if(st.phase==='fill'&&st.holding){ st.breath=Math.min(st.total,st.breath+st.speed*dt); var seg=Math.floor(st.breath); if(seg!==st.lastSeg){ st.lastSeg=seg; if(seg>0)drum('hat'); } if(st.breath>=st.total){ st.holding=false; st.phase='split'; J.msg('Full! Now tap '+st.parts+' times to split it.'); } }
+    /* lung meter */
+    var mw=Math.min(300,W-60), mx=(W-mw)/2, my=90; jkRound(ctx,mx,my,mw,44,22,'#1d1636','#9d7cff',2); var fw=mw*(st.breath/st.total); if(fw>0)jkRound(ctx,mx+2,my+2,Math.max(6,fw-4),40,20,'#ff9f43'); jkText(ctx,Math.floor(st.breath)+' / '+st.total+' beats',W/2,my+22,16,'#f4f0ff');
+    /* notes bursted so far */
+    var nw=Math.min(64,(W-40)/st.parts); st.notes.forEach(function(n,i){ var x=(W-nw*st.parts)/2+i*nw+nw/2, y=H/2+40; ctx.beginPath(); ctx.arc(x,y,Math.min(26,8+n*3),0,Math.PI*2); ctx.fillStyle='#ffd158'; ctx.fill(); ctx.strokeStyle='#8a6a0e'; ctx.lineWidth=3; ctx.stroke(); jkText(ctx,String(n),x,y,16,'#3a2a00'); jkText(ctx,'\uD83C\uDFBA',x,y+40,20); });
+    for(var i=st.notes.length;i<st.parts;i++){ var x2=(W-nw*st.parts)/2+i*nw+nw/2; ctx.setLineDash([4,4]); ctx.beginPath(); ctx.arc(x2,H/2+40,18,0,Math.PI*2); ctx.strokeStyle='#3a2f6e'; ctx.lineWidth=2; ctx.stroke(); ctx.setLineDash([]); }
+    jkText(ctx,st.total+' \u00F7 '+st.parts+' = ?',W/2,50,26,'#ffd158');
+    st.pad={x:W/2-70,y:H-90,w:140,h:60}; jkRound(ctx,st.pad.x,st.pad.y,140,60,16,st.holding?'#ff9f43':'#3a2f6e','#ff9f43',3); jkText(ctx,st.phase==='fill'?(st.holding?'BREATHING\u2026':'HOLD'):'TOOT',W/2,H-60,18,'#f4f0ff');
+    if(st.phase==='pick'){ st.opts.forEach(function(o,i){ var bx=W/2-((st.opts.length*70)/2)+i*70+35; o.box={x:bx-30,y:H-170,w:60,h:44}; jkRound(ctx,o.box.x,o.box.y,60,44,10,'#2a1f55','#ffd158',2); jkText(ctx,String(o.v),bx,H-148,20); }); jkText(ctx,'How many beats in EACH note?',W/2,H-200,15,'#a89cd8'); }
+  },
+  onDown:function(J,x,y){ var st=J.state; if(!st.total||st.done)return;
+    if(st.phase==='fill'){ if(jkHit(x,y,st.pad)){ st.holding=true; st.lastSeg=-1; } return; }
+    if(st.phase==='split'){ if(jkHit(x,y,st.pad)){ st.notes.push(st.each); mNote('doot',60+st.notes.length*2,.3); if(st.notes.length>=st.parts){ st.phase='pick'; var e=st.each; st.opts=shuffle([e,e+1,Math.max(1,e-1),st.parts].filter(function(v,i,a){return a.indexOf(v)===i;})).slice(0,4).map(function(v){return {v:v};}); J.msg(st.parts+' notes! Now: how many beats did EACH get?'); } } return; }
+    if(st.phase==='pick'){ for(var i=0;i<st.opts.length;i++){ var o=st.opts[i]; if(o.box&&jkHit(x,y,o.box)){ st.done=true; if(o.v===st.each){ mNote('doot',72,.6); J.win(st.total+' \u00F7 '+st.parts+' = '+st.each+' beats each. Split clean!'); } else J.miss(st.total+' shared into '+st.parts+' notes is '+st.each+' each.'); return; } } } },
+  onMove:function(J,x,y){},
+  onUp:function(J,x,y){ var st=J.state; if(st.phase==='fill')st.holding=false; }
+});
+jamCoach('splitbreath','doot','\uD83C\uDFBA Split the Breath',['One breath, shared into equal notes. That is division.','HOLD to fill the breath, TAP to split it, then answer how many beats each note got!'],'HOLD','hold');
+
+/* JAM 15: GAIN — RIDE THE FADER (Negatives). Verb: DRAG a fader up/down a number line to called targets; crossing zero flips the lights. */
+jamRegister({id:'ridefader',title:'Ride the Fader',member:'gain',concept:'neg',emoji:'\uD83C\uDF9A\uFE0F',scoreWord:'fader score',roundLabel:'Cue',
+  newRound:function(J){ var L=J.L(), st=J.state;
+    var span=L<3?5:L<6?8:10; st.span=span; st.start=R(-2,2); st.delta=R(2,Math.max(2,span-2))*(Math.random()<0.5?-1:1); st.target=Math.max(-span,Math.min(span,st.start+st.delta)); st.delta=st.target-st.start;
+    st.pos=st.start; st.drag=false; st.done=false; st.cx=J.W/2; st.y0=90; st.y1=J.H-120; st.unit=(st.y1-st.y0)/(span*2);
+    J.call('Fader at '+st.start+'. Move it '+(st.delta>0?'UP ':'DOWN ')+Math.abs(st.delta),'Drag the fader '+(st.delta>0?'up':'down')+' '+Math.abs(st.delta)+' clicks. Below zero is negative. Let go on the number.');
+    J.msg('Drag the fader '+(st.delta>0?'up ':'down ')+Math.abs(st.delta)+'.');
+  },
+  draw:function(J,ctx,dt){ var st=J.state; if(st.span==null)return; var cx=st.cx, W=J.W;
+    var yOf=function(v){ return st.y1-(v+st.span)*st.unit; };
+    var zeroY=yOf(0); ctx.fillStyle='rgba(255,93,93,.08)'; ctx.fillRect(cx-70,zeroY,140,st.y1-zeroY); ctx.fillStyle='rgba(125,255,138,.08)'; ctx.fillRect(cx-70,st.y0,140,zeroY-st.y0);
+    ctx.strokeStyle='#3a2f6e'; ctx.lineWidth=10; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(cx,st.y0); ctx.lineTo(cx,st.y1); ctx.stroke(); ctx.lineCap='butt';
+    for(var v=-st.span;v<=st.span;v++){ var y=yOf(v); ctx.strokeStyle=v===0?'#ffd158':'#6f52c9'; ctx.lineWidth=v===0?3:1.5; ctx.beginPath(); ctx.moveTo(cx-(v===0?24:14),y); ctx.lineTo(cx+(v===0?24:14),y); ctx.stroke(); jkText(ctx,(v>0?'+':'')+v,cx-44,y,12,v===0?'#ffd158':v>0?'#8ef0c9':'#ff8a8a','right'); }
+    var ty=yOf(st.target); ctx.setLineDash([5,4]); ctx.strokeStyle='#ffd158'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(cx+30,ty); ctx.lineTo(cx+90,ty); ctx.stroke(); ctx.setLineDash([]); jkText(ctx,'\u2190 target',cx+96,ty,12,'#ffd158','left');
+    var py=yOf(st.pos); jkRound(ctx,cx-34,py-14,68,28,8,st.pos<0?'#ff8a8a':st.pos>0?'#8ef0c9':'#ffd158','#1d1636',2); jkText(ctx,(st.pos>0?'+':'')+st.pos,cx,py,15,'#1d1636');
+    jkText(ctx,(st.start>0?'+':'')+st.start+' '+(st.delta>0?'+ ':'\u2212 ')+Math.abs(st.delta)+' = ?',W/2,50,24,'#ffd158');
+    var lights=Math.abs(st.pos); for(var i=0;i<st.span;i++){ var on=i<lights; ctx.beginPath(); ctx.arc(W-30,st.y0+i*((st.y1-st.y0)/st.span)+10,7,0,Math.PI*2); ctx.fillStyle=on?(st.pos<0?'#ff8a8a':'#8ef0c9'):'#2a1f55'; ctx.fill(); }
+  },
+  onDown:function(J,x,y){ var st=J.state; if(st.span==null||st.done)return; var py=st.y1-(st.pos+st.span)*st.unit; if(Math.abs(x-st.cx)<50&&Math.abs(y-py)<30){ st.drag=true; tone(500,.05,'triangle',.1); } },
+  onMove:function(J,x,y){ var st=J.state; if(!st.drag)return; var v=Math.round((st.y1-y)/st.unit)-st.span; v=Math.max(-st.span,Math.min(st.span,v)); if(v!==st.pos){ st.pos=v; tone(300+ (v+st.span)*25,.03,'triangle',.08); if(v===0)drum('hat'); } },
+  onUp:function(J,x,y){ var st=J.state; if(!st.drag)return; st.drag=false; st.done=true; drum('kick');
+    if(st.pos===st.target){ mNote('gain',60,.4); J.win((st.start>0?'+':'')+st.start+(st.delta>0?' + ':' \u2212 ')+Math.abs(st.delta)+' = '+(st.target>0?'+':'')+st.target+'. '+(st.target<0?'Below zero, lights red!':'Nailed the cue.')); }
+    else J.miss('Landed on '+(st.pos>0?'+':'')+st.pos+'. From '+st.start+', '+(st.delta>0?'up':'down')+' '+Math.abs(st.delta)+' is '+(st.target>0?'+':'')+st.target+'.'); }
+});
+jamCoach('ridefader','gain','\uD83C\uDF9A\uFE0F Ride the Fader',['The fader is a number line. Above zero is positive, below zero is negative.','DRAG the fader up or down by the number I call and let go on the target!'],'DRAG','drag');
+
+/* JAM 16: PLINK — BAR HOP (Skip Counting). Verb: TAP on the beat to hop the creature to the next multiple; miss and slide back. */
+jamRegister({id:'barhop',title:'Bar Hop',member:'plink',concept:'skip',emoji:'\uD83D\uDC38',scoreWord:'hop score',roundLabel:'Hop',
+  newRound:function(J){ var L=J.L(), st=J.state;
+    var step=pick(L<3?[2,5,10]:L<6?[2,3,4,5,10]:[3,4,6,7,8]), hops=L<3?4:L<6?5:6; st.step=step; st.hops=hops; st.at=0; st.seq=[]; for(var i=1;i<=hops;i++)st.seq.push(i*step);
+    st.bars=[]; var n=hops*2+2; for(var k=0;k<n;k++)st.bars.push(k*Math.ceil(step/2)); /* decoy bars between multiples */
+    st.bars=[]; for(var k2=0;k2<=hops*step;k2++)if(k2%step===0||L>=3&&k2%step===Math.floor(step/2))st.bars.push(k2); st.bars=st.bars.filter(function(v,i,a){return a.indexOf(v)===i;}).sort(function(a,b){return a-b;});
+    st.idx=0; st.done=false; st.bpm=J.gentle()?60:(L<6?72:84); st.beat=0; st.timer=0; st.win=0.35; st.hopAnim=0; st.miss=0;
+    J.call('Hop by '+step+'s: '+st.seq.join(', '),'Tap on the beat to hop from bar to bar. Only land on the multiples of '+step+'!',function(){ st.running=true; });
+    J.msg('Tap on the beat. Next bar: '+step+'.');
+  },
+  draw:function(J,ctx,dt){ var st=J.state; if(!st.bars)return; var W=J.W,H=J.H, per=60/st.bpm;
+    if(st.running&&!st.done){ st.timer+=dt; if(st.timer>=per){ st.timer-=per; st.beat++; drum('hat'); } }
+    if(st.hopAnim>0)st.hopAnim-=dt*3;
+    var n=st.bars.length, bw=Math.min(52,(W-30)/n); st.bw=bw; st.bx0=(W-bw*n)/2;
+    st.bars.forEach(function(v,i){ var x=st.bx0+i*bw, isMult=v%st.step===0, h=isMult?70:46; jkRound(ctx,x+3,H/2+40-h,bw-6,h,6,isMult?'#8ef0c9':'#3a2f6e','#1d1636',2); jkText(ctx,String(v),x+bw/2,H/2+40-h/2,isMult?14:11,isMult?'#0e3a3a':'#a89cd8'); });
+    var curBar=st.bars.indexOf(st.at); var fx=st.bx0+curBar*bw+bw/2, fy=H/2+40-(st.at%st.step===0?70:46)-24-Math.sin(Math.max(0,st.hopAnim)*Math.PI)*30; jkText(ctx,'\uD83D\uDC38',fx,fy,30);
+    var phase=st.timer/per; var pr=18+Math.max(0,1-phase)*14; ctx.beginPath(); ctx.arc(W/2,90,pr,0,Math.PI*2); ctx.strokeStyle='#ffd158'; ctx.lineWidth=4; ctx.stroke(); jkText(ctx,'\u266A',W/2,90,18,'#ffd158');
+    jkText(ctx,'next: '+(st.idx<st.seq.length?st.seq[st.idx]:'done')+'  \u00B7  count by '+st.step,W/2,140,16,'#f4f0ff');
+    jkText(ctx,'on the beat: tap!',W/2,H-60,14,'#a89cd8');
+  },
+  onDown:function(J,x,y){ var st=J.state; if(!st.bars||st.done||!st.running)return; var per=60/st.bpm; var off=Math.min(st.timer,per-st.timer); var onBeat=off<=st.win*per;
+    if(!onBeat){ st.miss++; tone(200,.1,'sawtooth',.08); J.msg('Off the beat! Wait for the pulse.'); if(st.miss>=4){ st.done=true; J.miss('Too many off-beat hops. Hop by '+st.step+'s: '+st.seq.join(', ')+'.'); } return; }
+    var next=st.seq[st.idx]; st.at=next; st.idx++; st.hopAnim=1; mNote('plink',72+st.idx*2,.2);
+    if(st.idx>=st.seq.length){ st.done=true; J.win('Hopped by '+st.step+'s: '+st.seq.join(', ')+'. Every landing a multiple!'); } else J.msg('Next: '+st.seq[st.idx]+'.'); },
+  onMove:function(J,x,y){}, onUp:function(J,x,y){}
+});
+jamCoach('barhop','plink','\uD83D\uDC38 Bar Hop',['Skip counting is hopping by the same number every time.','TAP on the beat to hop to the next multiple. Off-beat hops slip!'],'TAP','tap');
+
+Object.assign(HEADLINE_JAM,{doot:'splitbreath',gain:'ridefader',plink:'barhop'});
 Object.keys(HEADLINE_JAM).forEach(function(id){ if(LESSONS[id])LESSONS[id].game=function(){ startJam(HEADLINE_JAM[id]); }; });
 
 </script>
