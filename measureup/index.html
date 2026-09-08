@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Measure Up">
-<title>Measure Up v0.80</title>
+<title>Measure Up v0.83</title>
 <style>
 :root{
   --bg:#0e0b1e; --panel:#1d1636; --panel2:#28204a; --ink:#f4f0ff; --dim:#a89cd8;
@@ -223,7 +223,8 @@ input.nm{
 .fbar.mini{height:36px;pointer-events:none}
 .fbar.mini .fseg{font-size:11px}
 .jammsg{min-height:26px;text-align:center;font-weight:800;margin-top:10px}
-#arcWrap{flex:1;display:flex;flex-direction:column;min-height:0}
+#arcWrap,.jamwrap{flex:1;display:flex;flex-direction:column;min-height:0}
+.jamwrap canvas{flex:1;width:100%;min-height:360px;touch-action:none;border-radius:14px;background:#120b2e}
 #arcCv{width:100%;flex:1;min-height:300px;border-radius:18px;background:
   radial-gradient(340px 200px at 50% 0%, rgba(197,141,255,.14), transparent 70%),#171238;
   border:1px solid #362a66;touch-action:none;display:block}
@@ -927,14 +928,14 @@ svg .charg{will-change:transform}
 <div id="toast"></div>
 <button id="homeBtn" onclick="goHome()" aria-label="Back to Garage">🏠</button>
 <button id="ellyBtn" onclick="openEllyHelp()" aria-label="Ask Elly for help"></button>
-<div id="vbadge">v0.80 · Sep 3</div>
+<div id="vbadge">v0.83 · Sep 8</div>
 
 <script>
 'use strict';
 /* ============ UTILS ============ */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const VERSION='v0.80 · Sep 3';
+const VERSION='v0.83 · Sep 8';
 const RM=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -2262,13 +2263,18 @@ function talkTo(id){
   const inband=!!S.band[id], aud=!!S.auditioned[id];
   let btns='';
   if(LESSONS[id]) btns+='<button class="btn wide" onclick="openLesson(\''+id+'\')">📖 Learn to play</button>';
+  if(typeof HEADLINE_JAM!=='undefined'&&HEADLINE_JAM[id]&&JAMS[HEADLINE_JAM[id]]){ var HJ=JAMS[HEADLINE_JAM[id]]; btns+='<button class="btn wide" style="background:linear-gradient(180deg,#ff7ad9,#c94fb5);color:#1d0b26" onclick="startJam(\''+HEADLINE_JAM[id]+'\')">'+HJ.emoji+' Jam: '+(HJ.title||HJ.id)+'</button>'; }
   if(METHOD[BY_ID[id].concept] && Math.floor(lvlOf(BY_ID[id].concept))>=6) btns+='<button class="btn wide" style="background:linear-gradient(180deg,#ffd158,#e0a92e);color:#3a2a00" onclick="openGoldLesson(\''+id+'\')">🥇 Gold Lesson</button>';
   if(id==='boom') btns+='<button class="btn wide" onclick="startKC()">🥁 Jam: Kit Catch</button>'+
     '<button class="btn wide ghost" onclick="startBB()">🧮 Beat Builder Classic</button>'+
-    '<button class="btn wide ghost" onclick="startMJ(\'crowdcount\')">👏 Crowd Count</button>';
+    '<button class="btn wide ghost" onclick="startMJ(\'crowdcount\')">👏 Crowd Count</button>'+
+    '<button class="btn wide ghost" onclick="startMJ(\'drumfill\')">🥁 Drum Fill</button>'+
+    '<button class="btn wide ghost" onclick="startMJ(\'encore\')">📣 Encore</button>';
   if(id==='slice') btns+='<button class="btn wide" onclick="startARC()">🥷 Jam: Note Slicer</button>'+
     '<button class="btn wide ghost" onclick="startNS()">✂️ Slicer Classic</button>'+
-    '<button class="btn wide ghost" onclick="startMJ(\'pizza\')">🍕 Pizza Night</button>';
+    '<button class="btn wide ghost" onclick="startMJ(\'pizza\')">🍕 Pizza Night</button>'+
+    '<button class="btn wide ghost" onclick="startMJ(\'pickpieces\')">🍕 Pick Pieces</button>'+
+    '<button class="btn wide ghost" onclick="startMJ(\'fretfrac\')">🎸 Fret Fractions</button>';
   if(id==='rumble') btns+='<button class="btn wide" onclick="startRS()">🎸 Jam: Rest Stop</button>'+
     '<button class="btn wide ghost" onclick="startMJ(\'unplug\')">🔌 Unplug</button>'+
     '<button class="btn wide ghost" onclick="startMJ(\'voldown\')">🔉 Volume Down</button>';
@@ -8334,7 +8340,6 @@ function fracBar(n,d,col){ col=col||'#8ef0c9'; var s='<div style="display:inline
 function fracCmp(a,b){ return a[0]*b[1]-b[0]*a[1]; }
 function fstr(f){ return f[0]+'/'+f[1]; }
 QG.cmpfrac=function(L){
-  var dens=[2,3,4,5,6,8,10,12];
   if(L<3){ var d=pick([4,6,8]), n1=R(1,d-1), n2=R(1,d-1); while(n2===n1)n2=R(1,d-1); var big=[Math.max(n1,n2),d]; return {q:'Which is BIGGER?', vis:'<div class="row" style="justify-content:center;gap:12px">'+fracBar(n1,d)+fracBar(n2,d,'#ffd158')+'</div>', choices:shuffle([n1+'/'+d,n2+'/'+d]), a:fstr(big)}; }
   if(L<5){ var da=pick([2,3,4,6,8]), db=pick([2,3,4,6,8]); while(db===da)db=pick([2,3,4,6,8]); return {q:'Which is BIGGER? (Same top, so fewer pieces = bigger pieces.)', vis:'<div class="row" style="justify-content:center;gap:12px">'+fracBar(1,da)+fracBar(1,db,'#ffd158')+'</div>', choices:shuffle(['1/'+da,'1/'+db]), a:'1/'+Math.min(da,db)}; }
   if(L<7){ var d3=pick([4,6,8,10]), n3=R(1,d3-1); while(n3*2===d3)n3=R(1,d3-1); return {q:'Is '+n3+'/'+d3+' MORE or LESS than 1/2?', vis:nlSVG(d3,[{n:n3,d:d3,label:n3+'/'+d3},{n:1,d:2,c:'#ffd158',label:'1/2'}]), choices:shuffle(['more than 1/2','less than 1/2']), a:(n3*2>d3?'more than 1/2':'less than 1/2')}; }
@@ -8439,7 +8444,6 @@ function shapeSVG(name,o){ o=o||{}; var sz=o.sz||110, c=sz/2, r=sz*0.42, sh=SHAP
     s+='<line x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'" stroke="'+(l.c||'#12e2c8')+'" stroke-width="3" stroke-dasharray="6 4"/>'; if(l.label)s+='<text x="'+(x1+(x1>c?6:-6))+'" y="'+(y1+5)+'" text-anchor="'+(x1>c?'start':'end')+'" font-size="14" font-weight="900" fill="'+(l.c||'#12e2c8')+'">'+l.label+'</text>'; });
   if(o.corners){ sh.pts&&sh.pts(c,r).forEach(function(p){ s+='<circle cx="'+p[0]+'" cy="'+p[1]+'" r="5" fill="#ffd158" stroke="#221a44" stroke-width="2"/>'; }); }
   return s+'</svg>'; }
-function symCount(name){ var n=SHAPES[name].sym; return n===99?'more than you can count':String(n); }
 QG.shape=function(L){
   var pool=L<3?['triangle','square','rectangle','circle']:L<6?['triangle','square','rectangle','pentagon','hexagon','circle']:SHAPE_NAMES; var nm=pick(pool);
   if(L<3||(L<7&&Math.random()<0.4)) return {q:'What shape is this?', vis:shapeSVG(nm), choices:shuffle([nm].concat(shuffle(pool.filter(function(x){return x!==nm;})).slice(0,3))), a:nm};
@@ -9152,6 +9156,294 @@ addRecruit({id:'reese',name:'Reese',emoji:'\uD83C\uDFB5',title:'Harmonica',conce
   loseEmoji:'\uD83C\uDF19',loseTitle:'Backporch Blues keeps the porch',winLine:'You held the crowd AND stacked every column clean. Reese cupped the harp, blew one long bent note, and ambled onto your porch.',
   starHint:'Win the harmonica rounds to fill the recruit spark and get Reese to mosey over.',btnStyle:'linear-gradient(90deg,#3a2a5e,#c98f3a)',
   gigLine:'Reese blows one long, bent note. "Twelve bars, all lined up. Mighty fine, frontman."',meetLine:'And Reese on the harmonica, out of Backporch Blues. Twelve bars stack in columns, just like the ones and tens you carry.'});
+
+</script>
+<script>
+/* ============ v0.82: JAMKIT — one shared engine for headline arcade jams (3+1 standard) ============ */
+var JAMS={};
+var JK={cur:null};
+function jamRegister(def){ JAMS[def.id]=def; }
+function jamScreenHTML(def){
+  return '<div class="scr" id="scr-jam-'+def.id+'"><div class="topbar"><button class="btn ghost backbtn" onclick="jamExit()">\u2190 Back</button>'+
+   '<button class="btn ghost small" onclick="showCoach(\'jam_'+def.id+'\',\''+def.member+'\',function(){})">\u2753</button>'+
+   '<div class="chip" id="jamRound-'+def.id+'">'+(def.roundLabel||'Round')+' 1/5</div><div class="spacer"></div><div class="chip">\u2B50 <span class="cv" id="jamScore-'+def.id+'">0</span></div></div>'+
+   '<div class="jamwrap"><canvas id="jamCv-'+def.id+'"></canvas></div><div class="jammsg" id="jamMsg-'+def.id+'"></div></div>';
+}
+function jamMount(def){ if(document.getElementById('scr-jam-'+def.id))return; var d=document.createElement('div'); d.innerHTML=jamScreenHTML(def); var el=d.firstChild; var anchor=document.getElementById('modal'); if(anchor)document.body.insertBefore(el,anchor); else document.body.appendChild(el); }
+function startJam(id,practice){
+  var def=JAMS[id]; if(!def)return; closeModal(); jamMount(def);
+  if(!practice && coachGate('jam_'+id,def.member,function(){startJam(id);},function(){startJam(id,true);}))return;
+  notePlay('jam_'+id);
+  var J={def:def,id:id,round:0,score:0,on:true,state:{},practice:!!practice,raf:0,lastT:0,W:0,H:0,ctx:null,cv:null,busy:false,px:0,py:0,pdown:false};
+  J.L=function(){ return Math.floor(rampL(def.concept,J.round,5)); };
+  J.gentle=function(){ return firstPlay('jam_'+id); };
+  J.msg=function(t){ var el=$('#jamMsg-'+id); if(el)el.textContent=t; };
+  J.call=function(main,sub,go){ J.busy=true; roundCall(def.member,main,sub,function(){ J.busy=false; if(go)go(); }); };
+  J.win=function(m){ if(J.busy)return; J.busy=true; J.score+=10; if(!J.practice){ adjust(def.concept,true,false); addNotes(2+(typeof perkBonus==='function'?perkBonus():0)); } $('#jamScore-'+id).textContent=J.score; sCorrect(1); confetti(10); J.msg(m||'Nailed it!'); later(function(){ if(!J.on)return; if(J.round>=5)jamEnd(J); else jamNext(J); },1400); };
+  J.miss=function(m){ if(J.busy)return; J.busy=true; if(!J.practice)adjust(def.concept,false,false); ellyChime(); J.msg(m||'Almost! Next one is yours.'); later(function(){ if(!J.on)return; if(J.round>=5)jamEnd(J); else jamNext(J); },1900); };
+  JK.cur=J; show('scr-jam-'+id);
+  J.cv=$('#jamCv-'+id); J.ctx=J.cv.getContext&&J.cv.getContext('2d'); jamResize(J);
+  var pos=function(e){ var r=J.cv.getBoundingClientRect(); return [e.clientX-r.left, e.clientY-r.top]; };
+  J.cv.onpointerdown=function(e){ e.preventDefault(); ac(); var p=pos(e); J.px=p[0]; J.py=p[1]; J.pdown=true; if(def.onDown&&!J.busy)def.onDown(J,p[0],p[1]); };
+  J.cv.onpointermove=function(e){ var p=pos(e); J.px=p[0]; J.py=p[1]; if(def.onMove&&!J.busy)def.onMove(J,p[0],p[1]); };
+  J.cv.onpointerup=J.cv.onpointercancel=J.cv.onpointerleave=function(e){ if(!J.pdown)return; var p=pos(e); J.pdown=false; if(def.onUp&&!J.busy)def.onUp(J,p[0],p[1]); };
+  jamNext(J);
+  J.lastT=performance.now();
+  var loop=function(now){ if(!J.on)return; var dt=Math.min(.05,(now-J.lastT)/1000); J.lastT=now; if(J.ctx){ J.ctx.clearRect(0,0,J.W,J.H); try{ def.draw(J,J.ctx,dt); }catch(err){} } J.raf=requestAnimationFrame(loop); };
+  J.raf=requestAnimationFrame(loop);
+}
+function jamResize(J){ var r=J.cv.getBoundingClientRect(), dpr=Math.min(2,window.devicePixelRatio||1); J.W=Math.max(300,r.width||360); J.H=Math.max(300,r.height||420); J.cv.width=J.W*dpr; J.cv.height=J.H*dpr; if(J.ctx)J.ctx.setTransform(dpr,0,0,dpr,0,0); }
+window.addEventListener('resize',function(){ if(JK.cur&&JK.cur.on)jamResize(JK.cur); });
+function jamNext(J){ J.round++; J.busy=false; J.state={}; var el=$('#jamRound-'+J.id); if(el)el.textContent=(J.def.roundLabel||'Round')+' '+J.round+'/5'; J.def.newRound(J); }
+function jamEnd(J){ J.on=false; if(J.raf)cancelAnimationFrame(J.raf); JK.cur=null; var def=J.def, L=Math.floor(lvlOf(def.concept));
+  renderHub(); show('scr-hub');
+  modal('<div class="center">'+memberSVG(def.member,100)+'<h2>'+def.emoji+' '+mName(def.member)+' session done!</h2></div>'+
+    '<div class="card center"><b>\u2B50 '+J.score+' '+def.scoreWord+'</b><div class="sub">'+CONCEPT_NAMES[def.concept]+': Lvl '+L+' '+TIER_MEDAL[tierOf(L)]+'</div></div>'+
+    (J.practice?'<div class="sub center">Practice run: no level change, no notes.</div>':dreamOutro(def.member))+
+    '<button class="btn wide" onclick="closeModal()">\uD83E\uDD18</button>');
+  sFanfare(); confetti(20); }
+function jamExit(){ var J=JK.cur; if(J){ J.on=false; if(J.raf)cancelAnimationFrame(J.raf); JK.cur=null; } clearTimers(); renderHub(); show('scr-hub'); }
+function jkRound(ctx,x,y,w,h,r,fill,stroke,lw){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); if(fill){ctx.fillStyle=fill;ctx.fill();} if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=lw||2;ctx.stroke();} }
+function jkText(ctx,t,x,y,size,col,align,weight){ ctx.font=(weight||'900')+' '+size+'px system-ui,sans-serif'; ctx.fillStyle=col||'#f4f0ff'; ctx.textAlign=align||'center'; ctx.textBaseline='middle'; ctx.fillText(t,x,y); }
+function jkHit(x,y,o){ return x>=o.x&&x<=o.x+o.w&&y>=o.y&&y<=o.y+o.h; }
+function jkDist(ax,ay,bx,by){ return Math.hypot(ax-bx,ay-by); }
+function jamCoach(id,member,title,lines,verb,hint){ COACH['jam_'+id]={member:member,verb:verb||'DRAG',hint:hint||'drag',title:title,lines:lines}; }
+
+/* ================= JAM 1: REG — CASH DRAWER (Money) ================= */
+var COINS=[{v:25,r:22,c:'#c9c9d4',t:'25\u00A2'},{v:10,r:16,c:'#d6d6e0',t:'10\u00A2'},{v:5,r:20,c:'#c4c4cf',t:'5\u00A2'},{v:1,r:18,c:'#c98f3a',t:'1\u00A2'},{v:100,r:26,c:'#ffd158',t:'$1'}];
+function coinDef(v){ return COINS.filter(function(c){return c.v===v;})[0]; }
+function moneyLabel(n){ var d=Math.floor(n/100),c=n%100; return d?('$'+d+'.'+String(c).padStart(2,'0')):(c+'\u00A2'); }
+function drawCoin(ctx,x,y,c,lift){ ctx.save(); if(lift){ ctx.shadowColor='rgba(0,0,0,.5)'; ctx.shadowBlur=12; ctx.shadowOffsetY=6; } ctx.beginPath(); ctx.arc(x,y,c.r,0,Math.PI*2); ctx.fillStyle=c.c; ctx.fill(); ctx.lineWidth=2.5; ctx.strokeStyle='rgba(0,0,0,.35)'; ctx.stroke(); ctx.beginPath(); ctx.arc(x,y,c.r-5,0,Math.PI*2); ctx.strokeStyle='rgba(255,255,255,.35)'; ctx.lineWidth=1.5; ctx.stroke(); ctx.restore(); jkText(ctx,c.v===100?'$1':String(c.v),x,y,Math.round(c.r*0.8),'#3a2a10'); }
+jamRegister({id:'cashdrawer',title:'Cash Drawer',member:'reg',concept:'money',emoji:'\uD83D\uDCB0',scoreWord:'register score',roundLabel:'Sale',
+  newRound:function(J){ var L=J.L(), st=J.state;
+    var pool=L<6?[25,10,5,1]:[100,25,10,5,1];
+    var target=L<3?pick([6,11,15,16,20,26,30,35]):L<6?pick([31,42,55,67,73,85,91,99]):pick([120,137,145,168,175,199,230,265]);
+    st.target=target; st.counter=[]; st.total=0; st.drag=null; st.pool=pool;
+    var dy=J.H-150; st.slots=pool.map(function(v,i){ return {v:v,c:coinDef(v),x:40+i*(J.W-80)/Math.max(1,pool.length-1),y:dy+70}; });
+    J.call('Ring up '+moneyLabel(target),'Drag coins from the drawer to the counter. Exact amount, then tap the bell.');
+    J.msg('Drag coins up to the counter. Tap \uD83D\uDD14 when it is exact.');
+  },
+  draw:function(J,ctx,dt){ var st=J.state; if(!st.slots)return; var W=J.W,H=J.H;
+    jkRound(ctx,16,50,W-32,H-230,14,'#2a1f55','#9d7cff',2); jkText(ctx,'COUNTER',W/2,66,12,'#a89cd8');
+    jkText(ctx,moneyLabel(st.total),W/2,H-215,34,st.total===st.target?'#7dff8a':st.total>st.target?'#ff5d5d':'#ffd158');
+    jkText(ctx,'of '+moneyLabel(st.target),W/2,H-188,14,'#a89cd8');
+    var bx=W-52, by=64; st.bell={x:bx-26,y:by-26,w:52,h:52}; ctx.beginPath(); ctx.arc(bx,by,24,0,Math.PI*2); ctx.fillStyle='#ffd158'; ctx.fill(); ctx.strokeStyle='#8a6a0e'; ctx.lineWidth=3; ctx.stroke(); jkText(ctx,'\uD83D\uDD14',bx,by+1,22);
+    st.counter.forEach(function(c){ drawCoin(ctx,c.x,c.y,c.c); });
+    jkRound(ctx,16,H-150,W-32,134,14,'#1d1636','#3a2f6e',2); jkText(ctx,'CASH DRAWER',W/2,H-138,12,'#a89cd8');
+    st.slots.forEach(function(s){ drawCoin(ctx,s.x,s.y,s.c); jkText(ctx,s.c.t,s.x,s.y+s.c.r+14,12,'#f4f0ff'); });
+    if(st.drag)drawCoin(ctx,st.drag.x,st.drag.y,st.drag.c,true);
+  },
+  onDown:function(J,x,y){ var st=J.state; if(!st.slots)return;
+    if(st.bell&&jkHit(x,y,st.bell)){ drum('clap'); if(st.total===st.target){ mNote('reg',72,.3); J.win('Exact change! '+st.counter.length+' coins.'); } else if(st.total<st.target){ J.msg('Short by '+(st.target-st.total)+'\u00A2. Add more!'); ellyChime(); } else { J.msg('Over by '+(st.total-st.target)+'\u00A2. Drag a coin back down.'); ellyChime(); } return; }
+    for(var i=0;i<st.slots.length;i++){ var s=st.slots[i]; if(jkDist(x,y,s.x,s.y)<=s.c.r+8){ st.drag={x:x,y:y,c:s.c,from:'drawer'}; tone(600+s.c.v,.06,'triangle',.12); return; } }
+    for(var k=st.counter.length-1;k>=0;k--){ var c=st.counter[k]; if(jkDist(x,y,c.x,c.y)<=c.c.r+8){ st.counter.splice(k,1); st.total-=c.c.v; st.drag={x:x,y:y,c:c.c,from:'counter'}; return; } }
+  },
+  onMove:function(J,x,y){ var st=J.state; if(st.drag){ st.drag.x=x; st.drag.y=y; } },
+  onUp:function(J,x,y){ var st=J.state; if(!st.drag)return; var onCounter=y<J.H-160&&y>50;
+    if(onCounter){ st.counter.push({x:x,y:y,c:st.drag.c}); st.total+=st.drag.c.v; tone(700,.08,'triangle',.14); if(st.total===st.target)J.msg('Exact! Tap the bell \uD83D\uDD14'); }
+    else if(st.drag.from==='counter'){ tone(300,.08,'triangle',.1); }
+    st.drag=null; }
+});
+jamCoach('cashdrawer','reg','\uD83D\uDCB0 Cash Drawer',['A real register! Penny 1, nickel 5, dime 10, quarter 25.','DRAG coins from the drawer onto the counter until it is EXACT, then tap the bell!'],'DRAG','drag');
+
+/* ================= JAM 2: REED — PIE SLICE (Equivalent Fractions) ================= */
+jamRegister({id:'pieslice',title:'Pie Slice',member:'reed',concept:'eqfrac',emoji:'\uD83E\uDD67',scoreWord:'slice score',roundLabel:'Pie',
+  newRound:function(J){ var L=J.L(), st=J.state;
+    var base=pick(L<3?[[1,2],[1,4]]:L<6?[[1,2],[1,3],[2,4],[3,4]]:[[2,3],[3,4],[2,6],[4,8],[3,6]]);
+    var k=pick(L<3?[2]:L<6?[2,3]:[2,3,4]); var pieces=base[1]*k, need=base[0]*k;
+    st.base=base; st.pieces=pieces; st.need=need; st.cuts=0; st.picked=[]; st.phase='cut'; st.swipe=null; st.sparks=[];
+    st.cx=J.W/2; st.cy=J.H/2-30; st.r=Math.min(J.W,J.H)*0.3;
+    J.call('Show '+base[0]+'/'+base[1]+' using '+pieces+' pieces','Swipe across the pie to cut it into '+pieces+' equal pieces, then tap '+need+' of them.');
+    J.msg('Swipe across the pie to cut it. You need '+pieces+' pieces.');
+  },
+  draw:function(J,ctx,dt){ var st=J.state; if(!st.r)return; var cx=st.cx,cy=st.cy,r=st.r;
+    ctx.beginPath(); ctx.arc(cx,cy,r+8,0,Math.PI*2); ctx.fillStyle='#c98f3a'; ctx.fill();
+    var slices=st.phase==='pick'?st.pieces:(st.cuts?st.cuts*2:1);
+    for(var i=0;i<slices;i++){ var a0=-Math.PI/2+i*2*Math.PI/slices, a1=a0+2*Math.PI/slices; var pk=st.picked.indexOf(i)>=0;
+      ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,r,a0,a1); ctx.closePath(); ctx.fillStyle=pk?'#ffd158':(i%2?'#ff9f43':'#ff7a3d'); ctx.fill(); ctx.strokeStyle='#5a2a10'; ctx.lineWidth=3; ctx.stroke(); }
+    jkText(ctx,st.phase==='cut'?(st.cuts?slices+' pieces':'whole pie'):st.picked.length+' of '+st.need+' picked',cx,cy+r+40,18,'#f4f0ff');
+    jkText(ctx,st.base[0]+'/'+st.base[1]+' = ?/'+st.pieces,cx,60,26,'#ffd158');
+    if(st.swipe){ ctx.beginPath(); ctx.moveTo(st.swipe.x0,st.swipe.y0); ctx.lineTo(st.swipe.x1,st.swipe.y1); ctx.strokeStyle='#f4f0ff'; ctx.lineWidth=4; ctx.stroke(); }
+    st.sparks=st.sparks.filter(function(p){ p.x+=p.vx; p.y+=p.vy; p.vy+=.3; p.life-=dt*2; ctx.fillStyle='rgba(255,209,88,'+Math.max(0,p.life)+')'; ctx.fillRect(p.x,p.y,4,4); return p.life>0; });
+    if(st.phase==='pick'){ st.serve={x:cx-60,y:J.H-70,w:120,h:44}; jkRound(ctx,st.serve.x,st.serve.y,120,44,12,'#8ef0c9'); jkText(ctx,'SERVE \uD83C\uDF7D\uFE0F',cx,J.H-48,16,'#12331c'); }
+  },
+  onDown:function(J,x,y){ var st=J.state; if(!st.r)return;
+    if(st.phase==='pick'){ if(st.serve&&jkHit(x,y,st.serve)){ if(st.picked.length===st.need){ mNote('reed',72,.5); J.win(st.base[0]+'/'+st.base[1]+' = '+st.need+'/'+st.pieces+'. Same slice!'); } else { ellyChime(); J.msg('You picked '+st.picked.length+'. You need '+st.need+'.'); } return; }
+      if(jkDist(x,y,st.cx,st.cy)<=st.r){ var ang=Math.atan2(y-st.cy,x-st.cx)+Math.PI/2; if(ang<0)ang+=Math.PI*2; var idx=Math.floor(ang/(Math.PI*2)*st.pieces)%st.pieces; var at=st.picked.indexOf(idx); if(at>=0)st.picked.splice(at,1); else st.picked.push(idx); tone(500+idx*40,.06,'triangle',.12); } return; }
+    st.swipe={x0:x,y0:y,x1:x,y1:y}; },
+  onMove:function(J,x,y){ var st=J.state; if(st.swipe){ st.swipe.x1=x; st.swipe.y1=y; } },
+  onUp:function(J,x,y){ var st=J.state; if(!st.swipe||st.phase!=='cut')return; var s=st.swipe; st.swipe=null;
+    var len=jkDist(s.x0,s.y0,s.x1,s.y1); var mid=jkDist((s.x0+s.x1)/2,(s.y0+s.y1)/2,st.cx,st.cy);
+    if(len>st.r*1.2&&mid<st.r*0.4){ st.cuts++; for(var i=0;i<10;i++)st.sparks.push({x:st.cx,y:st.cy,vx:(Math.random()-.5)*6,vy:-Math.random()*5,life:1}); tone(900,.08,'square',.12); mNote('reed',64+st.cuts*2,.2);
+      var have=st.cuts*2; if(have===st.pieces){ st.phase='pick'; J.msg('Cut! Now tap '+st.need+' pieces, then SERVE.'); }
+      else if(have>st.pieces){ J.miss('Too many cuts: '+have+' pieces. You needed '+st.pieces+'.'); }
+      else J.msg(have+' pieces. Keep cutting to '+st.pieces+'.'); }
+  }
+});
+jamCoach('pieslice','reed','\uD83E\uDD67 Pie Slice',['A pie is one whole. Cut it smaller and the same amount gets a new name.','SWIPE across the pie to cut it, TAP the pieces that make the fraction, then SERVE!'],'SWIPE','swipe');
+
+/* ================= JAM 3: MIKA — HIT YOUR MARK (Coordinate Grid) ================= */
+jamRegister({id:'hitmark2',title:'Hit Your Mark',member:'mika',concept:'coord',emoji:'\uD83D\uDCCD',scoreWord:'mark score',roundLabel:'Count',
+  newRound:function(J){ var L=J.L(), st=J.state;
+    var n=L<3?4:L<6?5:6; st.n=n; st.tx=R(0,n-1); st.ty=R(0,n-1); if(st.tx===0&&st.ty===0)st.tx=1;
+    st.pad=30; st.cell=Math.min((J.W-st.pad*2)/n,(J.H-200)/n); st.gx=st.pad+(J.W-st.pad*2-st.cell*n)/2; st.gy=80;
+    st.mx=st.gx+st.cell/2; st.my=st.gy+st.cell*(n-1)+st.cell/2;
+    st.drag=false; st.count=0; st.timer=0; st.per=J.gentle()?1.1:(L<6?0.95:0.8); st.landed=false; st.spark=0;
+    J.call('Go to '+coordStr(st.tx,st.ty),'Across '+st.tx+', then up '+st.ty+'. Drag Mika there before the count of 8!',function(){ st.count=1; drum('hat'); });
+    J.msg('5, 6, 7, 8! Drag Mika to '+coordStr(st.tx,st.ty)+'.');
+  },
+  draw:function(J,ctx,dt){ var st=J.state; if(!st.n)return; var n=st.n,c=st.cell,gx=st.gx,gy=st.gy;
+    jkRound(ctx,gx-6,gy-6,c*n+12,c*n+12,10,'#1d1636','#9d7cff',2);
+    ctx.strokeStyle='#3a2f6e'; ctx.lineWidth=1;
+    for(var i=0;i<=n;i++){ ctx.beginPath(); ctx.moveTo(gx+i*c,gy); ctx.lineTo(gx+i*c,gy+n*c); ctx.stroke(); ctx.beginPath(); ctx.moveTo(gx,gy+i*c); ctx.lineTo(gx+n*c,gy+i*c); ctx.stroke(); }
+    for(var x=0;x<n;x++)jkText(ctx,String(x),gx+x*c+c/2,gy+n*c+14,13,'#ffd158');
+    for(var y=0;y<n;y++)jkText(ctx,String(y),gx-14,gy+(n-1-y)*c+c/2,13,'#8ef0c9');
+    var tx=gx+st.tx*c+c/2, ty=gy+(n-1-st.ty)*c+c/2; ctx.beginPath(); ctx.arc(tx,ty,c*0.36+Math.sin(performance.now()/150)*3,0,Math.PI*2); ctx.strokeStyle='#ffd158'; ctx.lineWidth=3; ctx.setLineDash([6,4]); ctx.stroke(); ctx.setLineDash([]); jkText(ctx,'\u2B50',tx,ty,Math.round(c*0.5));
+    if(st.count>0&&!st.landed){ st.timer+=dt; if(st.timer>=st.per){ st.timer=0; st.count++; if(st.count<=8)drum(st.count===8?'snare':'hat'); if(st.count>8){ st.landed=true; J.miss('Missed the count! The mark was '+coordStr(st.tx,st.ty)+'.'); } } }
+    jkText(ctx,st.count>0&&st.count<=8?String(st.count):'',J.W/2,44,40,st.count===8?'#ff7ad9':'#f4f0ff');
+    ctx.beginPath(); ctx.arc(st.mx,st.my,c*0.3,0,Math.PI*2); ctx.fillStyle='#ff7ad9'; ctx.fill(); ctx.strokeStyle='#2a1f55'; ctx.lineWidth=3; ctx.stroke(); jkText(ctx,'\uD83D\uDC83',st.mx,st.my,Math.round(c*0.45));
+    if(st.spark>0){ st.spark-=dt; ctx.beginPath(); ctx.arc(st.mx,st.my,c*0.5*(1-st.spark)+c*0.3,0,Math.PI*2); ctx.strokeStyle='rgba(255,209,88,'+Math.max(0,st.spark)+')'; ctx.lineWidth=4; ctx.stroke(); }
+  },
+  onDown:function(J,x,y){ var st=J.state; if(!st.n||st.landed)return; if(jkDist(x,y,st.mx,st.my)<st.cell*0.6){ st.drag=true; tone(700,.05,'triangle',.1); } },
+  onMove:function(J,x,y){ var st=J.state; if(st.drag){ st.mx=Math.max(st.gx,Math.min(st.gx+st.cell*st.n,x)); st.my=Math.max(st.gy,Math.min(st.gy+st.cell*st.n,y)); } },
+  onUp:function(J,x,y){ var st=J.state; if(!st.drag)return; st.drag=false; var n=st.n,c=st.cell;
+    var cx=Math.floor((st.mx-st.gx)/c), cy=n-1-Math.floor((st.my-st.gy)/c); cx=Math.max(0,Math.min(n-1,cx)); cy=Math.max(0,Math.min(n-1,cy));
+    st.mx=st.gx+cx*c+c/2; st.my=st.gy+(n-1-cy)*c+c/2;
+    if(cx===st.tx&&cy===st.ty){ st.landed=true; st.spark=1; drum('snare'); mNote('mika',72,.4); J.win('Hit the mark at '+coordStr(st.tx,st.ty)+' on '+Math.max(1,Math.min(8,st.count))+'!'); }
+    else { tone(300,.08,'triangle',.1); J.msg('That is '+coordStr(cx,cy)+'. Across '+st.tx+' first, then up '+st.ty+'.'); }
+  }
+});
+jamCoach('hitmark2','mika','\uD83D\uDCCD Hit Your Mark',['Every spot on the stage has a name: (across, up). Across first, THEN up.','DRAG Mika to the star mark and let go before the count of 8!'],'DRAG','drag');
+
+/* ================= headline registration: LESSONS.game -> the jam; modal gets a headline button ================= */
+var HEADLINE_JAM={reg:'cashdrawer',reed:'pieslice',mika:'hitmark2'};
+Object.keys(HEADLINE_JAM).forEach(function(id){ if(LESSONS[id])LESSONS[id].game=function(){ startJam(HEADLINE_JAM[id]); }; });
+window.BQ&&Object.assign(window.BQ,{JAMS:JAMS,JK:JK,startJam:startJam,jamExit:jamExit,HEADLINE_JAM:HEADLINE_JAM});
+
+</script>
+<script>
+/* ============ v0.83: BOOM + SLICE backfill to 3 mini-games, + 2 recruit jams (Big Tub, Willow) ============ */
+
+/* ---- BOOM +2: Drum Fill (which cymbals sum to target), Encore (add the two cheers) ---- */
+function drumKitHTML(pads){ return '<div class="row" style="justify-content:center;gap:10px;flex-wrap:wrap;margin-top:8px">'+pads.map(function(p,i){ return '<button class="choice dkp" data-i="'+i+'" data-v="'+p.v+'" style="width:78px;height:78px;border-radius:50%;padding:0;background:radial-gradient(circle at 40% 35%,'+p.hi+','+p.lo+');border:3px solid #ffd158;font-size:13px;line-height:1.1"><div style="font-size:24px">'+p.e+'</div>'+p.v+'</button>'; }).join('')+'</div>'; }
+var DRUM_PADS=[{e:'\uD83E\uDD41',hi:'#ff8a8a',lo:'#8a2020'},{e:'\uD83E\uDD41',hi:'#ffd97a',lo:'#8a5a10'},{e:'\uD83E\uDD41',hi:'#8ef0c9',lo:'#0e5a3a'},{e:'\uD83E\uDD41',hi:'#9d7cff',lo:'#3a2a8a'},{e:'\uD83E\uDD41',hi:'#4dd6ff',lo:'#0e3a5a'}];
+MJGAMES.drumfill={id:'drumfill',name:'Drum Fill',emoji:'\uD83E\uDD41',member:'boom',concept:'add',
+setup:function(L,st){
+  var k=L<3?2:L<6?3:3, hi=L<3?6:L<6?9:14; var vals=[]; while(vals.length<(L<3?3:4)){ var v=R(1,hi); if(vals.indexOf(v)<0)vals.push(v); }
+  var pickIdx=shuffle(vals.map(function(_,i){return i;})).slice(0,k); st.target=pickIdx.reduce(function(a,i){return a+vals[i];},0); st.vals=vals; st.chosen=[]; st.sum=0;
+  var pads=vals.map(function(v,i){ var d=DRUM_PADS[i%DRUM_PADS.length]; return {v:v,e:d.e,hi:d.hi,lo:d.lo}; });
+  return {call:'Hit drums that add up to '+st.target, sub:'Tap drums to add them up. Tap again to take one back. Hit the cymbal when it is exact.',
+    html:'<div class="mjbig" id="dfSum" style="font-size:36px">0 <span class="sub" style="font-size:16px">of '+st.target+'</span></div>'+drumKitHTML(pads)+'<div class="row" style="justify-content:center;margin-top:12px"><button class="mjcymbal" id="dfCym">\uD83D\uDD14<br>CRASH</button></div>',
+    wire:function(){ var upd=function(){ $('#dfSum').innerHTML=st.sum+' <span class="sub" style="font-size:16px">of '+st.target+'</span>'; $('#dfSum').style.color=st.sum===st.target?'#7dff8a':st.sum>st.target?'#ff5d5d':'#ffd158'; };
+      $$('.dkp').forEach(function(b){ b.addEventListener('click',function(){ if(MJ.busy)return; ac(); var i=+b.dataset.i, v=+b.dataset.v; var at=st.chosen.indexOf(i); if(at>=0){ st.chosen.splice(at,1); st.sum-=v; b.style.boxShadow=''; drum('hat'); } else { st.chosen.push(i); st.sum+=v; b.style.boxShadow='0 0 0 4px #7dff8a'; drum(['kick','snare','kick','snare','kick'][i%5]); punch(b); } upd(); }); });
+      $('#dfCym').addEventListener('click',function(){ if(MJ.busy)return; ac(); drum('clap'); if(st.sum===st.target){ mjOK(st.chosen.map(function(i){return st.vals[i];}).join(' + ')+' = '+st.target+'. Fill!'); } else { punch($('#dfCym')); mjNo(st.sum<st.target?('Only '+st.sum+'. You need '+(st.target-st.sum)+' more.'):('That is '+st.sum+', over by '+(st.sum-st.target)+'.')); } }); }};
+}};
+MJGAMES.encore={id:'encore',name:'Encore',emoji:'\uD83D\uDCE3',member:'boom',concept:'add',
+setup:function(L,st){
+  var a=R(L<3?2:L<6?6:11,L<3?9:L<6?19:39), b=R(L<3?2:L<6?6:11,L<3?9:L<6?19:39); st.ans=a+b;
+  var crowd=function(n,e){ var s='<div style="font-size:'+(n>12?'14px':'20px')+';line-height:1.2;letter-spacing:1px">'; for(var i=0;i<Math.min(n,40);i++)s+=e; return s+(n>40?' \u2026':'')+'</div><div class="sub" style="margin:0"><b>'+n+'</b> fans</div>'; };
+  return {call:'Left side cheers '+a+'. Right side cheers '+b+'. How many fans want an encore?', sub:'Add the two sides of the crowd together.',
+    html:'<div class="row" style="justify-content:center;gap:12px;align-items:flex-start"><div class="center" style="flex:1">'+crowd(a,'\uD83D\uDE4C')+'</div><b style="font-size:30px;margin-top:20px">+</b><div class="center" style="flex:1">'+crowd(b,'\uD83D\uDC4F')+'</div></div><div class="mjcards" id="enZ"></div>',
+    wire:function(){ var opts=shuffle([st.ans,st.ans+1,st.ans-1,st.ans+10].filter(function(v,i,arr){return v>0&&arr.indexOf(v)===i;})).slice(0,4);
+      $('#enZ').innerHTML=opts.map(function(o){return '<button class="mjposter enb" data-v="'+o+'" style="font-size:24px">'+o+'</button>';}).join('');
+      $$('.enb').forEach(function(bt){ bt.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(+bt.dataset.v===st.ans){ drum('kick'); later(function(){drum('snare');},120); mjOK(a+' + '+b+' = '+st.ans+'. ENCORE!'); } else { punch(bt); mjNo(a+' + '+b+' = '+st.ans+'. Count both sides!'); } }); }); }};
+}};
+Object.assign(COACH,{
+  drumfill:{member:'boom',verb:'TAP',hint:'tap',title:'\uD83E\uDD41 Drum Fill',lines:['Every drum has a number. Hit a few and they ADD UP.','TAP the drums that make the target, then CRASH the cymbal!']},
+  encore:{member:'boom',verb:'TAP',hint:'tap',title:'\uD83D\uDCE3 Encore',lines:['Two sides of the crowd, two cheers.','Add them together and TAP how many want an encore!']}
+});
+
+/* ---- SLICE +2: Pick Pieces (which slice is 1/4), Fret Fractions (frets split the string) ---- */
+function pieChoice(n,d,sz){ return pieSVG(n,d,sz||70,'#ff7a3d'); }
+MJGAMES.pickpieces={id:'pickpieces',name:'Pick Pieces',emoji:'\uD83C\uDF55',member:'slice',concept:'frac',
+setup:function(L,st){
+  var d=pick(L<3?[2,4]:L<6?[3,4,6]:[4,6,8]), n=R(1,d-1); st.ans=n+'/'+d;
+  var wrongs=[]; var cands=[[n+1,d],[Math.max(1,n-1),d],[n,d===2?4:d/2>=2&&Number.isInteger(d/2)?d/2:d+2],[Math.min(d-1,n+2),d]];
+  cands.forEach(function(c){ var k=c[0]+'/'+c[1]; if(c[0]>=1&&c[0]<c[1]&&k!==st.ans&&wrongs.indexOf(k)<0)wrongs.push(k); });
+  var opts=shuffle([st.ans].concat(wrongs.slice(0,L<3?2:3)));
+  return {call:'Which pizza shows '+n+'/'+d+'?', sub:'Bottom number = how many slices the whole pizza was cut into. Top = how many are left.',
+    html:'<div class="row" style="justify-content:center;gap:10px;flex-wrap:wrap" id="ppZ2"></div>',
+    wire:function(){ $('#ppZ2').innerHTML=opts.map(function(o){ var f=o.split('/'); return '<button class="mjposter ppb2" data-v="'+o+'" style="padding:8px">'+pieChoice(+f[0],+f[1],72)+'<div style="font-size:14px">?</div></button>'; }).join('');
+      $$('.ppb2').forEach(function(bt){ bt.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(bt.dataset.v===st.ans){ mNote('slice',67,.3); mjOK('That pizza is '+st.ans+'. '+d+' slices, '+n+' left!'); } else { punch(bt); mjNo('Count the slices: '+d+' total, '+n+' with sauce. That is '+st.ans+'.'); } }); }); }};
+}};
+function fretSVG(d,marks,o){ o=o||{}; var W=280,H=70,x0=20,x1=W-20,y=34,s='<svg viewBox="0 0 '+W+' '+H+'" width="100%" style="max-width:'+W+'px;display:block;margin:0 auto">';
+  s+='<rect x="'+x0+'" y="'+(y-10)+'" width="'+(x1-x0)+'" height="20" rx="3" fill="#5a3a1a"/>';
+  for(var i=0;i<=d;i++){ var x=x0+(x1-x0)*i/d; s+='<rect x="'+(x-1.5)+'" y="'+(y-12)+'" width="3" height="24" fill="#d4c4a0"/>'; if(o.labels&&i>0&&i<d)s+='<text x="'+x+'" y="'+(y+30)+'" text-anchor="middle" font-size="11" fill="#ffd158">'+i+'/'+d+'</text>'; }
+  s+='<line x1="'+x0+'" y1="'+y+'" x2="'+x1+'" y2="'+y+'" stroke="#e8e0c8" stroke-width="2"/>';
+  (marks||[]).forEach(function(m){ var x=x0+(x1-x0)*m.n/m.d; s+='<circle cx="'+x+'" cy="'+y+'" r="8" fill="'+(m.c||'#8ef0c9')+'" stroke="#1d1636" stroke-width="2"/>'; });
+  return s+'</svg>'; }
+MJGAMES.fretfrac={id:'fretfrac',name:'Fret Fractions',emoji:'\uD83C\uDFB8',member:'slice',concept:'frac',
+setup:function(L,st){
+  var d=pick(L<3?[2,4]:L<6?[3,4,6]:[4,6,8]), n=R(1,d-1); st.ans=n+'/'+d;
+  return {call:'The string is split into '+d+' frets. Where is the finger?', sub:'Count the frets from the left. That fret number over '+d+' is the fraction.',
+    html:fretSVG(d,[{n:n,d:d}],{labels:L<4})+'<div class="mjcards" id="ffZ"></div>',
+    wire:function(){ var opts=shuffle([st.ans,(n%d+1)+'/'+d,Math.max(1,n-1)+'/'+d,n+'/'+(d+2)].filter(function(v,i,a){ var f=v.split('/'); return +f[0]<+f[1]&&a.indexOf(v)===i; })).slice(0,4);
+      $('#ffZ').innerHTML=opts.map(function(o){return '<button class="mjposter ffb" data-v="'+o+'" style="font-size:22px">'+o+'</button>';}).join('');
+      $$('.ffb').forEach(function(bt){ bt.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(bt.dataset.v===st.ans){ mNote('slice',60+n*2,.4); mjOK('Fret '+n+' of '+d+': '+st.ans+' of the string!'); } else { punch(bt); mjNo('Count from the left: fret '+n+'. That is '+st.ans+'.'); } }); }); }};
+}};
+Object.assign(COACH,{
+  pickpieces:{member:'slice',verb:'TAP',hint:'tap',title:'\uD83C\uDF55 Pick Pieces',lines:['The bottom number is how many slices the pizza was cut into. The top is how many are left.','TAP the pizza that matches the fraction!']},
+  fretfrac:{member:'slice',verb:'TAP',hint:'tap',title:'\uD83C\uDFB8 Fret Fractions',lines:['Frets split the string into equal parts, like slices.','Count the frets from the left and TAP the fraction!']}
+});
+
+/* ---- JAM 4: BIG TUB — FEED THE SIGN (Greater/Less) ---- */
+jamRegister({id:'feedsign',title:'Feed the Sign',member:'bigtub',concept:'compare',emoji:'\uD83D\uDC0A',scoreWord:'chomp score',roundLabel:'Chomp',
+  newRound:function(J){ var L=J.L(), st=J.state;
+    var hi=L<3?9:L<6?49:199; var a=R(1,hi), b=R(1,hi); while(b===a)b=R(1,hi); st.a=a; st.b=b; st.big=Math.max(a,b);
+    st.mouthX=J.W/2; st.mouthY=J.H/2+20; st.open=0; st.chomp=0; st.drag=null; st.done=false;
+    st.nums=[{v:a,x:J.W*0.25,y:J.H-90,home:[J.W*0.25,J.H-90]},{v:b,x:J.W*0.75,y:J.H-90,home:[J.W*0.75,J.H-90]}];
+    J.call('Feed the sign the BIGGER number','The sign always eats the bigger one. Drag it into the open mouth!');
+    J.msg('Drag the BIGGER number into the mouth.');
+  },
+  draw:function(J,ctx,dt){ var st=J.state; if(!st.nums)return; var mx=st.mouthX,my=st.mouthY;
+    st.open=st.open+(1-st.open)*dt*3; if(st.chomp>0)st.chomp-=dt;
+    var gap=(st.chomp>0?6:36*st.open); /* open toward the left: > shape */
+    ctx.fillStyle='#8ef0c9'; ctx.strokeStyle='#0e5a3a'; ctx.lineWidth=5;
+    ctx.beginPath(); ctx.moveTo(mx-70,my-gap-40); ctx.lineTo(mx+40,my); ctx.lineTo(mx-70,my+gap+40); ctx.lineTo(mx-90,my+gap+30); ctx.lineTo(mx+10,my); ctx.lineTo(mx-90,my-gap-30); ctx.closePath(); ctx.fill(); ctx.stroke();
+    for(var i=0;i<4;i++){ ctx.fillStyle='#f4f0ff'; ctx.beginPath(); ctx.moveTo(mx-60+i*20,my-gap-30); ctx.lineTo(mx-52+i*20,my-gap-12); ctx.lineTo(mx-44+i*20,my-gap-30); ctx.fill(); ctx.beginPath(); ctx.moveTo(mx-60+i*20,my+gap+30); ctx.lineTo(mx-52+i*20,my+gap+12); ctx.lineTo(mx-44+i*20,my+gap+30); ctx.fill(); }
+    ctx.fillStyle='#1d1636'; ctx.beginPath(); ctx.arc(mx-30,my-gap-50,6,0,Math.PI*2); ctx.fill();
+    jkText(ctx,'>',mx+60,my+2,44,'#ffd158');
+    st.nums.forEach(function(n){ if(st.drag===n)return; jkRound(ctx,n.x-44,n.y-28,88,56,14,'#2a1f55','#ffd158',3); jkText(ctx,String(n.v),n.x,n.y,30); });
+    if(st.drag){ var n=st.drag; ctx.save(); ctx.shadowColor='rgba(0,0,0,.5)'; ctx.shadowBlur=14; jkRound(ctx,n.x-44,n.y-28,88,56,14,'#3a2f6e','#ffd158',3); ctx.restore(); jkText(ctx,String(n.v),n.x,n.y,30); }
+  },
+  onDown:function(J,x,y){ var st=J.state; if(!st.nums||st.done)return; for(var i=0;i<st.nums.length;i++){ var n=st.nums[i]; if(Math.abs(x-n.x)<48&&Math.abs(y-n.y)<32){ st.drag=n; tone(500,.05,'triangle',.1); return; } } },
+  onMove:function(J,x,y){ var st=J.state; if(st.drag){ st.drag.x=x; st.drag.y=y; } },
+  onUp:function(J,x,y){ var st=J.state; if(!st.drag)return; var n=st.drag; st.drag=null; var inMouth=jkDist(x,y,st.mouthX-40,st.mouthY)<70;
+    if(inMouth){ st.chomp=0.5; drum('kick'); if(n.v===st.big){ st.done=true; mNote('bigtub',36,.4); J.win(n.v+' is bigger than '+(n.v===st.a?st.b:st.a)+'. CHOMP!'); } else { n.x=n.home[0]; n.y=n.home[1]; tone(200,.15,'sawtooth',.1); J.miss('The sign spits out '+n.v+'. '+st.big+' is bigger!'); } }
+    else { n.x=n.home[0]; n.y=n.home[1]; } }
+});
+jamCoach('feedsign','bigtub','\uD83D\uDC0A Feed the Sign',['The greater-than sign is a hungry mouth. It always opens toward the BIGGER number.','DRAG the bigger number into the mouth and let it chomp!'],'DRAG','drag');
+
+/* ---- JAM 5: WILLOW — PLANT ROWS (Factors & Multiples) ---- */
+jamRegister({id:'plantrows',title:'Plant Rows',member:'willow',concept:'factor',emoji:'\uD83C\uDF3E',scoreWord:'harvest score',roundLabel:'Field',
+  newRound:function(J){ var L=J.L(), st=J.state;
+    var total=pick(L<3?[6,8,10,12]:L<6?[12,15,16,18,20]:[18,20,24,30,36]); var rows=pick(factorsOf(total).filter(function(f){return f>1&&f<total&&total/f<=8&&f<=6;})); if(!rows)rows=2;
+    st.total=total; st.rows=rows; st.per=total/rows; st.placed=[]; for(var r=0;r<rows;r++)st.placed.push(0); st.pile=total; st.drag=null; st.done=false;
+    st.fieldX=30; st.fieldY=70; st.rowH=Math.min(52,(J.H-220)/rows); st.fieldW=J.W-60;
+    J.call('Plant '+total+' seeds in '+rows+' EQUAL rows','Drag seeds from the pile into the rows. Every row must have the same number.');
+    J.msg('Drag seeds into the rows. Same number in every row!');
+  },
+  draw:function(J,ctx,dt){ var st=J.state; if(!st.rows)return;
+    for(var r=0;r<st.rows;r++){ var y=st.fieldY+r*st.rowH; jkRound(ctx,st.fieldX,y,st.fieldW,st.rowH-8,10,'#3a2a10','#8a5a2a',2); var cnt=st.placed[r]; for(var i=0;i<cnt;i++){ var sx=st.fieldX+18+i*Math.min(34,(st.fieldW-36)/Math.max(1,st.per)); jkText(ctx,'\uD83C\uDF31',sx,y+(st.rowH-8)/2,20); } jkText(ctx,String(cnt),st.fieldX+st.fieldW-16,y+(st.rowH-8)/2,16,cnt===st.per?'#7dff8a':'#ffd158'); }
+    var py=J.H-80; jkRound(ctx,st.fieldX,py-34,st.fieldW,70,14,'#1d1636','#8ac926',2); jkText(ctx,'SEED PILE: '+st.pile,st.fieldX+st.fieldW/2,py-18,14,'#a89cd8'); st.pileBox={x:st.fieldX,y:py-34,w:st.fieldW,h:70};
+    for(var k=0;k<Math.min(st.pile,12);k++)jkText(ctx,'\uD83C\uDF30',st.fieldX+30+k*22,py+12,20);
+    if(st.drag)jkText(ctx,'\uD83C\uDF30',st.drag.x,st.drag.y,28);
+    st.plant={x:J.W/2-60,y:J.H-20-22,w:120,h:36}; jkRound(ctx,st.plant.x,st.plant.y,120,36,10,st.pile===0?'#8ac926':'#3a2f6e'); jkText(ctx,'HARVEST',J.W/2,J.H-24,15,st.pile===0?'#12331c':'#a89cd8');
+  },
+  onDown:function(J,x,y){ var st=J.state; if(!st.rows||st.done)return;
+    if(st.plant&&jkHit(x,y,st.plant)){ if(st.pile>0){ J.msg('Plant every seed first. '+st.pile+' left.'); ellyChime(); return; } var even=st.placed.every(function(c){return c===st.per;}); drum('clap'); if(even){ st.done=true; mNote('willow',67,.5); J.win(st.rows+' rows of '+st.per+' = '+st.total+'. Even harvest!'); } else { J.miss('Rows are uneven: '+st.placed.join(', ')+'. Each needs '+st.per+'.'); } return; }
+    if(st.pileBox&&jkHit(x,y,st.pileBox)&&st.pile>0){ st.drag={x:x,y:y}; tone(600,.04,'triangle',.1); return; }
+    for(var r=0;r<st.rows;r++){ var ry=st.fieldY+r*st.rowH; if(y>=ry&&y<ry+st.rowH-8&&st.placed[r]>0){ st.placed[r]--; st.pile++; st.drag={x:x,y:y}; return; } }
+  },
+  onMove:function(J,x,y){ var st=J.state; if(st.drag){ st.drag.x=x; st.drag.y=y; } },
+  onUp:function(J,x,y){ var st=J.state; if(!st.drag)return; st.drag=null;
+    for(var r=0;r<st.rows;r++){ var ry=st.fieldY+r*st.rowH; if(y>=ry&&y<ry+st.rowH-8&&x>=st.fieldX&&x<=st.fieldX+st.fieldW){ st.placed[r]++; st.pile--; mNote('willow',55+r*2,.15); return; } }
+    /* dropped nowhere: the seed is already counted in the pile (never removed on pickup) */ }
+});
+jamCoach('plantrows','willow','\uD83C\uDF3E Plant Rows',['Factors are the ways you can share evenly. Every row gets the SAME number of seeds.','DRAG seeds into the rows until they are even, then HARVEST!'],'DRAG','drag');
+
+Object.assign(HEADLINE_JAM,{bigtub:'feedsign',willow:'plantrows'});
+Object.keys(HEADLINE_JAM).forEach(function(id){ if(LESSONS[id])LESSONS[id].game=function(){ startJam(HEADLINE_JAM[id]); }; });
 
 </script>
 
