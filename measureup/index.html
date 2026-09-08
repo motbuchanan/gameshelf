@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Measure Up">
-<title>Measure Up v0.83</title>
+<title>Measure Up v0.85</title>
 <style>
 :root{
   --bg:#0e0b1e; --panel:#1d1636; --panel2:#28204a; --ink:#f4f0ff; --dim:#a89cd8;
@@ -928,14 +928,14 @@ svg .charg{will-change:transform}
 <div id="toast"></div>
 <button id="homeBtn" onclick="goHome()" aria-label="Back to Garage">🏠</button>
 <button id="ellyBtn" onclick="openEllyHelp()" aria-label="Ask Elly for help"></button>
-<div id="vbadge">v0.83 · Sep 8</div>
+<div id="vbadge">v0.85 · Sep 8</div>
 
 <script>
 'use strict';
 /* ============ UTILS ============ */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const VERSION='v0.83 · Sep 8';
+const VERSION='v0.85 · Sep 8';
 const RM=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -2277,16 +2277,20 @@ function talkTo(id){
     '<button class="btn wide ghost" onclick="startMJ(\'fretfrac\')">🎸 Fret Fractions</button>';
   if(id==='rumble') btns+='<button class="btn wide" onclick="startRS()">🎸 Jam: Rest Stop</button>'+
     '<button class="btn wide ghost" onclick="startMJ(\'unplug\')">🔌 Unplug</button>'+
-    '<button class="btn wide ghost" onclick="startMJ(\'voldown\')">🔉 Volume Down</button>';
+    '<button class="btn wide ghost" onclick="startMJ(\'voldown\')">🔉 Volume Down</button>'+
+    '<button class="btn wide ghost" onclick="startMJ(\'cablecut\')">✂️ Cable Cut</button>';
   if(id==='combo') btns+='<button class="btn wide" onclick="startGG()">🎹 Jam: Stamp!</button>'+
     '<button class="btn wide ghost" onclick="startMJ(\'ampwall\')">🔊 Amp Wall</button>'+
-    '<button class="btn wide ghost" onclick="startMJ(\'riffloop\')">🔁 Riff Repeater</button>';
+    '<button class="btn wide ghost" onclick="startMJ(\'riffloop\')">🔁 Riff Repeater</button>'+
+    '<button class="btn wide ghost" onclick="startMJ(\'chordgrid\')">🎹 Chord Grid</button>';
   if(id==='tock') btns+='<button class="btn wide" onclick="startTT()">🎧 Jam: Turntable</button>'+
     '<button class="btn wide ghost" onclick="startMJ(\'tourbus\')">🚌 Tour Bus</button>'+
-    '<button class="btn wide ghost" onclick="startMJ(\'marquee\')">🌗 Marquee Sort</button>';
+    '<button class="btn wide ghost" onclick="startMJ(\'marquee\')">🌗 Marquee Sort</button>'+
+    '<button class="btn wide ghost" onclick="startMJ(\'settime\')">⏰ Set Time</button>';
   if(id==='gauge') btns+='<button class="btn wide" onclick="startST()">📏 Jam: Tape Stretch</button>'+
     '<button class="btn wide ghost" onclick="startMJ(\'stackup\')">📦 Stack Up</button>'+
-    '<button class="btn wide ghost" onclick="startMJ(\'cablepick\')">🧵 Cable Pick</button>';
+    '<button class="btn wide ghost" onclick="startMJ(\'cablepick\')">🧵 Cable Pick</button>'+
+    '<button class="btn wide ghost" onclick="startMJ(\'roadcase\')">📦 Road Case</button>';
   if(id==='doot') btns+='<button class="btn wide" onclick="startMJ(\'longbreath\')">🎺 Long Breath</button>'+
     '<button class="btn wide ghost" onclick="startMJ(\'soloshare\')">🎷 Solo Share</button>'+
     '<button class="btn wide ghost" onclick="startMJ(\'lasttoot\')">💨 Last Toot</button>';
@@ -2322,7 +2326,8 @@ function talkTo(id){
     '<button class="btn wide ghost" onclick="startMJ(\'bigthree\')">📊 Top of Three</button>';
   if(id==='luna') btns+='<button class="btn wide" onclick="startHP()">🐇 Jam: Calendar Hop</button>'+
     '<button class="btn wide ghost" onclick="startMJ(\'tourorder\')">🗺️ Tour Router</button>'+
-    '<button class="btn wide ghost" onclick="startMJ(\'countdown\')">📆 Countdown</button>';
+    '<button class="btn wide ghost" onclick="startMJ(\'countdown\')">📆 Countdown</button>'+
+    '<button class="btn wide ghost" onclick="startMJ(\'bookit\')">📅 Book It</button>';
   if(btns.indexOf('startMJ(')<0&&!['boom','luna'].includes(id)){ memberGames(id).forEach((gid,i)=>{ const G=MJGAMES[gid]; btns+='<button class="btn wide'+(i?' ghost':'')+'" onclick="startMJ(\''+gid+'\')">'+G.emoji+' '+G.name+'</button>'; }); }
   // stamp a ✓ on any game this member has already cleared
   memberGames(id).forEach(gid=>{ if(S.cleared[gid]){
@@ -9443,6 +9448,223 @@ jamRegister({id:'plantrows',title:'Plant Rows',member:'willow',concept:'factor',
 jamCoach('plantrows','willow','\uD83C\uDF3E Plant Rows',['Factors are the ways you can share evenly. Every row gets the SAME number of seeds.','DRAG seeds into the rows until they are even, then HARVEST!'],'DRAG','drag');
 
 Object.assign(HEADLINE_JAM,{bigtub:'feedsign',willow:'plantrows'});
+Object.keys(HEADLINE_JAM).forEach(function(id){ if(LESSONS[id])LESSONS[id].game=function(){ startJam(HEADLINE_JAM[id]); }; });
+
+</script>
+<script>
+/* ============ v0.84: Rumble/Combo/Tock/Gauge/Luna +1 mini-game each (all originals now at 3), + jams 6-7 (Cadence, Dub) ============ */
+
+/* RUMBLE +1: Cable Cut — a bundle of cables, cut N, how many are left plugged in */
+MJGAMES.cablecut={id:'cablecut',name:'Cable Cut',emoji:'\u2702\uFE0F',member:'rumble',concept:'sub',
+setup:function(L,st){
+  var total=R(L<3?5:L<6?9:14, L<3?9:L<6?16:25), cut=R(1,Math.min(total-1,L<3?4:L<6?8:12)); st.ans=total-cut; st.cut=cut; st.total=total; st.snipped=0;
+  var cables=''; for(var i=0;i<total;i++)cables+='<div class="cbl" data-i="'+i+'" style="display:inline-block;width:18px;height:64px;margin:2px;border-radius:9px;background:linear-gradient(180deg,#3a2f6e,#1d1636);border:2px solid #9d7cff;position:relative"><div style="position:absolute;top:-6px;left:2px;width:10px;height:10px;border-radius:50%;background:#ffd158"></div></div>';
+  return {call:total+' cables plugged in. Rumble cuts '+cut+'. How many still plugged in?', sub:'Snip '+cut+' cables (tap them), then count what is left and tap it.',
+    html:'<div class="center" style="max-width:300px;margin:6px auto;line-height:0" id="ccBundle">'+cables+'</div><div class="sub center" id="ccCnt">snipped 0 of '+cut+'</div><div class="mjcards" id="ccZ"></div>',
+    wire:function(){ var opts=shuffle([st.ans,st.ans+1,Math.max(0,st.ans-1),total].filter(function(v,i,a){return a.indexOf(v)===i;})).slice(0,4);
+      $$('#ccBundle .cbl').forEach(function(c){ c.addEventListener('click',function(){ if(MJ.busy||c.dataset.done)return; if(st.snipped>=cut){ ellyChime(); return; } ac(); c.dataset.done=1; c.style.opacity='.25'; c.style.transform='rotate(12deg) translateY(8px)'; st.snipped++; tone(900,.05,'square',.12); $('#ccCnt').textContent='snipped '+st.snipped+' of '+cut; }); });
+      $('#ccZ').innerHTML=opts.map(function(o){return '<button class="mjposter ccb" data-v="'+o+'" style="font-size:22px">'+o+'</button>';}).join('');
+      $$('.ccb').forEach(function(b){ b.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(+b.dataset.v===st.ans){ mNote('rumble',36,.4); mjOK(total+' \u2212 '+cut+' = '+st.ans+' still plugged in.'); } else { punch(b); mjNo(total+' cables minus '+cut+' cut leaves '+st.ans+'.'); } }); }); }};
+}};
+/* COMBO +1: Chord Grid — rows x columns of keys light up */
+MJGAMES.chordgrid={id:'chordgrid',name:'Chord Grid',emoji:'\uD83C\uDFB9',member:'combo',concept:'mul',
+setup:function(L,st){
+  var r=R(2,L<3?3:L<6?5:7), c=R(2,L<3?4:L<6?6:9); st.ans=r*c;
+  var keys=''; for(var y=0;y<r;y++){ keys+='<div style="display:flex;justify-content:center;gap:3px;margin:3px 0">'; for(var x=0;x<c;x++)keys+='<div style="width:'+Math.max(16,Math.floor(220/c))+'px;height:26px;border-radius:3px;background:linear-gradient(180deg,#f4f0ff,#c9c4e0);border:1px solid #6f52c9"></div>'; keys+='</div>'; }
+  return {call:r+' rows of '+c+' keys. How many keys light up?', sub:'Rows times columns. Count one row, then count the rows.',
+    html:'<div class="center">'+keys+'</div><div class="sub center">'+r+' \u00D7 '+c+'</div><div class="mjcards" id="cgZ"></div>',
+    wire:function(){ var opts=shuffle([st.ans,st.ans+c,st.ans-r,r+c].filter(function(v,i,a){return v>0&&a.indexOf(v)===i;})).slice(0,4);
+      $('#cgZ').innerHTML=opts.map(function(o){return '<button class="mjposter cgb" data-v="'+o+'" style="font-size:22px">'+o+'</button>';}).join('');
+      $$('.cgb').forEach(function(b){ b.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(+b.dataset.v===st.ans){ [60,64,67].forEach(function(n,i){later(function(){mNote('combo',n,.3);},i*90);}); mjOK(r+' \u00D7 '+c+' = '+st.ans+' keys!'); } else { punch(b); mjNo(r+' rows of '+c+' is '+st.ans+'.'); } }); }); }};
+}};
+/* TOCK +1: Set Time — read a show time, tap the clock that shows it */
+MJGAMES.settime={id:'settime',name:'Set Time',emoji:'\u23F0',member:'tock',concept:'clock',
+setup:function(L,st){
+  var h=R(1,12), m=L<3?0:L<6?pick([0,30]):pick([0,15,30,45]); st.h=h; st.m=m;
+  var label=h+':'+String(m).padStart(2,'0'); st.ans=label;
+  var wrongs=[]; var cands=[[h%12+1,m],[h,(m+30)%60],[(h+10)%12+1,m]]; cands.forEach(function(w){ var k=w[0]+':'+String(w[1]).padStart(2,'0'); if(k!==label&&wrongs.indexOf(k)<0)wrongs.push(k); });
+  var opts=shuffle([label].concat(wrongs.slice(0,L<3?2:3)));
+  return {call:'The show starts at '+label+'. Which clock says so?', sub:'Short hand = hour. Long hand = minutes. '+(m===0?'Long hand straight up means :00.':m===30?'Long hand straight down means :30.':''),
+    html:'<div class="row" style="justify-content:center;gap:8px;flex-wrap:wrap" id="stZ"></div>',
+    wire:function(){ $('#stZ').innerHTML=opts.map(function(o){ var p=o.split(':'); return '<button class="mjposter stb" data-v="'+o+'" style="padding:6px;min-width:0">'+clockHTML(+p[0],+p[1])+'</button>'; }).join('');
+      $$('.stb').forEach(function(b){ b.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(b.dataset.v===st.ans){ tone(880,.15,'sine',.14); later(function(){tone(1100,.2,'sine',.14);},160); mjOK('That clock says '+label+'. Doors open!'); } else { punch(b); mjNo('Short hand on '+h+', long hand '+(m===0?'straight up':m===30?'straight down':'on the '+m)+'. That is '+label+'.'); } }); }); }};
+}};
+/* GAUGE +1: Road Case — which case fits the gear (length comparison on a ruler) */
+MJGAMES.roadcase={id:'roadcase',name:'Road Case',emoji:'\uD83D\uDCE6',member:'gauge',concept:'meas',
+setup:function(L,st){
+  var gear=R(L<3?3:L<6?5:8, L<3?8:L<6?14:20); st.gear=gear;
+  var sizes=shuffle([gear,gear+R(1,3),Math.max(1,gear-R(1,3)),gear+R(4,6)].filter(function(v,i,a){return a.indexOf(v)===i;})).slice(0,L<3?3:4); st.ans=gear;
+  var ruler=function(n,hi){ var w=Math.min(260,n*13); var s='<div style="position:relative;height:38px;margin:4px auto;width:'+w+'px"><div style="position:absolute;left:0;top:10px;width:100%;height:18px;border-radius:4px;background:'+(hi?'#8ef0c9':'#5a4a10')+';border:2px solid '+(hi?'#0e5a3a':'#c9a26a')+'"></div>'; for(var i=0;i<=n;i++)s+='<div style="position:absolute;left:'+(i/n*100)+'%;top:'+(i%5===0?4:8)+'px;width:2px;height:'+(i%5===0?10:6)+'px;background:#f4f0ff"></div>'; return s+'<div style="position:absolute;right:-30px;top:12px;font-size:12px;font-weight:900">'+n+'"</div></div>'; };
+  return {call:'The amp is '+gear+' inches long. Which case fits EXACTLY?', sub:'Match the length. Too small and it will not close. Too big and it rattles.',
+    html:'<div class="sub center">the amp</div>'+ruler(gear,true)+'<div class="sub center" style="margin-top:8px">the cases</div><div id="rcZ" style="max-width:300px;margin:0 auto"></div>',
+    wire:function(){ $('#rcZ').innerHTML=sizes.map(function(n){return '<button class="mjposter rcb" data-v="'+n+'" style="width:100%;padding:4px 30px 4px 4px;margin:4px 0;background:transparent;border:2px solid #3a2f6e">'+ruler(n,false)+'</button>';}).join('');
+      $$('.rcb').forEach(function(b){ b.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(+b.dataset.v===st.ans){ drum('kick'); mjOK(gear+' inch amp, '+gear+' inch case. Snug!'); } else { punch(b); mjNo((+b.dataset.v<gear?'Too small. ':'Too big. ')+'The amp is '+gear+' inches, so the case must be '+gear+'.'); } }); }); }};
+}};
+/* LUNA +1: Book It — drop the gig on the right date (count forward on a calendar) */
+MJGAMES.bookit={id:'bookit',name:'Book It',emoji:'\uD83D\uDCC5',member:'luna',concept:'cal',
+setup:function(L,st){
+  var start=R(1,L<3?10:20), ahead=R(L<3?1:3, L<3?5:L<6?9:14), target=start+ahead; if(target>28){ start=R(1,10); target=start+ahead; } st.ans=target; st.start=start; st.ahead=ahead;
+  var cal=''; for(var d=1;d<=28;d++){ cal+='<button class="choice bkd" data-d="'+d+'" style="padding:8px 0;font-size:14px;min-width:0;'+(d===start?'background:#ffd158;color:#3a2a00;':'')+'">'+d+'</button>'; }
+  return {call:'Today is the '+start+'. The gig is in '+ahead+' days. Book it!', sub:'Count forward '+ahead+' days from the gold square and tap that date.',
+    html:'<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;max-width:300px;margin:6px auto">'+['S','M','T','W','T','F','S'].map(function(x){return '<div class="sub center" style="margin:0">'+x+'</div>';}).join('')+cal+'</div>',
+    wire:function(){ $$('.bkd').forEach(function(b){ b.addEventListener('click',function(){ if(MJ.busy)return; ac(); var d=+b.dataset.d; if(d===st.ans){ b.classList.add('good'); mNote('luna',67,.3); mjOK(start+' + '+ahead+' days = the '+target+'. Booked!'); } else { b.classList.add('badc'); punch(b); mjNo('From the '+start+', count '+ahead+' forward: the '+target+'.'); } }); }); }};
+}};
+Object.assign(COACH,{
+  cablecut:{member:'rumble',verb:'TAP',hint:'tap',title:'\u2702\uFE0F Cable Cut',lines:['Subtraction is taking away. Snip some cables and see what is left.','TAP the cables to cut them, then TAP how many are still plugged in!']},
+  chordgrid:{member:'combo',verb:'TAP',hint:'tap',title:'\uD83C\uDFB9 Chord Grid',lines:['Rows times columns is multiplication. Every key in the grid lights up.','Count one row, count the rows, TAP the total!']},
+  settime:{member:'tock',verb:'TAP',hint:'tap',title:'\u23F0 Set Time',lines:['Short hand points at the hour. Long hand points at the minutes.','Read the show time and TAP the clock that matches!']},
+  roadcase:{member:'gauge',verb:'TAP',hint:'tap',title:'\uD83D\uDCE6 Road Case',lines:['Every piece of gear has a length. The case has to match it.','Read the inches and TAP the case that fits exactly!']},
+  bookit:{member:'luna',verb:'TAP',hint:'tap',title:'\uD83D\uDCC5 Book It',lines:['A calendar is just counting days. Start on today and count forward.','Count the days ahead and TAP the gig date!']}
+});
+
+/* ---- JAM 6: CADENCE — BLOCK STACK (Place Value) ---- */
+jamRegister({id:'blockstack',title:'Block Stack',member:'cadence',concept:'place',emoji:'\uD83E\uDDF1',scoreWord:'stack score',roundLabel:'Rank',
+  newRound:function(J){ var L=J.L(), st=J.state;
+    var digits=L<3?2:L<6?3:4, n=R(Math.pow(10,digits-1)+1,Math.pow(10,digits)-1); st.n=n; st.digits=digits; st.str=String(n);
+    st.cols=[]; for(var i=0;i<digits;i++)st.cols.push({place:digits-1-i,need:+st.str[i],got:0});
+    st.falling=null; st.spawn=0; st.speed=J.gentle()?40:(L<6?60:85); st.done=false; st.queue=[];
+    st.cols.forEach(function(c){ for(var k=0;k<c.need;k++)st.queue.push(c.place); }); st.queue=shuffle(st.queue); st.wrongLeft=L<3?0:2; for(var w=0;w<st.wrongLeft;w++)st.queue.splice(R(0,st.queue.length),0,-1);
+    st.colW=Math.min(84,(J.W-40)/digits); st.gx=(J.W-st.colW*digits)/2; st.floor=J.H-40;
+    J.call('Build '+n,'Blocks fall from the sky. Drag each one to its column: ones, tens, hundreds. Catch the right amount in each!');
+    J.msg('Drag each falling block into the right column.');
+  },
+  draw:function(J,ctx,dt){ var st=J.state; if(!st.cols)return; var names=['ones','tens','hundreds','thousands'];
+    st.cols.forEach(function(c,i){ var x=st.gx+i*st.colW; jkRound(ctx,x+4,100,st.colW-8,st.floor-100,10,'#1d1636','#3a2f6e',2); jkText(ctx,names[c.place],x+st.colW/2,st.floor+18,11,'#a89cd8'); jkText(ctx,String(c.got)+'/'+c.need,x+st.colW/2,112,12,c.got===c.need?'#7dff8a':'#ffd158');
+      for(var k=0;k<c.got;k++){ var by=st.floor-12-k*22; ctx.fillStyle=['#8ef0c9','#ffd158','#ff5db1','#9d7cff'][c.place]; jkRound(ctx,x+12,by-18,st.colW-24,18,4,ctx.fillStyle,'#1d1636',1); } });
+    jkText(ctx,'Build: '+st.n,J.W/2,70,28,'#f4f0ff');
+    if(!st.falling&&st.queue.length&&!st.done){ var p=st.queue.shift(); st.falling={place:p,x:J.W/2,y:20,vy:st.speed,held:false,val:p<0?'?':String(Math.pow(10,p))}; }
+    if(st.falling){ var f=st.falling; if(!f.held){ f.y+=f.vy*dt; if(f.y>st.floor-30){ st.falling=null; if(f.place>=0){ ellyChime(); J.msg('Missed a '+f.val+' block! Blocks drop back into the sky.'); st.queue.push(f.place); } } }
+      var col=f.place>=0?['#8ef0c9','#ffd158','#ff5db1','#9d7cff'][f.place]:'#666'; jkRound(ctx,f.x-30,f.y-16,60,32,6,col,'#1d1636',2); jkText(ctx,f.val,f.x,f.y,16,'#1d1636'); }
+    if(!st.falling&&!st.queue.length&&!st.done){ st.done=true; var ok=st.cols.every(function(c){return c.got===c.need;}); if(ok){ mNote('cadence',84,.4); J.win('Built '+st.n+'. Every rank counted!'); } else J.miss('The columns do not make '+st.n+'. Check each place.'); }
+  },
+  onDown:function(J,x,y){ var st=J.state; if(!st.falling||st.done)return; var f=st.falling; if(jkDist(x,y,f.x,f.y)<40){ f.held=true; tone(600,.04,'triangle',.1); } },
+  onMove:function(J,x,y){ var st=J.state; if(st.falling&&st.falling.held){ st.falling.x=x; st.falling.y=y; } },
+  onUp:function(J,x,y){ var st=J.state; var f=st.falling; if(!f||!f.held)return; f.held=false;
+    var ci=Math.floor((x-st.gx)/st.colW); if(ci>=0&&ci<st.cols.length&&y>100){ var c=st.cols[ci];
+      if(f.place===c.place){ if(c.got<c.need){ c.got++; st.falling=null; drum('kick'); tone(400+c.place*120,.08,'triangle',.12); } else { ellyChime(); J.msg('That column is full!'); } }
+      else if(f.place<0){ st.falling=null; drum('hat'); J.msg('A junk block. Good riddance.'); }
+      else { ellyChime(); J.msg('That is a '+f.val+' block. It goes in the '+['ones','tens','hundreds','thousands'][f.place]+' column.'); } }
+  }
+});
+jamCoach('blockstack','cadence','\uD83E\uDDF1 Block Stack',['Blocks come in sizes: 1, 10, 100, 1000. Each has its own column.','DRAG each falling block into its column and build the number!'],'DRAG','drag');
+
+/* ---- JAM 7: DUB — DROP THE BASS (Compare Fractions on a number line) ---- */
+jamRegister({id:'dropbass',title:'Drop the Bass',member:'dub',concept:'cmpfrac',emoji:'\uD83D\uDD0A',scoreWord:'drop score',roundLabel:'Bar',
+  newRound:function(J){ var L=J.L(), st=J.state;
+    var d=L<3?pick([2,4]):L<6?pick([3,4,6]):pick([4,5,6,8]), n=R(1,d-1); st.d=d; st.n=n; st.x0=40; st.x1=J.W-40; st.ly=J.H/2+30;
+    st.note={x:J.W/2,y:120,held:false,dropped:false}; st.showTicks=L<5; st.done=false; st.bounce=0;
+    J.call('Drop the bass on '+n+'/'+d,'The bar runs 0 to 1. Drag the bass note to where '+n+'/'+d+' sits and let it drop.');
+    J.msg('Drag the note to '+n+'/'+d+' on the bar.');
+  },
+  draw:function(J,ctx,dt){ var st=J.state; if(!st.d)return; var x0=st.x0,x1=st.x1,ly=st.ly,d=st.d;
+    ctx.strokeStyle='#f4f0ff'; ctx.lineWidth=4; ctx.beginPath(); ctx.moveTo(x0,ly); ctx.lineTo(x1,ly); ctx.stroke();
+    for(var i=0;i<=d;i++){ var x=x0+(x1-x0)*i/d; var big=(i===0||i===d); ctx.beginPath(); ctx.moveTo(x,ly-(big?14:9)); ctx.lineTo(x,ly+(big?14:9)); ctx.stroke(); if(big)jkText(ctx,i===0?'0':'1',x,ly+34,16,'#ffd158'); else if(st.showTicks)jkText(ctx,i+'/'+d,x,ly+30,11,'#8ef0c9'); }
+    jkText(ctx,st.n+'/'+d,J.W/2,60,32,'#1f8a70');
+    var nt=st.note; if(nt.dropped&&st.bounce>0){ st.bounce-=dt*3; nt.y=ly-10-Math.abs(Math.sin(st.bounce*6))*20*st.bounce; }
+    ctx.beginPath(); ctx.arc(nt.x,nt.y,18,0,Math.PI*2); ctx.fillStyle='#1f8a70'; ctx.fill(); ctx.strokeStyle='#f4f0ff'; ctx.lineWidth=3; ctx.stroke(); ctx.fillStyle='#f4f0ff'; ctx.fillRect(nt.x+15,nt.y-52,3,52);
+    if(!nt.dropped&&!nt.held){ ctx.setLineDash([4,4]); ctx.strokeStyle='#8ef0c9'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(nt.x,nt.y+20); ctx.lineTo(nt.x,ly-6); ctx.stroke(); ctx.setLineDash([]); }
+  },
+  onDown:function(J,x,y){ var st=J.state; if(!st.d||st.done)return; if(jkDist(x,y,st.note.x,st.note.y)<36){ st.note.held=true; V.bass(36); } },
+  onMove:function(J,x,y){ var st=J.state; if(st.note.held){ st.note.x=Math.max(st.x0,Math.min(st.x1,x)); st.note.y=Math.max(60,Math.min(st.ly-30,y)); } },
+  onUp:function(J,x,y){ var st=J.state; var nt=st.note; if(!nt.held)return; nt.held=false; nt.dropped=true; st.bounce=1; st.done=true;
+    var frac=(nt.x-st.x0)/(st.x1-st.x0), target=st.n/st.d, tol=0.5/st.d*0.9; var landed=Math.round(frac*st.d);
+    mNote('dub',33,.5); drum('kick');
+    if(Math.abs(frac-target)<=tol){ nt.x=st.x0+(st.x1-st.x0)*target; J.win('Dropped right on '+st.n+'/'+st.d+'. Heavy.'); }
+    else { var got=Math.max(0,Math.min(st.d,landed)); J.miss('That landed near '+got+'/'+st.d+'. Count '+st.n+' ticks from 0 for '+st.n+'/'+st.d+'.'); }
+  }
+});
+jamCoach('dropbass','dub','\uD83D\uDD0A Drop the Bass',['The bar is a number line from 0 to 1, cut into equal pieces.','DRAG the bass note to the fraction and let it DROP!'],'DRAG','drag');
+
+Object.assign(HEADLINE_JAM,{cadence:'blockstack',dub:'dropbass'});
+Object.keys(HEADLINE_JAM).forEach(function(id){ if(LESSONS[id])LESSONS[id].game=function(){ startJam(HEADLINE_JAM[id]); }; });
+
+</script>
+<script>
+/* ============ v0.85: jams 8-10 — Lumi LIGHT THE FLOOR, Flow FILL THE METER, Viola AIM THE BOW ============ */
+
+/* JAM 8: LUMI — LIGHT THE FLOOR (Area & Perimeter). Verb: PAINT tiles by dragging; fill exactly the area. */
+jamRegister({id:'lightfloor',title:'Light the Floor',member:'lumi',concept:'area',emoji:'\uD83E\uDE69',scoreWord:'floor score',roundLabel:'Floor',
+  newRound:function(J){ var L=J.L(), st=J.state;
+    var n=L<3?5:L<6?6:8; st.n=n; var w=R(2,n-1), h=R(2,n-1); st.target=w*h; st.w=w; st.h=h; st.mode=(L>=5&&Math.random()<0.4)?'perim':'area'; if(st.mode==='perim')st.target=2*(w+h);
+    st.cell=Math.min((J.W-40)/n,(J.H-220)/n); st.gx=(J.W-st.cell*n)/2; st.gy=90; st.lit=[]; for(var i=0;i<n*n;i++)st.lit.push(false); st.paint=null; st.done=false;
+    var cols=['#ff5db1','#ffd158','#12e2c8','#9d7cff']; st.cols=cols;
+    if(st.mode==='area'){ J.call('Light up exactly '+st.target+' tiles','Drag across the floor to light tiles. Make a rectangle with area '+st.target+' (like '+w+' by '+h+'). Then hit LIGHTS.'); J.msg('Drag to light tiles. Area '+st.target+'.'); }
+    else { J.call('Rope off a floor with perimeter '+st.target,'Light a rectangle whose EDGE is '+st.target+' tiles long (like '+w+' by '+h+'). Then hit LIGHTS.'); J.msg('Light a rectangle with perimeter '+st.target+'.'); }
+  },
+  draw:function(J,ctx,dt){ var st=J.state; if(!st.n)return; var n=st.n,c=st.cell;
+    for(var y=0;y<n;y++)for(var x=0;x<n;x++){ var i=y*n+x, on=st.lit[i]; jkRound(ctx,st.gx+x*c+2,st.gy+y*c+2,c-4,c-4,5,on?st.cols[(x+y)%4]:'#1d1636','#3a2f6e',1); }
+    var cnt=st.lit.filter(Boolean).length; jkText(ctx,(st.mode==='area'?'lit: ':'edge: ')+(st.mode==='area'?cnt:lfPerim(st))+' / '+st.target,J.W/2,64,20,'#ffd158');
+    st.go={x:J.W/2-60,y:J.H-56,w:120,h:40}; jkRound(ctx,st.go.x,st.go.y,120,40,12,'#ffd158'); jkText(ctx,'LIGHTS \uD83E\uDE69',J.W/2,J.H-36,16,'#3a2a00');
+  },
+  onDown:function(J,x,y){ var st=J.state; if(!st.n||st.done)return;
+    if(st.go&&jkHit(x,y,st.go)){ drum('clap'); var cnt=st.lit.filter(Boolean).length; var rect=lfIsRect(st);
+      if(!rect){ J.miss('That is not a solid rectangle. Light a neat block of tiles.'); return; }
+      if(st.mode==='area'){ if(cnt===st.target){ mNote('lumi',72,.3); J.win('Area '+cnt+'. '+rect.w+' by '+rect.h+'. Floor is LIT!'); } else J.miss('That is area '+cnt+'. You needed '+st.target+'.'); }
+      else { var p=lfPerim(st); if(p===st.target){ mNote('lumi',76,.3); J.win('Perimeter '+p+'. '+rect.w+' by '+rect.h+'. Rope it off!'); } else J.miss('That edge is '+p+'. You needed '+st.target+'.'); } return; }
+    var i=lfIdx(st,x,y); if(i<0)return; st.paint=!st.lit[i]; st.lit[i]=st.paint; tone(st.paint?700:400,.04,'triangle',.1); },
+  onMove:function(J,x,y){ var st=J.state; if(st.paint===null||st.paint===undefined||st.done)return; var i=lfIdx(st,x,y); if(i>=0&&st.lit[i]!==st.paint){ st.lit[i]=st.paint; tone(st.paint?700+i*5:400,.03,'triangle',.08); } },
+  onUp:function(J,x,y){ var st=J.state; st.paint=null; }
+});
+function lfIdx(st,x,y){ var n=st.n,c=st.cell; var cx=Math.floor((x-st.gx)/c), cy=Math.floor((y-st.gy)/c); if(cx<0||cy<0||cx>=n||cy>=n)return -1; return cy*n+cx; }
+function lfIsRect(st){ var n=st.n, xs=[],ys=[]; for(var i=0;i<n*n;i++)if(st.lit[i]){ xs.push(i%n); ys.push(Math.floor(i/n)); } if(!xs.length)return null; var x0=Math.min.apply(null,xs),x1=Math.max.apply(null,xs),y0=Math.min.apply(null,ys),y1=Math.max.apply(null,ys); var w=x1-x0+1,h=y1-y0+1; if(xs.length!==w*h)return null; return {w:w,h:h}; }
+function lfPerim(st){ var r=lfIsRect(st); return r?2*(r.w+r.h):0; }
+jamCoach('lightfloor','lumi','\uD83E\uDE69 Light the Floor',['Area is how many tiles are inside. Perimeter is the walk around the edge.','DRAG across the floor to light a rectangle of tiles, then hit LIGHTS!'],'DRAG','drag');
+
+/* JAM 9: FLOW — FILL THE METER (Decimals). Verb: HOLD to fill a ten-pad bar, RELEASE exactly on the decimal. */
+jamRegister({id:'fillmeter',title:'Fill the Meter',member:'flow',concept:'decimal',emoji:'\uD83C\uDF9A\uFE0F',scoreWord:'meter score',roundLabel:'Bar',
+  newRound:function(J){ var L=J.L(), st=J.state;
+    var whole=L<4?0:R(0,2), t=R(1,9); st.whole=whole; st.t=t; st.target=whole+t/10; st.label=whole+'.'+t;
+    st.fill=0; st.holding=false; st.speed=J.gentle()?0.9:(L<6?1.3:1.8); st.done=false; st.bars=whole+1;
+    J.call('Fill the meter to '+st.label,'Hold the pad to fill. Each lit segment is one tenth (0.1). Let go right at '+st.label+'!');
+    J.msg('HOLD to fill, let go at '+st.label+'.');
+  },
+  draw:function(J,ctx,dt){ var st=J.state; if(st.target==null)return;
+    if(st.holding&&!st.done){ st.fill+=st.speed*dt; if(st.fill>st.bars+0.05){ st.fill=st.bars+0.05; } var seg=Math.floor(st.fill*10); if(seg!==st.lastSeg){ st.lastSeg=seg; drum('hat'); } }
+    var barW=Math.min(300,J.W-60), x0=(J.W-barW)/2, padW=barW/10;
+    for(var b=0;b<st.bars;b++){ var y=110+b*70; jkText(ctx,'bar '+(b+1)+' (whole '+b+' \u2192 '+(b+1)+')',J.W/2,y-18,12,'#a89cd8');
+      for(var i=0;i<10;i++){ var v=b+(i+1)/10; var lit=st.fill>=v-0.001; jkRound(ctx,x0+i*padW+2,y,padW-4,40,6,lit?'#ff7a3d':'#1d1636','#3a2f6e',1); } }
+    st.fill=Math.max(0,st.fill); jkText(ctx,(Math.floor(st.fill*10)/10).toFixed(1),J.W/2,60,36,st.done?(Math.abs(Math.floor(st.fill*10)/10-st.target)<0.001?'#7dff8a':'#ff5d5d'):'#ffd158');
+    st.pad={x:J.W/2-70,y:J.H-90,w:140,h:60}; jkRound(ctx,st.pad.x,st.pad.y,140,60,16,st.holding?'#ff7a3d':'#3a2f6e','#ff7a3d',3); jkText(ctx,st.holding?'FILLING\u2026':'HOLD',J.W/2,J.H-60,18,'#f4f0ff');
+  },
+  onDown:function(J,x,y){ var st=J.state; if(st.done||!st.pad)return; if(jkHit(x,y,st.pad)){ st.holding=true; st.lastSeg=-1; } },
+  onMove:function(J,x,y){},
+  onUp:function(J,x,y){ var st=J.state; if(!st.holding)return; st.holding=false; st.done=true; var got=Math.floor(st.fill*10)/10; drum('kick');
+    if(Math.abs(got-st.target)<0.001){ mNote('flow',72,.3); J.win('Stopped at '+st.label+'. Right on the tenth!'); }
+    else J.miss('You stopped at '+got.toFixed(1)+'. The target was '+st.label+' ('+st.t+' tenths'+(st.whole?' past '+st.whole:'')+').'); }
+});
+jamCoach('fillmeter','flow','\uD83C\uDF9A\uFE0F Fill the Meter',['Each pad is one tenth: 0.1. Ten pads fill one whole bar.','HOLD to fill the meter and let go exactly on the decimal!'],'HOLD','hold');
+
+/* JAM 10: VIOLA — AIM THE BOW (Angles). Verb: ROTATE the bow to the called angle, release to play it. */
+jamRegister({id:'aimbow',title:'Aim the Bow',member:'viola',concept:'angle',emoji:'\uD83C\uDFBB',scoreWord:'bow score',roundLabel:'Stroke',
+  newRound:function(J){ var L=J.L(), st=J.state;
+    var pool=L<3?[0,45,90,135,180]:L<6?[0,30,45,60,90,120,135,150,180]:[0,15,30,45,60,75,90,105,120,135,150,165,180];
+    st.target=pick(pool); st.tol=L<3?12:L<6?8:5; st.ang=0; st.hold=false; st.done=false; st.cx=J.W/2; st.cy=J.H/2+60; st.r=Math.min(J.W,J.H)*0.36;
+    st.showGuides=L<5;
+    J.call('Bow at '+st.target+'\u00B0','Drag the bow tip around until it points at '+st.target+' degrees, then let go to play.');
+    J.msg('Drag the bow to '+st.target+'\u00B0 and release.');
+  },
+  draw:function(J,ctx,dt){ var st=J.state; if(st.target==null)return; var cx=st.cx,cy=st.cy,r=st.r;
+    ctx.strokeStyle='#3a2f6e'; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(cx,cy,r,Math.PI,0); ctx.stroke();
+    [0,45,90,135,180].forEach(function(d){ var a=d*Math.PI/180; var x=cx+r*Math.cos(a), y=cy-r*Math.sin(a); ctx.beginPath(); ctx.moveTo(cx+(r-10)*Math.cos(a),cy-(r-10)*Math.sin(a)); ctx.lineTo(x,y); ctx.stroke(); if(st.showGuides)jkText(ctx,d+'\u00B0',cx+(r+18)*Math.cos(a),cy-(r+18)*Math.sin(a),11,'#a89cd8'); });
+    ctx.strokeStyle='#f4f0ff'; ctx.lineWidth=5; ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx+r,cy); ctx.stroke();
+    var a=st.ang*Math.PI/180; var bx=cx+r*Math.cos(a), by=cy-r*Math.sin(a);
+    ctx.strokeStyle='#c9a26a'; ctx.lineWidth=6; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(bx,by); ctx.stroke(); ctx.lineCap='butt';
+    var arcR=r*0.35, a0=0, a1=st.ang*Math.PI/180; ctx.strokeStyle='#ffd158'; ctx.lineWidth=3; ctx.beginPath(); ctx.arc(cx,cy,arcR,-a1,-a0,false); ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx,cy,6,0,Math.PI*2); ctx.fillStyle='#ffd158'; ctx.fill();
+    jkText(ctx,Math.round(st.ang)+'\u00B0',J.W/2,60,36,st.done?(Math.abs(st.ang-st.target)<=st.tol?'#7dff8a':'#ff5d5d'):'#ffd158');
+    jkText(ctx,'target '+st.target+'\u00B0 \u00B7 '+angleType(st.target),J.W/2,92,14,'#a89cd8');
+    st.tip={x:bx,y:by};
+  },
+  onDown:function(J,x,y){ var st=J.state; if(st.done||!st.tip)return; st.hold=true; abSet(st,x,y); tone(ntf(69),.1,'sawtooth',.06); },
+  onMove:function(J,x,y){ var st=J.state; if(st.hold&&!st.done)abSet(st,x,y); },
+  onUp:function(J,x,y){ var st=J.state; if(!st.hold)return; st.hold=false; st.done=true; var m=Math.round(60+st.ang/180*24);
+    if(Math.abs(st.ang-st.target)<=st.tol){ st.ang=st.target; mNote('viola',m,.8); J.win(st.target+'\u00B0, '+angleType(st.target)+'. Clean stroke.'); }
+    else { tone(ntf(m),.4,'sawtooth',.08); J.miss('That was '+Math.round(st.ang)+'\u00B0. Aim for '+st.target+'\u00B0 ('+angleType(st.target)+').'); } }
+});
+function abSet(st,x,y){ var dx=x-st.cx, dy=st.cy-y; var ang=Math.atan2(Math.max(0,dy),dx)*180/Math.PI; if(dy<0)ang=dx>=0?0:180; st.ang=Math.max(0,Math.min(180,ang)); }
+jamCoach('aimbow','viola','\uD83C\uDFBB Aim the Bow',['Angles are how far you turn. Flat is 0, square corner is 90, all the way over is 180.','DRAG the bow to the angle I call, then let go to play it!'],'DRAG','drag');
+
+Object.assign(HEADLINE_JAM,{lumi:'lightfloor',flow:'fillmeter',viola:'aimbow'});
 Object.keys(HEADLINE_JAM).forEach(function(id){ if(LESSONS[id])LESSONS[id].game=function(){ startJam(HEADLINE_JAM[id]); }; });
 
 </script>
