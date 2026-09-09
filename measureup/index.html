@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Measure Up">
-<title>Measure Up v0.89</title>
+<title>Measure Up v0.90</title>
 <style>
 :root{
   --bg:#0e0b1e; --panel:#1d1636; --panel2:#28204a; --ink:#f4f0ff; --dim:#a89cd8;
@@ -928,14 +928,14 @@ svg .charg{will-change:transform}
 <div id="toast"></div>
 <button id="homeBtn" onclick="goHome()" aria-label="Back to Garage">🏠</button>
 <button id="ellyBtn" onclick="openEllyHelp()" aria-label="Ask Elly for help"></button>
-<div id="vbadge">v0.89 · Sep 8</div>
+<div id="vbadge">v0.90 · Sep 9</div>
 
 <script>
 'use strict';
 /* ============ UTILS ============ */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const VERSION='v0.89 · Sep 8';
+const VERSION='v0.90 · Sep 9';
 const RM=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -9705,7 +9705,7 @@ jamCoach('spincatch','glitch','\uD83C\uDFA1 Spin & Catch',['More pink pads means
 /* JAM 12: GRACE — LEVEL THE CHOIR (Mean & Median). Verb: DRAG singer sliders until they are even; the mean is the level line. */
 jamRegister({id:'levelchoir',title:'Level the Choir',member:'grace',concept:'stats',emoji:'\u2696\uFE0F',scoreWord:'blend score',roundLabel:'Blend',
   newRound:function(J){ var L=J.L(), st=J.state;
-    var n=L<3?3:L<6?4:5, vals=evenMeanSet(n,1,L<3?6:9); st.vals=vals; st.orig=vals.slice(); st.mean=meanOf(vals); st.total=vals.reduce(function(a,b){return a+b;},0); st.n=n;
+    var n=L<3?3:L<6?4:5, hiV=L<3?6:9, vals=evenMeanSet(n,1,hiV); if(vals.every(function(v){return v===vals[0];})){ if(vals[0]<hiV){vals[0]++;vals[1]--;}else{vals[0]--;vals[1]++;} } /* v0.90: never start already level */ st.vals=vals; st.orig=vals.slice(); st.mean=meanOf(vals); st.total=vals.reduce(function(a,b){return a+b;},0); st.n=n;
     st.drag=-1; st.done=false; st.colW=Math.min(70,(J.W-60)/n); st.gx=(J.W-st.colW*n)/2; st.base=J.H-90; st.unit=Math.min(28,(J.H-260)/10);
     J.call('Even out the choir: total '+st.total+' shared by '+n,'Drag the singers up or down until they ALL hold the same. The total breath stays '+st.total+'.');
     J.msg('Drag singers until every voice is the same.');
@@ -10030,5 +10030,274 @@ Object.keys(HEADLINE_JAM).forEach(function(id){ if(LESSONS[id])LESSONS[id].game=
 
 </script>
 
+<script>
+/* ================= v0.90 · BAND ROOM LINEUP (Sep 9 2026) =================
+   The band outgrew the stage. Now the kid picks a LINEUP of up to 8 who go on
+   stage; everyone else waits in the wings. Tap a stage member to send them to
+   the wings; tap a wings member to bring them up (if the stage is full, the
+   member who has been up there longest steps down).
+   Songs are arranged for the lineup: ONE player per written part (bass, lead,
+   strum, horn, bells, perc, fx), chosen by instrument family; everyone else on
+   stage gets a derived part that never doubles another member of the same
+   family (octave / step / bar variants). The house kit keeps the beat when
+   Boom is in the wings. Elly hosts from the side of the stage, always. */
+var LINEUP_MAX=8;
+if(typeof DEF==='object'&&DEF&&!('lineup' in DEF))DEF.lineup=null;
+var STAGE_BACK_IDS=['boom','gain','tock','gauge','luna','reg','round'];
+function stageRowOf(id){
+  if(STAGE_BACK_IDS.indexOf(id)>=0)return 'back';
+  var f=MEMBER_FAM[id];
+  if(f==='bass'||f==='keys'||f==='guitar'||f==='strings')return 'mid';
+  return 'front';
+}
+function bandIds(){ return BAND.filter(function(m){ return S.band&&S.band[m.id]; }).map(function(m){ return m.id; }); }
+function lineupInit(){
+  var have=bandIds();
+  if(!Array.isArray(S.lineup))S.lineup=have.slice(0,LINEUP_MAX);
+  S.lineup=S.lineup.filter(function(id,i,a){ return BY_ID[id]&&have.indexOf(id)>=0&&a.indexOf(id)===i; }).slice(0,LINEUP_MAX);
+  return S.lineup;
+}
+function lineupHas(id){ return lineupInit().indexOf(id)>=0; }
+function lineupAdd(id){
+  var L=lineupInit(); if(L.indexOf(id)>=0||!BY_ID[id]||!S.band[id])return null;
+  var bumped=null;
+  if(L.length>=LINEUP_MAX){ bumped=L.shift(); }
+  L.push(id); save(); return {added:id,bumped:bumped};
+}
+function lineupRemove(id){
+  var L=lineupInit(); var i=L.indexOf(id); if(i<0)return false;
+  L.splice(i,1); save(); return true;
+}
+function wingsIds(){ var L=lineupInit(); return bandIds().filter(function(id){ return L.indexOf(id)<0; }); }
+
+/* ---------- ARRANGER: who plays what, for a given song and lineup ---------- */
+var PART_PREF={
+  bass:['bass','keys','guitar','strings'],
+  lead:['keys','guitar','harp','voicep','strings','bell','horn'],
+  strum:['guitar','strings','keys','harp'],
+  horn:['horn','harp','voicep','strings','keys'],
+  bell:['bell','keys','voicep'],
+  perc:['gauge','luna','tock','reg','round'],   /* by id, not family */
+  fx:['tock','gain','glitch','pixel']           /* by id */
+};
+function famOf(id){ return MEMBER_FAM[id]||''; }
+/* rank a member for a role: lower is better; -1 = cannot */
+function partRank(role,id){
+  var pref=PART_PREF[role]||[];
+  if(role==='perc'||role==='fx'){ var k=pref.indexOf(id); return k<0?-1:k; }
+  var r=pref.indexOf(famOf(id)); if(r<0)return -1;
+  var m=BY_ID[id]; return r*2+(m&&m.recruit?1:0);   /* originals win ties */
+}
+function songRoles(sg){
+  var roles=[];
+  if(sg.bass||sg.b808)roles.push('bass');
+  if(sg.lead||sg.arp)roles.push('lead');
+  if(sg.chords||sg.offbeat)roles.push('strum');
+  if(sg.horn)roles.push('horn');
+  if(sg.bells)roles.push('bell');
+  if(sg.perc)roles.push('perc');
+  if(sg.fx)roles.push('fx');
+  return roles;
+}
+/* returns {roles:{role:memberId}, fills:[memberId...]} */
+function assignParts(sg,lineup){
+  var free=lineup.slice(), roles={};
+  songRoles(sg).forEach(function(role){
+    var best=null,bestR=1e9;
+    free.forEach(function(id){ var r=partRank(role,id); if(r>=0&&r<bestR){bestR=r;best=id;} });
+    if(best){ roles[role]=best; free.splice(free.indexOf(best),1); }
+  });
+  return {roles:roles,fills:free};
+}
+/* build the full event list [step,kind,e,who] for a song + lineup */
+function arrangeSong(sg,lineup){
+  var barSteps=16, bars=sg.drums.length, loops=sg.loops||1, span=bars*barSteps, total=span*loops;
+  var evts=[];
+  var drummer=lineup.indexOf('boom')>=0?'boom':null;   /* null = house kit, nobody hit-animates */
+  var DR={K:'kick',S:'snare',h:'hatc',H:'hato',C:'clap','8':'b808',c:'scratch'};
+  for(var st=0;st<total;st++){
+    var bar=Math.floor(st/barSteps)%bars, ss=st%barSteps, ch=sg.drums[bar][ss];
+    if(ch&&ch!=='.'&&DR[ch]){
+      var who=drummer;
+      if(ch==='C'&&lineup.indexOf('luna')>=0)who='luna';
+      if(ch==='c'&&lineup.indexOf('tock')>=0)who='tock';
+      evts.push([st,DR[ch],null,who]);
+    }
+  }
+  var A=assignParts(sg,lineup), R=A.roles;
+  var addLoop=function(list,kind,who){ if(!list||!who)return; for(var L=0;L<loops;L++)list.forEach(function(e){ evts.push([e[0]+L*span,kind,e,who]); }); };
+  addLoop(sg.bass,'bass',R.bass); addLoop(sg.b808,'b808',R.bass);
+  addLoop(sg.lead,'lead',R.lead); addLoop(sg.arp,'lead',R.lead);
+  addLoop(sg.chords,'strum',R.strum); addLoop(sg.offbeat,'strum',R.strum);
+  addLoop(sg.horn,'horn',R.horn); addLoop(sg.bells,'bell',R.bell);
+  addLoop(sg.perc,'perc',R.perc); addLoop(sg.fx,'fx',R.fx);
+  /* derived parts for everyone left: never the same steps+pitch as another member of the same family */
+  var root=36;
+  if(sg.bass&&sg.bass[0])root=sg.bass[0][1]; else if(sg.b808&&sg.b808[0])root=sg.b808[0][1];
+  var put=function(who,step,kind,e){ for(var L=0;L<loops;L++)evts.push([step+L*span,kind,e||null,who]); };
+  var perBar=function(who,steps,kind,e){ for(var b=0;b<bars;b++)steps.forEach(function(s){ put(who,b*barSteps+s,kind,e); }); };
+  var perPhrase=function(who,step,kind,e,every){ every=every||2; for(var b=0;b<bars;b+=every)put(who,b*barSteps+step,kind,e); };
+  var famCount={bass:R.bass?0:3};   /* written bass owns the root-on-the-downbeat pattern; fills start on the fifth */
+  var VARIANTS={
+    bass:[ function(w){ perBar(w,[4,12],'bass',[0,root+7]); }, function(w){ perBar(w,[6,14],'bass',[0,root+12]); }, function(w){ perPhrase(w,2,'bass',[0,root-12],2); }, function(w){ perBar(w,[0,8],'bass',[0,root]); } ],
+    keys:[ function(w){ perBar(w,[0],'strum',[0,[root+12,root+19,root+24]]); }, function(w){ perBar(w,[2,6,10,14],'lead',[0,root+24,.14]); }, function(w){ perBar(w,[4,12],'lead',[0,root+31,.16]); }, function(w){ perPhrase(w,8,'strum',[0,[root+24,root+31,root+36]],2); } ],
+    guitar:[ function(w){ perBar(w,[2,6,10,14],'strum',[0,[root+12,root+19]]); }, function(w){ perBar(w,[0,8],'lead',[0,root+24,.2]); }, function(w){ perBar(w,[4,12],'strum',[0,[root+24,root+31]]); }, function(w){ perPhrase(w,12,'lead',[0,root+36,.3],2); } ],
+    strings:[ function(w){ perPhrase(w,0,'lead',[0,root+24,.9],2); }, function(w){ perPhrase(w,8,'lead',[0,root+31,.9],2); }, function(w){ perBar(w,[0],'lead',[0,root+36,.5]); }, function(w){ perBar(w,[8],'lead',[0,root+19,.5]); } ],
+    horn:[ function(w){ perPhrase(w,0,'horn',[0,root+12,.4],2); }, function(w){ perPhrase(w,8,'horn',[0,root+19,.4],2); }, function(w){ perPhrase(w,12,'horn',[0,root+24,.3],2); }, function(w){ perBar(w,[14],'horn',[0,root+31,.2]); } ],
+    harp:[ function(w){ perPhrase(w,12,'lead',[0,root+31,.5],2); }, function(w){ perPhrase(w,4,'lead',[0,root+24,.5],2); }, function(w){ perBar(w,[6],'lead',[0,root+36,.3]); }, function(w){ perBar(w,[10],'lead',[0,root+19,.3]); } ],
+    voicep:[ function(w){ perPhrase(w,0,'lead',[0,root+24,1.2],2); }, function(w){ perPhrase(w,8,'lead',[0,root+31,1.2],2); }, function(w){ perPhrase(w,4,'lead',[0,root+36,.8],2); }, function(w){ perBar(w,[12],'lead',[0,root+19,.6]); } ],
+    bell:[ function(w){ perBar(w,[6,14],'bell',[0,root+31]); }, function(w){ perBar(w,[3,11],'bell',[0,root+43]); }, function(w){ perBar(w,[7],'bell',[0,root+36]); }, function(w){ perPhrase(w,15,'bell',[0,root+48],2); } ]
+  };
+  var SOLO={
+    boom:function(w){ perBar(w,[4,12],'perc',[0,'block']); },            /* Boom off the kit: sticks on 2 & 4 */
+    gain:function(w){ perPhrase(w,0,'lights',null,1); },                 /* lights every bar */
+    tock:function(w){ perPhrase(w,barSteps-1,'scratch',null,2); },
+    gauge:function(w){ perBar(w,[4,12],'perc',[0,'block']); },
+    luna:function(w){ perBar(w,[2,6,10,14],'hatc',null); },
+    reg:function(w){ perPhrase(w,0,'coin',null,2); },
+    round:function(w){ perPhrase(w,barSteps-1,'swoop',[0,'up'],2); }
+  };
+  A.fills.forEach(function(id){
+    if(SOLO[id]){ SOLO[id](id); return; }
+    var f=famOf(id); var set=VARIANTS[f]||VARIANTS.keys;
+    var n=famCount[f]||0; famCount[f]=n+1;
+    set[n%set.length](id);
+  });
+  /* a lineup member who owns a written part but is also gain/tock etc still gets their signature: gain always lights */
+  if(lineup.indexOf('gain')>=0&&A.fills.indexOf('gain')<0)perPhrase('gain',0,'lights',null,1);
+  evts.sort(function(a,b){ return a[0]-b[0]; });
+  return {evts:evts,roles:R,fills:A.fills,total:total,barSteps:barSteps,bars:bars};
+}
+
+/* ---------- STAGE + WINGS RENDER ---------- */
+function stageCell(id,cls){
+  var name=nameify(BY_ID[id]?BY_ID[id].name:id);
+  return '<span class="perf '+cls+'" id="sm-'+id+'" onclick="stageTap(\''+id+'\')" title="'+name+'">'+memberSVG(id,54)+'</span>';
+}
+function renderStage(){
+  var L=lineupInit();
+  var rows={back:[],mid:[],front:[]};
+  L.forEach(function(id){ rows[stageRowOf(id)].push(id); });
+  var truss='<div id="stageTruss">'+[10,26,42,58,74,90].map(function(x){ return '<i class="can" style="left:'+x+'%"></i>'; }).join('')+'</div>';
+  var beams='<div id="showBeams"><i class="bm b1"></i><i class="bm b2"></i><i class="bm b3"></i></div>';
+  var mons='<div id="stageMons">'+[0,1,2,3].map(function(){ return '<i class="mon"></i>'; }).join('')+'</div>';
+  var host='<span class="perf host" id="sm-elly" title="Elly">'+ellySVG(44)+'</span>';
+  var empty=L.length?'':'<div id="stageEmpty">Nobody on stage!<br>Tap a bandmate in the wings.</div>';
+  var body='<div id="stageBandRow">'+
+    '<div class="riser rback">'+rows.back.map(function(id){ return stageCell(id,'back'); }).join('')+'</div>'+
+    '<div class="riser rmid">'+rows.mid.map(function(id){ return stageCell(id,'mid'); }).join('')+'</div>'+
+    '<div class="riser rfront">'+rows.front.map(function(id){ return stageCell(id,'front'); }).join('')+host+'</div>'+
+    '</div>';
+  $('#showStage').innerHTML=truss+beams+'<div id="stageFloor"></div>'+body+mons+empty;
+  var cnt=$('#lineupCount'); if(cnt)cnt.textContent=L.length+' / '+LINEUP_MAX+' on stage';
+  renderWings();
+  applyStageBG();
+  if(S.owned.includes('fx_lights'))$('#showStage').classList.add('lightshow');
+}
+function renderWings(){
+  var w=$('#stageWings'); if(!w)return;
+  var ids=wingsIds();
+  w.innerHTML='<div class="wingsLabel">In the wings <span class="sub">(tap to bring on stage)</span></div>'+
+    '<div class="wingsRow">'+(ids.length?ids.map(function(id){
+      var m=BY_ID[id];
+      return '<button class="wing" onclick="wingTap(\''+id+'\')">'+memberSVG(id,46)+'<span class="wname">'+nameify(m.name)+'</span><span class="winst">'+(m.title||'')+'</span></button>';
+    }).join(''):'<p class="sub center" style="margin:6px 0">Everybody is on stage.</p>')+'</div>';
+}
+function stageTap(id){
+  if(!lineupRemove(id))return;
+  sTap(); showStop(); renderStage();
+  toast(nameify(BY_ID[id].name+' heads to the wings.'));
+  $('#showCap').textContent='Lineup changed. Pick a song!';
+}
+function wingTap(id){
+  var r=lineupAdd(id); if(!r)return;
+  sTap(); showStop(); renderStage();
+  toast(nameify(r.bumped?BY_ID[r.bumped].name+' steps down. '+BY_ID[id].name+' is up!':BY_ID[id].name+' takes the stage!'));
+  $('#showCap').textContent='Lineup changed. Pick a song!';
+}
+
+/* ---------- Band Room screen (overrides v0.53 openShow) ---------- */
+function openShow(){
+  showStop();
+  lineupInit();
+  if(!$('#stageWings')){ var wg=document.createElement('div'); wg.id='stageWings'; $('#showList').parentNode.insertBefore(wg,$('#showList')); }
+  if(!$('#lineupCount')){ var c=document.createElement('div'); c.className='chip'; c.id='lineupCount'; $('#showStyle').parentNode.appendChild(c); }
+  renderStage();
+  $('#showTitle').textContent='🎤 Band Room';
+  $('#showStyle').textContent='';
+  var list=SONGS.filter(function(sg){ return !sg.shopId||S.owned.includes(sg.shopId); });
+  $('#showList').innerHTML='<div class="wingsLabel">Songs</div>'+list.map(function(sg){ return '<button class="btn wide ghost" onclick="showPlay(\''+sg.id+'\')">'+sg.style.split(' ')[0]+' '+sg.title+' <span class="sub">· '+sg.style.split(' ').slice(1).join(' ')+'</span></button>'; }).join('');
+  if(SONGS.length>list.length)$('#showList').innerHTML+='<p class="sub center">🛍️ '+(SONGS.length-list.length)+' more song'+(SONGS.length-list.length>1?'s':'')+' waiting at the Gear Shop!</p>';
+  var bgs=allItems().filter(function(it){ return it.type==='stagebg'&&S.owned.includes(it.id); });
+  if(bgs.length)$('#showList').innerHTML+='<div class="row" style="justify-content:center;gap:8px;margin-top:10px;flex-wrap:wrap">'+
+    '<button class="btn small ghost" onclick="setStageBG(\'\')">🎸 Classic</button>'+
+    bgs.map(function(it){ return '<button class="btn small ghost" onclick="setStageBG(\''+it.id+'\')">'+it.name+'</button>'; }).join('')+'</div>';
+  $('#showCap').textContent='Pick a song. Your lineup plays it.';
+  show('scr-show');
+}
+function lineupCaption(arr){
+  var bits=[]; var R=arr.roles;
+  var word={bass:'bass',lead:'the melody',strum:'the chords',horn:'the horn line',bell:'the bells',perc:'percussion',fx:'the effects'};
+  Object.keys(R).slice(0,3).forEach(function(k){ bits.push(BY_ID[R[k]].name+' on '+word[k]); });
+  if(!bits.length)bits.push('house kit keeps the beat');
+  return nameify('The band is ON! '+bits.join(', ')+'.');
+}
+function showPlay(id){
+  var sg=SONGS.find(function(x){ return x.id===id; }); if(!sg)return;
+  ac(); showStop(); SHOW.on=true;
+  var L=lineupInit();
+  var arr=arrangeSong(sg,L);
+  SHOW.arr=arr;
+  $('#showTitle').textContent='🎶 '+sg.title;
+  $('#showStyle').textContent=sg.style;
+  $('#showCap').textContent=lineupCaption(arr);
+  var bm=$('#showBeams'); if(bm)bm.classList.add('on');
+  var spb=60000/sg.bpm/4;
+  var hasGain=L.indexOf('gain')>=0;
+  SHOW.evtCount=arr.evts.length;
+  arr.evts.forEach(function(ev){ var st=ev[0],kind=ev[1],e=ev[2],who=ev[3];
+    showLater(function(){ if(!SHOW.on)return;
+      if(kind==='kick')mDrum('boom','kick'); else if(kind==='snare')mDrum('boom','snare'); else if(kind==='hatc')mDrum('boom','hat');
+      else if(kind==='hato')V.hat(true); else if(kind==='clap')V.clap(); else if(kind==='scratch')V.scratch();
+      else if(kind==='bass')window.__songVoice('bass',who,e); else if(kind==='b808')V.b808(e[1]);
+      else if(kind==='strum')window.__songVoice('strum',who,e);
+      else if(kind==='lead')window.__songVoice('lead',who,e);
+      else if(kind==='horn')window.__songVoice('horn',who,e);
+      else if(kind==='bell')window.__songVoice('bell',who,e);
+      else if(kind==='perc'){ if(e[1]==='block')tone(1250,.06,'sine',.3); else if(e[1]==='bell')V.bell(88); else {V.hat(true);V.bell(84);} }
+      else if(kind==='fx'){ if(e[1]==='riser')V.sweep(true); else V.scratch(); }
+      else if(kind==='coin'){ V.bell(72); tone(1200,.05,'square',.15); }
+      else if(kind==='swoop'){ V.sweep(!(e&&e[1]==='dn')); }
+      else if(kind==='lights'){ gainLights(); }
+      if(who)showHit(who);
+      if(st%8===0&&hasGain){ showHit('gain'); if(kind!=='lights')gainLights(); }
+      if(st%16===0){ V.bell(84); showHit('elly'); }
+    },Math.round(st*spb));
+  });
+  showLater(function(){ if(SHOW.on){ $('#showCap').textContent='🎉 '+nameify(pick(['Encore? Tap it again!','The garage goes wild!','Gain flashes the lights. Perfect set.']));
+    if(S.owned.includes('fx_confetti')){ confetti(40); V.clap(); later(function(){ V.clap(); },160); V.sweep(true); }
+    SHOW.on=false; } },Math.round(arr.total*spb)+600);
+}
+/* Elly help text for the new room */
+if(typeof ELLY_HINTS==='object'&&ELLY_HINTS)ELLY_HINTS['scr-show']='This is the Band Room. Up to '+LINEUP_MAX+' bandmates fit on stage. Tap someone on stage to send them to the wings, tap someone in the wings to bring them up, then pick a song. Your lineup plays it!';
+(function(){ var st=document.createElement('style'); st.textContent=
+  '#showStage .perf{cursor:pointer}'+
+  '#showStage .perf.host{width:11%;position:absolute;right:2%;bottom:2%;opacity:.95;cursor:default}'+
+  '#stageEmpty{position:absolute;left:0;right:0;top:34%;text-align:center;color:#ffd158;font-weight:800;font-size:17px;z-index:4;text-shadow:0 2px 6px #000;line-height:1.35}'+
+  '#lineupCount{font-size:13px}'+
+  '#showStyle:empty{display:none}'+
+  '.wingsRow{-webkit-mask-image:linear-gradient(90deg,#000 88%,transparent);mask-image:linear-gradient(90deg,#000 88%,transparent)}'+
+  '#stageWings{margin:4px 0 10px}'+
+  '.wingsLabel{font-weight:800;font-size:15px;margin:8px 4px 4px}'+
+  '.wingsRow{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 8px;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity}'+
+  '.wingsRow:empty{display:none}'+
+  '.wing{flex:0 0 auto;width:84px;min-height:104px;border-radius:16px;border:2px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:inherit;font:inherit;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:2px;padding:8px 4px 6px;scroll-snap-align:start;cursor:pointer}'+
+  '.wing:active{transform:scale(.95)}'+
+  '.wing svg{width:46px;height:auto;display:block}'+
+  '.wing .wname{font-weight:800;font-size:13px;line-height:1.1}'+
+  '.wing .winst{font-size:10.5px;opacity:.7;line-height:1.1;text-align:center}';
+  document.head.appendChild(st); })();
+
+</script>
 </body>
 </html>
