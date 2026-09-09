@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Measure Up">
-<title>Measure Up v0.87</title>
+<title>Measure Up v0.89</title>
 <style>
 :root{
   --bg:#0e0b1e; --panel:#1d1636; --panel2:#28204a; --ink:#f4f0ff; --dim:#a89cd8;
@@ -928,14 +928,14 @@ svg .charg{will-change:transform}
 <div id="toast"></div>
 <button id="homeBtn" onclick="goHome()" aria-label="Back to Garage">🏠</button>
 <button id="ellyBtn" onclick="openEllyHelp()" aria-label="Ask Elly for help"></button>
-<div id="vbadge">v0.87 · Sep 8</div>
+<div id="vbadge">v0.89 · Sep 8</div>
 
 <script>
 'use strict';
 /* ============ UTILS ============ */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const VERSION='v0.87 · Sep 8';
+const VERSION='v0.89 · Sep 8';
 const RM=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -2756,11 +2756,12 @@ const QG={
   }
 };
 function adjust(concept,correct,fast,auditionMode){
-  /* Non-audition slopes target the researched ~80% success band:
-     steady-state success = dn/(up+dn) -> 0.55/0.67 = 82% (0.55/0.75 = 73% on fast).
-     Old tuning (0.2/0.25) steered kids to ~55% success - too punishing. */
+  /* Non-audition slopes: steady-state success = dn/(up+dn). v0.89: 0.30/0.42 = 71% (0.30/0.50 = 60% on fast).
+     Earlier 0.55 tuning demanded 82% just to hold a level and crashed to Lvl 1 at 70% — felt like a wall. */
   const up=auditionMode?(fast?0.8:0.6):(fast?0.2:0.12);
-  const dn=auditionMode?0.5:0.55;
+  /* v0.89: down-slope softened 0.55 -> 0.30. At 0.55 a kid needed ~82% success just to HOLD a level and slid to Lvl 1 at 70%.
+     At 0.30 he plateaus near his true edge (~71% success holds) instead of crashing, so hitting the edge feels like a plateau, not a wall. */
+  const dn=auditionMode?0.5:0.30;
   let v=(S.skills[concept]||1)+(correct?up:-dn);
   S.skills[concept]=Math.max(1,Math.min(capOf(concept),v));
   save();
@@ -9841,6 +9842,190 @@ jamRegister({id:'barhop',title:'Bar Hop',member:'plink',concept:'skip',emoji:'\u
 jamCoach('barhop','plink','\uD83D\uDC38 Bar Hop',['Skip counting is hopping by the same number every time.','TAP on the beat to hop to the next multiple. Off-beat hops slip!'],'TAP','tap');
 
 Object.assign(HEADLINE_JAM,{doot:'splitbreath',gain:'ridefader',plink:'barhop'});
+Object.keys(HEADLINE_JAM).forEach(function(id){ if(LESSONS[id])LESSONS[id].game=function(){ startJam(HEADLINE_JAM[id]); }; });
+
+</script>
+<script>
+/* ============ v0.88: jams 17-19 — Swoop SLIDE WHISTLE, Roscoe STRING ROLL, Shimmer MIRROR NOTES ============ */
+
+/* JAM 17: SWOOP (round) — SLIDE WHISTLE (Rounding). Verb: DRAG the slide along a number line to the nearest ten; the note bends as you pass the midpoint. */
+jamRegister({id:'slidewhistle',title:'Slide Whistle',member:'round',concept:'round',emoji:'\uD83E\uDE88',scoreWord:'swoop score',roundLabel:'Swoop',
+  newRound:function(J){ var L=J.L(), st=J.state;
+    var base=L<3?R(1,8)*10:L<6?R(1,9)*10:R(1,9)*10; var n=base+R(1,9); if(n%10===5&&L<3)n=base+R(1,4); st.n=n; st.lo=base; st.hi=base+10; st.ans=(n%10>=5)?st.hi:st.lo;
+    st.pos=n; st.drag=false; st.done=false; st.x0=30; st.x1=J.W-30; st.y=J.H/2+20; st.lastTone=0;
+    J.call('Round '+n+' to the nearest ten','Slide the whistle to '+st.lo+' or '+st.hi+'. Which ten is '+n+' closer to? Let go on it.');
+    J.msg('Slide to the nearest ten and let go.');
+  },
+  draw:function(J,ctx,dt){ var st=J.state; if(!st.n)return; st.pos=Math.max(st.lo,Math.min(st.hi,st.pos)); var x0=st.x0,x1=st.x1,y=st.y; var xOf=function(v){ return x0+(x1-x0)*(v-st.lo)/10; };
+    ctx.strokeStyle='#f4f0ff'; ctx.lineWidth=4; ctx.beginPath(); ctx.moveTo(x0,y); ctx.lineTo(x1,y); ctx.stroke();
+    for(var v=st.lo;v<=st.hi;v++){ var x=xOf(v), big=(v%10===0), mid=(v%10===5); ctx.strokeStyle=big?'#ffd158':mid?'#ff8a8a':'#a89cd8'; ctx.lineWidth=big?4:2; ctx.beginPath(); ctx.moveTo(x,y-(big?18:mid?14:8)); ctx.lineTo(x,y+(big?18:mid?14:8)); ctx.stroke(); if(big)jkText(ctx,String(v),x,y+38,18,'#ffd158'); else if(mid)jkText(ctx,'half',x,y-26,11,'#ff8a8a'); }
+    var nx=xOf(st.n); ctx.beginPath(); ctx.arc(nx,y,8,0,Math.PI*2); ctx.fillStyle='#8ef0c9'; ctx.fill(); jkText(ctx,String(st.n),nx,y-40,20,'#8ef0c9');
+    /* whistle */
+    var px=xOf(st.pos); jkRound(ctx,px-16,y-70,32,60,10,'#ffd158','#8a6a0e',3); ctx.fillStyle='#8a6a0e'; ctx.fillRect(px-4,y-10,8,10); jkText(ctx,'\uD83E\uDE88',px,y-42,22);
+    jkText(ctx,'Round '+st.n+' \u2192 '+(st.drag?Math.round(st.pos):'?'),J.W/2,60,24,'#ffd158');
+    jkText(ctx,st.n%10<5?st.n+' is below the half mark':st.n%10===5?'exactly half: round UP':st.n+' is past the half mark',J.W/2,92,13,'#a89cd8');
+  },
+  onDown:function(J,x,y){ var st=J.state; if(!st.n||st.done)return; var px=st.x0+(st.x1-st.x0)*(st.pos-st.lo)/10; if(Math.abs(x-px)<40&&Math.abs(y-st.y)<70){ st.drag=true; } },
+  onMove:function(J,x,y){ var st=J.state; if(!st.drag)return; var v=st.lo+(x-st.x0)/(st.x1-st.x0)*10; v=Math.max(st.lo,Math.min(st.hi,v)); st.pos=v; var now=performance.now(); if(now-st.lastTone>70){ st.lastTone=now; tone(400+(v-st.lo)*40,.06,'sine',.12); } },
+  onUp:function(J,x,y){ var st=J.state; if(!st.drag)return; st.drag=false; st.done=true; var landed=Math.round(st.pos/10)*10; if(Math.abs(st.pos-landed)>2.5){ st.done=false; J.msg('Let go ON a ten: '+st.lo+' or '+st.hi+'.'); return; } st.pos=landed;
+    if(landed===st.ans){ [60,64,67,72].forEach(function(n,i){later(function(){tone(ntf(n),.15,'sine',.14);},i*80);}); J.win(st.n+' rounds to '+st.ans+'. '+(st.n%10>=5?'Past half, swoop UP!':'Below half, swoop DOWN!')); }
+    else J.miss(st.n+' is '+(st.n%10>=5?'5 or more past '+st.lo+', so it rounds UP to '+st.ans:'less than 5 past '+st.lo+', so it rounds DOWN to '+st.ans)+'.'); }
+});
+jamCoach('slidewhistle','round','\uD83E\uDE88 Slide Whistle',['Rounding asks: which ten is closer? Below the half mark goes down, 5 and up goes up.','DRAG the whistle to the nearest ten and let go!'],'DRAG','drag');
+
+/* JAM 18: ROSCOE — STRING ROLL (Patterns). Verb: the pattern rolls past on the strings; TAP the string that continues it. */
+jamRegister({id:'stringroll',title:'String Roll',member:'roscoe',concept:'patterns',emoji:'\uD83E\uDE95',scoreWord:'roll score',roundLabel:'Roll',
+  newRound:function(J){ var L=J.L(), st=J.state;
+    var kind=L<3?'abab':L<6?pick(['abab','abc','grow']):pick(['abc','grow','aabb','skip']);
+    var cols=['#ff5db1','#ffd158','#12e2c8','#9d7cff','#8ac926']; var seq=[];
+    if(kind==='abab'){ var a=R(0,4),b=R(0,4); while(b===a)b=R(0,4); for(var i=0;i<6;i++)seq.push(i%2?b:a); }
+    else if(kind==='abc'){ var p=shuffle([0,1,2,3,4]).slice(0,3); for(var i2=0;i2<6;i2++)seq.push(p[i2%3]); }
+    else if(kind==='aabb'){ var a2=R(0,4),b2=R(0,4); while(b2===a2)b2=R(0,4); seq=[a2,a2,b2,b2,a2,a2]; }
+    else if(kind==='grow'){ seq=[0,0,1,0,1,2]; st.growNext=[0,1,2,3]; }
+    else { var s0=R(0,2); seq=[s0,(s0+2)%5,(s0+4)%5,(s0+6)%5,(s0+8)%5,(s0+10)%5]; }
+    var next={abab:seq[0],abc:seq[0],aabb:seq[2],grow:0,skip:(seq[5]+2)%5}[kind];
+
+    st.kind=kind; st.seq=seq; st.cols=cols; st.next=next; st.scroll=0; st.speed=J.gentle()?18:(L<6?26:36); st.done=false; st.shown=seq.length; st.strings=5;
+    J.call('Which string comes next?','The pattern rolls by on the strings. Watch the colors, then TAP the string that keeps it going.');
+    J.msg('Watch the roll. Tap the next string.');
+  },
+  draw:function(J,ctx,dt){ var st=J.state; if(!st.seq)return; var W=J.W,H=J.H; st.scroll+=st.speed*dt;
+    var sy0=110, gap=(H-260)/(st.strings-1); st.sy=[]; for(var s=0;s<st.strings;s++){ var y=sy0+s*gap; st.sy.push(y); ctx.strokeStyle='#8a7a50'; ctx.lineWidth=2+s*0.5; ctx.beginPath(); ctx.moveTo(20,y); ctx.lineTo(W-20,y); ctx.stroke(); ctx.beginPath(); ctx.arc(W-32,y,10,0,Math.PI*2); ctx.fillStyle=st.cols[s]; ctx.fill(); ctx.strokeStyle='#1d1636'; ctx.lineWidth=2; ctx.stroke(); }
+    var stepX=54; st.seq.forEach(function(c,i){ var x=W-90-(st.seq.length-i)*stepX+ (st.scroll%stepX); if(x<30)return; var y=st.sy[c]; ctx.beginPath(); ctx.arc(x,y,13,0,Math.PI*2); ctx.fillStyle=st.cols[c]; ctx.fill(); ctx.strokeStyle='#1d1636'; ctx.lineWidth=2; ctx.stroke(); });
+    var qx=W-90+(st.scroll%stepX); ctx.setLineDash([4,4]); ctx.strokeStyle='#ffd158'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(qx,sy0-20); ctx.lineTo(qx,st.sy[st.strings-1]+20); ctx.stroke(); ctx.setLineDash([]); jkText(ctx,'?',qx,sy0-32,18,'#ffd158');
+    jkText(ctx,{abab:'AB pattern',abc:'ABC pattern',aabb:'AABB pattern',grow:'growing pattern',skip:'skip pattern'}[st.kind],W/2,60,16,'#a89cd8');
+    jkText(ctx,'tap the string (colored pegs on the right)',W/2,H-60,13,'#a89cd8');
+  },
+  onDown:function(J,x,y){ var st=J.state; if(!st.seq||st.done)return; var best=-1,bd=1e9; st.sy.forEach(function(sy,i){ var d=Math.abs(y-sy); if(d<bd){bd=d;best=i;} }); if(bd>28)return; st.done=true; mNote('roscoe',60+best*3,.3);
+    if(best===st.next){ J.win('String '+(best+1)+'! The pattern keeps rolling.'); } else J.miss('The pattern needed string '+(st.next+1)+'. Look at how the colors repeat.'); },
+  onMove:function(J,x,y){}, onUp:function(J,x,y){}
+});
+jamCoach('stringroll','roscoe','\uD83E\uDE95 String Roll',['A pattern repeats. Find the repeat and you know what comes next.','Watch the colors roll by, then TAP the string that continues the pattern!'],'TAP','tap');
+
+/* JAM 19: SHIMMER — MIRROR NOTES (Doubling & Halving). Verb: TAP falling notes to clone (double) them, or SWIPE to split (halve), to hit the target count. */
+jamRegister({id:'mirrornotes',title:'Mirror Notes',member:'shimmer',concept:'double',emoji:'\uD83E\uDE9E',scoreWord:'mirror score',roundLabel:'Mirror',
+  newRound:function(J){ var L=J.L(), st=J.state;
+    var halve=L>=4&&Math.random()<0.4; st.halve=halve; var start=halve?R(2,L<6?6:12)*2:R(1,L<3?5:L<6?9:14); st.start=start; st.target=halve?start/2:start*2;
+    st.count=start; st.done=false; st.sparks=[]; st.taps=0;
+    J.call(halve?'Halve '+start:'Double '+start, halve?'Swipe the mirror to SPLIT the notes in half. What is half of '+start+'?':'Tap the mirror to CLONE every note. What is double '+start+'?');
+    J.msg(halve?'Swipe the mirror to halve.':'Tap the mirror to double.');
+  },
+  draw:function(J,ctx,dt){ var st=J.state; if(!st.start)return; var W=J.W,H=J.H;
+    jkRound(ctx,W/2-70,H/2-90,140,180,20,'#c9f6ff','#7fd7ff',4); ctx.fillStyle='rgba(255,255,255,.35)'; ctx.fillRect(W/2-60,H/2-80,30,160); jkText(ctx,'\uD83E\uDE9E',W/2,H/2,48);
+    var n=st.count, perRow=Math.min(7,n), rows=Math.ceil(n/perRow); for(var i=0;i<n;i++){ var r=Math.floor(i/perRow), c=i%perRow; var x=W/2-((Math.min(perRow,n-r*perRow))*22)/2+c*22+11, y=H/2+120+r*22; if(i>=48)break; jkText(ctx,'\u266A',x,y,18,'#8ef0c9'); }
+    jkText(ctx,(st.halve?'half of ':'double ')+st.start+' = ?',W/2,60,24,'#ffd158'); jkText(ctx,'notes: '+st.count,W/2,92,16,'#a89cd8');
+    st.sparks=st.sparks.filter(function(p){ p.y-=dt*60; p.life-=dt*1.5; ctx.fillStyle='rgba(143,240,201,'+Math.max(0,p.life)+')'; jkText(ctx,'\u266A',p.x,p.y,16,ctx.fillStyle); return p.life>0; });
+    if(st.count===st.target&&!st.done){ st.go={x:W/2-60,y:H-56,w:120,h:40}; jkRound(ctx,st.go.x,st.go.y,120,40,12,'#8ef0c9'); jkText(ctx,'LOCK '+st.count,W/2,H-36,16,'#0e3a3a'); } else st.go=null;
+  },
+  onDown:function(J,x,y){ var st=J.state; if(!st.start||st.done)return;
+    if(st.go&&jkHit(x,y,st.go)){ st.done=true; mNote('shimmer',84,.4); J.win((st.halve?'Half of ':'Double ')+st.start+' = '+st.target+'. Mirror locked!'); return; }
+    var inMirror=Math.abs(x-J.W/2)<70&&Math.abs(y-J.H/2)<90; if(!inMirror)return; st.sx=x; st.sy=y; st.moved=false; },
+  onMove:function(J,x,y){ var st=J.state; if(st.sx!=null&&jkDist(x,y,st.sx,st.sy)>30)st.moved=true; },
+  onUp:function(J,x,y){ var st=J.state; if(st.sx==null||st.done)return; var swiped=st.moved; st.sx=null;
+    if(!st.halve&&!swiped){ st.taps++; if(st.taps===1){ st.count=st.start*2; for(var i=0;i<st.start;i++)st.sparks.push({x:J.W/2+R(-60,60),y:J.H/2+R(-60,60),life:1}); mNote('shimmer',76,.2); J.msg('Cloned! '+st.start+' became '+st.count+'. Lock it.'); } else { st.done=true; J.miss('Double means clone ONCE: '+st.start+' \u2192 '+st.target+'. You doubled twice.'); } }
+    else if(st.halve&&swiped){ st.taps++; if(st.taps===1){ st.count=st.start/2; mNote('shimmer',67,.3); J.msg('Split! '+st.start+' became '+st.count+'. Lock it.'); } else { st.done=true; J.miss('Halve means split ONCE: '+st.start+' \u2192 '+st.target+'. You halved twice.'); } }
+    else { J.msg(st.halve?'This one is HALVE: swipe the mirror.':'This one is DOUBLE: tap the mirror.'); ellyChime(); } }
+});
+jamCoach('mirrornotes','shimmer','\uD83E\uDE9E Mirror Notes',['A mirror doubles what it sees. Doubling makes two of every note. Halving splits them in two.','TAP the mirror to double, SWIPE it to halve, then LOCK the number!'],'TAP','tap');
+
+Object.assign(HEADLINE_JAM,{round:'slidewhistle',roscoe:'stringroll',shimmer:'mirrornotes'});
+Object.keys(HEADLINE_JAM).forEach(function(id){ if(LESSONS[id])LESSONS[id].game=function(){ startJam(HEADLINE_JAM[id]); }; });
+
+</script>
+<script>
+/* ============ v0.89: FINAL jams 20-22 — Axel STOMP, Flip FOLD IT, Reese STACK & CARRY. Every member at 3+1. ============ */
+
+/* JAM 20: AXEL — STOMP (Odd & Even). Verb: beats scroll by; STOMP left pedal on ODD numbers, right pedal on EVEN. */
+jamRegister({id:'stomp',title:'Stomp',member:'axel',concept:'odd',emoji:'\uD83E\uDDB6',scoreWord:'stomp score',roundLabel:'Riff',
+  newRound:function(J){ var L=J.L(), st=J.state;
+    var n=L<3?6:L<6?8:10, hi=L<3?9:L<6?30:99; st.beats=[]; for(var i=0;i<n;i++)st.beats.push({v:R(1,hi),x:J.W+40+i*110,hit:null});
+    st.speed=J.gentle()?70:(L<6?95:125); st.done=false; st.hits=0; st.miss=0; st.need=Math.ceil(n*0.75); st.lineX=J.W*0.32; st.n=n;
+    J.call('Stomp the riff: ODD left, EVEN right','Numbers ride in from the right. When one crosses the line, stomp the LEFT pedal if it is odd, RIGHT if it is even.',function(){ st.running=true; });
+    J.msg('Odd \u2192 LEFT pedal. Even \u2192 RIGHT pedal.');
+  },
+  draw:function(J,ctx,dt){ var st=J.state; if(!st.beats)return; var W=J.W,H=J.H, y=H/2-20;
+    if(st.running&&!st.done){ st.beats.forEach(function(b){ b.x-=st.speed*dt; }); var passed=st.beats.filter(function(b){return b.hit===null&&b.x<st.lineX-46;}); passed.forEach(function(b){ b.hit='late'; st.miss++; tone(180,.1,'sawtooth',.06); });
+      if(st.beats.every(function(b){return b.hit!==null;})){ st.done=true; drum('kick'); if(st.hits>=st.need){ mNote('axel',52,.5); J.win(st.hits+' of '+st.n+' stomped right. Backbeat locked!'); } else J.miss(st.hits+' of '+st.n+'. Remember: ends in 0 2 4 6 8 = even.'); } }
+    ctx.strokeStyle='#ffd158'; ctx.lineWidth=3; ctx.setLineDash([6,4]); ctx.beginPath(); ctx.moveTo(st.lineX,y-60); ctx.lineTo(st.lineX,y+60); ctx.stroke(); ctx.setLineDash([]);
+    ctx.strokeStyle='#3a2f6e'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(20,y); ctx.lineTo(W-20,y); ctx.stroke();
+    st.beats.forEach(function(b){ if(b.x<-60||b.x>W+60)return; var col=b.hit==='ok'?'#7dff8a':b.hit==='bad'||b.hit==='late'?'#ff5d5d':(b.v%2?'#ff9f43':'#4dd6ff'); jkRound(ctx,b.x-30,y-26,60,52,12,col,'#1d1636',3); jkText(ctx,String(b.v),b.x,y,22,'#1d1636'); });
+    st.lp={x:30,y:H-120,w:W/2-45,h:80}; st.rp={x:W/2+15,y:H-120,w:W/2-45,h:80};
+    jkRound(ctx,st.lp.x,st.lp.y,st.lp.w,st.lp.h,16,st.flashL>0?'#ff9f43':'#3a2f6e','#ff9f43',3); jkText(ctx,'ODD',st.lp.x+st.lp.w/2,st.lp.y+30,20,'#f4f0ff'); jkText(ctx,'1 3 5 7 9',st.lp.x+st.lp.w/2,st.lp.y+56,12,'#a89cd8');
+    jkRound(ctx,st.rp.x,st.rp.y,st.rp.w,st.rp.h,16,st.flashR>0?'#4dd6ff':'#3a2f6e','#4dd6ff',3); jkText(ctx,'EVEN',st.rp.x+st.rp.w/2,st.rp.y+30,20,'#f4f0ff'); jkText(ctx,'0 2 4 6 8',st.rp.x+st.rp.w/2,st.rp.y+56,12,'#a89cd8');
+    if(st.flashL>0)st.flashL-=dt*5; if(st.flashR>0)st.flashR-=dt*5;
+    jkText(ctx,'stomped '+st.hits+' / '+st.n,W/2,60,16,'#a89cd8');
+  },
+  onDown:function(J,x,y){ var st=J.state; if(!st.beats||st.done||!st.running)return; var side=null; if(jkHit(x,y,st.lp))side='odd'; else if(jkHit(x,y,st.rp))side='even'; if(!side)return;
+    if(side==='odd')st.flashL=1; else st.flashR=1; drum(side==='odd'?'kick':'snare');
+    var near=null,bd=1e9; st.beats.forEach(function(b){ if(b.hit!==null)return; var d=Math.abs(b.x-st.lineX); if(d<bd){bd=d;near=b;} }); if(!near||bd>70){ J.msg('Nothing on the line yet. Wait for it.'); return; }
+    var isOdd=near.v%2===1; if((side==='odd')===isOdd){ near.hit='ok'; st.hits++; mNote('axel',isOdd?52:55,.15); } else { near.hit='bad'; st.miss++; tone(160,.12,'sawtooth',.08); J.msg(near.v+' is '+(isOdd?'ODD':'EVEN')+'. Look at the last digit.'); } },
+  onMove:function(J,x,y){}, onUp:function(J,x,y){}
+});
+jamCoach('stomp','axel','\uD83E\uDDB6 Stomp',['Even numbers end in 0, 2, 4, 6, 8. Odd numbers end in 1, 3, 5, 7, 9.','Numbers ride in. STOMP the ODD pedal or the EVEN pedal as each one crosses the line!'],'TAP','tap');
+
+/* JAM 21: FLIP — FOLD IT (Shapes & Symmetry). Verb: DRAG the shape across the fold line; it snaps and rings if the fold is a true line of symmetry. */
+jamRegister({id:'foldit',title:'Fold It',member:'flip',concept:'shape',emoji:'\uD83E\uDE9E',scoreWord:'fold score',roundLabel:'Fold',
+  newRound:function(J){ var L=J.L(), st=J.state;
+    var nm=pick(L<3?['square','rectangle','triangle']:L<6?['square','rectangle','triangle','pentagon']:['square','rectangle','triangle','pentagon','hexagon','octagon']); var sh=SHAPES[nm];
+    var cands=shuffle(sh.symAngles.map(function(d){return {deg:d,ok:true};}).slice(0,2).concat(sh.falseAngles.slice(0,L<3?1:2).map(function(d){return {deg:d,ok:false};}))).slice(0,L<3?2:3);
+    if(!cands.some(function(c){return c.ok;}))cands[0]={deg:sh.symAngles[0],ok:true};
+    st.nm=nm; st.cands=cands; st.cx=J.W/2; st.cy=J.H/2-20; st.r=Math.min(J.W,J.H)*0.26; st.chosen=-1; st.folding=0; st.done=false; st.drag=false;
+    J.call('Fold the '+nm+' on a TRUE mirror line','Only one dashed line is a real fold. Tap it, then drag the shape across it. If both halves match, it snaps!');
+    J.msg('Tap a dashed line, then drag the shape across it.');
+  },
+  draw:function(J,ctx,dt){ var st=J.state; if(!st.nm)return; var cx=st.cx,cy=st.cy,r=st.r, sh=SHAPES[st.nm];
+    st.cands.forEach(function(c,i){ var a=c.deg*Math.PI/180, L2=r*1.4; ctx.setLineDash([7,5]); ctx.strokeStyle=i===st.chosen?'#ffd158':'#8ef0c9'; ctx.lineWidth=i===st.chosen?4:2.5; ctx.beginPath(); ctx.moveTo(cx+L2*Math.cos(a),cy-L2*Math.sin(a)); ctx.lineTo(cx-L2*Math.cos(a),cy+L2*Math.sin(a)); ctx.stroke(); ctx.setLineDash([]); jkText(ctx,['A','B','C'][i],cx+(L2+18)*Math.cos(a),cy-(L2+18)*Math.sin(a),16,i===st.chosen?'#ffd158':'#8ef0c9'); });
+    var pts=sh.pts?sh.pts(0,r*0.9):null; /* SHAPES.pts(c,r) is centered on (c,c); with c=0 it's centered on the origin */
+    var drawShape=function(alpha,mirror){ ctx.save(); ctx.globalAlpha=alpha; ctx.translate(cx,cy); if(mirror!=null){ ctx.rotate(mirror); ctx.scale(1,-1); ctx.rotate(-mirror); } ctx.beginPath(); if(pts){ pts.forEach(function(p,i){ if(i===0)ctx.moveTo(p[0],p[1]); else ctx.lineTo(p[0],p[1]); }); ctx.closePath(); } else ctx.arc(0,0,r*0.9,0,Math.PI*2); ctx.fillStyle='#ff9f43'; ctx.fill(); ctx.strokeStyle='#221a44'; ctx.lineWidth=3; ctx.stroke(); ctx.restore(); };
+    if(st.folding>0&&st.chosen>=0){ var a=st.cands[st.chosen].deg*Math.PI/180; drawShape(1,null); drawShape(0.5,a); }
+    else drawShape(1,null);
+    jkText(ctx,st.nm,J.W/2,60,22,'#f4f0ff'); jkText(ctx,st.chosen<0?'pick a fold line':'now drag the shape across line '+['A','B','C'][st.chosen],J.W/2,92,13,'#a89cd8');
+  },
+  onDown:function(J,x,y){ var st=J.state; if(!st.nm||st.done)return; var cx=st.cx,cy=st.cy,r=st.r;
+    var bestI=-1,bd=1e9; st.cands.forEach(function(c,i){ var a=c.deg*Math.PI/180; var dx=x-cx,dy=cy-y; var perp=Math.abs(dx*Math.sin(a)-dy*Math.cos(a)); var along=Math.abs(dx*Math.cos(a)+dy*Math.sin(a)); if(perp<22&&along>r*0.95&&along<r*1.6&&perp<bd){bd=perp;bestI=i;} });
+    if(bestI>=0){ st.chosen=bestI; tone(600,.06,'triangle',.12); J.msg('Line '+['A','B','C'][bestI]+'. Now drag the shape across it.'); return; }
+    if(jkDist(x,y,cx,cy)<r&&st.chosen>=0){ st.drag=true; st.dx0=x; st.dy0=y; } },
+  onMove:function(J,x,y){ var st=J.state; if(st.drag){ st.folding=Math.min(1,jkDist(x,y,st.dx0,st.dy0)/60); } },
+  onUp:function(J,x,y){ var st=J.state; if(!st.drag)return; st.drag=false; if(st.folding<0.6){ st.folding=0; return; } st.done=true; var c=st.cands[st.chosen]; drum('clap');
+    if(c.ok){ [64,67,71,76].forEach(function(n,i){later(function(){mNote('flip',n,.25);},i*70);}); J.win('Line '+['A','B','C'][st.chosen]+' is a true fold. Both halves match!'); }
+    else { tone(200,.2,'sawtooth',.08); var right=st.cands.findIndex(function(z){return z.ok;}); J.miss('Line '+['A','B','C'][st.chosen]+' leaves a corner sticking out. Line '+['A','B','C'][right]+' is the real fold.'); } }
+});
+jamCoach('foldit','flip','\uD83E\uDE9E Fold It',['A line of symmetry is a fold where both halves match exactly.','TAP a dashed line, then DRAG the shape across it. A true fold snaps into place!'],'DRAG','drag');
+
+/* JAM 22: REESE — STACK & CARRY (Column Add). Verb: drop digit tiles into ones/tens columns; when a column overflows, FLICK the carry up. */
+jamRegister({id:'stackcarry',title:'Stack & Carry',member:'reese',concept:'column',emoji:'\uD83E\uDE97',scoreWord:'stack score',roundLabel:'Verse',
+  newRound:function(J){ var L=J.L(), st=J.state;
+    var at=R(1,L<6?4:8), ao=R(L<3?1:3,9), bt=R(1,L<6?4:8), bo=L<3?R(1,9-ao):R(10-ao,9); var a=at*10+ao, b=bt*10+bo; st.a=a; st.b=b; st.ans=a+b; st.ones=ao+bo; st.carry=st.ones>=10?1:0;
+    st.phase='ones'; st.onesDone=null; st.carried=false; st.done=false; st.colW=90; st.gx=J.W/2-90; st.baseY=J.H/2+40;
+    st.opts=null;
+    J.call(a+' + '+b,'Add the ONES column first. '+(st.carry?'It goes over 9, so a ten carries up to the tens column.':'Then the tens.'));
+    J.msg('Ones first: '+ao+' + '+bo+' = ?');
+  },
+  draw:function(J,ctx,dt){ var st=J.state; if(!st.a)return; var W=J.W,H=J.H, gx=st.gx, cw=st.colW, y=st.baseY;
+    jkText(ctx,'tens',gx+cw/2,y-150,12,'#a89cd8'); jkText(ctx,'ones',gx+cw+cw/2,y-150,12,'#a89cd8');
+    var tile=function(v,x,yy,col){ jkRound(ctx,x-24,yy-22,48,44,8,col||'#2a1f55','#ffd158',2); jkText(ctx,String(v),x,yy,26,'#f4f0ff'); };
+    tile(Math.floor(st.a/10),gx+cw/2,y-110); tile(st.a%10,gx+cw+cw/2,y-110); jkText(ctx,'+',gx-30,y-55,26,'#8ac926'); tile(Math.floor(st.b/10),gx+cw/2,y-55); tile(st.b%10,gx+cw+cw/2,y-55);
+    ctx.strokeStyle='#8ac926'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(gx-10,y-22); ctx.lineTo(gx+2*cw+10,y-22); ctx.stroke();
+    if(st.carried){ jkRound(ctx,gx+cw/2-14,y-152,28,24,6,'#ffd158'); jkText(ctx,'1',gx+cw/2,y-140,16,'#3a2a00'); }
+    if(st.onesDone!=null)tile(st.onesDone,gx+cw+cw/2,y+10,'#1e5c40');
+    if(st.phase==='done')tile(Math.floor(st.ans/10),gx+cw/2,y+10,'#1e5c40');
+    jkText(ctx,st.a+' + '+st.b+' = '+(st.phase==='done'?st.ans:'?'),W/2,60,26,'#ffd158');
+    if(st.carry&&st.phase==='carry'){ st.carryTile={x:gx+cw+cw/2-24,y:y+40,w:48,h:44}; jkRound(ctx,st.carryTile.x,st.carryTile.y,48,44,8,'#ffd158','#8a6a0e',3); jkText(ctx,'1',gx+cw+cw/2,y+62,22,'#3a2a00'); jkText(ctx,'\u2191 flick the carry to the tens',gx+cw+cw/2,y+100,12,'#ffd158'); }
+    if(st.opts){ st.opts.forEach(function(o,i){ var bx=W/2-((st.opts.length*70)/2)+i*70+35; o.box={x:bx-30,y:H-90,w:60,h:44}; jkRound(ctx,o.box.x,o.box.y,60,44,10,'#2a1f55','#ffd158',2); jkText(ctx,String(o.v),bx,H-68,20); }); jkText(ctx,st.phase==='ones'?'ones column: what do you write?':'tens column (with the carry): what do you write?',W/2,H-120,14,'#a89cd8'); }
+  },
+  onDown:function(J,x,y){ var st=J.state; if(!st.a||st.done)return;
+    if(!st.opts&&st.phase==='ones'){ var o=st.ones%10; st.opts=shuffle([o,st.ones,(o+1)%10,Math.abs(o-1)].filter(function(v,i,a){return a.indexOf(v)===i;})).slice(0,4).map(function(v){return {v:v};}); return; }
+    if(st.phase==='carry'){ if(st.carryTile&&jkHit(x,y,st.carryTile)){ st.fy=y; st.fdrag=true; } return; }
+    if(st.opts){ for(var i=0;i<st.opts.length;i++){ var op=st.opts[i]; if(op.box&&jkHit(x,y,op.box)){
+      if(st.phase==='ones'){ if(op.v===st.ones%10){ st.onesDone=op.v; drum('kick'); mNote('reese',64,.2); st.opts=null; if(st.carry){ st.phase='carry'; J.msg(st.ones+' is more than 9: write '+(st.ones%10)+', flick the 1 up.'); } else { st.phase='tens'; var t=Math.floor(st.ans/10); st.opts=shuffle([t,t+1,Math.max(0,t-1),t+10].filter(function(v,i2,a2){return a2.indexOf(v)===i2;})).slice(0,4).map(function(v){return {v:v};}); J.msg('Now the tens.'); } }
+        else { st.done=true; J.miss((st.a%10)+' + '+(st.b%10)+' = '+st.ones+'. Write the '+(st.ones%10)+(st.carry?', carry the 1.':'.')); } return; }
+      if(st.phase==='tens'){ var tt=Math.floor(st.ans/10); if(op.v===tt){ st.phase='done'; st.done=true; mNote('reese',67,.5); J.win(st.a+' + '+st.b+' = '+st.ans+'. Stacked and carried!'); } else { st.done=true; J.miss(Math.floor(st.a/10)+' + '+Math.floor(st.b/10)+(st.carry?' + 1 (carry)':'')+' = '+tt+'.'); } return; } } } } },
+  onMove:function(J,x,y){ var st=J.state; if(st.fdrag&&st.fy-y>50){ st.fdrag=false; st.carried=true; st.phase='tens'; drum('snare'); mNote('reese',72,.2); var t=Math.floor(st.ans/10); st.opts=shuffle([t,t+1,Math.max(0,t-1),t-1].filter(function(v,i,a){return v>=0&&a.indexOf(v)===i;})).slice(0,4).map(function(v){return {v:v};}); J.msg('Carried! Now tens: '+Math.floor(st.a/10)+' + '+Math.floor(st.b/10)+' + 1 = ?'); } },
+  onUp:function(J,x,y){ var st=J.state; st.fdrag=false; }
+});
+jamCoach('stackcarry','reese','\uD83E\uDE97 Stack & Carry',['Line up the ones under the ones. Add that column first.','If it passes 9, write the ones digit and FLICK the carry up to the tens. Then add the tens!'],'TAP','tap');
+
+Object.assign(HEADLINE_JAM,{axel:'stomp',flip:'foldit',reese:'stackcarry'});
 Object.keys(HEADLINE_JAM).forEach(function(id){ if(LESSONS[id])LESSONS[id].game=function(){ startJam(HEADLINE_JAM[id]); }; });
 
 </script>
