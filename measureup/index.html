@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Measure Up">
-<title>Measure Up v0.90</title>
+<title>Measure Up v0.92</title>
 <style>
 :root{
   --bg:#0e0b1e; --panel:#1d1636; --panel2:#28204a; --ink:#f4f0ff; --dim:#a89cd8;
@@ -928,14 +928,14 @@ svg .charg{will-change:transform}
 <div id="toast"></div>
 <button id="homeBtn" onclick="goHome()" aria-label="Back to Garage">🏠</button>
 <button id="ellyBtn" onclick="openEllyHelp()" aria-label="Ask Elly for help"></button>
-<div id="vbadge">v0.90 · Sep 9</div>
+<div id="vbadge">v0.92 · Sep 9</div>
 
 <script>
 'use strict';
 /* ============ UTILS ============ */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const VERSION='v0.90 · Sep 9';
+const VERSION='v0.92 · Sep 9';
 const RM=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -10076,7 +10076,7 @@ var PART_PREF={
   lead:['keys','guitar','harp','voicep','strings','bell','horn'],
   strum:['guitar','strings','keys','harp'],
   horn:['horn','harp','voicep','strings','keys'],
-  bell:['bell','keys','voicep'],
+  bell:['bell','jingle','keys','voicep'],
   perc:['gauge','luna','tock','reg','round'],   /* by id, not family */
   fx:['tock','gain','glitch','pixel']           /* by id */
 };
@@ -10146,6 +10146,7 @@ function arrangeSong(sg,lineup){
     horn:[ function(w){ perPhrase(w,0,'horn',[0,root+12,.4],2); }, function(w){ perPhrase(w,8,'horn',[0,root+19,.4],2); }, function(w){ perPhrase(w,12,'horn',[0,root+24,.3],2); }, function(w){ perBar(w,[14],'horn',[0,root+31,.2]); } ],
     harp:[ function(w){ perPhrase(w,12,'lead',[0,root+31,.5],2); }, function(w){ perPhrase(w,4,'lead',[0,root+24,.5],2); }, function(w){ perBar(w,[6],'lead',[0,root+36,.3]); }, function(w){ perBar(w,[10],'lead',[0,root+19,.3]); } ],
     voicep:[ function(w){ perPhrase(w,0,'lead',[0,root+24,1.2],2); }, function(w){ perPhrase(w,8,'lead',[0,root+31,1.2],2); }, function(w){ perPhrase(w,4,'lead',[0,root+36,.8],2); }, function(w){ perBar(w,[12],'lead',[0,root+19,.6]); } ],
+    jingle:[ function(w){ perBar(w,[2,6,10,14],'bell',[0,root+36]); }, function(w){ perBar(w,[4,12],'bell',[0,root+43]); }, function(w){ perPhrase(w,0,'bell',[0,root+48],2); }, function(w){ perBar(w,[15],'bell',[0,root+36]); } ],
     bell:[ function(w){ perBar(w,[6,14],'bell',[0,root+31]); }, function(w){ perBar(w,[3,11],'bell',[0,root+43]); }, function(w){ perBar(w,[7],'bell',[0,root+36]); }, function(w){ perPhrase(w,15,'bell',[0,root+48],2); } ]
   };
   var SOLO={
@@ -10297,6 +10298,275 @@ if(typeof ELLY_HINTS==='object'&&ELLY_HINTS)ELLY_HINTS['scr-show']='This is the 
   '.wing .wname{font-weight:800;font-size:13px;line-height:1.1}'+
   '.wing .winst{font-size:10.5px;opacity:.7;line-height:1.1;text-align:center}';
   document.head.appendChild(st); })();
+
+</script>
+<script>
+/* ================= v0.91 · JINGLE, the sleigh-bell solo act (Sep 9 2026) =================
+   Garrett's special addition: an original round sleigh-bell creature with a jingle sound.
+   Solo: no rival band. Shows up in the Garage with "Audition me!" like the originals.
+   Concept 'elapsed' = ELAPSED TIME (bells ring the hours; how long between rings, when is
+   the next ring, when did it start). 3 mini-games + 1 headline jam (Ring Run). */
+
+/* ---------- time helpers ---------- */
+function eT(min){ min=((min%720)+720)%720; var h=Math.floor(min/60), m=min%60; if(h===0)h=12; return h+':'+(m<10?'0'+m:m); }
+function eDur(min){ var h=Math.floor(min/60), m=min%60; if(h&&m)return h+' h '+m+' min'; if(h)return h+' h'; return m+' min'; }
+function eClocks(a,b,lab1,lab2){
+  var sm=function(s){ return s.replace('width="170" height="170"','width="126" height="126"'); };
+  var c=function(min,lab){ return '<div class="center" style="flex:0 0 auto"><div>'+sm(clockHTML(Math.floor(min/60)||12,min%60))+'</div><div class="sub" style="font-weight:800;margin-top:-2px">'+lab+'</div></div>'; };
+  return '<div class="row" style="justify-content:center;align-items:center;gap:6px;flex-wrap:nowrap">'+c(a,lab1||'start')+'<div style="font-size:26px;color:#ffd158;font-weight:900">\u2192</div>'+c(b,lab2||'end')+'</div>';
+}
+function eDurChoices(ans){ var d=[15,-15,30,-30,60,-60,45,-45,5,-5]; var out=[ans]; for(var i=0;i<d.length&&out.length<4;i++){ var v=ans+d[i]; if(v>0&&out.indexOf(v)<0)out.push(v); } return shuffle(out).map(eDur); }
+function eTimeChoices(ans){ var d=[60,-60,30,-30,15,-15,120,-120]; var out=[ans]; for(var i=0;i<d.length&&out.length<4;i++){ var v=ans+d[i]; if(out.map(function(x){return eT(x);}).indexOf(eT(v))<0)out.push(v); } return shuffle(out).map(eT); }
+function eStart(L){ var h=R(1,10); if(L<5)return h*60; if(L<7)return h*60+pick([0,30]); if(L<9)return h*60+R(0,9)*5; return h*60+R(0,11)*5; }
+function eSpan(L){ if(L<3)return R(1,4)*60; if(L<5)return R(1,5)*60; if(L<7)return pick([30,60,90,120,150]); if(L<9)return R(1,11)*5; if(L<11)return R(1,3)*60+R(1,11)*5; return R(1,4)*60+R(0,11)*5; }
+
+/* ---------- concept registration ---------- */
+CONCEPT_NAMES.elapsed='Elapsed Time';
+DEF.skills.elapsed=1; if(S&&S.skills&&!S.skills.elapsed)S.skills.elapsed=1;
+ACH_CC.push('elapsed');
+
+QG.elapsed=function(L){
+  var s=eStart(L), d=eSpan(L), e=s+d;
+  if(L<3)return {q:'The bell rang at '+eT(s)+' and again at '+eT(e)+'. How much time went by?', vis:eClocks(s,e), choices:eDurChoices(d), a:eDur(d)};
+  if(L<5){ if(Math.random()<.5)return {q:'It is '+eT(s)+'. The bell rings in '+eDur(d)+'. What time will it ring?', vis:eClocks(s,e,'now','?'), choices:eTimeChoices(e), a:eT(e)};
+    return {q:'From '+eT(s)+' to '+eT(e)+': how long?', vis:eClocks(s,e), choices:eDurChoices(d), a:eDur(d)}; }
+  if(L<7)return {q:'Rehearsal ran from '+eT(s)+' to '+eT(e)+'. How long was it?', vis:eClocks(s,e), choices:eDurChoices(d), a:eDur(d)};
+  if(L<9)return {q:'Sound check: '+eT(s)+' to '+eT(e)+'. How many minutes?', vis:eClocks(s,e), choices:eDurChoices(d), a:eDur(d)};
+  if(L<11){ if(Math.random()<.5)return {q:'The show starts at '+eT(s)+' and runs '+eDur(d)+'. When does it end?', vis:eClocks(s,e,'start','?'), choices:eTimeChoices(e), a:eT(e)};
+    return {q:'The show ran '+eT(s)+' to '+eT(e)+'. How long?', vis:eClocks(s,e), choices:eDurChoices(d), a:eDur(d)}; }
+  return {q:'The bell rang at '+eT(e)+', '+eDur(d)+' after the show began. When did it begin?', vis:eClocks(s,e,'?','ring'), choices:eTimeChoices(s), a:eT(s)};
+};
+
+/* ---------- art: an original round sleigh bell, icy silver-blue with a green ribbon ---------- */
+function jingleSVG(crewId,sz){
+  var O='#221a44', B='#9fdcff', B2='#5fb6ea', B3='#2f7fb3', RB='#3fbf6a', RB2='#2a8a4a';
+  var b=
+    '<path d="M60 22 q10 -16 20 0 q-4 6 -10 6 q-6 0 -10 -6z" fill="'+RB+'" stroke="'+RB2+'" stroke-width="2"/>'+       /* ribbon loop */
+    '<rect x="64" y="24" width="12" height="9" rx="3" fill="'+RB2+'"/>'+
+    '<circle cx="70" cy="76" r="44" fill="'+B+'"/>'+
+    '<path d="M26 76 a44 44 0 0 0 88 0 z" fill="'+B2+'"/>'+                                                             /* lower hemisphere */
+    '<path d="M40 88 q30 14 60 0" stroke="'+B3+'" stroke-width="5" fill="none" stroke-linecap="round"/>'+             /* bell slot */
+    '<circle cx="70" cy="95" r="5" fill="'+B3+'"/>'+
+    '<circle cx="46" cy="60" r="7" fill="#fff" opacity=".7"/>'+
+    '<circle cx="57" cy="66" r="6" fill="'+O+'"/><circle cx="83" cy="66" r="6" fill="'+O+'"/>'+
+    '<circle cx="59" cy="64" r="2" fill="#fff"/><circle cx="85" cy="64" r="2" fill="#fff"/>'+
+    '<circle cx="48" cy="76" r="4" fill="#ff9ec4" opacity=".55"/><circle cx="92" cy="76" r="4" fill="#ff9ec4" opacity=".55"/>'+
+    '<path d="M62 80 q8 6 16 0" stroke="'+O+'" stroke-width="3.5" fill="none" stroke-linecap="round"/>'+
+    '<ellipse cx="30" cy="92" rx="8" ry="6" fill="'+RB+'"/><ellipse cx="110" cy="92" rx="8" ry="6" fill="'+RB+'"/>'+  /* mitten hands */
+    '<ellipse cx="56" cy="123" rx="11" ry="5" fill="'+B3+'"/><ellipse cx="84" cy="123" rx="11" ry="5" fill="'+B3+'"/>';
+  return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 140 140"><g class="charg">'+b+'</g></svg>';
+}
+
+/* ---------- member ---------- */
+var JINGLE={id:'jingle',name:'Jingle',emoji:'\uD83D\uDD14',title:'Sleigh Bells',concept:'elapsed',color:'#9fdcff',recruit:false,draw:jingleSVG,crewId:'jingle',
+  cfg:{body:'round',col:'#9fdcff',eyes:'dot',extra:'none'},
+  bio:'I ring on the hour. Count my rings and you know how much time went by. I am not in anybody\u2019s band. I just show up when it is time.',
+  lines:['Ring at 3, ring at 5. Two hours went by.','Half past means thirty minutes past. Ring-a-ling.','Rehearsal is over when I say it is over.'],
+  dreams:['I was a sleigh bell on a sled. Then I fell off, and I have been keeping my own time ever since.','My dream: ring at midnight on New Year\u2019s Eve with the whole band counting down.','Every song has a length. I am the one who knows it.','Start time, end time, what is in between. That is my whole job.','I like this garage. The clock on the wall is wrong, so they need me.']};
+BAND.push(JINGLE); BY_ID.jingle=JINGLE; if(typeof syncBandCounts==='function')syncBandCounts();
+RIG_NAMES.jingle='sleigh bells';
+MEMBER_FAM.jingle='jingle';
+VOICE_LABELS.jingle='Bells';
+GIG_LINES.jingle='Jingle rings once. "That set ran exactly as long as it should have," it says.';
+MEET_LINES.jingle='And that is Jingle, our sleigh bell. It keeps time between the rings. Elapsed Time.';
+
+/* ---------- voice: sleigh bell family ---------- */
+var _voiceNoteJ=voiceNote;
+voiceNote=function(fam,style){
+  if(fam==='jingle'){ return function(m,dur,when){ var a=ac(); if(!a)return; var t=a.currentTime+(when||0);
+    var hand=(style==='handbell'); var parts=hand?[[1,.22,.9],[2.76,.08,.5]]:[[1,.16,.32],[2.53,.12,.22],[4.1,.07,.16],[6.2,.04,.12]];
+    var f=ntf(m)*(hand?1:1.5);
+    parts.forEach(function(p){ var o=a.createOscillator(),g=a.createGain(); o.type='sine'; o.frequency.value=f*p[0]; g.gain.setValueAtTime(.0001,t); g.gain.linearRampToValueAtTime(p[1],t+.006); g.gain.exponentialRampToValueAtTime(.001,t+p[2]*(dur?Math.max(.6,dur*1.6):1)); o.connect(g); g.connect(MASTER); o.start(t); o.stop(t+p[2]*2+.1); });
+    if(!hand){ /* the little shake: two tiny after-rings */ [0.045,0.09].forEach(function(dt,i){ var o=a.createOscillator(),g=a.createGain(); o.type='triangle'; o.frequency.value=f*(2.53+i*.4); g.gain.setValueAtTime(.0001,t+dt); g.gain.linearRampToValueAtTime(.05,t+dt+.005); g.gain.exponentialRampToValueAtTime(.001,t+dt+.14); o.connect(g); g.connect(MASTER); o.start(t+dt); o.stop(t+dt+.3); }); }
+  }; }
+  return _voiceNoteJ(fam,style);
+};
+SHOP.push({id:'rv_jingle_handbell',type:'voice',who:'jingle',val:'handbell',name:'Hand Bell',rarity:'rare',notes:55,gold:0,desc:'A new sound for Jingle\u2019s sleigh bells.'});
+SHOP.push({id:'rv_jingle_sleigh',type:'voice',who:'jingle',val:'sleigh',name:'Sleigh Cluster',rarity:'rare',notes:55,gold:0,desc:'A new sound for Jingle\u2019s sleigh bells.'});
+
+/* ---------- Practice Room rig ---------- */
+PLAY_RIGS.jingle={hint:'Shake it! Every ring is a tick of the clock.',custom:function(el){
+  el.innerHTML='<div class="mjbig" style="font-size:44px">\uD83D\uDD14</div><div class="sub center">shake, ring, count</div><div class="row" id="jgStr" style="justify-content:center;gap:8px;margin-top:12px;flex-wrap:wrap"></div>';
+  var notes=[72,74,76,79,81,84];
+  $('#jgStr').innerHTML=notes.map(function(n,i){return '<button class="mjcymbal jgb" data-n="'+n+'" style="font-size:16px;width:70px;height:70px;border-color:#9fdcff">'+(i+1)+'</button>';}).join('');
+  $$('.jgb').forEach(function(b){ b.addEventListener('click',function(){ ac(); mNote('jingle',+b.dataset.n,.5); punch(b); }); });
+}};
+
+/* ---------- music card, demo, lesson, method, stepwalk ---------- */
+MUSIC_CARDS.jingle={elly:'Jingle rings on the hour. Between two rings is a stretch of time, and Jingle can measure it.',body:'A song has a length. A show has a length. Rehearsal has a length. Elapsed time is the stretch between a start and an end. Jingle rings at the start, rings at the end, and counts what happened in between: hours first, then minutes.',example:'Listen: ring at 3, ring at 4, ring at 5. Three rings, two hours went by.'};
+MUSIC_DEMOS.jingle=function(){ [0,600,1200].forEach(function(ms,i){ later(function(){ mNote('jingle',84,.6); },ms); }); later(function(){ mNote('jingle',88,.8); mNote('jingle',91,.8,.06); },1900); };
+LESSONS.jingle={game:function(){startMJ('ringcount');},steps:[
+  {say:'I ring on the hour. If I ring at 3:00 and again at 5:00, count the hours between: 3, 4, 5. Two hours went by.',vis:eClocks(180,300)},
+  {say:'Minutes work the same way. 2:10 to 2:45: count by fives from 10 up to 45. That is 35 minutes.',vis:eClocks(130,165)},
+  {say:'Hours AND minutes: 3:20 to 5:05. Hours first: 3:20 to 4:20 is one hour. Then minutes: 4:20 to 5:05 is 45 minutes. One hour, 45 minutes.',vis:eClocks(200,305)},
+  {say:'Sometimes you know the start and how long, and you need the end: 4:15 plus 30 minutes is 4:45. In my games you count rings, set timers, and pick the finish clock. Ring-a-ling!',vis:eClocks(255,285,'start','+30 min')}
+]};
+METHOD.elapsed={steps:[
+  {say:'Count the hours first, from the start time up to the last whole hour before the end. Then count the minutes by fives to the end time. Add them: hours and minutes.',vis:eClocks(200,305)},
+  {say:'To find an END time, add the duration to the start: hours first, then minutes. If the minutes pass 60, that is one more hour. To find a START time, subtract the same way.',vis:eClocks(255,330,'start','end')}
+]};
+STEPWALK.elapsed=function(L){ var s=R(1,9)*60+R(1,5)*5, hh=R(1,2), mm=R(1,8)*5, e=s+hh*60+mm;
+  return {title:'Hours first, then minutes',steps:[
+    {say:'From '+eT(s)+', count whole hours up to '+eT(s+hh*60)+'. How many hours?',vis:eClocks(s,s+hh*60),choices:numChoices(hh,2).map(String),a:String(hh)},
+    {say:'Now from '+eT(s+hh*60)+' to '+eT(e)+', count by fives. How many minutes?',vis:eClocks(s+hh*60,e),choices:shuffle([mm,mm+5,mm+10,mm>5?mm-5:mm+15]).map(String),a:String(mm)},
+    {say:'Put it together: '+eT(s)+' to '+eT(e)+' is how long?',choices:eDurChoices(hh*60+mm),a:eDur(hh*60+mm),after:hh+' hour'+(hh>1?'s':'')+' and '+mm+' minutes. Hours, then minutes!'}]}; };
+
+/* ---------- mini-game 1: RING COUNT (tap) ---------- */
+MJGAMES.ringcount={id:'ringcount',name:'Ring Count',emoji:'\uD83D\uDD14',member:'jingle',concept:'elapsed',
+setup:function(L,st){
+  var half=L>=5, s=R(1,9)*60+(half&&Math.random()<.5?30:0), n=R(1,L<4?3:5), step=half?30:60, e=s+n*step;
+  var ans=eT(e); st.ans=ans;
+  return {call:'It is '+eT(s)+'. Jingle rings '+n+' time'+(n>1?'s':'')+'.', sub:half?'Jingle rings every HALF hour now. What time is it after the rings?':'One ring per hour. What time is it after the rings?',
+    html:eClocks(s,e,'now','?')+'<div class="sub center">'+n+' ring'+(n>1?'s':'')+' \u00b7 '+eDur(step)+' each</div><div class="mjcards" id="rcZ"></div>',
+    wire:function(){ var opts=eTimeChoices(e); $('#rcZ').innerHTML=opts.map(function(o){return '<button class="mjposter rcb" data-v="'+o+'" style="font-size:22px">'+o+'</button>';}).join('');
+      $$('.rcb').forEach(function(bt){ bt.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(bt.dataset.v===st.ans){ for(var i=0;i<n;i++)mNote('jingle',84,.4,i*.12); mjOK(n+' ring'+(n>1?'s':'')+' of '+eDur(step)+' = '+eDur(n*step)+'. '+eT(s)+' becomes '+ans+'!'); } else { punch(bt); mjNo('Each ring is '+eDur(step)+'. '+n+' rings = '+eDur(n*step)+'. '+eT(s)+' + '+eDur(n*step)+' = '+ans+'.'); } }); }); }};
+}};
+/* ---------- mini-game 2: SET THE TIMER (slide) ---------- */
+MJGAMES.settimer={id:'settimer',name:'Set the Timer',emoji:'\u23F3',member:'jingle',concept:'elapsed',
+setup:function(L,st){
+  var s=R(1,9)*60+R(0,L<4?0:9)*5, d=L<4?R(1,11)*5:L<7?R(1,12)*5:R(3,24)*5, e=s+d, max=L<7?60:120; st.ans=d;
+  return {call:'Rehearsal: '+eT(s)+' to '+eT(e)+'.', sub:'Slide the timer to how many minutes that is, then tap RING.',
+    html:eClocks(s,e)+'<div class="mjbig" id="stV" style="font-size:34px;margin-top:6px">0 min</div><input type="range" id="stS" min="0" max="'+max+'" step="5" value="0" style="width:86%;display:block;margin:6px auto"><div class="center"><button class="btn" id="stGo" style="margin-top:8px">\uD83D\uDD14 RING</button></div>',
+    wire:function(){ var sl=$('#stS'), v=$('#stV');
+      sl.addEventListener('input',function(){ var x=+sl.value; v.textContent=eDur(x); ac(); tone(900+x*6,.04,'triangle',.12); });
+      $('#stGo').addEventListener('click',function(){ if(MJ.busy)return; ac(); var x=+sl.value; if(x===st.ans){ mNote('jingle',88,.6); mjOK(eT(s)+' to '+eT(e)+' is '+eDur(d)+'. Timer set!'); } else { punch($('#stGo')); mjNo('Count from '+eT(s)+' to '+eT(e)+': '+eDur(d)+'. You had '+eDur(x)+'.'); } }); }};
+}};
+/* ---------- mini-game 3: FINISH CLOCK (tap the right clock) ---------- */
+MJGAMES.finishclock={id:'finishclock',name:'Finish Clock',emoji:'\u23F0',member:'jingle',concept:'elapsed',
+setup:function(L,st){
+  var s=R(1,9)*60+(L<4?0:L<7?pick([0,30]):R(0,11)*5), d=L<4?R(1,4)*60:L<7?pick([30,60,90,120,150]):R(1,3)*60+R(0,11)*5, e=s+d; st.ans=eT(e);
+  var picks=[e]; var ds=[60,-60,30,-30,15,-15,120,-120]; for(var i=0;i<ds.length&&picks.length<4;i++){ var v=e+ds[i]; if(picks.map(eT).indexOf(eT(v))<0)picks.push(v); } picks=shuffle(picks);
+  var sm=function(min){ return clockHTML(Math.floor(min/60)||12,min%60).replace('width="170" height="170"','width="118" height="118"'); };
+  return {call:'Starts at '+eT(s)+', lasts '+eDur(d)+'.', sub:'Tap the clock that shows when it ENDS.',
+    html:'<div class="center" style="font-size:15px;font-weight:800;margin:2px 0 4px">'+sm(s).replace('width="118" height="118"','width="96" height="96"')+'<div class="sub">start '+eT(s)+' \u00b7 lasts <b>'+eDur(d)+'</b></div></div><div class="row" id="fcZ" style="justify-content:center;gap:6px;flex-wrap:wrap"></div>',
+    wire:function(){ $('#fcZ').innerHTML=picks.map(function(m){return '<button class="mjposter fcb" data-v="'+eT(m)+'" style="padding:4px;background:transparent;border-color:#9fdcff">'+sm(m)+'</button>';}).join('');
+      $$('.fcb').forEach(function(bt){ bt.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(bt.dataset.v===st.ans){ mNote('jingle',88,.6); mNote('jingle',91,.6,.1); mjOK(eT(s)+' + '+eDur(d)+' = '+st.ans+'. Ring!'); } else { punch(bt); mjNo('Hours first, then minutes: '+eT(s)+' + '+eDur(d)+' = '+st.ans+'. That clock says '+bt.dataset.v+'.'); } }); }); }};
+}};
+Object.assign(COACH,{
+  ringcount:{member:'jingle',verb:'TAP',hint:'tap',title:'\uD83D\uDD14 Ring Count',lines:['Every ring is one hour (or one half hour later on).','Count the rings forward from the start time. TAP the new time!']},
+  settimer:{member:'jingle',verb:'SLIDE',hint:'slide',title:'\u23F3 Set the Timer',lines:['Count by fives from the start minute to the end minute.','SLIDE the timer to that many minutes, then tap RING!']},
+  finishclock:{member:'jingle',verb:'TAP',hint:'tap',title:'\u23F0 Finish Clock',lines:['Add the hours to the start, then the minutes.','TAP the clock that shows the finish time!']}
+});
+
+/* ---------- headline jam: RING RUN (drag the bell along the timeline to the end time) ---------- */
+jamRegister({id:'ringrun',title:'Ring Run',member:'jingle',concept:'elapsed',emoji:'\uD83D\uDD14',scoreWord:'ring score',roundLabel:'Ring',
+  newRound:function(J){ var L=J.L(), st=J.state;
+    /* timeline window: L<4 hours (7 ticks of 60), L<8 one hour in fives (13 ticks of 5), else two hours in fives (25 ticks) */
+    if(L<4){ st.step=60; st.n=6; st.s=R(1,6)*60; st.d=R(1,6)*60; }
+    else if(L<8){ st.step=5; st.n=12; st.s=R(1,9)*60+R(0,6)*5; st.d=R(1,12)*5; }
+    else { st.step=5; st.n=24; st.s=R(1,8)*60+R(0,11)*5; st.d=R(3,24)*5; }
+    st.e=st.s+st.d; st.x0=34; st.x1=J.W-34; st.ty=J.H/2+30; st.tick=(st.x1-st.x0)/st.n;
+    st.bx=st.x0; st.drag=false; st.done=false; st.rang=false;
+    J.call('Start '+eT(st.s)+', run '+eDur(st.d),'Drag the bell along the timeline and let go at the END time.');
+    J.msg('Where does '+eT(st.s)+' + '+eDur(st.d)+' land?');
+  },
+  draw:function(J,ctx,dt){ var st=J.state; if(!st.s)return; var W=J.W,H=J.H;
+    jkText(ctx,eT(st.s)+'  +  '+eDur(st.d)+'  =  ?',W/2,60,24,'#ffd158');
+    ctx.strokeStyle='#4b3f86'; ctx.lineWidth=6; ctx.lineCap='round'; ctx.beginPath(); ctx.moveTo(st.x0,st.ty); ctx.lineTo(st.x1,st.ty); ctx.stroke();
+    for(var i=0;i<=st.n;i++){ var x=st.x0+i*st.tick, big=(st.step===60)||(i%3===0); ctx.strokeStyle=big?'#a89cd8':'#5c4f9a'; ctx.lineWidth=big?4:2; ctx.beginPath(); ctx.moveTo(x,st.ty-(big?16:9)); ctx.lineTo(x,st.ty+(big?16:9)); ctx.stroke();
+      if(big)jkText(ctx,eT(st.s+i*st.step),x,st.ty+34,st.step===60?13:11,'#a89cd8'); }
+    /* bell */
+    var bx=st.bx, by=st.ty-46; ctx.fillStyle='#9fdcff'; ctx.beginPath(); ctx.arc(bx,by,22,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#5fb6ea'; ctx.beginPath(); ctx.arc(bx,by,22,0,Math.PI); ctx.fill();
+    ctx.strokeStyle='#2f7fb3'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(bx-12,by+8); ctx.quadraticCurveTo(bx,by+16,bx+12,by+8); ctx.stroke();
+    ctx.fillStyle='#221a44'; ctx.beginPath(); ctx.arc(bx-7,by-3,3,0,Math.PI*2); ctx.arc(bx+7,by-3,3,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle='#3fbf6a'; ctx.beginPath(); ctx.arc(bx,by-26,6,0,Math.PI*2); ctx.fill();
+    var cur=st.s+Math.round((bx-st.x0)/st.tick)*st.step;
+    jkRound(ctx,bx-34,by-62,68,26,8,'#2a1f55','#9fdcff',2); jkText(ctx,eT(cur),bx,by-49,15,'#f4f0ff');
+    if(st.done&&st.rang){ jkText(ctx,'RING!',W/2,H-70,30,'#ffd158'); }
+    else jkText(ctx,'drag the bell, let go at '+(st.done?eT(st.e):'the end time'),W/2,H-70,14,'#a89cd8');
+  },
+  onDown:function(J,x,y){ var st=J.state; if(!st.s||st.done)return; if(Math.abs(x-st.bx)<40&&Math.abs(y-(st.ty-46))<50){ st.drag=true; mNote('jingle',84,.2); } },
+  onMove:function(J,x,y){ var st=J.state; if(!st.drag)return; var nx=Math.max(st.x0,Math.min(st.x1,x)); var oldI=Math.round((st.bx-st.x0)/st.tick), newI=Math.round((nx-st.x0)/st.tick); st.bx=nx; if(newI!==oldI)tone(1400+newI*40,.03,'triangle',.08); },
+  onUp:function(J,x,y){ var st=J.state; if(!st.drag||st.done)return; st.drag=false;
+    var i=Math.round((st.bx-st.x0)/st.tick); st.bx=st.x0+i*st.tick; var cur=st.s+i*st.step; st.done=true;
+    if(cur===st.e){ st.rang=true; mNote('jingle',88,.7); mNote('jingle',91,.7,.12); J.win(eT(st.s)+' + '+eDur(st.d)+' = '+eT(st.e)+'. Ring!'); }
+    else { J.miss('That is '+eT(cur)+'. '+eT(st.s)+' + '+eDur(st.d)+' = '+eT(st.e)+'. Hours first, then minutes.'); }
+  }
+});
+jamCoach('ringrun','jingle','\uD83D\uDD14 Ring Run',['The timeline starts at the start time. Every tick is a step of time.','DRAG the bell forward, hours first then minutes, and let go on the END time!'],'DRAG','drag');
+HEADLINE_JAM.jingle='ringrun';
+LESSONS.jingle.game=function(){ startJam('ringrun'); };
+
+</script>
+<script>
+/* ================= v0.92 · PAINT THE BAND + JINGLE TOPPERS (Sep 9 2026) =================
+   Every member's card gets a color swatch row in the rename box (S.memberColor[id]).
+   memberSVG is post-processed: the member's dominant body color is swapped for the pick,
+   with lighter/darker shades derived so shading survives. Jingle also gets a topper row
+   (S.memberTopper.jingle): ribbon (default), spring, pom, antenna, star, sprout. All original. */
+if(!S.memberColor)S.memberColor={}; if(!S.memberTopper)S.memberTopper={};
+var _loadPaint=load; load=function(){ _loadPaint(); if(!S.memberColor)S.memberColor={}; if(!S.memberTopper)S.memberTopper={}; };
+var PAINT_COLORS=['#ffd63a','#ff5d5d','#ff9a3c','#7dff8a','#59e0d0','#5d8bff','#c58dff','#ff8ad1','#9fdcff','#c8a56a','#e8e4ff','#6b6b8a'];
+var PAINT_SKIP={'#221a44':1,'#1d1636':1,'#fff':1,'#ffffff':1,'#f4f0ff':1,'#000':1,'#000000':1,'#1a1a2e':1,'#ffd158':1,'#3a3a5a':1};
+function hexRGB(h){ h=h.replace('#',''); if(h.length===3)h=h.split('').map(function(c){return c+c;}).join(''); return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)]; }
+function rgbHex(r){ return '#'+r.map(function(v){ v=Math.max(0,Math.min(255,Math.round(v))); return (v<16?'0':'')+v.toString(16); }).join(''); }
+function shade(hex,k){ var r=hexRGB(hex); return rgbHex(k<0?r.map(function(v){return v*(1+k);}):r.map(function(v){return v+(255-v)*k;})); }
+function lum(hex){ var r=hexRGB(hex); return .299*r[0]+.587*r[1]+.114*r[2]; }
+/* dominant fills of an svg string, most frequent first, skipping outline/white/gold accent colors */
+function svgDominant(svg){ var c={}; var re=/fill="(#[0-9a-fA-F]{3,6})"/g, m; while((m=re.exec(svg))){ var h=m[1].toLowerCase(); if(PAINT_SKIP[h])continue; c[h]=(c[h]||0)+1; } return Object.keys(c).sort(function(a,b){ return c[b]-c[a]; }); }
+var PAINT_MAP={jingle:['#9fdcff','#5fb6ea','#2f7fb3']};
+function repaintSVG(svg,base,id){
+  var map={};
+  if(PAINT_MAP[id]){ var P=PAINT_MAP[id]; map[P[0]]=base; if(P[1])map[P[1]]=shade(base,-.22); if(P[2])map[P[2]]=shade(base,-.48); }
+  else {
+    var dom=svgDominant(svg); if(!dom.length)return svg;
+    var mc=(BY_ID[id]&&BY_ID[id].color||'').toLowerCase();
+    var main=(mc&&svg.indexOf('fill="'+mc+'"')>=0)?mc:dom[0], mainL=lum(main);
+    map[main]=base;
+    dom.filter(function(h){return h!==main;}).slice(0,2).forEach(function(h){ var d=(lum(h)-mainL)/255; if(Math.abs(d)<.03)return; map[h]=shade(base,Math.max(-.5,Math.min(.5,d*1.4))); });
+  }
+  Object.keys(map).forEach(function(h){ ['fill','stroke'].forEach(function(a){ svg=svg.split(a+'="'+h+'"').join(a+'="'+map[h]+'"').split(a+'="'+h.toUpperCase()+'"').join(a+'="'+map[h]+'"'); }); });
+  return svg;
+}
+var _memberSVGPaint=memberSVG;
+memberSVG=function(id,sz){ var s=_memberSVGPaint(id,sz); var c=S&&S.memberColor&&S.memberColor[id]; return c?repaintSVG(s,c,id):s; };
+
+/* ---------- Jingle toppers ---------- */
+var JINGLE_TOPPERS={
+  ribbon:{name:'Ribbon',svg:'<path d="M60 22 q10 -16 20 0 q-4 6 -10 6 q-6 0 -10 -6z" fill="#3fbf6a" stroke="#2a8a4a" stroke-width="2"/><rect x="64" y="24" width="12" height="9" rx="3" fill="#2a8a4a"/>'},
+  spring:{name:'Spring',svg:'<path d="M70 34 c-8 -3 -8 -9 0 -12 c8 -3 8 -9 0 -12" fill="none" stroke="#b8b8c8" stroke-width="3.5" stroke-linecap="round"/><circle cx="70" cy="8" r="6" fill="#ff5d5d"/>'},
+  pom:{name:'Pom',svg:'<circle cx="70" cy="22" r="12" fill="#ff8ad1"/><circle cx="64" cy="18" r="4" fill="#ffb3e0"/><circle cx="76" cy="26" r="3" fill="#ffb3e0"/><rect x="66" y="30" width="8" height="5" rx="2" fill="#c94fb5"/>'},
+  antenna:{name:'Antenna',svg:'<line x1="70" y1="34" x2="70" y2="12" stroke="#8a8aa8" stroke-width="3"/><circle cx="70" cy="9" r="5" fill="#ffd158"/><circle cx="70" cy="9" r="9" fill="none" stroke="#ffd158" stroke-width="1.5" opacity=".5"/>'},
+  star:{name:'Star',svg:'<path d="M70 6 l4 9 l10 1 l-7 7 l2 10 l-9 -5 l-9 5 l2 -10 l-7 -7 l10 -1z" fill="#ffd158" stroke="#e0a92e" stroke-width="1.5"/><rect x="66" y="28" width="8" height="7" rx="2" fill="#e0a92e"/>'},
+  sprout:{name:'Sprout',svg:'<path d="M70 34 q0 -12 0 -18" stroke="#3fbf6a" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M70 22 q-14 -10 -10 -18 q10 2 10 18z" fill="#7dff8a"/><path d="M70 18 q14 -10 10 -18 q-10 2 -10 18z" fill="#5fd06a"/>'}
+};
+var _jingleSVGBase=jingleSVG;
+jingleSVG=function(crewId,sz){
+  var s=_jingleSVGBase(crewId,sz);
+  var t=(S&&S.memberTopper&&S.memberTopper.jingle)||'ribbon'; var T=JINGLE_TOPPERS[t]||JINGLE_TOPPERS.ribbon;
+  /* strip the default ribbon (first two elements) and drop in the chosen topper */
+  s=s.replace(JINGLE_TOPPERS.ribbon.svg,T.svg);
+  return s;
+};
+if(BY_ID.jingle)BY_ID.jingle.draw=jingleSVG;
+
+/* ---------- rename box: name + color + (jingle) topper ---------- */
+function paintSwatches(id){
+  var cur=S.memberColor[id]||'';
+  return '<div class="sub center" style="margin-top:8px;font-weight:800">Color</div><div class="swatches" id="pcRow">'+
+    '<div class="sw'+(cur?'':' sel')+'" data-c="" title="Original" style="background:conic-gradient(#ff5d5d,#ffd63a,#7dff8a,#5d8bff,#ff8ad1,#ff5d5d)"></div>'+
+    PAINT_COLORS.map(function(c){ return '<div class="sw'+(cur===c?' sel':'')+'" data-c="'+c+'" style="background:'+c+'"></div>'; }).join('')+'</div>';
+}
+function topperRow(id){
+  if(id!=='jingle')return '';
+  var cur=S.memberTopper.jingle||'ribbon';
+  return '<div class="sub center" style="margin-top:8px;font-weight:800">Topper</div><div class="optrow" id="tpRow">'+
+    Object.keys(JINGLE_TOPPERS).map(function(k){ return '<button class="opt'+(cur===k?' sel':'')+'" data-t="'+k+'" style="'+(cur===k?'border-color:#ffd158;':'')+'">'+JINGLE_TOPPERS[k].name+'</button>'; }).join('')+'</div>';
+}
+function renameMember(id){
+  RN_ID=id;
+  var m=BY_ID[id];
+  modal('<div class="center" id="rnArt">'+memberSVG(id,90)+'</div><div class="center"><h2>Dress up '+mName(id)+'</h2></div>'+
+    '<p class="sub">Pick a name, a color, anything you like. Blank name goes back to "'+m.name+'".</p>'+
+    '<div class="center"><input class="nm" id="rnIn" maxlength="14" value="'+(S.memberNames[id]||'')+'" placeholder="'+m.name+'"></div>'+
+    paintSwatches(id)+topperRow(id)+
+    '<button class="btn wide" onclick="applyRename()">\u2728 Looks great!</button>'+
+    '<button class="btn wide ghost" onclick="talkTo(RN_ID)">Cancel</button>');
+  $$('#pcRow .sw').forEach(function(sw){ sw.addEventListener('click',function(){ sTap(); var c=sw.dataset.c; if(c)S.memberColor[id]=c; else delete S.memberColor[id]; save(); $$('#pcRow .sw').forEach(function(x){ x.classList.toggle('sel',x===sw); }); $('#rnArt').innerHTML=memberSVG(id,90); if(typeof mNote==='function'&&MEMBER_FAM[id])mNote(id,79,.25); }); });
+  $$('#tpRow .opt').forEach(function(bt){ bt.addEventListener('click',function(){ sTap(); S.memberTopper.jingle=bt.dataset.t; save(); $$('#tpRow .opt').forEach(function(x){ x.style.borderColor=(x===bt)?'#ffd158':''; }); $('#rnArt').innerHTML=memberSVG(id,90); mNote('jingle',84,.3); }); });
+}
+(function(){ var st=document.createElement('style'); st.textContent='.swatches .sw{box-shadow:0 2px 6px rgba(0,0,0,.4)} .mcard svg,.perf svg{transition:filter .2s}'; document.head.appendChild(st); })();
 
 </script>
 </body>
