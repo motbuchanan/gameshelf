@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Measure Up">
-<title>Measure Up v0.92</title>
+<title>Measure Up v0.94</title>
 <style>
 :root{
   --bg:#0e0b1e; --panel:#1d1636; --panel2:#28204a; --ink:#f4f0ff; --dim:#a89cd8;
@@ -928,14 +928,14 @@ svg .charg{will-change:transform}
 <div id="toast"></div>
 <button id="homeBtn" onclick="goHome()" aria-label="Back to Garage">🏠</button>
 <button id="ellyBtn" onclick="openEllyHelp()" aria-label="Ask Elly for help"></button>
-<div id="vbadge">v0.92 · Sep 9</div>
+<div id="vbadge">v0.94 · Sep 9</div>
 
 <script>
 'use strict';
 /* ============ UTILS ============ */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const VERSION='v0.92 · Sep 9';
+const VERSION='v0.94 · Sep 9';
 const RM=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -10567,6 +10567,527 @@ function renameMember(id){
   $$('#tpRow .opt').forEach(function(bt){ bt.addEventListener('click',function(){ sTap(); S.memberTopper.jingle=bt.dataset.t; save(); $$('#tpRow .opt').forEach(function(x){ x.style.borderColor=(x===bt)?'#ffd158':''; }); $('#rnArt').innerHTML=memberSVG(id,90); mNote('jingle',84,.3); }); });
 }
 (function(){ var st=document.createElement('style'); st.textContent='.swatches .sw{box-shadow:0 2px 6px rgba(0,0,0,.4)} .mcard svg,.perf svg{transition:filter .2s}'; document.head.appendChild(st); })();
+
+</script>
+<script>
+/* ================= v0.93 · METAL BAND: THUNDERHEAD + KRAG on seven-string: ORDER OF OPERATIONS (Sep 9 2026) =================
+   concept 'pemdas' = parentheses first, then multiply/divide, then add/subtract. Loud, tight, in order.
+   Recruit KRAG (guitar family, styles chug/shred). Rival band Thunderhead: Brix (double kick), Sable (bass), Gorm (rhythm), Krag (lead, star). */
+
+/* ---------- tiny expression engine: tokens -> value, with precedence + parentheses ---------- */
+function opApply(op,a,b){ return op==='+'?a+b:op==='\u2212'?a-b:op==='\u00d7'?a*b:a/b; }
+function opEval(tok){ /* tok: array of numbers, operator strings, '(' and ')' */
+  var out=[],ops=[]; var prec=function(o){ return (o==='\u00d7'||o==='\u00f7')?2:1; };
+  var red=function(){ var o=ops.pop(), b=out.pop(), a=out.pop(); out.push(opApply(o,a,b)); };
+  tok.forEach(function(x){
+    if(typeof x==='number')out.push(x);
+    else if(x==='(')ops.push(x);
+    else if(x===')'){ while(ops.length&&ops[ops.length-1]!=='(')red(); ops.pop(); }
+    else { while(ops.length&&ops[ops.length-1]!=='('&&prec(ops[ops.length-1])>=prec(x))red(); ops.push(x); }
+  });
+  while(ops.length)red(); return out[0];
+}
+function opStr(tok){ return tok.map(function(x){ return typeof x==='number'?String(x):x; }).join(' ').replace(/\( /g,'(').replace(/ \)/g,')'); }
+/* which pair goes first? returns index (into tok) of the operator that must be done first */
+function opFirst(tok){ var depth=0,best=-1,bestP=-1,bestD=-1; for(var i=0;i<tok.length;i++){ var x=tok[i]; if(x==='(')depth++; else if(x===')')depth--; else if(typeof x==='string'){ var p=(x==='\u00d7'||x==='\u00f7')?2:1; if(depth>bestD||(depth===bestD&&p>bestP)){ bestD=depth; bestP=p; best=i; } } } return best; }
+function opPairStr(tok,i){ var a=tok[i-1],b=tok[i+1]; return a+' '+tok[i]+' '+b; }
+/* the classic wrong answer: strict left to right, ignoring parentheses and precedence */
+function opLTR(tok){ var t=tok.filter(function(x){ return x!=='('&&x!==')'; }); var v=t[0]; for(var i=1;i<t.length;i+=2)v=opApply(t[i],v,t[i+1]); return v; }
+function opVis(tok,hiIdx){ return '<div style="font-size:34px;font-weight:900;letter-spacing:1px;margin:10px 0;line-height:1.3">'+tok.map(function(x,i){ var s=typeof x==='number'?String(x):x; var hi=(hiIdx!=null&&(i===hiIdx||i===hiIdx-1||i===hiIdx+1)); return '<span style="'+(hi?'color:#ffd158;background:rgba(255,209,88,.14);border-radius:8px;padding:0 4px':'')+'">'+s+'</span>'; }).join(' ').replace(/\( /g,'(').replace(/ \)/g,')')+'</div>'; }
+/* random expression builders by level */
+function opGen(L){
+  var a,b,c,d;
+  if(L<3){ a=R(1,9); b=R(2,5); c=R(2,5); return Math.random()<.5?[a,'+',b,'\u00d7',c]:[b,'\u00d7',c,'+',a]; }
+  if(L<5){ a=R(1,9); b=R(2,6); c=R(2,6); return pick([[a,'+',b,'\u00d7',c],[b,'\u00d7',c,'\u2212',R(1,Math.min(b*c,9))],[a,'+',b,'\u00d7',c]]); }
+  if(L<7){ a=R(1,6); b=R(1,6); c=R(2,5); return Math.random()<.5?['(',a,'+',b,')','\u00d7',c]:[c,'\u00d7','(',a,'+',b,')']; }
+  if(L<9){ b=R(2,5); c=R(2,5); var p=b*c; a=R(1,9); var q=R(2,4), m=q*R(2,6); return pick([[b,'\u00d7',c,'\u2212',R(1,p)],[m,'\u00f7',q,'+',a],[a,'+',m,'\u00f7',q],['(',m+q,'\u2212',q,')','\u00f7',q]]); }
+  if(L<11){ a=R(1,9); b=R(2,5); c=R(2,5); d=R(1,Math.min(9,b*c)); return pick([[a,'+',b,'\u00d7',c,'\u2212',d],[b,'\u00d7',c,'\u2212',d,'+',a],[a,'+','(',b,'+',c,')','\u00d7',R(2,4)]]); }
+  a=R(1,7); b=R(1,7); c=R(3,4); var q2=R(2,4), m2=q2*R(2,5); return pick([[c,'\u00d7','(',a,'+',b,')','\u2212',R(1,5)],[m2,'\u00f7',q2,'+',c,'\u00d7',R(2,5)],['(',a,'+',b,')','\u00d7',c,'\u2212',m2,'\u00f7',q2]]);
+}
+function opChoices(tok){ var ans=opEval(tok), ltr=opLTR(tok); var out=[ans]; [ltr,ans+1,ans-1,ans+2,ans*2,ans+10].forEach(function(v){ if(out.length<4&&v>=0&&v===Math.floor(v)&&out.indexOf(v)<0)out.push(v); }); return shuffle(out).map(String); }
+function opFirstChoices(tok){ var fi=opFirst(tok); var ans=opPairStr(tok,fi); var out=[ans]; for(var i=1;i<tok.length;i+=1){ if(typeof tok[i]==='string'&&tok[i]!=='('&&tok[i]!==')'&&i!==fi){ var s=opPairStr(tok,i); if(typeof tok[i-1]==='number'&&typeof tok[i+1]==='number'&&out.indexOf(s)<0)out.push(s); } } 
+  /* pad with plausible fakes to 4 */ var nums=tok.filter(function(x){return typeof x==='number';}); var guard=0; while(out.length<4&&guard++<30){ var s2=pick(nums)+' '+pick(['+','\u00d7','\u2212'])+' '+pick(nums); if(out.indexOf(s2)<0)out.push(s2); } var fb=[nums[0]+' \u00f7 '+nums[1],nums[1]+' \u2212 '+nums[0],nums[0]+' + '+nums[0],nums[1]+' \u00d7 '+nums[1]]; fb.forEach(function(f){ if(out.length<4&&out.indexOf(f)<0)out.push(f); }); return {choices:shuffle(out.slice(0,4)),a:ans}; }
+
+/* ---------- concept + QG ---------- */
+QG.pemdas=function(L){
+  var tok=opGen(L);
+  if(L<3){ var fc=opFirstChoices(tok); return {q:'Which part do you do FIRST?', vis:opVis(tok), choices:fc.choices, a:fc.a}; }
+  if(L<5){ if(Math.random()<.4){ var fc2=opFirstChoices(tok); return {q:'Multiply before you add. Which part goes first?', vis:opVis(tok), choices:fc2.choices, a:fc2.a}; } return {q:'Solve it. Multiply first, then add or subtract.', vis:opVis(tok), choices:opChoices(tok), a:String(opEval(tok))}; }
+  if(L<7)return {q:'Parentheses first! What is it?', vis:opVis(tok), choices:opChoices(tok), a:String(opEval(tok))};
+  if(L<9)return {q:'Multiply or divide first, then add or subtract.', vis:opVis(tok), choices:opChoices(tok), a:String(opEval(tok))};
+  if(L<11)return {q:'Three steps. Keep them in order.', vis:opVis(tok), choices:opChoices(tok), a:String(opEval(tok))};
+  return {q:'Parentheses, then times and divide, then plus and minus.', vis:opVis(tok), choices:opChoices(tok), a:String(opEval(tok))};
+};
+
+/* ---------- crew art: THUNDERHEAD ---------- */
+function metalCharSVG(id,sz){
+  var O='#221a44', S='#9a9ab0'; var b='';
+  var eye=function(x,y){ return '<circle cx="'+x+'" cy="'+y+'" r="5" fill="'+O+'"/><circle cx="'+(x+2)+'" cy="'+(y-2)+'" r="1.8" fill="#fff"/>'; };
+  var brow=function(x,y,flip){ return '<path d="M'+(x-8)+' '+(y-10)+' l16 '+(flip?-4:4)+'" stroke="'+O+'" stroke-width="3" stroke-linecap="round"/>'; };
+  var feet=function(c){ return '<ellipse cx="55" cy="123" rx="12" ry="6" fill="'+c+'"/><ellipse cx="85" cy="123" rx="12" ry="6" fill="'+c+'"/>'; };
+  var vest=function(c){ return '<rect x="40" y="62" width="60" height="60" rx="22" fill="'+c+'"/><path d="M56 64 l14 22 l14 -22" fill="none" stroke="#2a2a3a" stroke-width="4"/>'+[0,1].map(function(i){ return '<path d="M'+(44+i*8)+' 66 l4 -8 l4 8z" fill="'+S+'"/><path d="M'+(84+i*8)+' 66 l4 -8 l4 8z" fill="'+S+'"/>'; }).join(''); };
+  var hair=function(c){ return '<path d="M44 58 q-8 26 -4 54 l12 -4 l0 -46z" fill="'+c+'"/><path d="M96 58 q8 26 4 54 l-12 -4 l0 -46z" fill="'+c+'"/><path d="M42 62 q28 -34 56 0 q-10 -12 -28 -12 q-18 0 -28 12z" fill="'+c+'"/>'; };
+  var face=function(c){ return '<circle cx="70" cy="74" r="24" fill="'+c+'"/>'; };
+  if(id==='brix'){ b=feet('#2a2a3a')+hair('#5a3a1a')+vest('#3a2a2a')+face('#f0c8a0')+eye(60,74)+eye(80,74)+brow(60,74,false)+brow(80,74,true)+'<path d="M62 86 q8 -4 16 0" stroke="'+O+'" stroke-width="3.5" fill="none" stroke-linecap="round"/>'+'<rect x="30" y="102" width="80" height="16" rx="6" fill="#c33"/><circle cx="46" cy="110" r="9" fill="#e8e4ff"/><circle cx="94" cy="110" r="9" fill="#e8e4ff"/>'; }
+  else if(id==='sable'){ b=feet('#2a2a3a')+hair('#111')+vest('#2a2a4a')+face('#e0dcf0')+eye(60,74)+eye(80,74)+'<path d="M62 86 q8 6 16 0" stroke="'+O+'" stroke-width="3.5" fill="none" stroke-linecap="round"/>'+'<path d="M100 120 c-8 -20 -8 -50 6 -66 c6 -6 10 2 6 8 c-8 12 -8 34 -2 54" fill="#5a2a5a" stroke="#2a102a" stroke-width="2"/><line x1="106" y1="62" x2="106" y2="114" stroke="#ddd" stroke-width="1"/>'; }
+  else if(id==='gorm'){ b=feet('#2a2a3a')+hair('#2a6a3a')+vest('#1e3a2a')+face('#c8e0b0')+eye(60,74)+eye(80,74)+brow(80,74,true)+'<rect x="58" y="84" width="24" height="8" rx="3" fill="'+O+'"/><rect x="62" y="86" width="4" height="4" fill="#fff"/><rect x="69" y="86" width="4" height="4" fill="#fff"/><rect x="76" y="86" width="4" height="4" fill="#fff"/>'+'<path d="M28 112 l64 -30 l6 8 l-64 30z" fill="#3a2a1a"/><path d="M92 82 l14 -6 l4 8 l-14 6z" fill="#111"/>'; }
+  else { b=feet('#2a2a3a')+hair('#7a2aa0')+vest('#3a1a4a')+'<path d="M52 66 l6 10 l-4 2 l6 10" fill="none" stroke="#ffd158" stroke-width="3" stroke-linecap="round"/>'+face('#ead0f4')+eye(60,74)+eye(80,74)+brow(60,74,false)+brow(80,74,true)+'<path d="M60 86 q10 8 20 0" stroke="'+O+'" stroke-width="3.5" fill="none" stroke-linecap="round"/><rect x="62" y="84" width="16" height="4" fill="#fff"/>'+'<path d="M24 122 l70 -32 l7 9 l-70 32z" fill="#1a1a2a"/><path d="M94 90 l16 -7 l4 9 l-16 7z" fill="#0d0d15"/>'+[0,1,2,3,4,5,6].map(function(i){ return '<line x1="'+(30+i*1.2)+'" y1="'+(118-i*1.5)+'" x2="'+(98+i*1.2)+'" y2="'+(86-i*1.5)+'" stroke="#c8c8d8" stroke-width=".7"/>'; }).join('')+'<path d="M40 108 l6 -3 l1 2 l-6 3z" fill="#ffd158"/>'; }
+  return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 140 140"><g class="charg">'+b+'</g></svg>';
+}
+
+/* ---------- voices: guitar chug / shred ---------- */
+var _voiceNoteK=voiceNote;
+voiceNote=function(fam,style){
+  if(fam==='guitar'&&(style==='chug'||style==='shred')){ return function(m,dur,when){ var a=ac(); if(!a)return; var t=a.currentTime+(when||0);
+    var o=a.createOscillator(),o2=a.createOscillator(),ws=a.createWaveShaper(),lp=a.createBiquadFilter(),g=a.createGain();
+    var curve=new Float32Array(256); for(var i=0;i<256;i++){ var x=i/128-1; curve[i]=Math.tanh(x*(style==='shred'?9:4)); } ws.curve=curve;
+    o.type='sawtooth'; o2.type='square'; o.frequency.value=ntf(m); o2.frequency.value=ntf(m)*1.005;
+    lp.type='lowpass'; lp.frequency.value=style==='shred'?3400:900; lp.Q.value=style==='shred'?3:1;
+    var d=style==='chug'?.16:(dur||.35);
+    g.gain.setValueAtTime(.0001,t); g.gain.linearRampToValueAtTime(style==='shred'?.11:.16,t+.006); g.gain.exponentialRampToValueAtTime(.001,t+d);
+    o.connect(ws); o2.connect(ws); ws.connect(lp); lp.connect(g); g.connect(MASTER); o.start(t); o2.start(t); o.stop(t+d+.05); o2.stop(t+d+.05); }; }
+  return _voiceNoteK(fam,style);
+};
+MEMBER_FAM.krag='guitar'; VOICE_LABELS.krag='Guitar';
+SHOP.push({id:'rv_krag_chug',type:'voice',who:'krag',val:'chug',name:'Chug',rarity:'rare',notes:55,gold:0,desc:'A new sound for Krag\u2019s seven-string.'});
+SHOP.push({id:'rv_krag_shred',type:'voice',who:'krag',val:'shred',name:'Shred',rarity:'rare',notes:55,gold:0,desc:'A new sound for Krag\u2019s seven-string.'});
+
+/* ---------- mini-games ---------- */
+MJGAMES.firstmove={id:'firstmove',name:'First Move',emoji:'\u26A1',member:'krag',concept:'pemdas',
+setup:function(L,st){
+  var tok=opGen(L<4?L:Math.min(L,8)); var fc=opFirstChoices(tok); st.ans=fc.a;
+  return {call:'Which part do you play FIRST?', sub:'Parentheses first. Then times and divide. Then plus and minus.',
+    html:opVis(tok)+'<div class="mjcards" id="fmZ"></div>',
+    wire:function(){ $('#fmZ').innerHTML=fc.choices.map(function(o){return '<button class="mjposter fmb" data-v="'+o+'" style="font-size:22px">'+o+'</button>';}).join('');
+      $$('.fmb').forEach(function(bt){ bt.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(bt.dataset.v===st.ans){ mNote('krag',52,.3); mNote('krag',59,.3,.12); mjOK(st.ans+' goes first. Then the rest, in order!'); } else { punch(bt); mjNo('Not yet. '+st.ans+' comes first: '+(tok.indexOf('(')>=0?'parentheses win':'times and divide beat plus and minus')+'.'); } }); }); }};
+}};
+MJGAMES.moshmath={id:'moshmath',name:'Mosh Math',emoji:'\uD83E\uDD18',member:'krag',concept:'pemdas',
+setup:function(L,st){
+  var tok=opGen(Math.max(3,L)); var ans=opEval(tok); st.ans=String(ans); var ltr=opLTR(tok);
+  return {call:opStr(tok)+' = ?', sub:ltr===ans?'Do it in ORDER. Parentheses, then times and divide, then plus and minus.':'Do it in ORDER. Left to right gets you '+ltr+', and that is a trap.',
+    html:opVis(tok)+'<div class="mjcards" id="mmZ"></div>',
+    wire:function(){ var opts=opChoices(tok); $('#mmZ').innerHTML=opts.map(function(o){return '<button class="mjposter mmb" data-v="'+o+'" style="font-size:22px">'+o+'</button>';}).join('');
+      $$('.mmb').forEach(function(bt){ bt.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(bt.dataset.v===st.ans){ mNote('krag',52,.25); mNote('krag',52,.25,.15); mNote('krag',64,.4,.3); mjOK(opStr(tok)+' = '+ans+'. In order, in the pocket.'); } else { punch(bt); var fi=opFirst(tok); mjNo('First '+opPairStr(tok,fi)+' = '+opApply(tok[fi],tok[fi-1],tok[fi+1])+'. Then the rest: '+ans+'.'); } }); }); }};
+}};
+MJGAMES.bracketblast={id:'bracketblast',name:'Bracket Blast',emoji:'\uD83D\uDCA5',member:'krag',concept:'pemdas',
+setup:function(L,st){
+  /* a + b x c: with brackets around a+b it equals (a+b)c; without, a+bc. Show a target, tap the right bracket placement. */
+  var a=R(1,6),b=R(1,6),c=R(2,5); var withB=['(',a,'+',b,')','\u00d7',c], noB=[a,'+',b,'\u00d7',c];
+  if(L>=6&&Math.random()<.5){ var d=R(1,6); withB=[a,'\u00d7','(',b,'+',d,')']; noB=[a,'\u00d7',b,'+',d]; }
+  var target=Math.random()<.5?withB:noB; st.ans=opStr(target);
+  return {call:'Make it equal '+opEval(target)+'.', sub:'Same numbers, same signs. Where do the parentheses go?',
+    html:'<div class="mjbig" style="font-size:40px">= '+opEval(target)+'</div><div class="mjcards" id="bbZ"></div>',
+    wire:function(){ var opts=shuffle([withB,noB]); $('#bbZ').innerHTML=opts.map(function(t){ return '<button class="mjposter bbb" data-v="'+opStr(t)+'" style="font-size:24px">'+opStr(t)+'</button>'; }).join('');
+      $$('.bbb').forEach(function(bt){ bt.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(bt.dataset.v===st.ans){ mNote('krag',47,.5); mjOK(st.ans+' = '+opEval(target)+'. Brackets blast first!'); } else { punch(bt); mjNo(bt.dataset.v+' = '+opEval(bt.dataset.v===opStr(withB)?withB:noB)+'. You wanted '+st.ans+'.'); } }); }); }};
+}};
+Object.assign(COACH,{
+  firstmove:{member:'krag',verb:'TAP',hint:'tap',title:'\u26A1 First Move',lines:['Parentheses first. Then times and divide. Then plus and minus.','TAP the part of the problem that goes FIRST!']},
+  moshmath:{member:'krag',verb:'TAP',hint:'tap',title:'\uD83E\uDD18 Mosh Math',lines:['Do NOT go left to right. Find the part that goes first and do it.','Then finish the rest. TAP the answer!']},
+  bracketblast:{member:'krag',verb:'TAP',hint:'tap',title:'\uD83D\uDCA5 Bracket Blast',lines:['Parentheses change what happens first, so they change the answer.','TAP the version that equals the target!']}
+});
+PLAY_RIGS.krag={hint:'Seven strings. Low and heavy. Chug on the beat.',custom:function(el){
+  el.innerHTML='<div class="mjbig" style="font-size:44px">\uD83C\uDFB8</div><div class="sub center">drop tuning, heavy hands</div><div class="row" id="krStr" style="justify-content:center;gap:8px;margin-top:12px;flex-wrap:wrap"></div>';
+  var notes=[35,40,45,50,55,59,64];
+  $('#krStr').innerHTML=notes.map(function(n,i){return '<button class="mjcymbal krb" data-n="'+n+'" style="font-size:16px;width:70px;height:70px;border-color:#7a2aa0">'+(i+1)+'</button>';}).join('');
+  $$('.krb').forEach(function(b){ b.addEventListener('click',function(){ ac(); mNote('krag',+b.dataset.n,.45); punch(b); }); });
+}};
+MUSIC_CARDS.krag={elly:'Metal is fast and loud, but every part hits in a strict order. Krag plays math the same way: some things go first, no matter what.',body:'A metal song has an order: intro, riff, verse, breakdown. You do not play the breakdown first just because it is on the left of the page. Math has an order too. Parentheses first. Then times and divide. Then plus and minus. Left to right only breaks the tie. Krag calls it the setlist.',example:'Listen: intro riff, then the chug, then the big chord. Same order every night.'};
+MUSIC_DEMOS.krag=function(){ [40,40,47,40,45,40,52].forEach(function(n,i){ later(function(){ mNote('krag',n,.22); },i*170); }); later(function(){ mNote('krag',52,.9); mNote('krag',59,.9,.02); },1300); };
+LESSONS.krag={game:function(){startMJ('firstmove');},steps:[
+  {say:'A problem with more than one sign has a SETLIST. You do not just go left to right. 2 + 3 \u00d7 4: the 3 \u00d7 4 plays first.',vis:opVis([2,'+',3,'\u00d7',4],3)},
+  {say:'Times and divide always play before plus and minus. So 3 \u00d7 4 = 12 first, then 2 + 12 = 14. Left to right would give 20. Wrong.',vis:opVis([2,'+',12],1)},
+  {say:'Parentheses jump the line. (2 + 3) \u00d7 4: the parentheses play first. 5 \u00d7 4 = 20.',vis:opVis(['(',2,'+',3,')','\u00d7',4],2)},
+  {say:'The setlist: Parentheses. Times and divide. Plus and minus. My games make you pick what goes first, solve in order, and place the brackets. Let us get loud!',vis:'<div style="font-size:20px;font-weight:900;line-height:1.6">1. ( ) parentheses<br>2. \u00d7 \u00f7 times, divide<br>3. + \u2212 plus, minus</div>'}
+]};
+METHOD.pemdas={steps:[
+  {say:'Look for parentheses and do what is inside them first. Then do every multiply and divide, left to right. Then every add and subtract, left to right.',vis:opVis(['(',2,'+',3,')','\u00d7',4,'\u2212',6],2)},
+  {say:'Rewrite the problem after each step so you can see what is left. (2 + 3) \u00d7 4 \u2212 6 becomes 5 \u00d7 4 \u2212 6, then 20 \u2212 6, then 14.',vis:opVis([20,'\u2212',6],1)}
+]};
+STEPWALK.pemdas=function(L){ var a=R(1,9),b=R(2,5),c=R(2,5); var tok=[a,'+',b,'\u00d7',c]; var p=b*c;
+  return {title:'Times first, then plus',steps:[
+    {say:'Which part goes first in '+opStr(tok)+'?',vis:opVis(tok),choices:shuffle([a+' + '+b,b+' \u00d7 '+c,a+' \u00d7 '+c]),a:b+' \u00d7 '+c},
+    {say:b+' \u00d7 '+c+' = ?',choices:numChoices(p,3).map(String),a:String(p)},
+    {say:'Now '+a+' + '+p+' = ?',choices:numChoices(a+p,3).map(String),a:String(a+p),after:opStr(tok)+' = '+(a+p)+'. Times first, then plus. Left to right would have been '+((a+b)*c)+'. Not on Krag\u2019s setlist.'}]}; };
+
+/* ---------- headline jam: SETLIST (tap the operations in the right order) ---------- */
+jamRegister({id:'setlist',title:'Setlist',member:'krag',concept:'pemdas',emoji:'\u26A1',scoreWord:'riff score',roundLabel:'Riff',
+  newRound:function(J){ var L=J.L(), st=J.state;
+    st.tok=opGen(Math.max(3,L)); st.cur=st.tok.slice(); st.done=false; st.steps=0; st.ans=opEval(st.tok);
+    J.call(opStr(st.tok)+' = ?','TAP the sign that plays FIRST. Keep tapping in order until one number is left.');
+    J.msg('What plays first?');
+  },
+  draw:function(J,ctx,dt){ var st=J.state; if(!st.tok)return; var W=J.W,H=J.H, t=st.cur;
+    jkText(ctx,opStr(st.tok)+' = '+(st.done?st.ans:'?'),W/2,60,22,'#ffd158');
+    /* lay out tiles */
+    var vis=t.map(function(x){ return typeof x==='number'?String(x):x; }); var widths=vis.map(function(s){ return s==='('||s===')'?18:Math.max(40,s.length*16+16); });
+    var total=widths.reduce(function(a,b){return a+b;},0)+(vis.length-1)*8; var x=W/2-total/2, y=H/2;
+    st.boxes=[];
+    vis.forEach(function(s,i){ var w=widths[i], isOp=typeof t[i]==='string'&&s!=='('&&s!==')';
+      if(isOp){ jkRound(ctx,x,y-28,w,56,12,'#3a1a4a','#7a2aa0',3); st.boxes.push({i:i,x:x,y:y-28,w:w,h:56}); jkText(ctx,s,x+w/2,y,26,'#ffd158'); }
+      else if(s==='('||s===')'){ jkText(ctx,s,x+w/2,y,30,'#a89cd8'); }
+      else { jkRound(ctx,x,y-26,w,52,10,'#2a1f55'); jkText(ctx,s,x+w/2,y,24,'#f4f0ff'); }
+      x+=w+8; });
+    jkText(ctx,st.done?'RIFF COMPLETE':'tap the sign that goes first',W/2,H-70,14,st.done?'#ffd158':'#a89cd8');
+  },
+  onDown:function(J,x,y){ var st=J.state; if(!st.tok||st.done||!st.boxes)return;
+    for(var k=0;k<st.boxes.length;k++){ var b=st.boxes[k]; if(jkHit(x,y,b)){
+      var fi=opFirst(st.cur);
+      if(b.i===fi){ var v=opApply(st.cur[fi],st.cur[fi-1],st.cur[fi+1]); var nt=st.cur.slice(0,fi-1).concat([v],st.cur.slice(fi+2));
+        /* strip parentheses that now wrap a single number */
+        for(var i=0;i<nt.length-2;i++){ if(nt[i]==='('&&typeof nt[i+1]==='number'&&nt[i+2]===')'){ nt.splice(i,3,nt[i+1]); i=-1; } }
+        st.cur=nt; st.steps++; drum('kick'); mNote('krag',40+st.steps*5,.25);
+        if(st.cur.length===1){ st.done=true; mNote('krag',52,.6); mNote('krag',59,.6,.04); J.win(opStr(st.tok)+' = '+st.ans+'. Every riff in order!'); }
+        else J.msg('Now: '+opStr(st.cur)+'. What plays next?');
+      } else { st.done=true; J.miss('That sign waits. '+opPairStr(st.cur,fi)+' plays first'+(st.cur.indexOf('(')>=0?' (parentheses)':(st.cur[fi]==='\u00d7'||st.cur[fi]==='\u00f7')?' (times and divide beat plus and minus)':' (left to right)')+'.'); }
+      return; } }
+  }
+});
+jamCoach('setlist','krag','\u26A1 Setlist',['Every sign has a turn. Parentheses first, then times and divide, then plus and minus.','TAP the sign that plays first. Keep going until one number is left!'],'TAP','tap');
+
+/* ---------- register the band ---------- */
+addRecruit({id:'krag',name:'Krag',emoji:'\u26A1',title:'Seven-String',concept:'pemdas',conceptName:'Order of Operations',color:'#7a2aa0',rig:'seven-string',draw:metalCharSVG,crewId:'krag',
+  bio:'Metal is loud, but it is never sloppy. Every part hits in order. Math is the same: parentheses, then times and divide, then plus and minus. That is the setlist, and you do not skip it.',
+  lines:['Times before plus. Every single time.','Parentheses jump the line. Respect it.','Left to right is not a setlist. It is a mess.'],
+  dreams:['Thunderhead played everything left to right, loud and wrong. You kept the order. So I switched stages.','Tight is louder than loud.','My dream is a riff with nine parts that still lands in order.','If you rush the breakdown, the whole song falls down.','This band keeps its setlist. I am staying.'],
+  key:'thunderhead',bandName:'Thunderhead',crew:{name:'Thunderhead',members:[
+    {id:'brix',emoji:'\uD83E\uDD41',name:'Brix',line:'Double kick. Faster. FASTER.'},{id:'sable',emoji:'\uD83C\uDFB8',name:'Sable',line:'Low end so low you feel it in your teeth.'},{id:'gorm',emoji:'\uD83C\uDFB8',name:'Gorm',line:'Chug chug chug. Left to right, no thinking.'},{id:'krag',emoji:'\u26A1',name:'Krag',star:true,line:'Order matters. Parentheses first, then times.'}]},
+  loseEmoji:'\uD83C\uDF29\uFE0F',loseTitle:'Thunderhead keeps the storm',winLine:'You held the crowd AND played every riff in order. Krag cranked the seven-string, hit one huge chord, and crossed the stage.',
+  starHint:'Win the seven-string rounds to fill the recruit spark and get Krag to switch stages.',btnStyle:'linear-gradient(90deg,#1b1b26,#7a2aa0)',
+  gigLine:'Krag nods once. "Tight. In order. That is the whole trick, frontman."',meetLine:'And Krag on the seven-string, out of Thunderhead. Parentheses first, then times and divide, then plus and minus. The setlist.'});
+HEADLINE_JAM.krag='setlist';
+LESSONS.krag.game=function(){ startJam('setlist'); };
+
+</script>
+<script>
+/* ================= v0.94 · THREE BENCH BANDS (Sep 9 2026) =================
+   GLOW UP (K-Pop) + BIBI, lead vocal: RATIOS & PERCENT ('ratio')
+   THE GUTTERBRATS (Punk) + RIOT, bass: MULTI-DIGIT SUBTRACTION ('msub')
+   OOMPAH SQUAD (Polka) + OOMPA, tuba: VOLUME & CAPACITY ('volume')
+   Each at 3+1 with QG, card, demo, lesson, method, stepwalk, rig, 2 shop voices, crew art. */
+
+/* =========================================================================================
+   1) GLOW UP + BIBI: RATIOS & PERCENT
+   ========================================================================================= */
+function rDots(a,b,ca,cb){ var s='<div style="display:flex;flex-wrap:wrap;justify-content:center;gap:6px;max-width:300px;margin:8px auto">'; for(var i=0;i<a;i++)s+='<span style="width:30px;height:30px;border-radius:50%;background:'+ca+'"></span>'; for(var j=0;j<b;j++)s+='<span style="width:30px;height:30px;border-radius:50%;background:'+cb+'"></span>'; return s+'</div>'; }
+function rBar(pct,label){ return '<div style="margin:10px auto;max-width:300px"><div style="height:34px;border-radius:12px;background:#2a1f55;border:2px solid #4b3f86;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,#ff8ad1,#c58dff)"></div></div>'+(label?'<div class="sub center" style="margin-top:4px">'+label+'</div>':'')+'</div>'; }
+function rPct(L){ if(L<7)return pick([25,50,75,100,10,20]); if(L<9)return pick([10,25,50,75,20,40]); return pick([10,20,25,30,40,50,60,70,75,80,90]); }
+function rBase(p){ var opts={10:[20,30,40,50,60,70,80,90],20:[5,10,15,20,25,30,35,40,45,50],25:[4,8,12,16,20,24,28,32,36,40],30:[10,20,30,40,50],40:[5,10,15,20,25,30],50:[2,4,6,8,10,12,14,16,18,20,30,40,50],60:[5,10,15,20,25,30],70:[10,20,30,40],75:[4,8,12,16,20,24,28,32,40],80:[5,10,15,20,25,30],90:[10,20,30,40],100:[3,7,12,25]}; return pick(opts[p]||[10,20]); }
+function rRatioChoices(a,b){ var out=[a+' : '+b]; [[b,a],[a+1,b],[a,b+1],[a-1,b],[a,b-1],[a+b,b],[a+2,b],[a,b+2],[a+1,b+1]].forEach(function(p){ var s=p[0]+' : '+p[1]; if(out.length<4&&p[0]>0&&p[1]>0&&out.indexOf(s)<0)out.push(s); }); return shuffle(out); }
+function rNum(v,sp){ return numChoices(v,sp||3).map(String); }
+QG.ratio=function(L){
+  var a,b,k,p,n;
+  if(L<3){ a=R(1,5); b=R(1,5); return {q:'Pink to blue. What is the ratio?', vis:rDots(a,b,'#ff8ad1','#5d8bff'), choices:rRatioChoices(a,b), a:a+' : '+b}; }
+  if(L<5){ a=R(1,4); b=R(1,4); k=R(2,3); return {q:a+' : '+b+' is the same as ? : '+(b*k), vis:rDots(a,b,'#ff8ad1','#5d8bff')+'<div class="sub center">times '+k+' on both sides</div>', choices:rNum(a*k,3), a:String(a*k)}; }
+  if(L<7){ p=rPct(L); var pool=shuffle([10,20,25,50,75,100].filter(function(v){return v!==p;})).slice(0,3).concat([p]); return {q:'How full is the glow bar?', vis:rBar(p), choices:shuffle(pool).map(function(v){return v+'%';}), a:p+'%'}; }
+  if(L<9){ p=rPct(L); n=rBase(p); return {q:p+'% of '+n+' = ?', vis:rBar(p,p+'% of '+n), choices:rNum(n*p/100,3), a:String(n*p/100)}; }
+  if(L<11){ a=R(1,4); b=R(2,5); k=R(2,4); return {q:a+' dancer'+(a>1?'s':'')+' for every '+b+' lights. '+(a*k)+' dancers need how many lights?', vis:rDots(a,b,'#ff8ad1','#ffd158'), choices:rNum(b*k,4), a:String(b*k)}; }
+  p=rPct(L); n=rBase(p); return {q:p+'% of '+n+' = ?', vis:rBar(p), choices:rNum(n*p/100,4), a:String(n*p/100)};
+};
+function kpopCharSVG(id,sz){
+  var O='#221a44'; var b='';
+  var eye=function(x,y){ return '<ellipse cx="'+x+'" cy="'+y+'" rx="5" ry="6" fill="'+O+'"/><circle cx="'+(x+2)+'" cy="'+(y-2)+'" r="2" fill="#fff"/><circle cx="'+(x-1)+'" cy="'+(y+2)+'" r="1" fill="#fff"/>'; };
+  var feet=function(c){ return '<ellipse cx="55" cy="123" rx="12" ry="6" fill="'+c+'"/><ellipse cx="85" cy="123" rx="12" ry="6" fill="'+c+'"/>'; };
+  var body=function(c){ return '<rect x="42" y="56" width="56" height="66" rx="24" fill="'+c+'"/>'; };
+  var face=function(c){ return '<circle cx="70" cy="70" r="24" fill="'+c+'"/>'; };
+  var smile='<path d="M62 80 q8 6 16 0" stroke="'+O+'" stroke-width="3" fill="none" stroke-linecap="round"/>';
+  var blush='<circle cx="52" cy="76" r="4" fill="#ff9ec4" opacity=".6"/><circle cx="88" cy="76" r="4" fill="#ff9ec4" opacity=".6"/>';
+  if(id==='sora'){ b=feet('#ff5d5d')+body('#ff5d5d')+face('#ffe0c8')+'<path d="M46 66 q24 -34 48 0 l-6 -2 q-18 -18 -36 0z" fill="#ff8ad1"/><circle cx="46" cy="60" r="5" fill="#ffd158"/>'+eye(60,70)+eye(80,70)+smile+blush+'<path d="M40 100 l-14 -18" stroke="#ff5d5d" stroke-width="8" stroke-linecap="round"/><path d="M100 100 l14 -18" stroke="#ff5d5d" stroke-width="8" stroke-linecap="round"/>'; }
+  else if(id==='jin'){ b=feet('#2a2a4a')+body('#2a2a4a')+face('#ffe0c8')+'<path d="M44 64 q26 -26 52 0 l-4 6 q-22 -14 -44 0z" fill="#5d8bff"/><rect x="40" y="56" width="60" height="10" rx="5" fill="#5d8bff"/><rect x="48" y="52" width="44" height="8" rx="4" fill="#3a5fcc"/>'+eye(60,72)+eye(80,72)+'<path d="M62 82 q8 4 16 0" stroke="'+O+'" stroke-width="3" fill="none" stroke-linecap="round"/><rect x="60" y="88" width="20" height="4" rx="2" fill="#fff"/><rect x="64" y="92" width="12" height="3" fill="#ffd158"/>'; }
+  else if(id==='hana'){ b=feet('#c58dff')+body('#c58dff')+face('#ffe0c8')+'<path d="M44 68 q26 -30 52 0 q-6 -14 -26 -14 q-20 0 -26 14z" fill="#59e0d0"/><path d="M44 68 q-6 20 -2 40 l10 -4 l0 -36z" fill="#59e0d0"/><path d="M96 68 q6 20 2 40 l-10 -4 l0 -36z" fill="#59e0d0"/>'+eye(60,72)+eye(80,72)+smile+blush+'<rect x="36" y="100" width="68" height="14" rx="4" fill="#1d1636"/>'+[0,1,2,3,4,5,6,7].map(function(i){ return '<rect x="'+(39+i*8)+'" y="103" width="6" height="8" fill="'+(i%2?'#2a2a4a':'#e8e4ff')+'"/>'; }).join(''); }
+  else { /* bibi: lead vocal, star */ b=feet('#ffd158')+body('#ff8ad1')+face('#ffe0c8')+'<path d="M42 70 q28 -36 56 0 q-8 -16 -28 -16 q-20 0 -28 16z" fill="#c58dff"/><path d="M42 70 q-8 22 -4 44 l12 -4 l0 -40z" fill="#c58dff"/><path d="M98 70 q8 22 4 44 l-12 -4 l0 -40z" fill="#c58dff"/><path d="M70 40 l3 7 l7 1 l-5 5 l1 7 l-6 -3 l-6 3 l1 -7 l-5 -5 l7 -1z" fill="#ffd158"/>'+eye(60,72)+eye(80,72)+'<ellipse cx="70" cy="84" rx="6" ry="5" fill="'+O+'"/><ellipse cx="70" cy="86" rx="3" ry="2" fill="#ff8ad1"/>'+blush+'<line x1="88" y1="88" x2="106" y2="106" stroke="#3a3a5a" stroke-width="4" stroke-linecap="round"/><circle cx="108" cy="108" r="7" fill="#e8e4ff"/><circle cx="108" cy="108" r="4" fill="#9a9ab0"/>'; }
+  return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 140 140"><g class="charg">'+b+'</g></svg>';
+}
+MEMBER_FAM.bibi='voicep'; VOICE_LABELS.bibi='Voice';
+SHOP.push({id:'rv_bibi_solo',type:'voice',who:'bibi',val:'solo',name:'Idol Solo',rarity:'rare',notes:55,gold:0,desc:'A new sound for Bibi\u2019s vocals.'});
+SHOP.push({id:'rv_bibi_robo',type:'voice',who:'bibi',val:'robo',name:'Vocoder',rarity:'rare',notes:55,gold:0,desc:'A new sound for Bibi\u2019s vocals.'});
+MJGAMES.dancelines={id:'dancelines',name:'Dance Lines',emoji:'\uD83D\uDC83',member:'bibi',concept:'ratio',
+setup:function(L,st){ var a=R(1,L<4?4:6), b=R(1,L<4?4:6); st.ans=a+' : '+b;
+  return {call:'Pink dancers to blue dancers.', sub:'Count each color. TAP the ratio, pink first.', html:rDots(a,b,'#ff8ad1','#5d8bff')+'<div class="mjcards" id="dlZ"></div>',
+    wire:function(){ $('#dlZ').innerHTML=rRatioChoices(a,b).map(function(o){return '<button class="mjposter dlb" data-v="'+o+'" style="font-size:24px">'+o+'</button>';}).join('');
+      $$('.dlb').forEach(function(bt){ bt.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(bt.dataset.v===st.ans){ mNote('bibi',72,.3); mNote('bibi',76,.3,.12); mNote('bibi',79,.4,.24); mjOK(a+' pink, '+b+' blue. '+st.ans+'!'); } else { punch(bt); mjNo('Count again: '+a+' pink and '+b+' blue is '+st.ans+'. Pink first.'); } }); }); }}; }};
+MJGAMES.glowbar={id:'glowbar',name:'Glow Bar',emoji:'\u2728',member:'bibi',concept:'ratio',
+setup:function(L,st){ var p=L<4?pick([25,50,75,100]):L<7?pick([10,20,25,50,75,100]):pick([10,20,30,40,50,60,70,75,80,90,100]); st.ans=p;
+  return {call:'Fill the glow bar to '+p+'%.', sub:'Slide it, then tap GLOW.', html:'<div id="gbBar">'+rBar(0)+'</div><div class="mjbig" id="gbV" style="font-size:34px">0%</div><input type="range" id="gbS" min="0" max="100" step="5" value="0" style="width:86%;display:block;margin:6px auto"><div class="center"><button class="btn" id="gbGo" style="margin-top:8px">\u2728 GLOW</button></div>',
+    wire:function(){ var sl=$('#gbS'); sl.addEventListener('input',function(){ var x=+sl.value; $('#gbV').textContent=x+'%'; $('#gbBar').innerHTML=rBar(x); ac(); tone(500+x*8,.03,'sine',.1); });
+      $('#gbGo').addEventListener('click',function(){ if(MJ.busy)return; ac(); var x=+sl.value; if(x===st.ans){ mNote('bibi',79,.5); mjOK(st.ans+'% glow. '+(st.ans===50?'That is half!':st.ans===25?'That is a quarter!':st.ans===100?'All of it!':'Perfect.')); } else { punch($('#gbGo')); mjNo('That is '+x+'%. '+st.ans+'% is '+(st.ans<x?'less':'more')+': '+(st.ans===50?'half the bar':st.ans===25?'a quarter':st.ans===75?'three quarters':st.ans+' out of 100')+'.'); } }); }}; }};
+MJGAMES.fanchant={id:'fanchant',name:'Fan Chant',emoji:'\uD83D\uDCE3',member:'bibi',concept:'ratio',
+setup:function(L,st){ var p=L<4?pick([50,100,25]):L<7?pick([10,25,50,75]):rPct(11); var n=rBase(p); var ans=n*p/100; st.ans=String(ans);
+  return {call:p+'% of the '+n+' fans chant.', sub:'How many fans is that? TAP it.', html:rBar(p,p+'% of '+n+' fans')+'<div class="mjcards" id="fcZ2"></div>',
+    wire:function(){ $('#fcZ2').innerHTML=rNum(ans,3).map(function(o){return '<button class="mjposter fcb2" data-v="'+o+'" style="font-size:24px">'+o+'</button>';}).join('');
+      $$('.fcb2').forEach(function(bt){ bt.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(bt.dataset.v===st.ans){ mNote('bibi',74,.3); mNote('bibi',81,.5,.15); mjOK(p+'% of '+n+' = '+ans+'. Louder!'); } else { punch(bt); mjNo((p===50?'Half of ':p===25?'A quarter of ':p===10?'A tenth of ':p===75?'Three quarters of ':p+'% of ')+n+' is '+ans+'.'); } }); }); }}; }};
+Object.assign(COACH,{
+  dancelines:{member:'bibi',verb:'TAP',hint:'tap',title:'\uD83D\uDC83 Dance Lines',lines:['A ratio compares two counts. Pink first, then blue.','Count both colors and TAP the ratio!']},
+  glowbar:{member:'bibi',verb:'SLIDE',hint:'slide',title:'\u2728 Glow Bar',lines:['Percent means out of 100. 50% is half, 25% is a quarter.','SLIDE the bar to the percent, then tap GLOW!']},
+  fanchant:{member:'bibi',verb:'TAP',hint:'tap',title:'\uD83D\uDCE3 Fan Chant',lines:['50% is half. 25% is a quarter. 10% is one tenth.','Find that part of the number and TAP it!']}
+});
+PLAY_RIGS.bibi={hint:'Sing the hook. Every line ends on the high note.',custom:function(el){
+  el.innerHTML='<div class="mjbig" style="font-size:44px">\uD83C\uDFA4</div><div class="sub center">hook, hook, high note</div><div class="row" id="bbStr" style="justify-content:center;gap:8px;margin-top:12px;flex-wrap:wrap"></div>';
+  var notes=[67,69,71,72,74,76,79]; $('#bbStr').innerHTML=notes.map(function(n,i){return '<button class="mjcymbal bbb2" data-n="'+n+'" style="font-size:16px;width:70px;height:70px;border-color:#ff8ad1">'+(i+1)+'</button>';}).join('');
+  $$('.bbb2').forEach(function(b){ b.addEventListener('click',function(){ ac(); mNote('bibi',+b.dataset.n,.5); punch(b); }); }); }};
+MUSIC_CARDS.bibi={elly:'A K-pop stage is all formations: two singers up front for every three dancers behind. That is a ratio, and Bibi lives by it.',body:'A ratio compares two counts: 2 singers to 3 dancers is 2 : 3. Double the group and it is 4 : 6, same shape. Percent is a ratio out of 100: half the lights on is 50%, a quarter is 25%. Bibi counts the stage the way she counts a chorus: parts of the whole.',example:'Listen: the hook comes back on the same beat each time, same ratio of verse to chorus.'};
+MUSIC_DEMOS.bibi=function(){ [72,74,76,72,74,79].forEach(function(n,i){ later(function(){ mNote('bibi',n,.3); },i*180); }); later(function(){ mNote('bibi',81,.8); },1150); };
+LESSONS.bibi={game:function(){startMJ('dancelines');},steps:[
+  {say:'A ratio compares two counts. 2 pink dancers and 3 blue dancers is 2 : 3. Say "two to three."',vis:rDots(2,3,'#ff8ad1','#5d8bff')},
+  {say:'Double everybody and the ratio stays the same shape: 4 pink and 6 blue is 4 : 6, which is still 2 : 3.',vis:rDots(4,6,'#ff8ad1','#5d8bff')},
+  {say:'Percent is a ratio out of 100. Half the glow bar is 50%. A quarter is 25%. All of it is 100%.',vis:rBar(50,'50% = half')},
+  {say:'50% of 40 fans is half of 40: that is 20. 25% of 40 is a quarter: 10. My games count dancers, fill glow bars, and count fans. Ready? Three, two, one!',vis:rBar(25,'25% of 40 = 10')}
+]};
+METHOD.ratio={steps:[
+  {say:'For a ratio, count the first thing, count the second thing, write them with a colon. To scale it, multiply both numbers by the same amount.',vis:rDots(2,3,'#ff8ad1','#5d8bff')},
+  {say:'For percent of a number: 50% is half (divide by 2), 25% is a quarter (divide by 4), 10% is a tenth (divide by 10). Build the rest from those: 75% is three quarters, 20% is two tenths.',vis:rBar(75,'75% = three quarters')}
+]};
+STEPWALK.ratio=function(L){ var n=pick([20,40,60,80]); return {title:'Percent from the easy pieces',steps:[
+  {say:'50% is half. What is 50% of '+n+'?',vis:rBar(50),choices:rNum(n/2,3),a:String(n/2)},
+  {say:'25% is half of that. What is 25% of '+n+'?',vis:rBar(25),choices:rNum(n/4,3),a:String(n/4)},
+  {say:'75% is 50% plus 25%. What is 75% of '+n+'?',vis:rBar(75),choices:rNum(n*3/4,4),a:String(n*3/4),after:(n/2)+' + '+(n/4)+' = '+(n*3/4)+'. Build every percent from half, quarter, and tenth.'}]}; };
+jamRegister({id:'formation',title:'Formation',member:'bibi',concept:'ratio',emoji:'\uD83D\uDC83',scoreWord:'stage score',roundLabel:'Pose',
+  newRound:function(J){ var L=J.L(), st=J.state; var a=R(1,L<4?3:4), b=R(1,L<4?3:4), k=L<4?1:L<8?2:pick([2,3]); st.a=a*k; st.b=b*k; st.n=st.a+st.b; st.done=false;
+    st.cells=[]; for(var i=0;i<st.n;i++)st.cells.push(Math.random()<.5?0:1);
+    /* never start solved */ if(st.cells.filter(function(c){return c===1;}).length===st.a){ st.cells[0]=st.cells[0]?0:1; }
+    st.call=(L<4)?(a+' pink : '+b+' blue'):(a+' : '+b+', '+st.n+' dancers on stage');
+    J.call('Formation: '+st.call,'TAP dancers to swap pink and blue until the ratio is right.'); J.msg('Make it '+a+' : '+b+'.'); st.ra=a; st.rb=b; },
+  draw:function(J,ctx,dt){ var st=J.state; if(!st.cells)return; var W=J.W,H=J.H; jkText(ctx,'Make it '+st.ra+' : '+st.rb+(st.n!==st.ra+st.rb?'   ('+st.n+' dancers)':''),W/2,60,22,'#ffd158');
+    var cols=Math.min(st.n,5), rows=Math.ceil(st.n/cols), sz=Math.min(64,(W-40)/cols-10), x0=W/2-(cols*(sz+10)-10)/2, y0=H/2-(rows*(sz+10)-10)/2; st.boxes=[];
+    st.cells.forEach(function(c,i){ var cx=x0+(i%cols)*(sz+10), cy=y0+Math.floor(i/cols)*(sz+10); st.boxes.push({i:i,x:cx,y:cy,w:sz,h:sz});
+      ctx.fillStyle=c?'#ff8ad1':'#5d8bff'; ctx.beginPath(); ctx.arc(cx+sz/2,cy+sz/2-6,sz*.28,0,Math.PI*2); ctx.fill(); jkRound(ctx,cx+sz*.22,cy+sz*.5,sz*.56,sz*.46,10,c?'#ff8ad1':'#5d8bff'); });
+    var pk=st.cells.filter(function(c){return c===1;}).length; jkText(ctx,pk+' pink : '+(st.n-pk)+' blue',W/2,H-70,16,st.done?'#ffd158':'#a89cd8'); },
+  onDown:function(J,x,y){ var st=J.state; if(!st.cells||st.done||!st.boxes)return; for(var k=0;k<st.boxes.length;k++){ var b=st.boxes[k]; if(jkHit(x,y,b)){ st.cells[b.i]=st.cells[b.i]?0:1; mNote('bibi',st.cells[b.i]?76:69,.15);
+    var pk=st.cells.filter(function(c){return c===1;}).length; if(pk===st.a){ st.done=true; mNote('bibi',79,.6); mNote('bibi',84,.6,.1); J.win(st.a+' pink : '+st.b+' blue. That is '+st.ra+' : '+st.rb+'. Formation!'); } return; } } }
+});
+jamCoach('formation','bibi','\uD83D\uDC83 Formation',['The ratio says how many pink for how many blue.','TAP dancers to swap their color until the stage matches!'],'TAP','tap');
+addRecruit({id:'bibi',name:'Bibi',emoji:'\uD83C\uDFA4',title:'Lead Vocal',concept:'ratio',conceptName:'Ratios & Percent',color:'#ff8ad1',rig:'mic and hook',draw:kpopCharSVG,crewId:'bibi',
+  bio:'Every formation on stage is a ratio: singers to dancers, pink lights to blue. Percent is the same idea out of 100. I count the stage before I sing a note.',
+  lines:['Two to three. Say it like a chant.','Half is 50%. A quarter is 25%. All of it is 100%.','Same ratio, bigger stage. That is a comeback.'],
+  dreams:['Glow Up drilled formations for months. You matched them in one round.','My dream: a stadium where every fan holds a light and I know the exact percent that is pink.','Ratios keep the stage balanced. Percent keeps the lights honest.','Doubling the group does not change the shape. Remember that.','I sing the hook. You count the crowd. Deal.'],
+  key:'glowup',bandName:'Glow Up',crew:{name:'Glow Up',members:[
+    {id:'sora',emoji:'\uD83D\uDC83',name:'Sora',line:'Five, six, seven, eight!'},{id:'jin',emoji:'\uD83C\uDFA7',name:'Jin',line:'Rap verse. Sixteen bars. Go.'},{id:'hana',emoji:'\uD83C\uDFB9',name:'Hana',line:'Synth stack, four octaves.'},{id:'bibi',emoji:'\uD83C\uDFA4',name:'Bibi',star:true,line:'Two singers to three dancers. Formation!'}]},
+  loseEmoji:'\uD83D\uDCA1',loseTitle:'Glow Up keeps the spotlight',winLine:'You held the crowd AND matched every formation. Bibi hit the high note, bowed, and walked to your side of the stage.',
+  starHint:'Win the vocal rounds to fill the recruit spark and get Bibi to switch groups.',btnStyle:'linear-gradient(90deg,#ff8ad1,#c58dff)',
+  gigLine:'Bibi holds the last note and points at the crowd. "Perfect ratio of screams to silence, frontman."',meetLine:'And Bibi on lead vocal, out of Glow Up. Singers to dancers, lights to shadows: ratios and percent.'});
+HEADLINE_JAM.bibi='formation'; LESSONS.bibi.game=function(){ startJam('formation'); };
+
+/* =========================================================================================
+   2) THE GUTTERBRATS + RIOT: MULTI-DIGIT SUBTRACTION
+   ========================================================================================= */
+function sGen(L){ var a,b; 
+  if(L<3){ a=R(1,9)*10+R(1,9); b=R(1,a%10); return [a,b]; }
+  if(L<5){ var t=R(2,9),o2=R(1,9); a=t*10+o2; b=R(1,t-1)*10+R(0,o2); return [a,b]; }
+  if(L<7){ var t2=R(3,9),o3=R(0,8); a=t2*10+o3; b=R(1,t2-1)*10+R(o3+1,9); return [a,b]; }
+  if(L<9){ var h=R(2,9),t3=R(1,9),o4=R(1,9); a=h*100+t3*10+o4; b=R(1,h-1)*100+R(0,t3)*10+R(0,o4); return [a,b]; }
+  if(L<11){ var h2=R(2,9),t4=R(1,8),o5=R(0,8); a=h2*100+t4*10+o5; b=R(1,h2-1)*100+R(0,t4)*10+R(o5+1,9); return [a,b]; }
+  var h3=R(2,9); for(var g=0;g<30;g++){ a=h3*100+(Math.random()<.6?0:R(1,9))*10+(Math.random()<.5?0:R(0,9)); b=R(1,h3-1)*100+R(1,9)*10+R(1,9); if(sNeedsBorrow(a,b).some(function(x){return x;}))break; } return [a,b]; }
+function sStack(a,b,ans){ var w=String(a).length; var pad=function(n){ var s=String(n); while(s.length<w)s='\u2007'+s; return s; };
+  return '<div style="font-family:ui-monospace,Menlo,monospace;font-size:38px;font-weight:900;line-height:1.15;display:inline-block;text-align:right;margin:8px auto">'+
+  '<div>\u2007'+pad(a)+'</div><div style="border-bottom:4px solid #ffd158;padding-bottom:2px">\u2212'+pad(b)+'</div><div style="color:#ffd158">'+(ans!=null?'\u2007'+pad(ans):'\u2007'+pad('?'))+'</div></div>'; }
+function sNeedsBorrow(a,b){ var out=[],bor=0; while(a>0||b>0){ var da=a%10-bor,db=b%10; bor=da<db?1:0; out.push(bor===1); a=Math.floor(a/10); b=Math.floor(b/10); } return out; }
+function sChoices(a,b){ var ans=a-b, d=[10,-10,1,-1,100,-100,9,-9]; var out=[ans]; for(var i=0;i<d.length&&out.length<4;i++){ var v=ans+d[i]; if(v>=0&&out.indexOf(v)<0)out.push(v); } /* the no-borrow trap: subtract digit-wise absolute */ var t=0,m=1,x=a,y=b; while(x>0||y>0){ t+=Math.abs(x%10-y%10)*m; m*=10; x=Math.floor(x/10); y=Math.floor(y/10); } if(out.length<4&&out.indexOf(t)<0&&t>=0)out.push(t); return shuffle(out.slice(0,4)).map(String); }
+QG.msub=function(L){ var p=sGen(L), a=p[0], b=p[1], ans=a-b;
+  if(L<3)return {q:'Take away the ones.', vis:sStack(a,b), choices:sChoices(a,b), a:String(ans)};
+  if(L<5)return {q:'Ones first, then tens.', vis:sStack(a,b), choices:sChoices(a,b), a:String(ans)};
+  if(L<7)return {q:'Not enough ones? Borrow a ten.', vis:sStack(a,b), choices:sChoices(a,b), a:String(ans)};
+  if(L<9)return {q:'Ones, tens, hundreds. In that order.', vis:sStack(a,b), choices:sChoices(a,b), a:String(ans)};
+  if(L<11)return {q:'Borrow when the top digit is smaller.', vis:sStack(a,b), choices:sChoices(a,b), a:String(ans)};
+  return {q:'Borrow across the zero if you have to.', vis:sStack(a,b), choices:sChoices(a,b), a:String(ans)}; };
+function punkCharSVG(id,sz){
+  var O='#221a44'; var b='';
+  var eye=function(x,y){ return '<circle cx="'+x+'" cy="'+y+'" r="5" fill="'+O+'"/><circle cx="'+(x+2)+'" cy="'+(y-2)+'" r="1.8" fill="#fff"/>'; };
+  var feet=function(c){ return '<ellipse cx="55" cy="123" rx="12" ry="6" fill="'+c+'"/><ellipse cx="85" cy="123" rx="12" ry="6" fill="'+c+'"/>'; };
+  var body=function(c){ return '<rect x="42" y="60" width="56" height="62" rx="22" fill="'+c+'"/>'; };
+  var face=function(c){ return '<circle cx="70" cy="72" r="23" fill="'+c+'"/>'; };
+  var mohawk=function(c){ return [0,1,2,3,4].map(function(i){ return '<path d="M'+(56+i*7)+' 52 l3 -'+(22+((i===2)?8:(i===1||i===3)?4:0))+' l4 '+(22+((i===2)?8:(i===1||i===3)?4:0))+'z" fill="'+c+'"/>'; }).join(''); };
+  var tape='<path d="M46 70 l-10 -6" stroke="#e8e4ff" stroke-width="3"/><path d="M94 70 l10 -6" stroke="#e8e4ff" stroke-width="3"/>';
+  if(id==='skids'){ b=feet('#2a2a3a')+body('#3a3a3a')+face('#f0c8a0')+mohawk('#7dff8a')+eye(60,72)+eye(80,72)+'<path d="M60 84 q10 -5 20 0" stroke="'+O+'" stroke-width="3" fill="none" stroke-linecap="round"/>'+'<line x1="34" y1="118" x2="60" y2="96" stroke="#c8a56a" stroke-width="4" stroke-linecap="round"/><line x1="106" y1="118" x2="80" y2="96" stroke="#c8a56a" stroke-width="4" stroke-linecap="round"/><circle cx="34" cy="118" r="4" fill="#e8e4ff"/><circle cx="106" cy="118" r="4" fill="#e8e4ff"/>'; }
+  else if(id==='nix'){ b=feet('#2a2a3a')+body('#5d3a1a')+face('#f0c8a0')+mohawk('#ff5d5d')+eye(60,72)+eye(80,72)+'<rect x="58" y="82" width="24" height="7" rx="3" fill="'+O+'"/><rect x="62" y="84" width="4" height="3" fill="#fff"/><rect x="74" y="84" width="4" height="3" fill="#fff"/>'+'<path d="M26 114 l66 -28 l6 8 l-66 28z" fill="#ff5d5d"/><path d="M92 86 l14 -6 l4 8 l-14 6z" fill="#111"/>'; }
+  else if(id==='mouse'){ b=feet('#2a2a3a')+body('#2a2a4a')+face('#f0c8a0')+mohawk('#5d8bff')+eye(60,72)+eye(80,72)+'<ellipse cx="70" cy="86" rx="7" ry="6" fill="'+O+'"/>'+tape+'<line x1="70" y1="100" x2="70" y2="118" stroke="#3a3a5a" stroke-width="4"/><circle cx="70" cy="98" r="7" fill="#9a9ab0"/>'; }
+  else { /* riot: bass, star */ b=feet('#2a2a3a')+body('#1d1d2a')+face('#f0c8a0')+mohawk('#ffd158')+eye(60,72)+eye(80,72)+'<path d="M60 84 q10 8 20 0" stroke="'+O+'" stroke-width="3" fill="none" stroke-linecap="round"/><rect x="62" y="82" width="16" height="4" fill="#fff"/>'+'<path d="M50 62 l4 -6 l4 6z" fill="#9a9ab0"/><path d="M86 62 l4 -6 l4 6z" fill="#9a9ab0"/>'+'<path d="M24 122 l70 -30 l8 10 l-70 30z" fill="#c33"/><path d="M94 92 l16 -7 l5 10 l-16 7z" fill="#111"/>'+[0,1,2,3].map(function(i){ return '<line x1="'+(30+i*1.5)+'" y1="'+(119-i*2)+'" x2="'+(100+i*1.5)+'" y2="'+(89-i*2)+'" stroke="#e8e4ff" stroke-width=".9"/>'; }).join(''); }
+  return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 140 140"><g class="charg">'+b+'</g></svg>';
+}
+MEMBER_FAM.riot='bass'; VOICE_LABELS.riot='Bass';
+SHOP.push({id:'rv_riot_slap',type:'voice',who:'riot',val:'slap',name:'Punk Slap',rarity:'rare',notes:55,gold:0,desc:'A new sound for Riot\u2019s bass.'});
+SHOP.push({id:'rv_riot_synthb',type:'voice',who:'riot',val:'synthb',name:'Buzz Bass',rarity:'rare',notes:55,gold:0,desc:'A new sound for Riot\u2019s bass.'});
+MJGAMES.borrowbox={id:'borrowbox',name:'Borrow Box',emoji:'\uD83D\uDCE6',member:'riot',concept:'msub',
+setup:function(L,st){ var p=sGen(L<5?5:Math.min(L,10)), a=p[0], b=p[1]; var nb=sNeedsBorrow(a,b); var col=L<8?0:R(0,Math.min(1,String(a).length-2)); st.ans=nb[col]?'BORROW':'NO BORROW'; var name=['ones','tens','hundreds'][col];
+  return {call:'Look at the '+name+' column.', sub:'Top digit '+(Math.floor(a/Math.pow(10,col))%10)+', bottom digit '+(Math.floor(b/Math.pow(10,col))%10)+(nb.slice(0,col).some(function(x){return x;})?' (a borrow already came out of the top)':'')+'. Does it need a borrow?', html:sStack(a,b)+'<div class="mjcards" id="bxZ"></div>',
+    wire:function(){ $('#bxZ').innerHTML=['BORROW','NO BORROW'].map(function(o){return '<button class="mjposter bxb" data-v="'+o+'" style="font-size:22px">'+(o==='BORROW'?'\uD83D\uDCE6 ':'\u2705 ')+o+'</button>';}).join('');
+      $$('.bxb').forEach(function(bt){ bt.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(bt.dataset.v===st.ans){ mNote('riot',36,.3); mNote('riot',43,.3,.12); mjOK(st.ans==='BORROW'?'Top is smaller. Borrow a '+(col===0?'ten':'hundred')+' from next door!':'Top is bigger or the same. Just subtract.'); } else { punch(bt); mjNo(st.ans==='BORROW'?'The top digit is smaller than the bottom one, so it needs a borrow.':'The top digit is not smaller. No borrow needed.'); } }); }); }}; }};
+MJGAMES.countback={id:'countback',name:'Count Back',emoji:'\u23EA',member:'riot',concept:'msub',
+setup:function(L,st){ var p=sGen(L), a=p[0], b=p[1], ans=a-b; st.ans=String(ans);
+  return {call:a+' \u2212 '+b+' = ?', sub:'Ones first. Borrow if the top is smaller. TAP the answer.', html:sStack(a,b)+'<div class="mjcards" id="cbZ"></div>',
+    wire:function(){ $('#cbZ').innerHTML=sChoices(a,b).map(function(o){return '<button class="mjposter cbb" data-v="'+o+'" style="font-size:24px">'+o+'</button>';}).join('');
+      $$('.cbb').forEach(function(bt){ bt.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(bt.dataset.v===st.ans){ mNote('riot',36,.2); mNote('riot',36,.2,.12); mNote('riot',48,.4,.24); mjOK(a+' \u2212 '+b+' = '+ans+'. Loud and right.'); } else { punch(bt); var nb=sNeedsBorrow(a,b); mjNo((nb[0]?'Ones need a borrow: ':'Ones: ')+(a%10)+' \u2212 '+(b%10)+(nb[0]?' cannot. Take a ten: '+(a%10+10)+' \u2212 '+(b%10)+' = '+(a%10+10-b%10):' = '+(a%10-b%10))+'. Keep going: '+ans+'.'); } }); }); }}; }};
+MJGAMES.onesfirst={id:'onesfirst',name:'Ones First',emoji:'1\uFE0F\u20E3',member:'riot',concept:'msub',
+setup:function(L,st){ var p=sGen(L<6?6:L), a=p[0], b=p[1]; var ans=a-b; var od=ans%10; st.ans=String(od); var nb=sNeedsBorrow(a,b)[0];
+  return {call:'Just the ONES digit of the answer.', sub:(nb?'The top ones digit is smaller, so borrow a ten first.':'Top is big enough. Subtract straight down.'), html:sStack(a,b)+'<div class="mjcards" id="ofZ"></div>',
+    wire:function(){ var opts=[od]; [Math.abs(a%10-b%10),(od+1)%10,(od+9)%10,(od+5)%10].forEach(function(v){ if(opts.length<4&&opts.indexOf(v)<0)opts.push(v); }); $('#ofZ').innerHTML=shuffle(opts).map(function(o){return '<button class="mjposter ofb" data-v="'+o+'" style="font-size:26px">'+o+'</button>';}).join('');
+      $$('.ofb').forEach(function(bt){ bt.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(bt.dataset.v===st.ans){ mNote('riot',40,.35); mjOK((nb?(a%10+10)+' \u2212 '+(b%10):(a%10)+' \u2212 '+(b%10))+' = '+od+'. Ones done. Full answer: '+ans+'.'); } else { punch(bt); mjNo(nb?'Borrow first: '+(a%10)+' becomes '+(a%10+10)+'. '+(a%10+10)+' \u2212 '+(b%10)+' = '+od+'.':(a%10)+' \u2212 '+(b%10)+' = '+od+'.'); } }); }); }}; }};
+Object.assign(COACH,{
+  borrowbox:{member:'riot',verb:'TAP',hint:'tap',title:'\uD83D\uDCE6 Borrow Box',lines:['Look at one column. Is the top digit smaller than the bottom?','Smaller means BORROW. Bigger or same means NO BORROW. TAP it!']},
+  countback:{member:'riot',verb:'TAP',hint:'tap',title:'\u23EA Count Back',lines:['Ones first, then tens, then hundreds.','Borrow when the top is smaller. TAP the answer!']},
+  onesfirst:{member:'riot',verb:'TAP',hint:'tap',title:'1\uFE0F\u20E3 Ones First',lines:['Only the ones column. If the top is smaller, borrow a ten and add it on.','TAP the ones digit of the answer!']}
+});
+PLAY_RIGS.riot={hint:'Four strings, one pick, all downstrokes.',custom:function(el){
+  el.innerHTML='<div class="mjbig" style="font-size:44px">\uD83C\uDFB8</div><div class="sub center">downstrokes only</div><div class="row" id="rtStr" style="justify-content:center;gap:8px;margin-top:12px;flex-wrap:wrap"></div>';
+  var notes=[28,31,33,35,36,38,40]; $('#rtStr').innerHTML=notes.map(function(n,i){return '<button class="mjcymbal rtb" data-n="'+n+'" style="font-size:16px;width:70px;height:70px;border-color:#ffd158">'+(i+1)+'</button>';}).join('');
+  $$('.rtb').forEach(function(b){ b.addEventListener('click',function(){ ac(); mNote('riot',+b.dataset.n,.4); punch(b); }); }); }};
+MUSIC_CARDS.riot={elly:'Punk is stripped down: take stuff away until only the loud part is left. Riot subtracts the same way, one column at a time.',body:'Big subtraction is just small subtraction stacked up. Line up the ones, tens, and hundreds. Start on the right. If the top digit is too small, borrow a ten from next door: that digit drops by one and yours gets ten more. Riot says a song with a borrow is still a two-minute song.',example:'Listen: full band, then drop the guitar, then drop the drums. What is left is the bass. That is subtraction.'};
+MUSIC_DEMOS.riot=function(){ [36,36,36,36,43,43,41,41].forEach(function(n,i){ later(function(){ mNote('riot',n,.18); },i*140); }); later(function(){ mNote('riot',36,.6); },1200); };
+LESSONS.riot={game:function(){startMJ('borrowbox');},steps:[
+  {say:'Stack the numbers, ones over ones, tens over tens. Start on the RIGHT. 47 \u2212 23: ones are 7 \u2212 3 = 4, tens are 4 \u2212 2 = 2. Answer: 24.',vis:sStack(47,23,24)},
+  {say:'When the top ones digit is smaller, BORROW. 52 \u2212 27: 2 is smaller than 7. Take one ten from the 5 (it becomes 4) and give it to the 2 (it becomes 12).',vis:sStack(52,27)},
+  {say:'Now 12 \u2212 7 = 5 in the ones, and 4 \u2212 2 = 2 in the tens. 52 \u2212 27 = 25.',vis:sStack(52,27,25)},
+  {say:'Hundreds work the same: borrow from the hundreds when the tens are short. My games check one column, take the whole thing away, and nail the ones digit. One, two, three, four!',vis:sStack(305,148,157)}
+]};
+METHOD.msub={steps:[
+  {say:'Write the big number on top, small on the bottom, columns lined up. Work right to left: ones, tens, hundreds. For each column, top minus bottom.',vis:sStack(84,31,53)},
+  {say:'If the top digit is smaller, borrow: cross out the digit to the left, write one less, and add 10 to your digit. Then subtract. A zero on top borrows from the next column over first.',vis:sStack(403,168,235)}
+]};
+STEPWALK.msub=function(L){ var t=R(3,9), o=R(0,4), b=R(1,t-1)*10+R(o+1,9); var a=t*10+o; var ans=a-b;
+  return {title:'Borrow a ten, then subtract',steps:[
+    {say:a+' \u2212 '+b+'. Ones column: '+o+' minus '+(b%10)+'. Is '+o+' big enough?',vis:sStack(a,b),choices:['No, borrow','Yes, subtract'],a:'No, borrow'},
+    {say:'Borrow a ten. '+o+' becomes '+(o+10)+'. '+(o+10)+' \u2212 '+(b%10)+' = ?',choices:numChoices(o+10-b%10,3).map(String),a:String(o+10-b%10)},
+    {say:'Tens: the '+t+' became '+(t-1)+'. '+(t-1)+' \u2212 '+Math.floor(b/10)+' = ?',choices:numChoices(t-1-Math.floor(b/10),2).map(String),a:String(t-1-Math.floor(b/10)),after:a+' \u2212 '+b+' = '+ans+'. Borrow, then subtract, column by column.'}]}; };
+jamRegister({id:'stagedive',title:'Stage Dive',member:'riot',concept:'msub',emoji:'\uD83E\uDD18',scoreWord:'dive score',roundLabel:'Dive',
+  newRound:function(J){ var L=J.L(), st=J.state; var p=sGen(Math.max(2,L)); st.a=p[0]; st.b=p[1]; st.ans=st.a-st.b; st.digits=String(st.ans).split('').reverse(); st.w=String(st.a).length; st.got=[]; st.done=false;
+    /* answer digits per column, padded with zeros up to the width of a (leading zeros count as taps only if answer shorter: we stop when all real digits typed) */
+    J.call(st.a+' \u2212 '+st.b+' = ?','TAP the answer one digit at a time, ONES first, then tens, then hundreds.'); J.msg('Ones digit first.'); },
+  draw:function(J,ctx,dt){ var st=J.state; if(!st.a)return; var W=J.W,H=J.H; var w=st.w, cw=46, x0=W/2-(w*cw)/2+cw/2;
+    jkText(ctx,st.a+' \u2212 '+st.b,W/2,50,22,'#ffd158');
+    var da=String(st.a).split(''), db=String(st.b).padStart(w,' ').split('');
+    for(var i=0;i<w;i++){ jkText(ctx,da[i],x0+i*cw,H/2-70,34,'#f4f0ff'); jkText(ctx,db[i],x0+i*cw,H/2-30,34,'#f4f0ff'); }
+    jkText(ctx,'\u2212',x0-cw,H/2-30,34,'#f4f0ff'); ctx.strokeStyle='#ffd158'; ctx.lineWidth=4; ctx.beginPath(); ctx.moveTo(x0-cw-16,H/2-8); ctx.lineTo(x0+(w-1)*cw+20,H/2-8); ctx.stroke();
+    for(var j=0;j<w;j++){ var col=w-1-j; var g=st.got[j]; var active=(!st.done&&j===st.got.length); jkRound(ctx,x0+col*cw-20,H/2+4,40,44,8,active?'#3a2a2a':'#2a1f55',active?'#ffd158':'#4b3f86',2); if(g!=null)jkText(ctx,String(g),x0+col*cw,H/2+26,30,'#ffd158'); }
+    var keys=[1,2,3,4,5,6,7,8,9,0]; st.boxes=[]; var kw=Math.min(56,(W-40)/5-6), ky=H/2+70; keys.forEach(function(k,i){ var kx=W/2-(5*(kw+6)-6)/2+(i%5)*(kw+6), yy=ky+Math.floor(i/5)*(kw+6); st.boxes.push({k:k,x:kx,y:yy,w:kw,h:kw}); jkRound(ctx,kx,yy,kw,kw,10,'#2a1f55','#5c4f9a',2); jkText(ctx,String(k),kx+kw/2,yy+kw/2,24,'#f4f0ff'); });
+    jkText(ctx,st.done?'':['ones','tens','hundreds'][st.got.length]+' digit',W/2,H-30,14,'#a89cd8'); },
+  onDown:function(J,x,y){ var st=J.state; if(!st.a||st.done||!st.boxes)return; for(var i=0;i<st.boxes.length;i++){ var b=st.boxes[i]; if(jkHit(x,y,b)){ var want=+st.digits[st.got.length];
+    if(b.k===want){ st.got.push(b.k); drum('kick'); mNote('riot',36+st.got.length*4,.2); if(st.got.length===st.digits.length){ st.done=true; mNote('riot',48,.6); J.win(st.a+' \u2212 '+st.b+' = '+st.ans+'. Stage dive!'); } else J.msg(['ones','tens','hundreds'][st.got.length]+' digit next.'); }
+    else { st.done=true; var nb=sNeedsBorrow(st.a,st.b); var c=st.got.length; J.miss('The '+['ones','tens','hundreds'][c]+' digit is '+want+(nb[c]?' (borrow first)':'')+'. '+st.a+' \u2212 '+st.b+' = '+st.ans+'.'); }
+    return; } } }
+});
+jamCoach('stagedive','riot','\uD83E\uDD18 Stage Dive',['Stack it. Ones on the right. Borrow when the top is smaller.','TAP the answer digits ONES first, then tens, then hundreds!'],'TAP','tap');
+addRecruit({id:'riot',name:'Riot',emoji:'\uD83E\uDD18',title:'Bass',concept:'msub',conceptName:'Multi-digit Subtraction',color:'#ffd158',rig:'four-string',draw:punkCharSVG,crewId:'riot',
+  bio:'Punk strips it down. Take away until only the loud part is left. Big subtraction is the same: one column at a time, right to left, borrow a ten when you are short.',
+  lines:['Ones first. Always.','Top too small? Borrow from next door.','Two minutes, three chords, no mistakes.'],
+  dreams:['The Gutterbrats never lined up their columns. Answers all over the place. You stacked them clean.','My dream is a bass line with exactly three notes and every one of them correct.','Borrowing is not cheating. It is just moving a ten.','Loud is easy. Right is the hard part.','I play bass because every song needs a bottom. Every subtraction needs a right column.'],
+  key:'gutterbrats',bandName:'The Gutterbrats',crew:{name:'The Gutterbrats',members:[
+    {id:'skids',emoji:'\uD83E\uDD41',name:'Skids',line:'Faster! One two three FOUR!'},{id:'nix',emoji:'\uD83C\uDFB8',name:'Nix',line:'Three chords. Turn it up.'},{id:'mouse',emoji:'\uD83C\uDFA4',name:'Mouse',line:'WHAT? I cannot hear you!'},{id:'riot',emoji:'\uD83E\uDD18',name:'Riot',star:true,line:'Ones first. Borrow if you have to.'}]},
+  loseEmoji:'\uD83D\uDDD1\uFE0F',loseTitle:'The Gutterbrats keep the alley',winLine:'You held the crowd AND took away every column clean. Riot hit one low note, spat out a pick, and jumped to your stage.',
+  starHint:'Win the bass rounds to fill the recruit spark and get Riot to jump ship.',btnStyle:'linear-gradient(90deg,#1d1d2a,#ffd158)',
+  gigLine:'Riot cranks the low E. "Every column clean. That is punk, frontman."',meetLine:'And Riot on bass, out of The Gutterbrats. Ones first, borrow when you are short: multi-digit subtraction.'});
+HEADLINE_JAM.riot='stagedive'; LESSONS.riot.game=function(){ startJam('stagedive'); };
+
+/* =========================================================================================
+   3) OOMPAH SQUAD + OOMPA: VOLUME & CAPACITY
+   ========================================================================================= */
+function vJug(ml,max,label){ max=max||1000; var pct=Math.max(0,Math.min(100,ml/max*100)); var ticks=''; for(var i=1;i<=4;i++){ var y=100-i*20; ticks+='<div style="position:absolute;left:0;right:0;top:'+y+'%;border-top:1px dashed rgba(255,255,255,.35)"></div><div style="position:absolute;right:4px;top:calc('+y+'% - 8px);font-size:10px;color:#a89cd8">'+(max*i/5)+(max===1000?'':'')+'</div>'; }
+  return '<div style="display:inline-block;text-align:center;margin:6px"><div style="position:relative;width:96px;height:120px;border:3px solid #a89cd8;border-top:none;border-radius:0 0 18px 18px;background:#1d1636;overflow:hidden"><div style="position:absolute;left:0;right:0;bottom:0;height:'+pct+'%;background:linear-gradient(180deg,#59e0d0,#2a9d8f)"></div>'+ticks+'</div><div class="sub" style="font-weight:800;margin-top:4px">'+(label||'')+'</div></div>'; }
+function vCubes(l,w,h){ /* isometric stack of unit cubes as an SVG, sorted back to front then bottom to top */
+  var u=24, a=u*.87, b=u*.5, ox=130, oy=20+(h-1)*u+b; var cubes=[];
+  for(var z=0;z<h;z++)for(var y=0;y<w;y++)for(var x=0;x<l;x++)cubes.push([x,y,z]);
+  cubes.sort(function(p,q){ return (p[0]+p[1])-(q[0]+q[1])||p[2]-q[2]; });
+  var s=cubes.map(function(c){ var cx=ox+(c[0]-c[1])*a, cy=oy+(c[0]+c[1])*b-c[2]*u; var T=[cx,cy],Rr=[cx+a,cy+b],B=[cx,cy+2*b],Ll=[cx-a,cy+b];
+    var P=function(pts){ return pts.map(function(p){return p[0].toFixed(1)+' '+p[1].toFixed(1);}).join(' L'); };
+    return '<path d="M'+P([T,Rr,B,Ll])+'z" fill="#f0d8a0" stroke="#6a4a1a" stroke-width="1"/>'+
+      '<path d="M'+P([Ll,B,[B[0],B[1]+u],[Ll[0],Ll[1]+u]])+'z" fill="#8a6a3a" stroke="#6a4a1a" stroke-width="1"/>'+
+      '<path d="M'+P([Rr,B,[B[0],B[1]+u],[Rr[0],Rr[1]+u]])+'z" fill="#c8a56a" stroke="#6a4a1a" stroke-width="1"/>'; }).join('');
+  var H=oy+(l+w)*b+u+12; return '<svg viewBox="0 0 260 '+H+'" width="260" height="'+H+'" style="display:block;margin:6px auto">'+s+'</svg>'; }
+var V_CUPS={cup:1,pint:2,quart:4,gallon:16};
+function vTwo(a,b,la,lb){ return '<div class="row" style="justify-content:center;gap:10px">'+vJug(a,Math.max(a,b,100),la)+vJug(b,Math.max(a,b,100),lb)+'</div>'; }
+QG.volume=function(L){
+  var a,b,l,w,h,v;
+  if(L<3){ a=R(2,9)*100; b=R(2,9)*100; if(a===b)b=a+100; return {q:'Which jug holds MORE?', vis:vTwo(a,b,'A','B'), choices:['A','B','Same'], a:a>b?'A':'B'}; }
+  if(L<5){ var u=pick(['pint','quart']); var n=R(1,3); return {q:'A '+u+' is '+V_CUPS[u]+' cups. '+n+' '+u+'s = how many cups?', vis:'<div class="mjbig" style="font-size:42px">'+'\uD83E\uDD64'.repeat(Math.min(n*V_CUPS[u],12))+'</div>', choices:rNum(n*V_CUPS[u],3), a:String(n*V_CUPS[u])}; }
+  if(L<7){ a=R(1,9)*100; var pool2=shuffle([a-100,a+100,a-200,a+200,a+300,a-300].filter(function(x){return x>=100&&x<=1000&&x!==a;})).slice(0,3).concat([a]); return {q:'How much is in the jug? (mL)', vis:vJug(a,1000,'1000 mL jug'), choices:shuffle(pool2).map(function(x){return x+' mL';}), a:a+' mL'}; }
+  if(L<9){ if(Math.random()<.5){ a=R(1,5); return {q:a+' liter'+(a>1?'s':'')+' = how many mL?', vis:vJug(1000,1000,'1 L = 1000 mL'), choices:shuffle([a*1000,a*100,a*1000+100,a*10]).map(String), a:String(a*1000)}; }
+    var u2=pick(['pint','quart','gallon']), lower=u2==='gallon'?pick(['quart','pint']):'cup'; var conv=V_CUPS[u2]/V_CUPS[lower]; return {q:'How many '+lower+'s in a '+u2+'?', vis:'<div class="mjbig" style="font-size:20px;line-height:1.7">1 pint = 2 cups<br>1 quart = 2 pints<br>1 gallon = 4 quarts</div>', choices:rNum(conv,3), a:String(conv)}; }
+  if(L<11){ l=R(2,4); w=R(1,3); h=R(1,3); v=l*w*h; return {q:'Count the cubes. What is the volume?', vis:vCubes(l,w,h), choices:rNum(v,4), a:String(v)}; }
+  l=R(2,6); w=R(2,5); h=R(2,4); v=l*w*h; return {q:'A box is '+l+' by '+w+' by '+h+'. Volume = length \u00d7 width \u00d7 height.', vis:vCubes(Math.min(l,4),Math.min(w,3),Math.min(h,3)), choices:rNum(v,6), a:String(v)};
+};
+function polkaCharSVG(id,sz){
+  var O='#221a44'; var b='';
+  var eye=function(x,y){ return '<circle cx="'+x+'" cy="'+y+'" r="5" fill="'+O+'"/><circle cx="'+(x+2)+'" cy="'+(y-2)+'" r="1.8" fill="#fff"/>'; };
+  var feet=function(c){ return '<ellipse cx="55" cy="123" rx="12" ry="6" fill="'+c+'"/><ellipse cx="85" cy="123" rx="12" ry="6" fill="'+c+'"/>'; };
+  var body=function(c){ return '<rect x="40" y="60" width="60" height="62" rx="24" fill="'+c+'"/>'; };
+  var face='<circle cx="70" cy="70" r="23" fill="#f6d2b0"/><circle cx="54" cy="76" r="5" fill="#ff9e9e" opacity=".7"/><circle cx="86" cy="76" r="5" fill="#ff9e9e" opacity=".7"/>';
+  var hat=function(c){ return '<path d="M46 56 l24 -22 l24 22z" fill="'+c+'"/><rect x="42" y="54" width="56" height="6" rx="3" fill="#2a2a3a"/><path d="M78 40 l10 -12 l-2 14z" fill="#ff5d5d"/>'; };
+  var smile='<path d="M60 80 q10 8 20 0" stroke="'+O+'" stroke-width="3" fill="none" stroke-linecap="round"/>';
+  var suspenders=function(c){ return '<rect x="52" y="60" width="6" height="40" fill="'+c+'"/><rect x="82" y="60" width="6" height="40" fill="'+c+'"/>'; };
+  if(id==='gretl'){ b=feet('#5a3a1a')+body('#ff5d5d')+suspenders('#e8e4ff')+face+'<path d="M46 66 q24 -30 48 0 l-4 4 q-20 -16 -40 0z" fill="#ffd158"/><circle cx="46" cy="70" r="6" fill="#ffd158"/><circle cx="94" cy="70" r="6" fill="#ffd158"/>'+eye(60,70)+eye(80,70)+smile+'<rect x="34" y="94" width="22" height="26" rx="4" fill="#2a2a3a"/><rect x="84" y="94" width="22" height="26" rx="4" fill="#2a2a3a"/>'+[0,1,2,3].map(function(i){ return '<rect x="'+(58+i*6)+'" y="96" width="4" height="22" fill="'+(i%2?'#e8e4ff':'#c8c8d8')+'"/>'; }).join(''); }
+  else if(id==='hans'){ b=feet('#5a3a1a')+body('#3a5f2a')+suspenders('#c8a56a')+face+hat('#3a5f2a')+eye(60,70)+eye(80,70)+'<ellipse cx="70" cy="84" rx="4" ry="4" fill="'+O+'"/>'+'<path d="M70 88 l0 34" stroke="#111" stroke-width="7" stroke-linecap="round"/><ellipse cx="70" cy="122" rx="7" ry="4" fill="#111"/>'+[0,1,2].map(function(i){ return '<circle cx="70" cy="'+(96+i*8)+'" r="1.8" fill="#c8c8d8"/>'; }).join(''); }
+  else if(id==='fritz'){ b=feet('#5a3a1a')+body('#5d8bff')+suspenders('#e8e4ff')+face+hat('#5d8bff')+eye(60,70)+eye(80,70)+smile+'<ellipse cx="70" cy="110" rx="30" ry="12" fill="#e8e4ff"/><ellipse cx="70" cy="106" rx="30" ry="10" fill="#ff5d5d"/><line x1="40" y1="92" x2="56" y2="104" stroke="#c8a56a" stroke-width="4" stroke-linecap="round"/><line x1="100" y1="92" x2="84" y2="104" stroke="#c8a56a" stroke-width="4" stroke-linecap="round"/>'; }
+  else { /* oompa: tuba, star */ b=feet('#5a3a1a')+body('#c8a56a')+suspenders('#ff5d5d')+face+hat('#c8a56a')+eye(60,70)+eye(80,70)+'<ellipse cx="70" cy="84" rx="6" ry="5" fill="'+O+'"/>'+'<path d="M86 84 c20 0 30 14 22 34 c-6 12 -22 12 -30 4" fill="none" stroke="#ffd158" stroke-width="7" stroke-linecap="round"/><ellipse cx="100" cy="60" rx="18" ry="10" fill="#ffd158" stroke="#e0a92e" stroke-width="2" transform="rotate(-20 100 60)"/><circle cx="82" cy="100" r="3" fill="#e0a92e"/><circle cx="90" cy="104" r="3" fill="#e0a92e"/>'; }
+  return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 140 140"><g class="charg">'+b+'</g></svg>';
+}
+MEMBER_FAM.oompa='horn'; VOICE_LABELS.oompa='Horn';
+SHOP.push({id:'rv_oompa_tuba',type:'voice',who:'oompa',val:'tuba',name:'Big Tuba',rarity:'rare',notes:55,gold:0,desc:'A new sound for Oompa\u2019s tuba.'});
+SHOP.push({id:'rv_oompa_muted',type:'voice',who:'oompa',val:'muted',name:'Soft Tuba',rarity:'rare',notes:55,gold:0,desc:'A new sound for Oompa\u2019s tuba.'});
+MJGAMES.fillerup={id:'fillerup',name:'Fill \u2019Er Up',emoji:'\uD83E\uDD64',member:'oompa',concept:'volume',
+setup:function(L,st){ var u=L<4?'pint':L<7?pick(['pint','quart']):pick(['pint','quart','gallon']); var n=L<4?R(1,3):R(1,4); var lower=(u==='gallon'&&L>=7)?pick(['quart','pint']):'cup'; var ans=n*V_CUPS[u]/V_CUPS[lower]; st.ans=String(ans);
+  return {call:n+' '+u+(n>1?'s':'')+' = how many '+lower+'s?', sub:'1 pint = 2 cups. 1 quart = 2 pints. 1 gallon = 4 quarts.', html:'<div class="mjbig" style="font-size:20px;line-height:1.7">'+n+' '+u+(n>1?'s':'')+'<br>\u2193<br>? '+lower+'s</div><div class="mjcards" id="fuZ"></div>',
+    wire:function(){ $('#fuZ').innerHTML=rNum(ans,3).map(function(o){return '<button class="mjposter fub" data-v="'+o+'" style="font-size:24px">'+o+'</button>';}).join('');
+      $$('.fub').forEach(function(bt){ bt.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(bt.dataset.v===st.ans){ mNote('oompa',36,.4); mNote('oompa',43,.4,.2); mjOK(n+' '+u+(n>1?'s':'')+' = '+ans+' '+lower+'s. Oom-pah!'); } else { punch(bt); mjNo('One '+u+' is '+(V_CUPS[u]/V_CUPS[lower])+' '+lower+'s. '+n+' \u00d7 '+(V_CUPS[u]/V_CUPS[lower])+' = '+ans+'.'); } }); }); }}; }};
+MJGAMES.cubestack={id:'cubestack',name:'Cube Stack',emoji:'\uD83E\uDDCA',member:'oompa',concept:'volume',
+setup:function(L,st){ var l=R(2,L<4?3:4), w=R(1,L<4?2:3), h=L<4?1:R(1,3); var v=l*w*h; st.ans=String(v);
+  return {call:'How many cubes? That is the volume.', sub:l+' long, '+w+' wide, '+h+' tall. Count them or multiply.', html:vCubes(l,w,h)+'<div class="mjcards" id="csZ"></div>',
+    wire:function(){ $('#csZ').innerHTML=rNum(v,4).map(function(o){return '<button class="mjposter csb" data-v="'+o+'" style="font-size:24px">'+o+'</button>';}).join('');
+      $$('.csb').forEach(function(bt){ bt.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(bt.dataset.v===st.ans){ mNote('oompa',40,.4); mjOK(l+' \u00d7 '+w+' \u00d7 '+h+' = '+v+' cubes.'); } else { punch(bt); mjNo('One layer is '+l+' \u00d7 '+w+' = '+(l*w)+'. '+h+' layer'+(h>1?'s':'')+': '+(l*w)+' \u00d7 '+h+' = '+v+'.'); } }); }); }}; }};
+MJGAMES.pour={id:'pour',name:'Pour',emoji:'\uD83E\uDED7',member:'oompa',concept:'volume',
+setup:function(L,st){ var target=L<4?pick([200,400,500,600,800,1000]):R(1,10)*100; st.ans=target;
+  return {call:'Pour '+target+' mL into the jug.', sub:'Slide the level to '+target+' mL, then tap POUR.', html:'<div id="prJ">'+vJug(0,1000,'0 mL')+'</div><input type="range" id="prS" min="0" max="1000" step="100" value="0" style="width:86%;display:block;margin:6px auto"><div class="center"><button class="btn" id="prGo" style="margin-top:8px">\uD83E\uDED7 POUR</button></div>',
+    wire:function(){ var sl=$('#prS'); sl.addEventListener('input',function(){ var x=+sl.value; $('#prJ').innerHTML=vJug(x,1000,x+' mL'); ac(); tone(300+x*.5,.03,'sine',.1); });
+      $('#prGo').addEventListener('click',function(){ if(MJ.busy)return; ac(); var x=+sl.value; if(x===st.ans){ mNote('oompa',36,.5); mjOK(st.ans+' mL'+(st.ans===1000?', a full liter!':st.ans===500?', half a liter.':'. Right on the line.')); } else { punch($('#prGo')); mjNo('That is '+x+' mL. Each line is 200 mL. '+st.ans+' mL is '+(st.ans>x?'higher':'lower')+'.'); } }); }}; }};
+Object.assign(COACH,{
+  fillerup:{member:'oompa',verb:'TAP',hint:'tap',title:'\uD83E\uDD64 Fill \u2019Er Up',lines:['1 pint = 2 cups. 1 quart = 2 pints. 1 gallon = 4 quarts.','Multiply to change units. TAP the number!']},
+  cubestack:{member:'oompa',verb:'TAP',hint:'tap',title:'\uD83E\uDDCA Cube Stack',lines:['Volume is how many cubes fit inside. Long times wide gives one layer.','Times the height for all the layers. TAP the total!']},
+  pour:{member:'oompa',verb:'SLIDE',hint:'slide',title:'\uD83E\uDED7 Pour',lines:['The jug holds 1000 mL, that is 1 liter. Each line is 200 mL.','SLIDE the level to the amount, then tap POUR!']}
+});
+PLAY_RIGS.oompa={hint:'Oom on one, pah on two. Big breath.',custom:function(el){
+  el.innerHTML='<div class="mjbig" style="font-size:44px">\uD83C\uDFBA</div><div class="sub center">oom, pah, oom, pah</div><div class="row" id="opStr" style="justify-content:center;gap:8px;margin-top:12px;flex-wrap:wrap"></div>';
+  var notes=[29,31,33,36,38,40,43]; $('#opStr').innerHTML=notes.map(function(n,i){return '<button class="mjcymbal opb" data-n="'+n+'" style="font-size:16px;width:70px;height:70px;border-color:#c8a56a">'+(i+1)+'</button>';}).join('');
+  $$('.opb').forEach(function(b){ b.addEventListener('click',function(){ ac(); mNote('oompa',+b.dataset.n,.5); punch(b); }); }); }};
+MUSIC_CARDS.oompa={elly:'A tuba is mostly empty space, and Oompa knows exactly how much air fits inside. That is volume.',body:'Volume is how much fits inside something. Capacity is the same idea for liquids: cups, pints, quarts, gallons, milliliters and liters. Two cups fill a pint, two pints fill a quart, four quarts fill a gallon, and 1000 mL make a liter. For a box, count the cubes: length times width for one layer, then times the height.',example:'Listen: a big breath fills the tuba, a small breath fills the clarinet. Same tune, different volume.'};
+MUSIC_DEMOS.oompa=function(){ [29,36,29,36,31,38,31,38].forEach(function(n,i){ later(function(){ mNote('oompa',n,.25); },i*200); }); later(function(){ mNote('oompa',29,.9); },1700); };
+LESSONS.oompa={game:function(){startMJ('fillerup');},steps:[
+  {say:'Capacity is how much a container holds. Two cups fill a pint. Two pints fill a quart. Four quarts fill a gallon.',vis:'<div class="mjbig" style="font-size:20px;line-height:1.7">1 pint = 2 cups<br>1 quart = 2 pints = 4 cups<br>1 gallon = 4 quarts = 16 cups</div>'},
+  {say:'Metric is easier: 1000 milliliters make 1 liter. This jug holds 1 liter. Each line is 200 mL. Right now it is at 600 mL.',vis:vJug(600,1000,'600 mL')},
+  {say:'Volume for a box is how many cubes fit inside. This one is 3 long, 2 wide, 2 tall. One layer is 3 \u00d7 2 = 6 cubes. Two layers: 12.',vis:vCubes(3,2,2)},
+  {say:'Length times width times height. My games change units, count cube stacks, and pour to the line. Big breath. Oom-pah!',vis:vCubes(2,2,3)}
+]};
+METHOD.volume={steps:[
+  {say:'To change units, multiply going down (gallons to quarts, quarts to pints, pints to cups: times 4, times 2, times 2) and divide going up. Liters to milliliters is times 1000.',vis:'<div class="mjbig" style="font-size:18px;line-height:1.7">gallon \u00d74 quart \u00d72 pint \u00d72 cup<br>liter \u00d71000 mL</div>'},
+  {say:'For a box: length \u00d7 width gives the bottom layer. Multiply by height for the stack. Volume is always cubes.',vis:vCubes(3,2,2)}
+]};
+STEPWALK.volume=function(L){ var l=R(2,4),w=R(2,3),h=R(2,3); return {title:'One layer, then stack',steps:[
+  {say:'The bottom layer is '+l+' long and '+w+' wide. How many cubes in one layer?',vis:vCubes(l,w,1),choices:rNum(l*w,3),a:String(l*w)},
+  {say:'It is '+h+' layers tall. '+(l*w)+' \u00d7 '+h+' = ?',vis:vCubes(l,w,h),choices:rNum(l*w*h,4),a:String(l*w*h)},
+  {say:'So length \u00d7 width \u00d7 height: '+l+' \u00d7 '+w+' \u00d7 '+h+' = ?',choices:rNum(l*w*h,5),a:String(l*w*h),after:'Volume = '+l*w*h+' cubes. Layer first, then stack.'}]}; };
+jamRegister({id:'steinslide',title:'Stein Slide',member:'oompa',concept:'volume',emoji:'\uD83E\uDED7',scoreWord:'pour score',roundLabel:'Pour',
+  newRound:function(J){ var L=J.L(), st=J.state; st.max=L<4?1000:L<8?1000:2000; st.step=L<4?250:L<8?100:200; var n=st.max/st.step; st.target=R(1,n)*st.step; st.lvl=0; st.pouring=false; st.done=false; st.rate=L<4?300:L<8?420:700; st.tolerance=st.step*.22;
+    J.call('Pour '+st.target+' mL','HOLD to pour. Let go right at '+st.target+' mL. The jug holds '+st.max+' mL.'); J.msg('Hold to pour, release at '+st.target+'.'); },
+  draw:function(J,ctx,dt){ var st=J.state; if(!st.max)return; var W=J.W,H=J.H;
+    if(st.pouring&&!st.done){ st.lvl=Math.min(st.max,st.lvl+st.rate*dt); if(st.lvl>=st.max){ st.pouring=false; st.done=true; J.miss('Overflow! You needed '+st.target+' mL.'); } }
+    jkText(ctx,'Pour '+st.target+' mL',W/2,60,22,'#ffd158');
+    var jw=150, jh=260, jx=W/2-jw/2, jy=H/2-jh/2+10; jkRound(ctx,jx,jy,jw,jh,18,'#1d1636','#a89cd8',3);
+    var fh=jh*(st.lvl/st.max); ctx.fillStyle='#c8a56a'; ctx.fillRect(jx+4,jy+jh-fh-4,jw-8,fh); if(fh>6){ ctx.fillStyle='#fff5d6'; ctx.fillRect(jx+4,jy+jh-fh-4,jw-8,Math.min(10,fh)); }
+    var n=st.max/st.step; for(var i=1;i<n;i++){ var ty=jy+jh-jh*i/n; ctx.strokeStyle='rgba(255,255,255,.45)'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(jx+jw-30,ty); ctx.lineTo(jx+jw-4,ty); ctx.stroke(); if(n<=10||i%2===0)jkText(ctx,String(i*st.step),jx+jw-46,ty,11,'#a89cd8'); }
+    var tty=jy+jh-jh*st.target/st.max; ctx.strokeStyle='#ffd158'; ctx.lineWidth=3; ctx.setLineDash&&ctx.setLineDash([6,4]); ctx.beginPath(); ctx.moveTo(jx-14,tty); ctx.lineTo(jx+jw+14,tty); ctx.stroke(); ctx.setLineDash&&ctx.setLineDash([]);
+    jkText(ctx,Math.round(st.lvl/10)*10+' mL',W/2,jy+jh+34,20,'#f4f0ff');
+    jkText(ctx,st.done?'':(st.pouring?'pouring... let go at the gold line':'HOLD anywhere to pour'),W/2,H-40,14,'#a89cd8');
+  },
+  onDown:function(J,x,y){ var st=J.state; if(!st.max||st.done)return; st.pouring=true; mNote('oompa',31,.3); },
+  onUp:function(J,x,y){ var st=J.state; if(!st.pouring||st.done)return; st.pouring=false; st.done=true; var d=Math.abs(st.lvl-st.target);
+    if(d<=st.tolerance){ st.lvl=st.target; mNote('oompa',36,.6); mNote('oompa',43,.6,.15); J.win(st.target+' mL, right on the line. Oom-pah!'); } else J.miss('That is about '+(Math.round(st.lvl/10)*10)+' mL. You needed '+st.target+' mL.'); }
+});
+jamCoach('steinslide','oompa','\uD83E\uDED7 Stein Slide',['The jug has lines. Find the gold line for the amount you need.','HOLD to pour and LET GO when the level hits the gold line!'],'HOLD','hold');
+addRecruit({id:'oompa',name:'Oompa',emoji:'\uD83C\uDFBA',title:'Tuba',concept:'volume',conceptName:'Volume & Capacity',color:'#c8a56a',rig:'big brass',draw:polkaCharSVG,crewId:'oompa',
+  bio:'A tuba is a giant tube full of air. I know exactly how much fits. Cups, pints, quarts, gallons, liters, and cubes in a box: that is volume, and I hold all of it.',
+  lines:['Two cups make a pint. Oom-pah.','A thousand milliliters. One liter. Big breath.','Count one layer, then stack.'],
+  dreams:['Oompah Squad poured everything to the brim and never once measured. You hit the line.','My dream is a stein so big it needs a gallon and a tuba so big it needs two.','Volume is what fits inside. Same for a box, a jug, and a tuba.','I breathe in a liter and blow out a song.','Nobody dances to a tuba until they do. Then everybody does.'],
+  key:'oompah',bandName:'Oompah Squad',crew:{name:'Oompah Squad',members:[
+    {id:'gretl',emoji:'\uD83E\uDE97',name:'Gretl',line:'Squeeze in, squeeze out, one two, one two!'},{id:'hans',emoji:'\uD83C\uDFB5',name:'Hans',line:'Clarinet! High and quick!'},{id:'fritz',emoji:'\uD83E\uDD41',name:'Fritz',line:'Big drum, big steps.'},{id:'oompa',emoji:'\uD83C\uDFBA',name:'Oompa',star:true,line:'Two cups to the pint. Fill it to the line.'}]},
+  loseEmoji:'\uD83E\uDD68',loseTitle:'Oompah Squad keeps the beer hall',winLine:'You held the crowd AND poured every stein to the line. Oompa took one enormous breath, blew a note that shook the floor, and marched over.',
+  starHint:'Win the tuba rounds to fill the recruit spark and get Oompa to march over.',btnStyle:'linear-gradient(90deg,#5a3a1a,#c8a56a)',
+  gigLine:'Oompa lets out one long low note. "Filled to the line and not a drop over. Well poured, frontman."',meetLine:'And Oompa on tuba, out of Oompah Squad. Cups and pints, liters and cubes: volume and capacity.'});
+HEADLINE_JAM.oompa='steinslide'; LESSONS.oompa.game=function(){ startJam('steinslide'); };
 
 </script>
 </body>
