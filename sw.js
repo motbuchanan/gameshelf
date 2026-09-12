@@ -4,7 +4,7 @@
    Offline: requests fall back to the cache, so the whole shelf plays with no signal.
    CACHE name only needs bumping when the precache LIST changes (e.g. a new game),
    to seed offline copies; day-to-day edits need nothing. */
-const CACHE="gameshelf-v57";
+const CACHE="gameshelf-v58";
 const CORE=["index.html","gamenight.js","sfx.js","cardintro.js","bot.js","words.js","achievements.js","manifest.webmanifest",
   "icon192.png","icon512.png","iconmaskable512.png",
   "rules.html","records.html","achievements.html","highscores.html","howto.html","profiles.html","rulesdata.js","backup.html",
@@ -18,7 +18,7 @@ const CORE=["index.html","gamenight.js","sfx.js","cardintro.js","bot.js","words.
   "knucklebones.html","pig.html","craps.html","liarsdice.html",
   "blackjack.html","solitaire.html","memory.html","gin.html","oldmaid.html",
   "snake.html","paddleduel.html","brickbreak.html","blocks.html","thumbstack.html","stardefender.html","minesweeper.html","match3.html",
-  "salon-dash.html","astromerge.html","astromerge-sticker.png","botlab.html","botlab-sticker.png","starstuff.html","starstuff-sticker.png","theorb.html","dollhouse.html","magic8.html","pigment.html","jigsaw.html","marbles.html","marble-arcade.html","fiveletters.html","beatforge.html","harmonica.html","sharp.html","coloringbook.html","critter-garden.html","knightschool.html","snake-sticker.png","stardefender-sticker.png","salondash-sticker.png","blocks-sticker.png","thumbstack-sticker.png","brickbreak-sticker.png","minesweeper-sticker.png","gemmatch-sticker.png","paddleduel-sticker.png","knightschool-sticker.png"];
+  "salon-dash.html","astromerge.html","astromerge-sticker.png","botlab.html","botlab-sticker.png","starstuff.html","starstuff-sticker.png","theorb.html","dollhouse.html","magic8.html","pigment.html","jigsaw.html","marbles.html","marble-arcade.html","fiveletters.html","beatforge.html","harmonica.html","sharp.html","coloringbook.html","critter-garden.html","knightschool.html","snake-sticker.png","stardefender-sticker.png","salondash-sticker.png","blocks-sticker.png","thumbstack-sticker.png","brickbreak-sticker.png","minesweeper-sticker.png","gemmatch-sticker.png","paddleduel-sticker.png","knightschool-sticker.png","hauntinc-sticker.png","hauntinc/index.html","hauntinc/ent-polter.jpg","hauntinc/ent-wraith.jpg","hauntinc/ent-banshee.jpg","hauntinc/ent-shade.jpg","hauntinc/ent-ghoul.jpg","hauntinc/ent-rev.jpg","hauntinc/ent-trick.jpg","hauntinc/ent-dopp.jpg","hauntinc/ent-lich.jpg","hauntinc/ent-audit.jpg","hauntinc/site-alder.jpg","hauntinc/site-farm.jpg","hauntinc/site-apts.jpg","hauntinc/site-light.jpg","hauntinc/site-hosp.jpg","hauntinc/site-mall.jpg","hauntinc/site-ship.jpg"];
 self.addEventListener("install",e=>{
   e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting()));
 });
