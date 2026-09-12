@@ -1,1 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#0e0b12">
+<meta name="description" content="Haunt Inc. A family-friendly idle game where you climb the corporate ladder of the afterlife, one scared tenant at a time.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Haunt Inc.">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<title>Haunt Inc.</title>
+<style>
+:root{
+ --bg:#0e0b12; --ink:#efe9f6; --mut:#9d8fb3; --line:#3a2f47;
+ --card:#1b1523; --card2:#241b30; --card3:#2a2035;
+ --purple:#c9a0ff; --purple2:#a06fe0; --purpledim:#6b4f8a;
+ --teal:#37d6c2; --tealdim:#1d5a52;
+ --orange:#ff9552; --orangedim:#5a3a1e;
+ --good:#9fe1cb; --warn:#ffd58a; --bad:#f08a8a;
+ --r:12px; --r2:16px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;font-size:15px}
+button{font-family:inherit;color:inherit;cursor:pointer;border:0;background:none}
+#app{max-width:520px;margin:0 auto;height:100dvh;display:flex;flex-direction:column;position:relative;overflow:hidden}
 
+/* HUD */
+#hud{flex:0 0 auto;padding:8px 12px 6px;background:linear-gradient(180deg,var(--card),var(--bg));border-bottom:1px solid var(--line);z-index:5}
+.hrow1{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.brand{font-size:16px;font-weight:700;letter-spacing:1.5px;background:linear-gradient(90deg,var(--purple),var(--teal));-webkit-background-clip:text;background-clip:text;color:transparent}
+.hicons{display:flex;gap:6px}
+.hicons button{font-size:11px;color:var(--mut);border:1px solid var(--line);padding:3px 8px;border-radius:8px}
+.pills{display:grid;grid-template-columns:1.15fr .9fr 1fr;gap:6px;margin-bottom:6px}
+.pill{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:6px 8px;text-align:center;position:relative;overflow:hidden}
+.pill .l{font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px}
+.pill .v{font-size:15px;font-weight:600;line-height:1.15}
+.pill.rank .v{font-size:12.5px;color:var(--purple)}
+.pill.rep .v{color:var(--purple)}
+.pill.ecto .v{color:var(--teal)}
+.fearrow{display:flex;align-items:baseline;gap:10px;justify-content:center;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:6px 10px}
+.fearrow .big{font-size:26px;font-weight:800;color:var(--ink);letter-spacing:.5px}
+.fearrow .sub{font-size:12px;color:var(--teal)}
+.fearrow .co{font-size:11px;color:var(--mut);margin-left:auto;text-align:right;line-height:1.25}
+.fearrow .co b{color:var(--teal);font-weight:700}
+.promohint{margin-top:6px;height:4px;background:var(--card3);border-radius:99px;overflow:hidden}
+.promohint div{height:100%;width:0;background:linear-gradient(90deg,var(--purple2),var(--purple));transition:width .4s}
+.promolabel{font-size:10px;color:var(--mut);text-align:center;margin-top:3px}
+.promolabel b{color:var(--good)}
+.sites{display:flex;gap:6px;overflow-x:auto;margin-top:7px;padding-bottom:2px;scrollbar-width:none}
+.sites::-webkit-scrollbar{display:none}
+.sites button{white-space:nowrap;padding:5px 10px;border-radius:99px;border:1px solid var(--line);font-size:11px;color:var(--mut);flex:0 0 auto}
+.sites button.on{border-color:var(--teal);color:var(--ink);background:var(--tealdim)}
+
+.mood{font-size:10.5px;color:var(--purple);text-align:center;margin-top:5px;font-style:italic;opacity:.85}
+.wall{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.trophy{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;opacity:.5}
+.trophy.on{opacity:1;border-color:var(--orange);background:linear-gradient(160deg,var(--card2),var(--card));box-shadow:0 0 12px rgba(255,149,82,.15)}
+.trophy .ti{font-size:22px;color:var(--orange);line-height:1}
+.trophy.on .ti{text-shadow:0 0 10px rgba(255,149,82,.6)}
+.trophy .tn{font-weight:700;font-size:12.5px;margin-top:4px}
+.trophy .td{font-size:10.5px;color:var(--mut);margin-top:2px;line-height:1.35}
+.trophy .tdt{font-size:9.5px;color:var(--teal);margin-top:4px}
+.schtabs{display:flex;gap:5px;margin-bottom:8px;overflow-x:auto;scrollbar-width:none}
+.schtabs button{flex:0 0 auto;padding:6px 10px;border-radius:99px;border:1px solid var(--line);font-size:11.5px;color:var(--mut);font-weight:600}
+.schtabs button.on{border-color:var(--teal);color:var(--teal);background:var(--tealdim)}
+.schtabs button.lock{opacity:.45}
+.subtabs{display:flex;gap:5px;margin:2px 0 10px}
+.subtabs button{flex:1;padding:8px;border-radius:9px;border:1px solid var(--line);font-size:12px;color:var(--mut);font-weight:600}
+.subtabs button.on{border-color:var(--purple);color:var(--ink);background:var(--card2)}
+.contract{margin:0 0 7px;background:var(--tealdim);border:1px solid var(--teal);color:var(--good);border-radius:9px;padding:8px 10px;font-size:12px;line-height:1.35}
+.contract .cr{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.contract b{color:#fff}
+.contract .cbar{height:5px;background:rgba(0,0,0,.35);border-radius:99px;margin-top:6px;overflow:hidden}
+.contract .cbar div{height:100%;background:var(--teal);width:0}
+.contract button{border:1px solid var(--teal);border-radius:7px;padding:4px 9px;font-size:11px;color:var(--good);font-weight:700;white-space:nowrap}
+.syn{display:flex;justify-content:space-between;gap:8px}
+/* art layer */
+#banner{position:relative;margin:7px -12px -6px;height:78px;background-size:cover;background-position:center 55%;background-color:var(--card);display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden}
+#banner::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(14,11,18,0) 20%,rgba(14,11,18,.85) 100%);pointer-events:none}
+#banner .sites,#banner .mood{position:relative;padding-left:12px;padding-right:12px}
+#banner .sites{margin-top:0;padding-bottom:4px}
+#banner .sites button{background:rgba(14,11,18,.6);backdrop-filter:blur(3px)}
+#banner .mood{margin:0 0 5px;text-shadow:0 1px 4px #000}
+.por{width:44px;height:44px;border-radius:50%;object-fit:cover;flex:0 0 auto;border:2px solid var(--purpledim);background:#000}
+.item .r.withpor{align-items:center}
+.item .rl{display:flex;align-items:center;gap:10px;min-width:0}
+.item.own .por,.item.can .por{border-color:var(--teal)}
+.echips{display:inline-flex;gap:2px;vertical-align:middle;margin-right:4px}
+.echip{width:18px;height:18px;border-radius:50%;object-fit:cover;border:1.5px solid var(--teal);background:#000}
+.sthumb{width:64px;height:40px;object-fit:cover;border-radius:6px;flex:0 0 auto;border:1px solid var(--line)}
+/* SCROLL */
+#scroll{flex:1 1 auto;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding:10px 12px 14px;min-height:0}
+#scroll.map{overflow-y:auto;padding:8px 12px}
+.page{display:none}.page.on{display:block}
+.rooms{display:grid;grid-template-columns:1fr 1fr;gap:7px;min-height:100%;grid-auto-rows:minmax(92px,1fr)}
+#p-site{height:100%}
+.room{display:flex;flex-direction:column;justify-content:space-between;min-height:0;padding:7px 9px}
+.room .rn{font-size:12.5px}.room .raff{font-size:10px}
+.room .rlist{min-height:0;margin:2px 0;font-size:10px;flex:1 1 auto;overflow:hidden}
+.room .manage{margin-top:2px;padding:4px;font-size:10.5px;flex:0 0 auto}
+@media (max-height:700px){.room .rlist{display:none}.room .raff{font-size:9.5px}}
+.room{background:var(--card);border-radius:var(--r);padding:9px 10px;border:1px solid var(--line);position:relative;overflow:hidden;transition:border-color .2s,transform .1s}
+.room.here{border-color:var(--purple);background:var(--card2);box-shadow:0 0 0 1px var(--purple) inset}
+.heretag{font-size:8px;font-weight:800;letter-spacing:.5px;color:#0e0b12;background:var(--purple);padding:2px 5px;border-radius:6px;margin-right:5px;vertical-align:middle}
+.room.locked{opacity:.4}
+.room.afford .manage{border-color:var(--teal);color:var(--teal)}
+.room .rn{font-weight:600;font-size:13.5px;display:flex;justify-content:space-between;align-items:center}
+.room .rn .slot{font-weight:400;color:var(--mut);font-size:10px}
+.room .raff{font-size:10.5px;color:var(--mut);margin-top:1px}
+.room .raff b{color:var(--teal);font-weight:600}
+.room .rlist{font-size:11px;color:#c9c0d6;margin:5px 0;min-height:26px;line-height:1.35}
+.room .rent{font-size:10.5px;color:var(--teal)}
+.room .manage{width:100%;margin-top:6px;padding:8px;border:1px solid var(--line);border-radius:9px;font-size:12px;color:var(--mut);font-weight:600;transition:all .15s}
+.room .manage:active{transform:scale(.97)}
+.sec{font-size:12px;color:var(--mut);margin:16px 0 7px;text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+.item{width:100%;text-align:left;padding:11px;background:var(--card);border:1px solid var(--line);border-radius:10px;font-size:14px;margin-bottom:7px;opacity:.55;transition:transform .1s}
+.item:active{transform:scale(.99)}
+.item.can{opacity:1;border-color:var(--purpledim)}
+.item.can.buyfear{border-color:var(--teal)}
+.item.own{opacity:1;background:var(--card2);border-color:var(--line)}
+.item .r{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.item .nm{font-weight:600}
+.item .d{font-size:11.5px;color:var(--mut);margin-top:2px;line-height:1.35}
+.item .c{color:var(--teal);font-weight:600;font-size:13px;white-space:nowrap}
+.item .e{color:var(--good);font-weight:600;font-size:13px;white-space:nowrap}
+.promo{width:100%;padding:14px;background:linear-gradient(90deg,var(--tealdim),#1d3a2c);border:1px solid var(--teal);color:var(--good);border-radius:var(--r2);font-size:15px;font-weight:700;margin-bottom:10px;animation:pulseGlow 1.8s ease-in-out infinite}
+@keyframes pulseGlow{0%,100%{box-shadow:0 0 0 0 rgba(55,214,194,.0)}50%{box-shadow:0 0 18px 0 rgba(55,214,194,.35)}}
+.story{background:var(--card);border-radius:var(--r);padding:12px;margin-bottom:8px;font-size:13.5px;line-height:1.55}
+.story .t{font-weight:600;margin-bottom:3px}
+.story .w{font-size:10px;color:var(--mut);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
+.story button{width:100%;text-align:left;padding:10px;background:var(--card2);border:1px solid var(--purpledim);border-radius:9px;margin-top:6px;font-size:13px}
+
+.event{margin:0 0 7px;background:var(--orangedim);border:1px solid var(--orange);color:var(--warn);border-radius:9px;padding:8px 10px;font-size:12px;font-weight:600;line-height:1.35;animation:evp 1s ease-in-out infinite}
+@keyframes evp{0%,100%{box-shadow:0 0 0 0 rgba(255,149,82,0)}50%{box-shadow:0 0 14px 0 rgba(255,149,82,.35)}}
+/* DOCK */
+#dock{flex:0 0 auto;background:linear-gradient(180deg,var(--bg),var(--card));border-top:1px solid var(--line);padding:8px 12px 0;z-index:5}
+.tline{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;margin-bottom:5px}
+.tline .tn{font-weight:600}
+.tline .tp{color:var(--mut);font-size:12px}
+.tbar{background:var(--card3);border-radius:99px;height:9px;overflow:hidden;margin-bottom:6px}
+.tbar div{height:100%;width:0;background:linear-gradient(90deg,var(--purple2),var(--purple));transition:width .18s;border-radius:99px}
+.tchips{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:7px}
+.chip{font-size:10px;padding:2px 7px;border-radius:99px;border:1px solid var(--line);color:#c9c0d6;white-space:nowrap}
+.chip.weak{border-color:var(--teal);color:var(--teal)}
+.chip.imm{border-color:var(--bad);color:var(--bad)}
+.chip.ctr{border-color:var(--warn);color:var(--warn)}
+.chip.here{border-color:var(--purple);color:var(--purple)}
+.fixbtn{width:100%;padding:8px;background:var(--orangedim);border:1px solid var(--orange);color:var(--warn);border-radius:9px;font-size:12.5px;font-weight:600;margin-bottom:7px}
+.bigwrap{position:relative}
+#bighaunt{width:100%;padding:17px 0;border-radius:var(--r2);font-size:19px;font-weight:800;letter-spacing:.5px;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.5);
+ background:linear-gradient(135deg,var(--purple2) 0%,var(--purpledim) 45%,var(--orange) 130%);
+ box-shadow:0 6px 0 var(--purpledim),0 8px 18px rgba(0,0,0,.5);transition:transform .06s,box-shadow .06s;position:relative;overflow:hidden}
+#bighaunt:active{transform:translateY(4px);box-shadow:0 2px 0 var(--purpledim),0 3px 8px rgba(0,0,0,.5)}
+#bighaunt .hv{font-size:12px;font-weight:600;opacity:.9;display:block;margin-top:2px}
+#bighaunt .shine{position:absolute;top:0;left:-40%;width:40%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.18),transparent);transform:skewX(-20deg)}
+.tabs{display:flex;margin:8px -12px 0;border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+.tabs button{flex:1;padding:12px 0;font-size:13px;color:var(--mut);font-weight:600;position:relative}
+.tabs button.on{color:var(--ink)}
+.tabs button.on::before{content:'';position:absolute;top:0;left:20%;right:20%;height:2px;background:var(--purple);border-radius:2px}
+.tabs .dot{color:var(--warn);font-size:10px;vertical-align:top}
+
+/* room map overrides (after base .room) */
+#p-site .room{display:flex;flex-direction:column;min-height:0;padding:6px 8px;overflow:hidden}
+#p-site .room .rn{font-size:12px;line-height:1.2}
+#p-site .room .raff{font-size:9.5px;margin-top:0}
+#p-site .room .rlist{flex:1 1 auto;min-height:0;margin:1px 0;font-size:9.5px;overflow:hidden}
+#p-site .room .rent{font-size:9.5px}
+#p-site .room .manage{margin-top:auto;padding:5px 2px;font-size:10.5px;flex:0 0 auto;line-height:1.2;min-height:24px}
+@media (max-height:720px){#p-site .room .rlist{display:none}}
+/* overlays */
+.panel{position:absolute;inset:0;background:rgba(10,7,14,.96);display:none;padding:16px;overflow:auto;z-index:9}
+.panel.on{display:block}
+.panel h2{font-size:19px;font-weight:700;margin:0 0 4px}
+.panel .close{position:absolute;top:12px;right:14px;border:1px solid var(--line);border-radius:8px;padding:5px 12px;color:var(--mut)}
+.pick{width:100%;text-align:left;padding:13px;background:var(--card);border:1px solid var(--purpledim);border-radius:11px;margin-bottom:8px;font-size:14px;font-weight:600}
+.setrow{display:flex;justify-content:space-between;align-items:center;padding:13px;background:var(--card);border:1px solid var(--line);border-radius:11px;margin-bottom:8px;font-size:14px}
+.tog{width:48px;height:28px;border-radius:99px;background:var(--card3);position:relative;transition:background .2s;flex:0 0 auto}
+.tog.on{background:var(--teal)}
+.tog::after{content:'';position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:transform .2s}
+.tog.on::after{transform:translateX(20px)}
+
+.fl{position:absolute;pointer-events:none;font-weight:800;font-size:20px;z-index:8;text-shadow:0 2px 6px rgba(0,0,0,.6)}
+.pt{position:absolute;pointer-events:none;border-radius:50%;z-index:7}
+#toast{position:absolute;top:calc(50% - 20px);left:50%;transform:translateX(-50%);background:var(--card3);border:1px solid var(--purpledim);padding:10px 16px;border-radius:12px;font-size:13px;display:none;z-index:11;max-width:88%;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+.shake{animation:shk .35s cubic-bezier(.36,.07,.19,.97)}
+@keyframes shk{10%{transform:translate(-2px,1px)}30%{transform:translate(3px,-2px)}50%{transform:translate(-3px,2px)}70%{transform:translate(2px,-1px)}90%{transform:translate(-1px,1px)}}
+@media (prefers-reduced-motion:reduce){.shake{animation:none}.promo{animation:none}#bighaunt .shine{display:none}}
+.reset{font-size:11px;color:var(--mut);border:1px solid var(--line);padding:5px 10px;border-radius:8px;margin:16px 0 4px}
+</style>
+</head>
+<body>
+<div id="app">
+ <div id="hud">
+  <div class="hrow1"><span class="brand">HAUNT&nbsp;INC.</span><div class="hicons"><button id="shelfbtn">⌂ Shelf</button><button id="gear">Settings</button><button id="ver">v4.6</button></div></div>
+  <div class="pills">
+   <div class="pill rank"><div class="l">Rank</div><div class="v" id="rank">Trainee</div></div>
+   <div class="pill rep"><div class="l">Reputation</div><div class="v" id="rep">0</div></div>
+   <div class="pill ecto"><div class="l">Ectoplasm</div><div class="v" id="ecto">0</div></div>
+  </div>
+  <div class="fearrow"><span class="big" id="fear">0</span><span class="sub"><span id="fps">0</span>/s</span><span class="co">company<br><b id="cofps">0</b>/s</span></div>
+  <div class="promohint"><div id="promobar"></div></div>
+  <div class="promolabel" id="promolabel"></div>
+  <div id="banner"><div class="sites" id="sites"></div><div class="mood" id="mood"></div></div>
+ </div>
+
+ <div id="scroll" class="map">
+  <div class="page on" id="p-site"><div class="rooms" id="rooms"></div></div>
+  <div class="page" id="p-staff">
+   <div class="subtabs"><button class="on" data-st="crew">Crew</button><button data-st="skills">Skills</button><button data-st="syn">Synergies</button></div>
+   <div id="st-crew"><div class="sec" style="margin-top:0">Entities at this site</div><div id="ents"></div><div class="sec">Summon &middot; costs ectoplasm</div><div id="summon"></div></div>
+   <div id="st-skills" style="display:none"><div class="sec" style="margin-top:0">Company skills &middot; cost site fear</div><div id="skills"></div></div>
+   <div id="st-syn" style="display:none"><div class="sec" style="margin-top:0">Synergies at this site</div><div id="syns"></div></div>
+  </div>
+  <div class="page" id="p-hq">
+   <div id="promo"></div>
+   <div class="sec">Franchise</div><div id="franchise"></div>
+   <div class="sec">Your position</div><div id="rankbox" class="story"></div>
+   <div class="sec">Current assignment</div><div id="assign" class="story"></div>
+   <div class="sec">Sites</div><div id="sitelist"></div>
+   <div class="sec">Memos &amp; decisions</div><div id="memos"></div>
+   <button class="reset" id="reset">Resign (full reset)</button>
+  </div>
+  <div class="page" id="p-wall"><div class="sec" style="margin-top:2px" id="wallcount"></div><div class="wall" id="wall"></div></div>
+ </div>
+
+ <div id="dock">
+  <div id="event" class="event" style="display:none"></div>
+  <div id="contract" class="contract" style="display:none"></div>
+  <div id="log" style="display:none"></div>
+  <div class="tchips" id="tchips"></div>
+  <div class="tline"><span class="tn" id="tname"></span><span class="tp" id="tpct">0%</span></div>
+  <div class="tbar"><div id="tbar"></div></div>
+  <button class="fixbtn" id="fixbtn" style="display:none"></button>
+  <div class="bigwrap">
+   <button id="bighaunt">HAUNT<span class="hv" id="hauntval">+1 fear</span><span class="shine" id="shine"></span></button>
+  </div>
+  <div class="tabs">
+   <button class="on" data-p="site">Site</button>
+   <button data-p="staff">Staff</button>
+   <button data-p="hq">HQ <span class="dot" id="hqdot"></span></button>
+   <button data-p="wall">Wall</button>
+  </div>
+ </div>
+
+ <div class="panel" id="roompanel"><button class="close" id="rclose">Close</button><div id="roombody"></div></div>
+ <div class="panel" id="pickpanel"><button class="close" id="pclose">Cancel</button><h2 id="picktitle">Choose a room</h2><div id="picklist"></div></div>
+ <div class="panel" id="setpanel"><button class="close" id="sclose">Close</button><h2>Settings</h2>
+  <div class="setrow"><span>Sound</span><div class="tog" id="togSound"></div></div>
+  <div class="setrow"><span>Motion &amp; shake</span><div class="tog" id="togMotion"></div></div>
+  <button class="promo" id="installbtn" style="display:none">Install Haunt Inc. on this phone</button>
+  <div style="font-size:12px;color:var(--mut);line-height:1.5;margin-top:10px">Haunt Inc. v4.6 &middot; Sep 12 2026. Progress saves on this device. Tap HAUNT to scare the current tenant; drive them out for reputation and ectoplasm. Promotions unlock entities, techniques, and new sites. Franchise at HQ to bank Legends and buy permanent perks. Trophies on the Wall pay 10 ectoplasm each. HQ contracts appear from Junior Haunter on.</div>
+ </div>
+ <div id="toast"></div>
+</div>
+
+<script>
+
+(function(){
+"use strict";
+var KEY='haunt_inc_v3';
+var TYPES={cold:'Cold',sound:'Sound',sight:'Sight',touch:'Touch'};
+var RANKS=[
+ {name:'Trainee',rep:0,asg:{t:'Drive out your first tenant at Alder St',k:'flee',n:1},memo:'Welcome to Haunt Inc. Your training site is a two-story colonial on Alder St. Do not burn it down. Tenants are not food. Rattle the door, install a cold spot, learn the ropes.'},
+ {name:'Junior Haunter',rep:3,asg:{t:'Have 5 techniques installed at any site',k:'installs',n:5},memo:'Promoted. You get a badge. The badge is also cold. Manifestation school is now open to you: whispers, mirrors, frost.'},
+ {name:'Haunter',rep:6,asg:{t:'Summon 2 entities',k:'ents',n:2},memo:'HR reminds you that entities are colleagues, not pets. The Banshee has filed a complaint about the Poltergeist. It is being handled.'},
+ {name:'Senior Haunter',rep:10,asg:{t:'Fix a tenant counter (buy any fix)',k:'fixes',n:1},memo:'Senior status. You are trusted with Possession school. The doll, the radio, the tenant\u2019s own voice. Please log all possessions on the shared calendar.'},
+ {name:'Site Lead',rep:15,asg:{t:'Learn 3 company skills',k:'skills',n:3},memo:'You now lead Alder St. HQ has acquired a farmhouse outside town. The previous crew quit. Something about the silo. It is yours.'},
+ {name:'Regional Manager',rep:25,asg:{t:'Drive out 3 tenants at the farmhouse',k:'fleeSite',site:'farm',n:3},memo:'Regional. Two sites, one you. The apartment block downtown has forty units and a boiler that has opinions. Take it.'},
+ {name:'Director of Dread',rep:40,asg:{t:'Reach 5,000 fear/sec company-wide',k:'cofps',n:5000},memo:'Architecture school unlocked. Doors that were not there. Staircases that add a step. The lighthouse is yours, and so is whatever is in the boathouse.'},
+ {name:'VP of Nightmares',rep:60,asg:{t:'Summon a Lich',k:'ent',id:'lich'},memo:'Vice President. The hospital closed in 1987 and reopened last spring. The board does not know why. You do. Also: the mall.'},
+ {name:'CEO',rep:90,asg:{t:'Drive out 40 tenants company-wide',k:'flee',n:40},memo:'The cruise ship is yours. Everything is yours. The old CEO left a note in the ballroom. It just says \u201cfinally.\u201d'}
+];
+var SITES=[
+ {id:'alder',name:'Alder St',theme:{a:'#c9a0ff',b:'#a06fe0',dim:'#6b4f8a',bg:'#0e0b12',card:'#1b1523',card2:'#241b30',mood:'a drafty colonial'},rank:0,out:1,need:1,ecto:1,rooms:[['porch','Porch','touch',2,0],['foyer','Foyer','sound',2,0],['kitchen','Kitchen','sound',3,1],['parlor','Parlor','sight',3,2],['bedroom','Bedroom','touch',3,4],['attic','Attic','sound',4,6],['basement','Basement','cold',4,9],['nursery','Nursery','sight',3,13]],
+  tenants:[
+   {name:'the Hendersons',weak:'sound',imm:null,ctr:null,rooms:['kitchen','bedroom'],msg:'They think the noises are the pipes.'},
+   {name:'a grad student',weak:'sight',imm:'cold',ctr:{name:'Space heater',type:'cold',mult:0.4,fix:'Trip the breaker'},rooms:['bedroom','kitchen'],msg:'Says the house has \u201ccharacter.\u201d'},
+   {name:'a retired couple',weak:'touch',imm:'sound',ctr:{name:'Hearing aids out',type:'sound',mult:0.3,fix:'Hide the hearing aids'},rooms:['parlor','bedroom'],msg:'Hard of hearing. This will take a while.'},
+   {name:'three roommates',weak:'cold',imm:null,ctr:{name:'Night lights',type:'sight',mult:0.5,fix:'Blow the bulbs'},rooms:['kitchen','bedroom','parlor'],msg:'One already sleeps with the lights on.'},
+   {name:'a skeptic podcaster',weak:'sound',imm:'sight',ctr:{name:'Cameras everywhere',type:'sight',mult:0,fix:'Corrupt the SD cards'},rooms:['parlor','attic','foyer'],msg:'Recording everything. Give him something.'},
+   {name:'a paranormal investigator',weak:'touch',imm:'sight',ctr:{name:'EMF meter',type:'all',mult:0.6,fix:'Drain the batteries'},rooms:['attic','basement','bedroom'],msg:'She wants to be scared. Disappoint her.'},
+   {name:'a real estate developer',weak:'cold',imm:'touch',ctr:{name:'Contractors on site',type:'tap',mult:0.4,fix:'Fail the inspection'},rooms:['foyer','porch','kitchen'],msg:'Wants to flip it. Over your dead body.'},
+   {name:'the cult',weak:'sight',imm:'cold',ctr:{name:'Nightly seance',type:'drain',mult:0.01,fix:'Rearrange the candles'},rooms:['basement','parlor'],msg:'They moved in on purpose. Awkward.'},
+   {name:'a priest',weak:'touch',imm:'sound',ctr:{name:'Blessed the house',type:'all',mult:0.5,fix:'Swap the holy water'},rooms:['foyer','bedroom','nursery'],msg:'Kind eyes. Steady hands.'},
+   {name:'a rival ghost',weak:'cold',imm:'touch',ctr:{name:'Squatting in the attic',type:'room',room:'attic',mult:0,fix:'Evict them'},rooms:['attic','nursery','basement'],msg:'Took your attic. Rude.'}]},
+ {id:'farm',name:'The farmhouse',theme:{a:'#f2b263',b:'#d98a2b',dim:'#7a5220',bg:'#120e0a',card:'#20180f',card2:'#2a2014',mood:'harvest moon, dry corn'},rank:4,out:5,need:8,ecto:2,rooms:[['fkit','Farm kitchen','sound',3,0],['barn','Barn','touch',3,0],['cellar','Root cellar','cold',3,2],['loft','Hay loft','sight',3,5],['silo','Silo','sound',4,9],['field','North field','cold',4,14]],
+  tenants:[
+   {name:'the Kowalski family',weak:'sound',imm:null,ctr:null,rooms:['fkit','barn'],msg:'Fourth generation. Stubborn as fence posts.'},
+   {name:'an agritourism couple',weak:'sight',imm:'touch',ctr:{name:'Instagram lighting',type:'sight',mult:0.4,fix:'Fry the ring lights'},rooms:['loft','fkit'],msg:'Goat yoga. In your barn.'},
+   {name:'a doomsday prepper',weak:'cold',imm:'sound',ctr:{name:'Sealed bunker',type:'room',room:'cellar',mult:0,fix:'Jam the hatch'},rooms:['cellar','field'],msg:'Has 900 cans of beans and a plan for everything but you.'},
+   {name:'a cheese startup',weak:'touch',imm:'cold',ctr:{name:'Walk-in cooler',type:'cold',mult:0.3,fix:'Spoil the culture'},rooms:['barn','cellar','fkit'],msg:'Raised 2 million dollars. For cheese.'},
+   {name:'the county fair committee',weak:'sound',imm:'sight',ctr:{name:'Floodlights',type:'sight',mult:0,fix:'Cut the generator'},rooms:['field','barn','silo'],msg:'They want the barn for the pie tent.'}]},
+ {id:'apts',name:'Bellview Apartments',theme:{a:'#8fb8ff',b:'#5a8ae6',dim:'#2f4d85',bg:'#0a0d14',card:'#141a26',card2:'#1b2333',mood:'buzzing fluorescents, wet concrete'},rank:5,out:25,need:40,ecto:3,rooms:[['lobby','Lobby','sight',3,0],['unit3b','Unit 3B','touch',3,0],['laundry','Laundry room','sound',3,2],['boiler','Boiler room','cold',4,6],['elev','Elevator','sound',2,10],['roof','Roof','cold',4,16]],
+  tenants:[
+   {name:'the building super',weak:'sound',imm:'cold',ctr:{name:'Fixes everything',type:'all',mult:0.6,fix:'Strip the screws'},rooms:['boiler','lobby'],msg:'Has seen things. Fixed most of them.'},
+   {name:'a night-shift nurse',weak:'sight',imm:'sound',ctr:{name:'Sleeps through anything',type:'sound',mult:0.2,fix:'Swap the earplugs'},rooms:['unit3b','laundry'],msg:'Home at 7 a.m. Asleep by 7:05.'},
+   {name:'an influencer',weak:'touch',imm:null,ctr:{name:'Livestreams 24/7',type:'sight',mult:0.3,fix:'Throttle the wifi'},rooms:['unit3b','roof','lobby'],msg:'Your haunting is content now.'},
+   {name:'a widow who has seen worse',weak:'cold',imm:'touch',ctr:{name:'Unimpressed',type:'tap',mult:0.3,fix:'Find her late husband\u2019s coat'},rooms:['unit3b','elev'],msg:'Eighty-nine. Not moving. Try her.'},
+   {name:'the landlord',weak:'sight',imm:'cold',ctr:{name:'Raises the rent',type:'drain',mult:0.015,fix:'Lose the lease paperwork'},rooms:['lobby','roof','boiler'],msg:'Evicts humans for a living. Your turn.'}]},
+ {id:'light',name:'Gannet Point lighthouse',theme:{a:'#5fe0d0',b:'#2ba89a',dim:'#1d5a52',bg:'#080f10',card:'#0f1c1d',card2:'#132628',mood:'salt fog, a beam that sweeps'},rank:6,out:120,need:200,ecto:4,rooms:[['lamp','Lamp room','sight',3,0],['quarters','Keeper\u2019s quarters','touch',3,0],['stairs','The stairs','sound',4,3],['rocks','The rocks','cold',3,8],['boathouse','Boathouse','cold',4,14]],
+  tenants:[
+   {name:'the last keeper',weak:'sight',imm:'sound',ctr:{name:'Used to the wind',type:'sound',mult:0.2,fix:'Still the air'},rooms:['lamp','quarters'],msg:'Automated in 1994. He stayed anyway.'},
+   {name:'two marine biologists',weak:'touch',imm:'cold',ctr:{name:'Drysuits',type:'cold',mult:0.3,fix:'Puncture the seals'},rooms:['rocks','boathouse','quarters'],msg:'Tagging seals. Not the ones you mean.'},
+   {name:'honeymooners',weak:'cold',imm:null,ctr:{name:'Too happy to notice',type:'all',mult:0.5,fix:'Start an argument'},rooms:['quarters','lamp'],msg:'Rented it for the view. Give them one.'},
+   {name:'a coast guard crew',weak:'sound',imm:'sight',ctr:{name:'Procedures',type:'tap',mult:0.4,fix:'Reorder the binder'},rooms:['stairs','boathouse','rocks'],msg:'Trained for everything. Not this.'},
+   {name:'a novelist',weak:'sight',imm:'touch',ctr:{name:'Taking notes',type:'drain',mult:0.02,fix:'Give him writer\u2019s block'},rooms:['quarters','stairs'],msg:'He is putting you in the book. Make it good.'}]},
+ {id:'hosp',name:'St. Verity Hospital',theme:{a:'#b6f27a',b:'#7cc247',dim:'#3f6b22',bg:'#0b100a',card:'#151f13',card2:'#1b2a18',mood:'sick green, a flickering exit sign'},rank:7,out:600,need:1000,ecto:5,rooms:[['ward','Ward C','touch',4,0],['morgue','Morgue','cold',4,0],['or','Operating room','sight',3,4],['chapel','Chapel','sound',3,9],['hlift','Service elevator','sound',2,15],['hnurs','Neonatal','sight',4,22]],
+  tenants:[
+   {name:'the night janitor',weak:'sound',imm:'cold',ctr:{name:'Headphones in',type:'sound',mult:0.2,fix:'Corrupt the playlist'},rooms:['ward','hlift','morgue'],msg:'Mops around you. Politely.'},
+   {name:'six med students',weak:'sight',imm:null,ctr:{name:'Sleep deprived',type:'all',mult:0.5,fix:'Cancel the exam'},rooms:['ward','or','chapel'],msg:'Too tired to be scared. Wake them up.'},
+   {name:'the hospital board',weak:'cold',imm:'sound',ctr:{name:'Liability counsel',type:'tap',mult:0.3,fix:'Leak the minutes'},rooms:['chapel','or'],msg:'Voted to reopen. Vote again.'},
+   {name:'a hospice nurse',weak:'touch',imm:'sight',ctr:{name:'Has held many hands',type:'touch',mult:0.3,fix:'Chill the ward'},rooms:['ward','hnurs'],msg:'Kindest person in the building. Hardest to move.'},
+   {name:'the chaplain',weak:'sight',imm:'touch',ctr:{name:'Consecrated ground',type:'room',room:'chapel',mult:0,fix:'Rewrite the deed'},rooms:['chapel','ward','hlift'],msg:'Knows your name. Says it gently.'}]},
+ {id:'mall',name:'Northgate Mall',theme:{a:'#ff7ad9',b:'#d94db3',dim:'#7a2f66',bg:'#120a11',card:'#20131e',card2:'#2b1a28',mood:'dead neon, a fountain that still runs'},rank:7,out:2500,need:4500,ecto:6,rooms:[['food','Food court','sound',4,0],['cinema','Cinema 6','sight',4,0],['arcade','Arcade','sound',3,5],['corr','Service corridor','cold',4,10],['fount','The fountain','touch',3,17],['anchor','Anchor store','cold',5,25]],
+  tenants:[
+   {name:'the security guard',weak:'sight',imm:'sound',ctr:{name:'Watches the monitors',type:'sight',mult:0.3,fix:'Loop the tapes'},rooms:['corr','food'],msg:'Segway. Flashlight. Nerves of oatmeal.'},
+   {name:'the mall walkers',weak:'cold',imm:'touch',ctr:{name:'Here at 6 a.m. regardless',type:'all',mult:0.6,fix:'Lock the east doors'},rooms:['food','fount','anchor'],msg:'Retirees in windbreakers. Unstoppable.'},
+   {name:'a pop-up shop owner',weak:'touch',imm:null,ctr:{name:'Month-to-month lease',type:'drain',mult:0.02,fix:'Void the lease'},rooms:['anchor','arcade'],msg:'Sells candles. Ironically.'},
+   {name:'teenagers',weak:'sound',imm:'sight',ctr:{name:'Filming for clout',type:'sight',mult:0,fix:'Kill the signal'},rooms:['arcade','cinema','food'],msg:'They came for you. Deliver.'},
+   {name:'the liquidators',weak:'sight',imm:'cold',ctr:{name:'Everything must go',type:'tap',mult:0.3,fix:'Hide the inventory'},rooms:['anchor','corr','cinema'],msg:'Closing it down. You disagree.'}]},
+ {id:'ship',name:'MV Serenity',theme:{a:'#ffd166',b:'#e0a92b',dim:'#7a5a1a',bg:'#0a0c14',card:'#141826',card2:'#1b2033',mood:'brass, rust, and the open sea'},rank:8,out:10000,need:20000,ecto:8,rooms:[['engine','Engine room','sound',4,0],['cabins','Cabin deck','touch',4,0],['galley','Galley','cold',3,5],['ballroom','Ballroom','sight',5,12],['deck','Promenade deck','cold',4,20],['bridge','The bridge','sight',3,30]],
+  tenants:[
+   {name:'the captain',weak:'sound',imm:'sight',ctr:{name:'Master and commander',type:'tap',mult:0.3,fix:'Falsify the charts'},rooms:['bridge','cabins'],msg:'Has never abandoned a ship. Change that.'},
+   {name:'the cruise director',weak:'touch',imm:'cold',ctr:{name:'Relentless cheer',type:'all',mult:0.5,fix:'Cancel bingo'},rooms:['ballroom','deck','galley'],msg:'Microphone. Sequins. Fear nothing. Yet.'},
+   {name:'two thousand retirees',weak:'cold',imm:'touch',ctr:{name:'Buffet at all hours',type:'room',room:'galley',mult:0,fix:'Close the buffet'},rooms:['deck','cabins','ballroom'],msg:'They have seen every port. Not this one.'},
+   {name:'a stage magician',weak:'sight',imm:'sound',ctr:{name:'Knows how it\u2019s done',type:'sight',mult:0.2,fix:'Swap his deck'},rooms:['ballroom','cabins'],msg:'Thinks you\u2019re a trick. Prove otherwise.'},
+   {name:'the insurance adjuster',weak:'sound',imm:'cold',ctr:{name:'Paperwork',type:'drain',mult:0.03,fix:'Shred the claim'},rooms:['bridge','engine','cabins'],msg:'Here about the incidents. All of them.'}]}
+];
+var HAUNTS=[
+ {id:'cold',sch:'Ambience',rank:0,name:'Cold spot',type:'cold',desc:'Ten degrees colder, always',cost:15,fps:0.4},
+ {id:'lights',sch:'Ambience',rank:0,name:'Flickering lights',type:'sight',desc:'Only when nobody else looks',cost:80,fps:2},
+ {id:'floor',sch:'Ambience',rank:0,name:'Creaking floor',type:'sound',desc:'Footsteps. Nobody is walking.',cost:400,fps:9},
+ {id:'breath',sch:'Ambience',rank:0,name:'Breath on the neck',type:'touch',desc:'Warm. Then not.',cost:1500,fps:30},
+ {id:'walls',sch:'Manifestation',rank:1,name:'Whispering walls',type:'sound',desc:'They say your name. Wrong.',cost:6000,fps:110},
+ {id:'mirror',sch:'Manifestation',rank:1,name:'Wrong mirror',type:'sight',desc:'The reflection blinks late',cost:25000,fps:420},
+ {id:'frost',sch:'Manifestation',rank:1,name:'Frost on the inside',type:'cold',desc:'Of the window. In July.',cost:100000,fps:1600},
+ {id:'furn',sch:'Manifestation',rank:1,name:'Moving furniture',type:'touch',desc:'Cabinets. All of them. 3 a.m.',cost:400000,fps:6000},
+ {id:'doll',sch:'Possession',rank:3,name:'The doll',type:'sight',desc:'It was facing the wall',cost:1500000,fps:22000},
+ {id:'radio',sch:'Possession',rank:3,name:'The radio',type:'sound',desc:'A station that went off air in 1961',cost:6000000,fps:85000},
+ {id:'voice',sch:'Possession',rank:3,name:'Their own voice',type:'sound',desc:'From the next room. Calling them.',cost:25000000,fps:330000},
+ {id:'paral',sch:'Possession',rank:3,name:'Sleep paralysis',type:'touch',desc:'Something sits on the bed',cost:100000000,fps:1300000},
+ {id:'door',sch:'Architecture',rank:6,name:'The door that wasn\u2019t there',type:'cold',desc:'It was a wall yesterday',cost:400000000,fps:5000000},
+ {id:'stair',sch:'Architecture',rank:6,name:'The extra step',type:'touch',desc:'Thirteen stairs. Then fourteen.',cost:1600000000,fps:20000000},
+ {id:'hall',sch:'Architecture',rank:6,name:'The lengthening hall',type:'sight',desc:'The door does not get closer',cost:6500000000,fps:80000000},
+ {id:'room',sch:'Architecture',rank:6,name:'The room that remembers',type:'cold',desc:'Everyone who ever cried in it',cost:26000000000,fps:320000000}
+];
+var ENTS=[
+ {id:'polter',name:'Poltergeist',rank:0,cost:20,desc:'Tap power x2 at this site',eff:{tap:2}},
+ {id:'wraith',name:'Wraith',rank:1,cost:40,desc:'Passive x1.4 at this site',eff:{pas:1.4}},
+ {id:'banshee',name:'Banshee',rank:2,cost:80,desc:'Sound x1.8 at this site',eff:{type:'sound',m:1.8}},
+ {id:'shade',name:'Shade',rank:2,cost:80,desc:'Sight x1.8 at this site',eff:{type:'sight',m:1.8}},
+ {id:'ghoul',name:'Ghoul',rank:3,cost:150,desc:'Touch x1.8 at this site',eff:{type:'touch',m:1.8}},
+ {id:'rev',name:'Revenant',rank:3,cost:150,desc:'Cold x1.8 at this site',eff:{type:'cold',m:1.8}},
+ {id:'trick',name:'Trickster',rank:4,cost:250,desc:'Events twice as often here',eff:{evc:2}},
+ {id:'dopp',name:'Doppelganger',rank:5,cost:400,desc:'Tenant immunity ignored here',eff:{noimm:1}},
+ {id:'lich',name:'Lich',rank:6,cost:800,desc:'All fear x1.5 at this site',eff:{pas:1.5,tap:1.5}},
+ {id:'audit',name:'The Auditor',rank:7,cost:1500,desc:'Tenant counters disabled here',eff:{noctr:1}}
+];
+var SKILLS=[
+ {id:'pr1',br:'Presence',name:'Louder rattle',desc:'Tap x2',cost:60,eff:{tap:2}},
+ {id:'pr2',br:'Presence',name:'Door slam',desc:'Tap x3',cost:2500,eff:{tap:3},req:'pr1'},
+ {id:'pr3',br:'Presence',name:'Full manifestation',desc:'Tap x6',cost:120000,eff:{tap:6},req:'pr2'},
+ {id:'dr1',br:'Dread',name:'Long shadows',desc:'Passive x1.5',cost:300,eff:{pas:1.5}},
+ {id:'dr2',br:'Dread',name:'Bad dreams',desc:'Passive x2',cost:12000,eff:{pas:2},req:'dr1'},
+ {id:'dr3',br:'Dread',name:'The house breathes',desc:'Passive x3',cost:500000,eff:{pas:3},req:'dr2'},
+ {id:'cn1',br:'Cunning',name:'Read the room',desc:'Weakness bonus x3',cost:800,eff:{weak:3}},
+ {id:'cn2',br:'Cunning',name:'Find the crack',desc:'Immunity only halves fear',cost:20000,eff:{imm:0.5},req:'cn1'},
+ {id:'cn3',br:'Cunning',name:'Know their habits',desc:'Fixes cost half',cost:250000,eff:{fix:0.5},req:'cn2'}
+];
+var CHOICES=[
+ {rank:2,t:'The podcaster problem',txt:'A podcaster with two million listeners wants to sleep at Alder St. Legal says it\u2019s fine. Legal is a wraith.',ch:[
+  {l:'Let him record. (Company passive x1.3)',fn:function(){S.perm.pas*=1.3;}},
+  {l:'Shred the release. (Company tap x1.5)',fn:function(){S.perm.tap*=1.5;}}]},
+ {rank:5,t:'The network special',txt:'A network wants a series. Every site. Cameras in every room.',ch:[
+  {l:'Sign it. (Events twice as often everywhere)',fn:function(){S.perm.evc*=2;}},
+  {l:'Make them leave in the night. (+8 reputation)',fn:function(){S.rep+=8;}}]},
+ {rank:7,t:'The old CEO\u2019s office',txt:'There is a desk on the top floor of HQ. There is a name plate. The name is yours, but the handwriting is older than you.',ch:[
+  {l:'Sit down. (Ectoplasm x2 on every flee)',fn:function(){S.perm.ecto*=2;}},
+  {l:'Burn the name plate. (+15 reputation)',fn:function(){S.rep+=15;}}]}
+];
+
+var S=null;
+function freshSite(){return {fear:0,total:0,tenant:0,tprog:0,fixed:{},rooms:{},tloc:null,tmove:0,ents:{},flees:0};}
+function fresh(){return {rank:0,rep:0,ecto:0,cur:'alder',sites:{alder:freshSite()},skills:{},perm:{tap:1,pas:1,evc:1,ecto:1},memos:{0:1},choices:{},stats:{flees:0,fixes:0},last:Date.now(),legends:0,perks:{},franchise:0,lifetime:{flees:0,rep:0,runs:0}};}
+try{var raw=localStorage.getItem(KEY);S=raw?JSON.parse(raw):fresh();}catch(e){S=fresh();}
+(function(){var b=fresh();for(var k in b)if(S[k]===undefined)S[k]=b[k];if(S.perm.ecto===undefined)S.perm.ecto=1;})();
+function save(){S.last=Date.now();try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+var PERKS=[
+ {id:'legacy',name:'Dread Legacy',desc:'All fear \u00d71.25 per level, forever',max:5,cost:function(l){return l+1;}},
+ {id:'vein',name:'Ecto Vein',desc:'+50% ectoplasm per flee, per level',max:3,cost:function(l){return 2+l*2;}},
+ {id:'fast',name:'Fast Track',desc:'Promotion reputation needs \u221210% per level',max:3,cost:function(l){return 3+l*2;}},
+ {id:'start',name:'Head Start',desc:'Begin each franchise with +150 ectoplasm per level',max:3,cost:function(l){return 1+l;}},
+ {id:'friend',name:'Old Friend',desc:'A Poltergeist is waiting at Alder St on every new franchise',max:1,cost:function(l){return 2;}}
+];
+function perk(id){return S.perks[id]||0;}
+var SYN=[
+ {id:'sv',n:'Sound and Vision',need:['banshee','shade'],d:'All fear \u00d71.15 at this site',eff:{all:1.15}},
+ {id:'ch',n:'Cold Hands',need:['ghoul','rev'],d:'Touch and cold \u00d71.25',eff:{types:['touch','cold'],m:1.25}},
+ {id:'cc',n:'Chaos Crew',need:['polter','trick'],d:'Events hit twice as hard',eff:{evm:2}},
+ {id:'om',n:'Old Money',need:['wraith','lich'],d:'Passive \u00d71.3',eff:{pas:1.3}},
+ {id:'cd',n:'Compliance Dept.',need:['dopp','audit'],d:'Ectoplasm per flee \u00d72',eff:{ecto:2}},
+ {id:'fs',n:'Full Staff',need:['polter','wraith','banshee','shade','ghoul','rev'],d:'All fear \u00d71.5',eff:{all:1.5}}
+];
+function synOn(st,sy){for(var i=0;i<sy.need.length;i++)if(!st.ents[sy.need[i]])return false;return true;}
+function synEff(st,key,def){var v=def;SYN.forEach(function(sy){if(synOn(st,sy)&&sy.eff[key]!==undefined)v*=sy.eff[key];});return v;}
+function synType(st,type){var v=1;SYN.forEach(function(sy){if(synOn(st,sy)&&sy.eff.types&&sy.eff.types.indexOf(type)>=0)v*=sy.eff.m;});return v;}
+function legacy(){return (1+0.25*perk('legacy'))*Math.pow(1.3,S.franchise);}
+function repReq(i){return Math.ceil(RANKS[i].rep*(1-0.1*perk('fast')));}
+function legendGain(){return Math.floor(S.rep/12);}
+function franchise(){
+ var g=legendGain();if(g<1)return;
+ S.lifetime.flees+=S.stats.flees;S.lifetime.rep+=S.rep;S.lifetime.runs+=1;
+ S.legends+=g;S.franchise+=1;
+ S.rank=0;S.rep=0;S.ecto=150*perk('start');S.cur='alder';S.sites={alder:freshSite()};S.skills={};S.perm={tap:1,pas:1,evc:1,ecto:1};S.memos={0:1};S.choices={};S.stats={flees:0,fixes:0};S.contract=null;
+ if(perk('friend'))S.sites.alder.ents={polter:'foyer'};
+ save();location.reload();
+}
+
+function $(i){return document.getElementById(i);}
+function fmt(n){if(n>=1e12)return (n/1e12).toFixed(2)+'T';if(n>=1e9)return (n/1e9).toFixed(2)+'B';if(n>=1e6)return (n/1e6).toFixed(2)+'M';if(n>=1e4)return (n/1e3).toFixed(1)+'K';if(n<100&&n%1!==0)return n.toFixed(1);return Math.floor(n).toLocaleString();}
+function log(m){$('log').textContent=m;}
+var tt=null;function toast(m){var t=$('toast');t.textContent=m;t.style.display='block';clearTimeout(tt);tt=setTimeout(function(){t.style.display='none';},2400);}
+
+function siteDef(id){for(var i=0;i<SITES.length;i++)if(SITES[i].id===id)return SITES[i];return SITES[0];}
+function cur(){return S.sites[S.cur];}
+function curDef(){return siteDef(S.cur);}
+function roomDefs(sd){return sd.rooms.map(function(r){return {id:r[0],name:r[1],aff:r[2],slots:r[3],rep:r[4]};});}
+function roomById(sd,id){var rs=roomDefs(sd);for(var i=0;i<rs.length;i++)if(rs[i].id===id)return rs[i];return null;}
+function siteRep(st){return st.flees;}
+function roomOpen(st,r){return siteRep(st)>=r.rep;}
+function hauntById(id){for(var i=0;i<HAUNTS.length;i++)if(HAUNTS[i].id===id)return HAUNTS[i];return null;}
+function entById(id){for(var i=0;i<ENTS.length;i++)if(ENTS[i].id===id)return ENTS[i];return null;}
+function ownedCount(st,hid){var n=0;for(var r in st.rooms)st.rooms[r].forEach(function(x){if(x===hid)n++;});return n;}
+function costOf(sd,st,h){return Math.floor(h.cost*sd.out*Math.pow(1.2,ownedCount(st,h.id)));}
+function skillEff(key,def){var v=def;SKILLS.forEach(function(s){if(S.skills[s.id]&&s.eff[key]!==undefined)v=s.eff[key];});return v;}
+function entEff(st,key,def){var v=def;for(var e in st.ents){var d=entById(e);if(d&&d.eff[key]!==undefined)v*=d.eff[key];}return v;}
+function entType(st,type){var v=1;for(var e in st.ents){var d=entById(e);if(d&&d.eff.type===type){v*=d.eff.m;var rd=roomById(curDefFor(st),st.ents[e]);if(rd&&rd.aff===type)v*=1.3;}}return v;}
+function curDefFor(st){for(var k in S.sites)if(S.sites[k]===st)return siteDef(k);return SITES[0];}
+
+function tenantDef(sd,st){return sd.tenants[st.tenant%sd.tenants.length];}
+function tenantName(sd,st){var r=Math.floor(st.tenant/sd.tenants.length);return tenantDef(sd,st).name+(r?' (again, #'+(r+1)+')':'');}
+function tenantNeed(sd,st){return Math.floor(60*sd.need*Math.pow(2.4,st.tenant)*Math.pow(1.2,S.franchise));}
+function tenantRooms(sd,st){var d=tenantDef(sd,st);var rs=d.rooms.filter(function(id){return roomOpen(st,roomById(sd,id));});if(!rs.length)rs=[sd.rooms[0][0]];return rs;}
+function ctrActive(sd,st){var d=tenantDef(sd,st);if(!d.ctr)return null;if(st.fixed[st.tenant])return null;if(entEff(st,'noctr',1)!==1)return null;return d.ctr;}
+function fixCost(sd,st){return Math.floor(tenantNeed(sd,st)*0.5*skillEff('fix',1));}
+function typeMult(sd,st,type){
+ var d=tenantDef(sd,st);var m=1;
+ if(d.weak===type)m*=skillEff('weak',2);
+ if(d.imm===type&&entEff(st,'noimm',1)===1)m*=skillEff('imm',0.25);
+ var c=ctrActive(sd,st);if(c&&(c.type===type||c.type==='all'))m*=c.mult;
+ m*=entType(st,type)*synType(st,type);
+ return m;
+}
+function roomFps(sd,st,rid){
+ var r=roomById(sd,rid);var list=st.rooms[rid]||[];var t=0;var c=ctrActive(sd,st);
+ if(c&&c.type==='room'&&c.room===rid)return 0;
+ list.forEach(function(hid){var h=hauntById(hid);var f=h.fps*sd.out;if(r.aff===h.type)f*=1.5;f*=typeMult(sd,st,h.type);if(st.tloc===rid)f*=2;t+=f;});
+ return t;
+}
+function siteMult(st){return entEff(st,'pas',1)*skillEff('pas',1)*S.perm.pas*legacy()*synEff(st,'all',1)*synEff(st,'pas',1);}
+function siteFps(sd,st){var t=0;roomDefs(sd).forEach(function(r){if(roomOpen(st,r))t+=roomFps(sd,st,r.id);});return t*siteMult(st);}
+function coFps(){var t=0;for(var k in S.sites)t+=siteFps(siteDef(k),S.sites[k]);return t;}
+function tapPower(sd,st,rid){
+ var p=sd.out*entEff(st,'tap',1)*skillEff('tap',1)*S.perm.tap*legacy()*synEff(st,'all',1);
+ var c=ctrActive(sd,st);if(c&&c.type==='tap')p*=c.mult;
+ if(rid!==st.tloc)p*=0.4;
+ if(ev&&ev.site===S.cur)p*=ev.mult*synEff(st,'evm',1);
+ return Math.max(1,p);
+}
+function addFear(sd,st,n){
+ st.fear+=n;st.total+=n;st.tprog+=n;
+ if(st.tprog>=tenantNeed(sd,st)){
+  st.tprog=0;S.rep+=1;st.flees+=1;S.stats.flees+=1;
+  var e=Math.floor(10*(st.tenant+1)*sd.ecto*S.perm.ecto*(1+0.5*perk('vein'))*synEff(st,'ecto',1));S.ecto+=e;
+  var old=tenantName(sd,st);S.tally=S.tally||{};var tn0=tenantDef(sd,st).name;S.tally[tn0]=(S.tally[tn0]||0)+1;st.tenant+=1;st.tloc=null;st.tmove=0;
+  var m=old.charAt(0).toUpperCase()+old.slice(1)+' fled '+sd.name+'. +'+e+' ectoplasm.';
+  if(sd.id===S.cur)log(m);else toast(m);
+  flash();
+ }
+}
+function flash(){document.body.style.background='#2a1f3a';setTimeout(function(){document.body.style.background='#0e0b12';},180);}
+
+var ev=null,evT=null;
+function startEvent(){
+ if(ev)return;var st=cur();
+ var kinds=[{t:'A ghost hunter is livestreaming from outside. Every tap x5 for 8 seconds.',m:5,d:8000},{t:'Thunderstorm. Every tap x3 for 12 seconds.',m:3,d:12000},{t:'Power outage. Every tap x8 for 5 seconds.',m:8,d:5000},{t:'The tenant is alone. Every tap x4 for 10 seconds.',m:4,d:10000}];
+ var k=kinds[Math.floor(Math.random()*kinds.length)];ev={mult:k.m,site:S.cur};
+ var box=$('event');box.style.display='block';box.textContent=curDef().name+': '+k.t;
+ evT=setTimeout(function(){ev=null;box.style.display='none';log('The moment passed.');},k.d);
+}
+function moveTenant(sd,st){var rs=tenantRooms(sd,st);if(st.tloc&&rs.indexOf(st.tloc)>=0&&rs.length>1){var o=rs.filter(function(x){return x!==st.tloc;});st.tloc=o[Math.floor(Math.random()*o.length)];}else st.tloc=rs[Math.floor(Math.random()*rs.length)];st.tmove=Date.now();}
+
+function asgProgress(){
+ var a=RANKS[S.rank].asg;if(!a)return {done:true,txt:'None'};
+ var v=0,n=a.n||1;
+ if(a.k==='flee')v=S.stats.flees;
+ else if(a.k==='installs'){for(var k in S.sites)for(var r in S.sites[k].rooms)v+=S.sites[k].rooms[r].length;}
+ else if(a.k==='ents'){for(var k2 in S.sites)v+=Object.keys(S.sites[k2].ents).length;}
+ else if(a.k==='fixes')v=S.stats.fixes;
+ else if(a.k==='skills')v=Object.keys(S.skills).length;
+ else if(a.k==='fleeSite')v=S.sites[a.site]?S.sites[a.site].flees:0;
+ else if(a.k==='cofps')v=coFps();
+ else if(a.k==='ent'){for(var k3 in S.sites)if(S.sites[k3].ents[a.id])v=1;}
+ return {done:v>=n,txt:fmt(Math.min(v,n))+' / '+fmt(n)};
+}
+function canPromote(){if(S.rank>=RANKS.length-1)return false;return S.rep>=repReq(S.rank+1)&&asgProgress().done;}
+function promote(){
+ S.rank+=1;S.memos[S.rank]=1;
+ SITES.forEach(function(sd){if(sd.rank<=S.rank&&!S.sites[sd.id]){S.sites[sd.id]=freshSite();toast('New site acquired: '+sd.name);}});
+ CHOICES.forEach(function(c){if(c.rank===S.rank&&S.choices[c.rank]===undefined)S.choices[c.rank]='pending';});
+ toast('Promoted: '+RANKS[S.rank].name);save();renderAll();
+}
+
+/* route engine log() to the toast, since v4 removed the inline log line */
+log=function(m){toast(m);};
+
+/* ---------- juice ---------- */
+var AC=null,soundOn=(S.settings&&S.settings.sound!==false),motionOn=(S.settings&&S.settings.motion!==false);
+if(!S.settings)S.settings={sound:true,motion:true};
+function initAudio(){if(AC)return;try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}}
+function blip(freq){if(!soundOn||!AC)return;try{var o=AC.createOscillator(),g=AC.createGain();o.type='triangle';o.frequency.value=freq*(0.94+Math.random()*0.12);g.gain.value=0.06;o.connect(g);g.connect(AC.destination);var t=AC.currentTime;g.gain.setValueAtTime(0.06,t);g.gain.exponentialRampToValueAtTime(0.0001,t+0.09);o.start(t);o.stop(t+0.1);}catch(e){}}
+function chime(){if(!soundOn||!AC)return;[523,659,784,1047].forEach(function(f,i){try{var o=AC.createOscillator(),g=AC.createGain();o.type='sine';o.frequency.value=f;g.gain.value=0.05;o.connect(g);g.connect(AC.destination);var t=AC.currentTime+i*0.06;g.gain.setValueAtTime(0.05,t);g.gain.exponentialRampToValueAtTime(0.0001,t+0.18);o.start(t);o.stop(t+0.2);}catch(e){}});}
+function vib(ms){if(soundOn&&navigator.vibrate)try{navigator.vibrate(ms);}catch(e){}}
+var PMAX=44,parts=[];
+function particles(x,y,cols,n){if(!motionOn)return;var app=document.getElementById('app');for(var i=0;i<n&&parts.length<PMAX;i++){var d=document.createElement('div');d.className='pt';var s=4+Math.random()*5;d.style.width=s+'px';d.style.height=s+'px';d.style.left=x+'px';d.style.top=y+'px';d.style.background=cols[i%cols.length];app.appendChild(d);var ang=Math.random()*Math.PI*2,sp=30+Math.random()*70,vx=Math.cos(ang)*sp,vy=Math.sin(ang)*sp-40;parts.push({el:d,x:x,y:y,vx:vx,vy:vy,life:1});}}
+function stepParts(dt){for(var i=parts.length-1;i>=0;i--){var p=parts[i];p.vy+=180*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.life-=dt*1.6;if(p.life<=0){p.el.remove();parts.splice(i,1);}else{p.el.style.transform='translate('+(p.x-parseFloat(p.el.style.left))+'px,'+(p.y-parseFloat(p.el.style.top))+'px)';p.el.style.opacity=p.life;}}}
+function floatNum(x,y,txt,col){var app=document.getElementById('app');var f=document.createElement('div');f.className='fl';f.textContent=txt;f.style.color=col||'#efe9f6';f.style.left=x+'px';f.style.top=y+'px';app.appendChild(f);requestAnimationFrame(function(){f.style.transition='transform .75s cubic-bezier(.2,.7,.3,1),opacity .75s';f.style.transform='translate(-50%,-56px)';f.style.opacity='0';});setTimeout(function(){f.remove();},760);}
+function punch(el){el.style.transform='scale(.94)';setTimeout(function(){el.style.transform='';},70);}
+function shake(){if(!motionOn)return;var a=document.getElementById('app');a.classList.remove('shake');void a.offsetWidth;a.classList.add('shake');}
+var FLED=false;
+/* ---------- contracts ---------- */
+function offerContract(){
+ if(S.contract)return;var sd=curDef(),st=cur();
+ var kinds=[];
+ kinds.push({k:'fear',t:'Rack up <b>'+fmt(Math.max(200,Math.floor(siteFps(sd,st)*60*1.4+tapPower(sd,st,st.tloc)*40)))+' fear</b> in 60s',need:Math.max(200,Math.floor(siteFps(sd,st)*60*1.4+tapPower(sd,st,st.tloc)*40)),dur:60});
+ kinds.push({k:'taps',t:'Tap <b>50 times</b> in 25s',need:50,dur:25});
+ if(st.tprog/tenantNeed(sd,st)>0.35)kinds.push({k:'flee',t:'Drive out <b>the current tenant</b> in 90s',need:1,dur:90});
+ kinds.push({k:'install',t:'Install <b>2 techniques</b> in 75s',need:2,dur:75});
+ var c=kinds[Math.floor(Math.random()*kinds.length)];
+ var reward=Math.floor((25+sd.ecto*20)*(1+0.5*perk('vein')));
+ S.contract={k:c.k,t:c.t,need:c.need,prog:0,dur:c.dur,end:0,site:sd.id,reward:reward,on:false,base:st.flees};
+ renderContract();
+}
+function acceptContract(){var c=S.contract;if(!c||c.on)return;c.on=true;c.end=Date.now()+c.dur*1000;blip(520);renderContract();}
+function declineContract(){S.contract=null;renderContract();}
+function contractTick(){
+ var c=S.contract;if(!c||!c.on)return;var st=S.sites[c.site];if(!st){S.contract=null;return;}
+ if(c.k==='flee')c.prog=st.flees>c.base?1:0;
+ if(c.prog>=c.need){S.contract=null;S.ecto+=c.reward;S.stats.contracts=(S.stats.contracts||0)+1;chime();shake();toast('\u2713 Contract complete: +'+c.reward+' ectoplasm');save();renderCo();renderContract();return;}
+ if(Date.now()>c.end){S.contract=null;toast('Contract expired. HQ is disappointed.');renderContract();}
+}
+function renderContract(){
+ var box=$('contract');var c=S.contract;if(!c){box.style.display='none';return;}box.style.display='block';
+ var left=c.on?Math.max(0,Math.ceil((c.end-Date.now())/1000)):c.dur;
+ var pct=Math.min(100,c.prog/c.need*100);
+ box.innerHTML='<div class="cr"><span>HQ contract: '+c.t+' \u00b7 <b>+'+c.reward+' ecto</b></span>'+(c.on?'<span style="white-space:nowrap">'+left+'s</span>':'<span style="display:flex;gap:4px"><button id="cacc">Accept</button><button id="cdec" style="opacity:.7">No</button></span>')+'</div>'+(c.on?'<div class="cbar"><div style="width:'+pct+'%"></div></div>':'');
+ if(!c.on){$('cacc').addEventListener('click',acceptContract);$('cdec').addEventListener('click',declineContract);}
+}
+
+/* ---------- display counters ---------- */
+var dispFear=cur().fear, lastCoFps=0;
+
+/* ---------- affordability ---------- */
+function roomAfford(sd,st,r){var list=st.rooms[r.id]||[];if(list.length>=r.slots)return false;for(var i=0;i<HAUNTS.length;i++){var h=HAUNTS[i];if(h.rank>S.rank)continue;var shown=i===0||ownedCount(st,HAUNTS[i-1].id)>0||st.total>=h.cost*0.4;if(shown&&st.fear>=costOf(sd,st,h))return true;}return false;}
+
+/* ---------- art ---------- */
+var ART='';
+function entImg(id,cls){return '<img class="'+(cls||'por')+'" src="'+ART+'ent-'+id+'.jpg" alt="" onerror="this.style.display=\'none\'">';}
+/* ---------- theme ---------- */
+function applyTheme(){var t=curDef().theme;$('banner').style.backgroundImage='url('+ART+'site-'+curDef().id+'.jpg)';var a=$('app').style;a.setProperty('--purple',t.a);a.setProperty('--purple2',t.b);a.setProperty('--purpledim',t.dim);a.setProperty('--card',t.card);a.setProperty('--card2',t.card2);a.setProperty('--bg',t.bg);document.body.style.background=t.bg;$('mood').textContent=curDef().name+' \u00b7 '+t.mood;}
+/* ---------- achievements ---------- */
+var ACH=[
+ {id:'first',n:'First Night',d:'Drive out your first tenant',t:function(){return lifeFlees()>=1;}},
+ {id:'ten',n:'Regular Occurrence',d:'Drive out 10 tenants',t:function(){return lifeFlees()>=10;}},
+ {id:'fifty',n:'Local Legend',d:'Drive out 50 tenants',t:function(){return lifeFlees()>=50;}},
+ {id:'hundred',n:'Nobody Stays',d:'Drive out 100 tenants',t:function(){return lifeFlees()>=100;}},
+ {id:'junior',n:'Badge Day',d:'Reach Junior Haunter',t:function(){return S.rank>=1;}},
+ {id:'regional',n:'Two Sites, One You',d:'Reach Regional Manager',t:function(){return S.rank>=5;}},
+ {id:'ceo',n:'Corner Office',d:'Reach CEO',t:function(){return S.rank>=8;}},
+ {id:'rooms',n:'Every Door Open',d:'Unlock all 8 rooms at Alder St',t:function(){var st=S.sites.alder;return st&&st.flees>=13;}},
+ {id:'full',n:'No Vacancy',d:'Fill every slot in every open room at one site',t:function(){for(var k in S.sites){var sd=siteDef(k),st=S.sites[k],ok=true,any=false;roomDefs(sd).forEach(function(r){if(!roomOpen(st,r))return;any=true;if((st.rooms[r.id]||[]).length<r.slots)ok=false;});if(any&&ok)return true;}return false;}},
+ {id:'ent1',n:'Staff of One',d:'Summon your first entity',t:function(){for(var k in S.sites)if(Object.keys(S.sites[k].ents).length)return true;return false;}},
+ {id:'ent5',n:'Full House',d:'Five entities at one site',t:function(){for(var k in S.sites)if(Object.keys(S.sites[k].ents).length>=5)return true;return false;}},
+ {id:'dopp',n:'Nothing Is Immune',d:'Summon a Doppelganger',t:function(){for(var k in S.sites)if(S.sites[k].ents.dopp)return true;return false;}},
+ {id:'branch',n:'Specialist',d:'Max out a skill branch',t:function(){return !!(S.skills.pr3||S.skills.dr3||S.skills.cn3);}},
+ {id:'allskills',n:'Know Everything',d:'Learn all nine company skills',t:function(){return Object.keys(S.skills).length>=9;}},
+ {id:'fix1',n:'Handyman',d:'Buy your first fix',t:function(){return S.stats.fixes>=1;}},
+ {id:'fix10',n:'Saboteur',d:'Buy 10 fixes',t:function(){return S.stats.fixes>=10;}},
+ {id:'sites3',n:'Regional Footprint',d:'Run three sites at once',t:function(){return Object.keys(S.sites).length>=3;}},
+ {id:'sites7',n:'The Whole Portfolio',d:'Run all seven sites',t:function(){return Object.keys(S.sites).length>=7;}},
+ {id:'priest',n:'Kind Eyes, Fast Feet',d:'Drive out a priest',t:function(){return tally('a priest')>=1;}},
+ {id:'rival',n:'Get Off My Attic',d:'Evict a rival ghost',t:function(){return tally('a rival ghost')>=1;}},
+ {id:'cult',n:'Not That Kind of Ghost',d:'Drive out the cult',t:function(){return tally('the cult')>=1;}},
+ {id:'captain',n:'Abandon Ship',d:'Make the captain leave',t:function(){return tally('the captain')>=1;}},
+ {id:'nobasement',n:'Never Went Down There',d:'Reach 20 reputation with an empty Alder St basement',t:function(){var st=S.sites.alder;return S.rep>=20&&st&&!(st.rooms.basement||[]).length;}},
+ {id:'owl',n:'Night Shift',d:'Come back to 1,000+ fear earned while away',t:function(){return !!S.offlineBig;}},
+ {id:'storm',n:'Storm Chaser',d:'Tap 50 times during events',t:function(){return (S.evTaps||0)>=50;}},
+ {id:'million',n:'Seven Figures',d:'Hold 1,000,000 fear at one site',t:function(){for(var k in S.sites)if(S.sites[k].fear>=1e6)return true;return false;}},
+ {id:'contract5',n:'Contractor',d:'Complete 5 HQ contracts',t:function(){return (S.stats.contracts||0)>=5;}},
+ {id:'syn1',n:'Better Together',d:'Activate any synergy',t:function(){for(var k in S.sites)for(var i=0;i<SYN.length;i++)if(synOn(S.sites[k],SYN[i]))return true;return false;}},
+ {id:'fr1',n:'Sold Out',d:'Franchise for the first time',t:function(){return S.franchise>=1;}},
+ {id:'fr3',n:'Serial Founder',d:'Franchise three times',t:function(){return S.franchise>=3;}},
+ {id:'leg10',n:'Living Legend',d:'Bank 10 Legends at once',t:function(){return S.legends>=10;}}
+];
+function lifeFlees(){return (S.lifetime?S.lifetime.flees:0)+S.stats.flees;}
+function tally(n){return (S.tally||{})[n]||0;}
+function checkAch(){if(!S.ach)S.ach={};var got=0;ACH.forEach(function(a){if(S.ach[a.id])return;var ok=false;try{ok=a.t();}catch(e){}if(ok){S.ach[a.id]=Date.now();S.ecto+=10;got++;chime();toast('\u2605 Trophy: '+a.n+' (+10 ecto)');}});if(got){save();renderWall();renderCo();}}
+function renderWall(){var n=Object.keys(S.ach||{}).length;$('wallcount').textContent=n+' / '+ACH.length+' trophies';var g=$('wall');g.innerHTML='';ACH.forEach(function(a){var u=!!(S.ach&&S.ach[a.id]);var d=document.createElement('div');d.className='trophy'+(u?' on':'');d.innerHTML='<div class="ti">'+(u?'\u2605':'\u2606')+'</div><div class="tn">'+a.n+'</div><div class="td">'+a.d+'</div>'+(u?'<div class="tdt">'+new Date(S.ach[a.id]).toLocaleDateString()+'</div>':'');g.appendChild(d);});}
+
+/* ---------- renders ---------- */
+function renderCo(){
+ $('rank').textContent=RANKS[S.rank].name;$('rep').textContent=S.rep;$('ecto').textContent=fmt(S.ecto);
+ var co=coFps();$('cofps').textContent=fmt(co);
+ var nx=RANKS[S.rank+1];
+ if(nx){var pr=asgProgress();var repPct=Math.min(1,S.rep/repReq(S.rank+1));$('promobar').style.width=(repPct*100)+'%';
+  $('promolabel').innerHTML=canPromote()?'<b>Promotion ready \u2014 see HQ</b>':'Next: '+nx.name+' \u00b7 rep '+S.rep+'/'+repReq(S.rank+1)+' \u00b7 task '+pr.txt;}
+ else{$('promobar').style.width='100%';$('promolabel').innerHTML='<b>CEO \u00b7 top of the ladder</b>';}
+ var pend=canPromote();for(var k in S.choices)if(S.choices[k]==='pending')pend=true;$('hqdot').textContent=pend?'\u25cf':'';
+ var sb=$('sites');sb.innerHTML='';var n=Object.keys(S.sites).length;sb.style.display=n>1?'flex':'none';
+ SITES.forEach(function(sd){if(!S.sites[sd.id])return;var b=document.createElement('button');b.className=sd.id===S.cur?'on':'';b.textContent=sd.name+' \u00b7 '+fmt(siteFps(sd,S.sites[sd.id]))+'/s';b.addEventListener('click',function(){if(sd.id!==S.cur){S.cur=sd.id;dispFear=S.sites[sd.id].fear;if(ev){clearTimeout(evT);ev=null;}renderAll();}});sb.appendChild(b);});
+}
+function renderTenant(){
+ var sd=curDef(),st=cur(),d=tenantDef(sd,st),c=ctrActive(sd,st);
+ $('tname').textContent=tenantName(sd,st);
+ var pct=Math.min(100,st.tprog/tenantNeed(sd,st)*100);$('tbar').style.width=pct+'%';$('tpct').textContent=Math.floor(pct)+'%';
+ var h='<span class="chip weak">Weak: '+TYPES[d.weak]+'</span>';
+ if(d.imm)h+='<span class="chip imm">Immune: '+TYPES[d.imm]+(entEff(st,'noimm',1)!==1?'\u2717':'')+'</span>';
+ if(c)h+='<span class="chip ctr">'+c.name+'</span>';
+ if(st.tloc)h+='<span class="chip here">In: '+roomById(sd,st.tloc).name+'</span>';
+ $('tchips').innerHTML=h;
+ var fb=$('fixbtn');if(c){fb.style.display='block';fb.textContent=c.fix+' \u00b7 '+fmt(fixCost(sd,st))+' fear';fb.style.opacity=st.fear>=fixCost(sd,st)?1:0.55;}else fb.style.display='none';
+ $('hauntval').textContent='+'+fmt(tapPower(sd,st,st.tloc))+' fear';
+}
+function renderRooms(){
+ var sd=curDef(),st=cur();var box=$('rooms');box.innerHTML='';var c=ctrActive(sd,st);
+ roomDefs(sd).forEach(function(r){
+  var open=roomOpen(st,r);var list=st.rooms[r.id]||[];var here=st.tloc===r.id;
+  var div=document.createElement('div');div.className='room'+(here?' here':'')+(open?'':' locked')+(open&&roomAfford(sd,st,r)?' afford':'');
+  var counts={};list.forEach(function(x){counts[x]=(counts[x]||0)+1;});
+  var hl=Object.keys(counts).map(function(x){return hauntById(x).name+(counts[x]>1?' \u00d7'+counts[x]:'');}).join(', ')||'Empty';
+  var ents=[];for(var e in st.ents)if(st.ents[e]===r.id)ents.push(entImg(e,'echip'));
+  var blocked=c&&c.type==='room'&&c.room===r.id;
+  div.innerHTML='<div class="rn"><span>'+r.name+'</span><span class="slot">'+(here?'<span class="heretag">TENANT</span>':'')+(ents.length?'<span class="echips">'+ents.join('')+'</span>':'')+list.length+'/'+r.slots+'</span></div><div class="raff">'+(open?'loves <b>'+TYPES[r.aff].toLowerCase()+'</b> \u00b7 '+fmt(roomFps(sd,st,r.id)*siteMult(st))+'/s'+(blocked?' \u00b7 BLOCKED':''):'opens after '+r.rep+' flee here')+'</div>'+(open?'<div class="rlist">'+(list.length?list.length+' technique'+(list.length>1?'s':''):'Empty')+'</div><button class="manage">'+(roomAfford(sd,st,r)?'Upgrade available':'Manage')+'</button>':'');
+  if(open)div.addEventListener('click',function(){openRoom(r.id);});
+  box.appendChild(div);
+ });
+}
+var curRoom=null,curSch='Ambience';
+function openRoom(rid){curRoom=rid;$('roompanel').classList.add('on');renderRoomPanel();}
+function renderRoomPanel(){
+ var sd=curDef(),st=cur(),r=roomById(sd,curRoom),list=st.rooms[r.id]||[],d=tenantDef(sd,st);
+ var h='<h2>'+r.name+'</h2><div style="font-size:12px;color:var(--mut);margin-bottom:10px">'+sd.name+' \u00b7 loves '+TYPES[r.aff].toLowerCase()+' (\u00d71.5) \u00b7 '+list.length+' of '+r.slots+' slots</div>';
+ var ents=[];for(var e in st.ents)if(st.ents[e]===r.id)ents.push(entById(e));
+ if(ents.length){h+='<div class="sec">Stationed here</div>';ents.forEach(function(en){h+='<div class="item own"><div class="r withpor"><span class="rl">'+entImg(en.id)+'<span class="nm">'+en.name+'</span></span></div><div class="d">'+en.desc+'</div></div>';});}
+ var others=[];for(var e2 in st.ents)if(st.ents[e2]!==r.id)others.push(entById(e2));
+ if(others.length){h+='<div class="sec">Move here</div>';others.forEach(function(en){h+='<button class="item can" data-mv="'+en.id+'"><div class="r withpor"><span class="rl">'+entImg(en.id)+'<span class="nm">'+en.name+'</span></span><span class="d">from '+roomById(sd,st.ents[en.id]).name+'</span></div></button>';});}
+ h+='<div class="sec">Installed</div>';
+ if(!list.length)h+='<div style="font-size:13px;color:var(--mut);margin-bottom:8px">Nothing yet.</div>';
+ list.forEach(function(hid,i){var x=hauntById(hid);h+='<button class="item own" data-rm="'+i+'"><div class="r"><span class="nm">'+x.name+'</span><span style="color:var(--bad);font-size:12px">Remove</span></div><div class="d">'+TYPES[x.type]+' \u00b7 '+fmt(x.fps*sd.out)+'/s base</div></button>';});
+ var SCH=['Ambience','Manifestation','Possession','Architecture'];
+ if(!curSch||S.rank<HAUNTS.filter(function(x){return x.sch===curSch;})[0].rank)curSch='Ambience';
+ h+='<div class="sec">Install</div><div class="schtabs">'+SCH.map(function(sc){var rk=HAUNTS.filter(function(x){return x.sch===sc;})[0].rank;return '<button data-sch="'+sc+'" class="'+(sc===curSch?'on':'')+(S.rank<rk?' lock':'')+'">'+sc+'</button>';}).join('')+'</div>';
+ [curSch].forEach(function(sch){
+  var hs=HAUNTS.filter(function(x){return x.sch===sch;});var rk=hs[0].rank;
+  if(S.rank<rk){h+='<div class="d" style="color:var(--mut);font-size:12px">Unlocks at '+RANKS[rk].name+'</div>';return;}
+  hs.forEach(function(x){var cost=costOf(sd,st,x);var can=st.fear>=cost&&list.length<r.slots;
+   var tag=(r.aff===x.type?' \u00b7 room bonus':'')+(d.weak===x.type?' \u00b7 tenant weak':'')+(d.imm===x.type?' \u00b7 tenant immune':'');
+   h+='<button class="item'+(can?' can buyfear':'')+'" data-add="'+x.id+'"><div class="r"><span class="nm">'+x.name+' <span style="color:var(--mut);font-weight:400;font-size:11px">'+TYPES[x.type]+'</span></span><span class="c">'+fmt(cost)+'</span></div><div class="d">'+x.desc+' \u00b7 +'+fmt(x.fps*sd.out)+'/s'+tag+'</div></button>';});
+ });
+ var body=$('roombody');body.innerHTML=h;
+ Array.prototype.forEach.call(body.querySelectorAll('[data-add]'),function(b){b.addEventListener('click',function(){var x=hauntById(b.getAttribute('data-add'));var l=st.rooms[r.id]||(st.rooms[r.id]=[]);var cost=costOf(sd,st,x);if(st.fear>=cost&&l.length<r.slots){st.fear-=cost;dispFear=st.fear;l.push(x.id);blip(440);if(S.contract&&S.contract.on&&S.contract.site===S.cur&&S.contract.k==='install'){S.contract.prog++;contractTick();}toast(x.name+' installed');save();renderAll();renderRoomPanel();}else if(l.length>=r.slots)toast('No slots left in this room');else toast('Not enough fear');});});
+ Array.prototype.forEach.call(body.querySelectorAll('[data-rm]'),function(b){b.addEventListener('click',function(){var i=+b.getAttribute('data-rm');var l=st.rooms[r.id];var x=hauntById(l[i]);l.splice(i,1);st.fear+=Math.floor(costOf(sd,st,x)*0.5);dispFear=st.fear;toast(x.name+' removed, half refunded');save();renderAll();renderRoomPanel();});});
+ Array.prototype.forEach.call(body.querySelectorAll('[data-sch]'),function(b){b.addEventListener('click',function(){curSch=b.getAttribute('data-sch');renderRoomPanel();});});
+ Array.prototype.forEach.call(body.querySelectorAll('[data-mv]'),function(b){b.addEventListener('click',function(){st.ents[b.getAttribute('data-mv')]=r.id;toast('Moved');save();renderAll();renderRoomPanel();});});
+}
+$('rclose').addEventListener('click',function(){$('roompanel').classList.remove('on');});
+function pickRoom(title,cb){var sd=curDef(),st=cur();$('picktitle').textContent=title;var l=$('picklist');l.innerHTML='';roomDefs(sd).forEach(function(r){if(!roomOpen(st,r))return;var b=document.createElement('button');b.className='pick';b.innerHTML=r.name+' <span style="font-size:12px;color:var(--mut);font-weight:400">loves '+TYPES[r.aff].toLowerCase()+'</span>';b.addEventListener('click',function(){$('pickpanel').classList.remove('on');cb(r.id);});l.appendChild(b);});$('pickpanel').classList.add('on');}
+$('pclose').addEventListener('click',function(){$('pickpanel').classList.remove('on');});
+function renderStaff(){
+ var sd=curDef(),st=cur();
+ var sy=$('syns');sy.innerHTML='';
+ SYN.forEach(function(x){var on=synOn(st,x);var d=document.createElement('div');d.className='item'+(on?' own':'');d.style.opacity=on?1:.6;d.innerHTML='<div class="r"><span class="nm">'+x.n+'</span><span class="'+(on?'e':'d')+'">'+(on?'Active':'Needs '+x.need.map(function(i){return entById(i).name;}).filter(function(n,i){return !st.ents[x.need[i]];}).join(' + '))+'</span></div><div class="d">'+x.d+'</div>';sy.appendChild(d);});
+ var eb=$('ents');eb.innerHTML='';var any=false;
+ for(var e in st.ents){any=true;var en=entById(e);var d=document.createElement('div');d.className='item own';d.innerHTML='<div class="r withpor"><span class="rl">'+entImg(e)+'<span class="nm">'+en.name+'</span></span><span class="d">'+roomById(sd,st.ents[e]).name+'</span></div><div class="d">'+en.desc+'</div>';eb.appendChild(d);}
+ if(!any)eb.innerHTML='<div style="font-size:13px;color:var(--mut)">Nobody yet. Summon one below.</div>';
+ var sb=$('summon');sb.innerHTML='';
+ ENTS.forEach(function(en){var own=!!st.ents[en.id];var locked=S.rank<en.rank;var can=!own&&!locked&&S.ecto>=en.cost;var b=document.createElement('button');b.className='item'+(own?' own':(can?' can':''));b.innerHTML='<div class="r withpor"><span class="rl">'+entImg(en.id)+'<span class="nm">'+en.name+'</span></span><span class="e">'+(own?'Here':locked?RANKS[en.rank].name:en.cost+' ecto')+'</span></div><div class="d">'+en.desc+'</div>';if(!own&&!locked)b.addEventListener('click',function(){if(S.ecto<en.cost){toast('Need '+en.cost+' ectoplasm');return;}pickRoom('Station the '+en.name.toLowerCase()+' where?',function(rid){S.ecto-=en.cost;st.ents[en.id]=rid;chime();toast(en.name+' summoned');save();renderAll();});});sb.appendChild(b);});
+ var sk=$('skills');sk.innerHTML='';
+ ['Presence','Dread','Cunning'].forEach(function(br){sk.insertAdjacentHTML('beforeend','<div class="sec" style="margin-top:6px">'+br+'</div>');SKILLS.filter(function(s){return s.br===br;}).forEach(function(s){var own=!!S.skills[s.id];var locked=s.req&&!S.skills[s.req];var can=!own&&!locked&&st.fear>=s.cost;var b=document.createElement('button');b.className='item'+(own?' own':(can?' can buyfear':''));b.innerHTML='<div class="r"><span class="nm">'+s.name+'</span><span class="c">'+(own?'Learned':locked?'Locked':fmt(s.cost)+' fear')+'</span></div><div class="d">'+s.desc+' (company-wide)</div>';if(!own&&!locked)b.addEventListener('click',function(){if(st.fear>=s.cost){st.fear-=s.cost;dispFear=st.fear;S.skills[s.id]=1;blip(560);toast(s.name+' learned');save();renderAll();}else toast('Not enough fear at this site');});sk.appendChild(b);});});
+}
+function renderHQ(){
+ var fbx=$('franchise');fbx.innerHTML='';
+ var g=legendGain();
+ var fs=document.createElement('div');fs.className='story';
+ fs.innerHTML='<div class="w">Franchise #'+(S.franchise+1)+' \u00b7 '+S.legends+' Legend'+(S.legends===1?'':'s')+' banked</div><div>Sell the company to HQ and start a new franchise. Everything resets except your Legends and perks. Each franchise multiplies fear output \u00d71.3 and tenant courage \u00d71.2.</div><div style="font-size:12px;color:var(--mut);margin-top:6px">Every 12 reputation = 1 Legend. Now: '+S.rep+' rep \u2192 <b style="color:var(--good)">'+g+'</b> Legend'+(g===1?'':'s')+'.'+(S.lifetime.runs?' Lifetime: '+S.lifetime.runs+' run'+(S.lifetime.runs===1?'':'s')+', '+(S.lifetime.flees+S.stats.flees)+' tenants driven out.':'')+'</div>';
+ var fb=document.createElement('button');fb.className=g>=1?'promo':'item';fb.style.marginTop='8px';fb.style.width='100%';fb.textContent=g>=1?'\u2605 Franchise now for '+g+' Legend'+(g===1?'':'s'):'Franchise unlocks at 12 reputation';
+ if(g>=1)fb.addEventListener('click',function(){if(confirm('Sell the company for '+g+' Legend'+(g===1?'':'s')+'? Sites, rank, ectoplasm, and skills reset. Legends and perks stay.')){chime();franchise();}});
+ fs.appendChild(fb);fbx.appendChild(fs);
+ PERKS.forEach(function(pk){var l=perk(pk.id);var maxed=l>=pk.max;var c=maxed?0:pk.cost(l);var can=!maxed&&S.legends>=c;var b=document.createElement('button');b.className='item'+(maxed?' own':(can?' can':''));b.innerHTML='<div class="r"><span class="nm">'+pk.name+' <span style="color:var(--mut);font-weight:400;font-size:11px">'+l+'/'+pk.max+'</span></span><span class="e">'+(maxed?'Maxed':c+' Legend'+(c===1?'':'s'))+'</span></div><div class="d">'+pk.desc+'</div>';if(can)b.addEventListener('click',function(){S.legends-=c;S.perks[pk.id]=l+1;chime();toast(pk.name+' level '+(l+1));save();renderAll();});fbx.appendChild(b);});
+ var p=$('promo');p.innerHTML='';
+ if(canPromote()){var b=document.createElement('button');b.className='promo';b.textContent='\u2191 Accept promotion to '+RANKS[S.rank+1].name;b.addEventListener('click',function(){chime();promote();});p.appendChild(b);}
+ var nx=RANKS[S.rank+1];
+ $('rankbox').innerHTML='<div class="t">'+RANKS[S.rank].name+(S.franchise?' \u00b7 Franchise #'+(S.franchise+1):'')+'</div><div style="font-size:13px;color:var(--mut)">'+(nx?'Next: '+nx.name+' at '+repReq(S.rank+1)+' reputation (you have '+S.rep+') plus the assignment below.':'Top of the ladder. Everything below you is screaming.')+'</div><div style="font-size:12px;color:var(--mut);margin-top:6px">Permanent: tap \u00d7'+S.perm.tap.toFixed(2)+', passive \u00d7'+S.perm.pas.toFixed(2)+', events \u00d7'+S.perm.evc+', ecto \u00d7'+S.perm.ecto+'</div>';
+ var a=RANKS[S.rank].asg;var pr=asgProgress();
+ $('assign').innerHTML=a?'<div class="t">'+a.t+'</div><div style="color:'+(pr.done?'var(--good)':'var(--mut)')+'">'+pr.txt+(pr.done?' \u00b7 complete':'')+'</div>':'<div class="t">None</div>';
+ var sl=$('sitelist');sl.innerHTML='';
+ SITES.forEach(function(sd){var st=S.sites[sd.id];var d=document.createElement('div');d.className='item'+(st?' own':'');d.innerHTML='<div class="r withpor"><span class="rl"><img class="sthumb" src="'+ART+'site-'+sd.id+'.jpg" alt="" onerror="this.style.display=\'none\'"><span class="nm">'+sd.name+'</span></span><span class="d">'+(st?fmt(siteFps(sd,st))+'/s \u00b7 '+st.flees+' fled':'unlocks at '+RANKS[sd.rank].name)+'</span></div><div class="d">output \u00d7'+fmt(sd.out)+' \u00b7 '+sd.rooms.length+' rooms \u00b7 '+sd.tenants.length+' tenant types</div>';sl.appendChild(d);});
+ var mb=$('memos');mb.innerHTML='';
+ CHOICES.slice().reverse().forEach(function(c){var stt=S.choices[c.rank];if(stt===undefined)return;var d=document.createElement('div');d.className='story';var h='<div class="w">Decision \u00b7 '+RANKS[c.rank].name+'</div><div class="t">'+c.t+'</div><div>'+c.txt+'</div>';if(stt==='pending')c.ch.forEach(function(x,i){h+='<button data-ch="'+i+'">'+x.l+'</button>';});else h+='<div style="font-size:12px;color:var(--good);margin-top:6px">You chose: '+c.ch[stt].l+'</div>';d.innerHTML=h;Array.prototype.forEach.call(d.querySelectorAll('[data-ch]'),function(btn){btn.addEventListener('click',function(){var i=+btn.getAttribute('data-ch');c.ch[i].fn();S.choices[c.rank]=i;chime();save();renderAll();});});mb.appendChild(d);});
+ for(var i=S.rank;i>=0;i--){if(!S.memos[i])continue;var d2=document.createElement('div');d2.className='story';d2.innerHTML='<div class="w">Memo \u00b7 '+RANKS[i].name+'</div><div>'+RANKS[i].memo+'</div>';mb.appendChild(d2);}
+}
+function renderAll(){applyTheme();renderCo();renderTenant();renderRooms();renderStaff();renderHQ();renderWall();}
+
+/* ---------- interaction ---------- */
+function doHaunt(){
+ var sd=curDef(),st=cur();
+ if(!st.tloc)moveTenant(sd,st);
+ var before=st.flees;
+ var n=tapPower(sd,st,st.tloc);
+ if(ev&&ev.site===S.cur)S.evTaps=(S.evTaps||0)+1;
+ addFear(sd,st,n);dispFear=st.fear;
+ if(S.contract&&S.contract.on&&S.contract.site===S.cur){if(S.contract.k==='taps')S.contract.prog++;if(S.contract.k==='fear')S.contract.prog+=n;contractTick();}
+ var btn=$('bighaunt');punch(btn);
+ var rect=btn.getBoundingClientRect(),app=$('app').getBoundingClientRect();
+ var x=rect.left-app.left+rect.width/2+(Math.random()*40-20),y=rect.top-app.top+10;
+ floatNum(x,y,'+'+fmt(n),'#efe9f6');
+ particles(x,y+8,[curDef().theme.a,'#37d6c2','#ff9552'],4);
+ blip(300);vib(8);
+ if(st.flees>before||FLED){FLED=false;chime();shake();vib([12,30,12]);particles(x,y,[curDef().theme.a,'#37d6c2','#ff9552','#ffffff'],14);}
+ renderTenant();
+}
+var bh=$('bighaunt');
+bh.addEventListener('pointerdown',function(e){e.preventDefault();initAudio();if(AC&&AC.state==='suspended')AC.resume();doHaunt();});
+$('fixbtn').addEventListener('click',function(){var sd=curDef(),st=cur(),c=ctrActive(sd,st);if(!c)return;var cost=fixCost(sd,st);if(st.fear>=cost){st.fear-=cost;dispFear=st.fear;st.fixed[st.tenant]=1;S.stats.fixes+=1;blip(500);toast(c.fix+'. '+c.name+' is gone.');save();renderAll();}else toast('Not enough fear');});
+Array.prototype.forEach.call(document.querySelectorAll('.tabs button'),function(b){b.addEventListener('click',function(){Array.prototype.forEach.call(document.querySelectorAll('.tabs button'),function(x){x.classList.remove('on');});b.classList.add('on');Array.prototype.forEach.call(document.querySelectorAll('.page'),function(p){p.classList.remove('on');});$('p-'+b.getAttribute('data-p')).classList.add('on');$('scroll').scrollTop=0;$('scroll').className=b.getAttribute('data-p')==='site'?'map':'';renderAll();});});
+$('ver').addEventListener('click',function(){toast('Haunt Inc. v4.6 \u00b7 Sep 12 2026');});
+Array.prototype.forEach.call(document.querySelectorAll('.subtabs button'),function(b){b.addEventListener('click',function(){Array.prototype.forEach.call(document.querySelectorAll('.subtabs button'),function(x){x.classList.remove('on');});b.classList.add('on');['crew','skills','syn'].forEach(function(k){$('st-'+k).style.display=k===b.getAttribute('data-st')?'block':'none';});});});
+$('shelfbtn').addEventListener('click',function(){location.href='../';});
+$('gear').addEventListener('click',function(){$('setpanel').classList.add('on');});
+$('sclose').addEventListener('click',function(){$('setpanel').classList.remove('on');});
+function syncTogs(){$('togSound').className='tog'+(soundOn?' on':'');$('togMotion').className='tog'+(motionOn?' on':'');}
+$('togSound').addEventListener('click',function(){soundOn=!soundOn;S.settings.sound=soundOn;if(soundOn){initAudio();if(AC&&AC.state==='suspended')AC.resume();blip(440);}save();syncTogs();});
+$('togMotion').addEventListener('click',function(){motionOn=!motionOn;S.settings.motion=motionOn;save();syncTogs();});
+syncTogs();
+$('reset').addEventListener('click',function(){if(confirm('Resign from Haunt Inc. and lose everything?')){localStorage.removeItem(KEY);location.reload();}});
+
+/* ---------- offline ---------- */
+(function offline(){var gap=(Date.now()-(S.last||Date.now()))/1000;if(gap>60){gap=Math.min(gap,8*3600);var tot=0;for(var k in S.sites){var sd=siteDef(k),st=S.sites[k];var g=siteFps(sd,st)*gap*0.5;if(g>0){addFear(sd,st,g);tot+=g;}}FLED=false;dispFear=cur().fear;if(tot>=1000)S.offlineBig=1;if(tot>0)setTimeout(function(){toast('While you were away: +'+fmt(tot)+' fear (half rate, 8h cap)');},500);}})();
+
+/* ---------- loops ---------- */
+var last=Date.now(),lastFrame=Date.now();
+setInterval(function(){
+ var now=Date.now(),dt=(now-last)/1000;last=now;var moved=false;
+ for(var k in S.sites){var sd=siteDef(k),st=S.sites[k];
+  if(!st.tloc||now-st.tmove>20000){moveTenant(sd,st);if(k===S.cur)moved=true;}
+  var g=siteFps(sd,st)*dt;if(g>0){addFear(sd,st,g);if(S.contract&&S.contract.on&&S.contract.site===k&&S.contract.k==='fear')S.contract.prog+=g;}
+  var c=ctrActive(sd,st);if(c&&c.type==='drain'&&st.fear>0)st.fear-=st.fear*c.mult*dt;
+ }
+ contractTick();if(S.contract&&S.contract.on)renderContract();
+ if(FLED){FLED=false;chime();shake();}
+ if(moved){renderRooms();renderTenant();}
+},200);
+/* smooth frame loop: count-up + particles + shine */
+function frame(){var now=Date.now(),dt=Math.min(0.05,(now-lastFrame)/1000);lastFrame=now;
+ var st=cur();dispFear+=(st.fear-dispFear)*Math.min(1,dt*8);if(Math.abs(st.fear-dispFear)<0.5)dispFear=st.fear;
+ $('fear').textContent=fmt(dispFear);
+ $('fps').textContent=fmt(siteFps(curDef(),st));
+ var pct=Math.min(100,st.tprog/tenantNeed(curDef(),st)*100);$('tbar').style.width=pct+'%';$('tpct').textContent=Math.floor(pct)+'%';
+ stepParts(dt);
+ requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+setInterval(function(){renderCo();renderRooms();if($('p-staff').classList.contains('on'))renderStaff();if($('p-hq').classList.contains('on'))renderHQ();},2000);
+setInterval(save,3000);
+setInterval(checkAch,2000);
+setInterval(function(){if(!S.contract&&S.rank>=1&&Math.random()<0.5)offerContract();},40000);
+renderContract();
+setInterval(function(){var st=cur();if(!ev&&st.total>30&&Math.random()<0.2*entEff(st,'evc',1)*S.perm.evc)startEvent();},15000);
+/* shine sweep */
+setInterval(function(){var s=$('shine');if(!motionOn)return;s.style.transition='none';s.style.left='-40%';void s.offsetWidth;s.style.transition='left 0.9s ease-in-out';s.style.left='120%';},3600);
+renderAll();
+/* ---------- PWA ---------- */
+/* shelf build: the Game Shelf service worker controls this folder; no local sw */
+var deferredPrompt=null;
+$('installbtn').addEventListener('click',function(){if(!deferredPrompt)return;deferredPrompt.prompt();deferredPrompt.userChoice.then(function(){deferredPrompt=null;$('installbtn').style.display='none';});});
+})();
+</script>
+</body>
+</html>
