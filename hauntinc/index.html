@@ -187,13 +187,14 @@ button{font-family:inherit;color:inherit;cursor:pointer;border:0;background:none
 .shake{animation:shk .35s cubic-bezier(.36,.07,.19,.97)}
 @keyframes shk{10%{transform:translate(-2px,1px)}30%{transform:translate(3px,-2px)}50%{transform:translate(-3px,2px)}70%{transform:translate(2px,-1px)}90%{transform:translate(-1px,1px)}}
 @media (prefers-reduced-motion:reduce){.shake{animation:none}.promo{animation:none}#bighaunt .shine{display:none}}
+.setbtn{width:100%;padding:11px;background:var(--card2);border:1px solid var(--purpledim);border-radius:10px;font-size:13px;font-weight:600;margin-bottom:8px}
 .reset{font-size:11px;color:var(--mut);border:1px solid var(--line);padding:5px 10px;border-radius:8px;margin:16px 0 4px}
 </style>
 </head>
 <body>
 <div id="app">
  <div id="hud">
-  <div class="hrow1"><span class="brand">HAUNT&nbsp;INC.</span><div class="hicons"><button id="shelfbtn">⌂ Shelf</button><button id="gear">Settings</button><button id="ver">v4.6</button></div></div>
+  <div class="hrow1"><span class="brand">HAUNT&nbsp;INC.</span><div class="hicons"><button id="shelfbtn">⌂ Shelf</button><button id="gear">Settings</button><button id="ver">v4.7</button></div></div>
   <div class="pills">
    <div class="pill rank"><div class="l">Rank</div><div class="v" id="rank">Trainee</div></div>
    <div class="pill rep"><div class="l">Reputation</div><div class="v" id="rep">0</div></div>
@@ -250,7 +251,9 @@ button{font-family:inherit;color:inherit;cursor:pointer;border:0;background:none
   <div class="setrow"><span>Sound</span><div class="tog" id="togSound"></div></div>
   <div class="setrow"><span>Motion &amp; shake</span><div class="tog" id="togMotion"></div></div>
   <button class="promo" id="installbtn" style="display:none">Install Haunt Inc. on this phone</button>
-  <div style="font-size:12px;color:var(--mut);line-height:1.5;margin-top:10px">Haunt Inc. v4.6 &middot; Sep 12 2026. Progress saves on this device. Tap HAUNT to scare the current tenant; drive them out for reputation and ectoplasm. Promotions unlock entities, techniques, and new sites. Franchise at HQ to bank Legends and buy permanent perks. Trophies on the Wall pay 10 ectoplasm each. HQ contracts appear from Junior Haunter on.</div>
+  <div style="margin-top:10px"><button class="setbtn" id="backupbtn">Back up my game (copy code)</button><button class="setbtn" id="restorebtn">Restore from a code</button></div>
+  <div id="bkmsg" style="font-size:12px;color:var(--mut);margin-top:8px;word-break:break-all"></div>
+  <div style="font-size:12px;color:var(--mut);line-height:1.5;margin-top:10px">Haunt Inc. v4.7 &middot; Sep 12 2026. Progress saves on this device. Tap HAUNT to scare the current tenant; drive them out for reputation and ectoplasm. Promotions unlock entities, techniques, and new sites. Franchise at HQ to bank Legends and buy permanent perks. Trophies on the Wall pay 10 ectoplasm each. HQ contracts appear from Junior Haunter on.</div>
  </div>
  <div id="toast"></div>
 </div>
@@ -384,9 +387,47 @@ var CHOICES=[
 var S=null;
 function freshSite(){return {fear:0,total:0,tenant:0,tprog:0,fixed:{},rooms:{},tloc:null,tmove:0,ents:{},flees:0};}
 function fresh(){return {rank:0,rep:0,ecto:0,cur:'alder',sites:{alder:freshSite()},skills:{},perm:{tap:1,pas:1,evc:1,ecto:1},memos:{0:1},choices:{},stats:{flees:0,fixes:0},last:Date.now(),legends:0,perks:{},franchise:0,lifetime:{flees:0,rep:0,runs:0}};}
-try{var raw=localStorage.getItem(KEY);S=raw?JSON.parse(raw):fresh();}catch(e){S=fresh();}
+var BKEYS=[KEY+'_b1',KEY+'_b2',KEY+'_b3'];
+function score(o){if(!o||typeof o!=='object')return -1;var t=(o.rep||0)*1000+(o.rank||0)*500+(o.legends||0)*300;for(var k in (o.sites||{})){var st=o.sites[k];t+=(st.flees||0)*10+(st.total||0)/1000;}return t;}
+function readSlot(k){try{var r=localStorage.getItem(k);if(!r)return null;var o=JSON.parse(r);if(!o||typeof o!=='object'||!o.sites)return null;return o;}catch(e){return null;}}
+var LOADFAIL=false;
+(function loadBest(){
+ var main=readSlot(KEY);var best=main,bestFrom='main',bestScore=score(main);
+ for(var i=0;i<BKEYS.length;i++){var b=readSlot(BKEYS[i]);var sc=score(b);if(sc>bestScore){best=b;bestScore=sc;bestFrom=BKEYS[i];}}
+ if(best){S=best;
+  if(main&&bestFrom!=='main'&&score(main)<bestScore)LOADFAIL=true;
+  // snapshot the loaded-good state into b1 right now, so a later corrupt main always recovers to at least this
+  try{localStorage.setItem(BKEYS[0],JSON.stringify(best));}catch(e){}
+ } else if(localStorage.getItem(KEY)!==null||localStorage.getItem(BKEYS[0])!==null){
+  // something exists but nothing parsed as valid: DO NOT start fresh over it, block saving so a human can recover
+  LOADFAIL=true;S=fresh();
+ } else {S=fresh();}
+})();
 (function(){var b=fresh();for(var k in b)if(S[k]===undefined)S[k]=b[k];if(S.perm.ecto===undefined)S.perm.ecto=1;})();
-function save(){S.last=Date.now();try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+var SAVE_BLOCKED=false;
+function save(){
+ if(SAVE_BLOCKED)return;
+ // guard: never let an in-memory state that is far worse than what's on disk overwrite a good save
+ try{
+  var disk=readSlot(KEY);
+  if(disk&&score(disk)>score(S)+1){
+   // memory looks reset vs a healthy disk save. Do not overwrite. Recover from disk instead.
+   S=disk;SAVE_BLOCKED=true;setTimeout(function(){SAVE_BLOCKED=false;},50);
+   if(typeof toast==='function')toast('Recovered your save. If anything looks off, use Back up in Settings.');
+   if(typeof renderAll==='function')renderAll();
+   return;
+  }
+ }catch(e){}
+ if(LOADFAIL){LOADFAIL=false;} // first successful real save clears the flag once we know S is the good state
+ S.last=Date.now();
+ try{
+  var str=JSON.stringify(S);
+  // rotate backups: b3<-b2<-b1<-current main, only when current is valid and healthy
+  var cur=localStorage.getItem(KEY);
+  if(cur){localStorage.setItem(BKEYS[2],localStorage.getItem(BKEYS[1])||'');localStorage.setItem(BKEYS[1],localStorage.getItem(BKEYS[0])||'');localStorage.setItem(BKEYS[0],cur);}
+  localStorage.setItem(KEY,str);
+ }catch(e){}
+}
 var PERKS=[
  {id:'legacy',name:'Dread Legacy',desc:'All fear \u00d71.25 per level, forever',max:5,cost:function(l){return l+1;}},
  {id:'vein',name:'Ecto Vein',desc:'+50% ectoplasm per flee, per level',max:3,cost:function(l){return 2+l*2;}},
@@ -735,7 +776,7 @@ var bh=$('bighaunt');
 bh.addEventListener('pointerdown',function(e){e.preventDefault();initAudio();if(AC&&AC.state==='suspended')AC.resume();doHaunt();});
 $('fixbtn').addEventListener('click',function(){var sd=curDef(),st=cur(),c=ctrActive(sd,st);if(!c)return;var cost=fixCost(sd,st);if(st.fear>=cost){st.fear-=cost;dispFear=st.fear;st.fixed[st.tenant]=1;S.stats.fixes+=1;blip(500);toast(c.fix+'. '+c.name+' is gone.');save();renderAll();}else toast('Not enough fear');});
 Array.prototype.forEach.call(document.querySelectorAll('.tabs button'),function(b){b.addEventListener('click',function(){Array.prototype.forEach.call(document.querySelectorAll('.tabs button'),function(x){x.classList.remove('on');});b.classList.add('on');Array.prototype.forEach.call(document.querySelectorAll('.page'),function(p){p.classList.remove('on');});$('p-'+b.getAttribute('data-p')).classList.add('on');$('scroll').scrollTop=0;$('scroll').className=b.getAttribute('data-p')==='site'?'map':'';renderAll();});});
-$('ver').addEventListener('click',function(){toast('Haunt Inc. v4.6 \u00b7 Sep 12 2026');});
+$('ver').addEventListener('click',function(){toast('Haunt Inc. v4.7 \u00b7 Sep 12 2026');});
 Array.prototype.forEach.call(document.querySelectorAll('.subtabs button'),function(b){b.addEventListener('click',function(){Array.prototype.forEach.call(document.querySelectorAll('.subtabs button'),function(x){x.classList.remove('on');});b.classList.add('on');['crew','skills','syn'].forEach(function(k){$('st-'+k).style.display=k===b.getAttribute('data-st')?'block':'none';});});});
 $('shelfbtn').addEventListener('click',function(){location.href='../';});
 $('gear').addEventListener('click',function(){$('setpanel').classList.add('on');});
@@ -744,7 +785,9 @@ function syncTogs(){$('togSound').className='tog'+(soundOn?' on':'');$('togMotio
 $('togSound').addEventListener('click',function(){soundOn=!soundOn;S.settings.sound=soundOn;if(soundOn){initAudio();if(AC&&AC.state==='suspended')AC.resume();blip(440);}save();syncTogs();});
 $('togMotion').addEventListener('click',function(){motionOn=!motionOn;S.settings.motion=motionOn;save();syncTogs();});
 syncTogs();
-$('reset').addEventListener('click',function(){if(confirm('Resign from Haunt Inc. and lose everything?')){localStorage.removeItem(KEY);location.reload();}});
+$('backupbtn').addEventListener('click',function(){try{var code=btoa(unescape(encodeURIComponent(JSON.stringify(S))));$('bkmsg').textContent='';var ta=document.createElement('textarea');ta.value=code;document.body.appendChild(ta);ta.select();var ok=false;try{ok=document.execCommand('copy');}catch(e){}document.body.removeChild(ta);if(navigator.clipboard){navigator.clipboard.writeText(code).then(function(){},function(){});}$('bkmsg').textContent=ok?'Backup code copied. Paste it somewhere safe (a note to yourself).':'Copy this code and save it: '+code;}catch(e){$('bkmsg').textContent='Could not make a code.';}});
+$('restorebtn').addEventListener('click',function(){var code=prompt('Paste your backup code:');if(!code)return;try{var o=JSON.parse(decodeURIComponent(escape(atob(code.trim()))));if(!o||!o.sites)throw 0;if(score(o)<score(S)&&!confirm('That code looks like less progress than your current game. Restore anyway?'))return;localStorage.setItem(KEY,JSON.stringify(o));SAVE_BLOCKED=false;LOADFAIL=false;toast('Save restored.');setTimeout(function(){location.reload();},400);}catch(e){$('bkmsg').textContent='That code was not valid.';}});
+$('reset').addEventListener('click',function(){if(confirm('Resign from Haunt Inc. and lose everything?')){if(confirm('Really? This cannot be undone. Consider Back up first.')){localStorage.removeItem(KEY);localStorage.removeItem(BKEYS[0]);localStorage.removeItem(BKEYS[1]);localStorage.removeItem(BKEYS[2]);location.reload();}}});
 
 /* ---------- offline ---------- */
 (function offline(){var gap=(Date.now()-(S.last||Date.now()))/1000;if(gap>60){gap=Math.min(gap,8*3600);var tot=0;for(var k in S.sites){var sd=siteDef(k),st=S.sites[k];var g=siteFps(sd,st)*gap*0.5;if(g>0){addFear(sd,st,g);tot+=g;}}FLED=false;dispFear=cur().fear;if(tot>=1000)S.offlineBig=1;if(tot>0)setTimeout(function(){toast('While you were away: +'+fmt(tot)+' fear (half rate, 8h cap)');},500);}})();
@@ -781,6 +824,7 @@ setInterval(function(){var st=cur();if(!ev&&st.total>30&&Math.random()<0.2*entEf
 /* shine sweep */
 setInterval(function(){var s=$('shine');if(!motionOn)return;s.style.transition='none';s.style.left='-40%';void s.offsetWidth;s.style.transition='left 0.9s ease-in-out';s.style.left='120%';},3600);
 renderAll();
+if(LOADFAIL){setTimeout(function(){if(typeof toast==='function')toast('Your latest save could not be read. Playing from the best backup we found. Use Back up in Settings to be safe.');},600);}
 /* ---------- PWA ---------- */
 /* shelf build: the Game Shelf service worker controls this folder; no local sw */
 var deferredPrompt=null;
