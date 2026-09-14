@@ -89,6 +89,18 @@ button{font-family:inherit;color:inherit;cursor:pointer;border:0;background:none
 .item.own .por,.item.can .por{border-color:var(--teal)}
 .echips{display:inline-flex;gap:2px;vertical-align:middle;margin-right:4px}
 .echip{width:18px;height:18px;border-radius:50%;object-fit:cover;border:1.5px solid var(--teal);background:#000}
+.bosswrap{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.bossport{width:52px;height:52px;border-radius:12px;object-fit:cover;flex:0 0 auto;border:2px solid var(--orange);background:#140f1b}
+.bosssil{width:52px;height:52px;border-radius:12px;flex:0 0 auto;border:2px solid var(--orange);background:radial-gradient(circle at 50% 38%,#2a2035,#140f1b);display:flex;align-items:center;justify-content:center;font-size:26px}
+.bossmeta{min-width:0}
+.bosslabel{font-size:9px;letter-spacing:1px;color:var(--orange);font-weight:800;text-transform:uppercase}
+.bossname{font-size:15px;font-weight:800;line-height:1.1}
+.bossblurb{font-size:10.5px;color:var(--mut);line-height:1.25}
+.tbar.boss div{background:linear-gradient(90deg,#ff9552,#ff6a2a)!important}
+.bosstimer{color:var(--warn);font-weight:700}
+.rivalbar{height:5px;background:var(--card3);border-radius:99px;overflow:hidden;margin:0 0 6px}
+.rivalbar div{height:100%;background:#e07a7a;width:0}
+.sites button.bosson{border-color:var(--orange);box-shadow:0 0 8px rgba(255,149,82,.5)}
 .sthumb{width:64px;height:40px;object-fit:cover;border-radius:6px;flex:0 0 auto;border:1px solid var(--line)}
 /* SCROLL */
 #scroll{flex:1 1 auto;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding:10px 12px 14px;min-height:0}
@@ -194,7 +206,7 @@ button{font-family:inherit;color:inherit;cursor:pointer;border:0;background:none
 <body>
 <div id="app">
  <div id="hud">
-  <div class="hrow1"><span class="brand">HAUNT&nbsp;INC.</span><div class="hicons"><button id="shelfbtn">⌂ Shelf</button><button id="gear">Settings</button><button id="ver">v4.7</button></div></div>
+  <div class="hrow1"><span class="brand">HAUNT&nbsp;INC.</span><div class="hicons"><button id="shelfbtn">⌂ Shelf</button><button id="gear">Settings</button><button id="ver">v4.8</button></div></div>
   <div class="pills">
    <div class="pill rank"><div class="l">Rank</div><div class="v" id="rank">Trainee</div></div>
    <div class="pill rep"><div class="l">Reputation</div><div class="v" id="rep">0</div></div>
@@ -230,6 +242,8 @@ button{font-family:inherit;color:inherit;cursor:pointer;border:0;background:none
   <div id="event" class="event" style="display:none"></div>
   <div id="contract" class="contract" style="display:none"></div>
   <div id="log" style="display:none"></div>
+  <div id="bossbox" style="display:none"></div>
+  <div class="rivalbar" id="rivalbar" style="display:none"><div></div></div>
   <div class="tchips" id="tchips"></div>
   <div class="tline"><span class="tn" id="tname"></span><span class="tp" id="tpct">0%</span></div>
   <div class="tbar"><div id="tbar"></div></div>
@@ -253,7 +267,7 @@ button{font-family:inherit;color:inherit;cursor:pointer;border:0;background:none
   <button class="promo" id="installbtn" style="display:none">Install Haunt Inc. on this phone</button>
   <div style="margin-top:10px"><button class="setbtn" id="backupbtn">Back up my game (copy code)</button><button class="setbtn" id="restorebtn">Restore from a code</button></div>
   <div id="bkmsg" style="font-size:12px;color:var(--mut);margin-top:8px;word-break:break-all"></div>
-  <div style="font-size:12px;color:var(--mut);line-height:1.5;margin-top:10px">Haunt Inc. v4.7 &middot; Sep 12 2026. Progress saves on this device. Tap HAUNT to scare the current tenant; drive them out for reputation and ectoplasm. Promotions unlock entities, techniques, and new sites. Franchise at HQ to bank Legends and buy permanent perks. Trophies on the Wall pay 10 ectoplasm each. HQ contracts appear from Junior Haunter on.</div>
+  <div style="font-size:12px;color:var(--mut);line-height:1.5;margin-top:10px">Haunt Inc. v4.8 &middot; Sep 12 2026. Progress saves on this device. Tap HAUNT to scare the current tenant; drive them out for reputation and ectoplasm. Promotions unlock entities, techniques, and new sites. Franchise at HQ to bank Legends and buy permanent perks. Trophies on the Wall pay 10 ectoplasm each. HQ contracts appear from Junior Haunter on.</div>
  </div>
  <div id="toast"></div>
 </div>
@@ -447,6 +461,64 @@ var SYN=[
 function synOn(st,sy){for(var i=0;i<sy.need.length;i++)if(!st.ents[sy.need[i]])return false;return true;}
 function synEff(st,key,def){var v=def;SYN.forEach(function(sy){if(synOn(st,sy)&&sy.eff[key]!==undefined)v*=sy.eff[key];});return v;}
 function synType(st,type){var v=1;SYN.forEach(function(sy){if(synOn(st,sy)&&sy.eff.types&&sy.eff.types.indexOf(type)>=0)v*=sy.eff.m;});return v;}
+/* ---------- bosses ---------- */
+var TYPEKEYS=['cold','sound','sight','touch'];
+var BOSSES={
+ grandmother:{name:'The Grandmother',blurb:'Lived through worse. Her weak spot keeps moving.',bar:1.6,rule:'rotweak'},
+ babysitter:{name:'The Babysitter',blurb:'Headphones in. Sound does nothing. She keeps wandering.',bar:1.6,rule:'babysitter',imm:'sound'},
+ hoa:{name:'The HOA President',blurb:'Every technique you install during the visit costs double.',bar:1.6,rule:'hoa'},
+ cat:{name:'The Cat',blurb:'Only tapping works. Twenty seconds. Go.',bar:0.5,rule:'cat',timed:20},
+ rival:{name:'Rival Ghost Company',blurb:'A competitor races you for this tenant.',bar:1.8,rule:'rival'},
+ bulldozer:{name:"The Developer's Bulldozers",blurb:'Fill the bar before they demolish a room.',bar:1.7,rule:'bulldozer',timed:240}
+};
+/* site boss rotation (3 each). Only Alder filled now; others fall back to roaming. */
+var SITE_BOSSES={alder:['grandmother','babysitter','hoa']};
+var ROAMERS=['cat','rival','bulldozer'];
+/* encounter number is 1-based: tenant index 9 -> encounter 10 */
+function encounterNo(st){return st.tenant+1;}
+function bossSlot(n){ if(n%10!==0) return null; return (n%50===0)?'major':'minor'; }
+function pickBossId(sd,st,n){
+ // deterministic per site+encounter so it's stable across reloads
+ var seed=(n/10)|0; // 1..(for 10,20,30,40,50->1..5)
+ var pool=SITE_BOSSES[sd.id]||[];
+ if(bossSlot(n)==='major'){ // 50: a site boss (or roamer) beefed
+  var mj=pool.length?pool[(seed-1)%pool.length]:ROAMERS[(seed-1)%ROAMERS.length];
+  return mj;
+ }
+ // minor slots 10/20/30 -> site bosses in order; 40 -> a roamer; cat can appear anywhere as slot 1 first time
+ var within=((seed-1)%5); // 0..4 for 10,20,30,40,50
+ if(within===3) return ROAMERS[(seed)%ROAMERS.length]; // 40 -> roamer
+ if(pool.length) return pool[within%pool.length];
+ return ROAMERS[within%ROAMERS.length];
+}
+var BOSS_SIL={grandmother:'\ud83d\udc75',babysitter:'\ud83c\udfa7',hoa:'\ud83d\udccb',cat:'\ud83d\udc08',rival:'\ud83d\udc7b',bulldozer:'\ud83d\udea7'};
+function bossImg(id){return '<img class="bossport" src="'+ART+'boss-'+id+'.jpg" alt="" data-sil="'+(BOSS_SIL[id]||'\ud83d\udc7b')+'" onerror="bossFallback(this)">';}
+function bossFallback(img){var d=document.createElement('div');d.className='bosssil';d.textContent=img.getAttribute('data-sil')||'\ud83d\udc7b';img.parentNode.replaceChild(d,img);}
+try{window.bossFallback=bossFallback;}catch(e){}
+function bossActive(sd,st){var n=encounterNo(st);var slot=bossSlot(n);if(!slot)return null;var id=pickBossId(sd,st,n);var b=BOSSES[id];if(!b)return null;return {id:id,def:b,slot:slot,major:slot==='major'};}
+function bossState(st){ if(!st._boss)st._boss={}; return st._boss; }
+/* per-fight transient boss data lives on st._boss, reset when tenant advances */
+function bossRotWeak(sd,st){var bs=bossState(st);if(bs.rotAt===undefined||Date.now()-bs.rotAt>30000){bs.rotAt=Date.now();bs.rotType=TYPEKEYS[Math.floor(Math.random()*4)];}return bs.rotType;}
+function bossFail(sd,st,b){
+ var msg;
+ if(b.def.rule==='cat'){msg='The Cat knocked something over and strolled off.';}
+ else if(b.def.rule==='rival'){msg='Rival Ghost Company scared them first. They took the tenant.';}
+ else if(b.def.rule==='bulldozer'){ // demolish a random open non-empty room
+  var rooms=roomDefs(sd).filter(function(r){return roomOpen(st,r)&&(st.rooms[r.id]||[]).length;});
+  if(rooms.length){var r=rooms[Math.floor(Math.random()*rooms.length)];st.rooms[r.id]=[];msg='Bulldozers cleared the '+r.name.toLowerCase()+'. Techniques lost.';}
+  else msg='Bulldozers rumbled off. Nothing to demolish.';
+ } else msg='The boss outlasted you and moved on.';
+ st.tprog=0;st.tenant+=1;st.tloc=null;st.tmove=0;st._boss={};st._rival=0;
+ if(sd.id===S.cur){toast(msg);} else toast(msg);
+ flash();
+}
+function bossImmNow(sd,st,b){ // returns a fear type currently immune, or null
+ if(b.def.rule==='rotweak'){var w=bossRotWeak(sd,st);// immune to everything EXCEPT the rotating weak type
+  return null; // handled in typeMult via weak, plus blanket resistance below
+ }
+ if(b.def.imm)return b.def.imm;
+ return null;
+}
 function legacy(){return (1+0.25*perk('legacy'))*Math.pow(1.3,S.franchise);}
 function repReq(i){return Math.ceil(RANKS[i].rep*(1-0.1*perk('fast')));}
 function legendGain(){return Math.floor(S.rep/12);}
@@ -481,8 +553,9 @@ function entType(st,type){var v=1;for(var e in st.ents){var d=entById(e);if(d&&d
 function curDefFor(st){for(var k in S.sites)if(S.sites[k]===st)return siteDef(k);return SITES[0];}
 
 function tenantDef(sd,st){return sd.tenants[st.tenant%sd.tenants.length];}
-function tenantName(sd,st){var r=Math.floor(st.tenant/sd.tenants.length);return tenantDef(sd,st).name+(r?' (again, #'+(r+1)+')':'');}
-function tenantNeed(sd,st){return Math.floor(60*sd.need*Math.pow(2.4,st.tenant)*Math.pow(1.2,S.franchise));}
+function tenantName(sd,st){var b=bossActive(sd,st);if(b){if(b.major){return '\u2605 '+majorName(b.id,b.def.name);}return b.def.name;}var r=Math.floor(st.tenant/sd.tenants.length);return tenantDef(sd,st).name+(r?' (again, #'+(r+1)+')':'');}
+function majorName(id,nm){var map={grandmother:'Great-Grandmother',babysitter:'The Head Babysitter',hoa:'The Regional HOA Director',cat:'The Big Cat',rival:'Mega Ghost Corp',bulldozer:'The Wrecking Crew'};return map[id]||('Prime '+nm);}
+function tenantNeed(sd,st){var base=Math.floor(60*sd.need*Math.pow(2.4,st.tenant)*Math.pow(1.2,S.franchise));var b=bossActive(sd,st);if(b){base=Math.floor(base*b.def.bar*(b.major?2.5:1));}return base;}
 function tenantRooms(sd,st){var d=tenantDef(sd,st);var rs=d.rooms.filter(function(id){return roomOpen(st,roomById(sd,id));});if(!rs.length)rs=[sd.rooms[0][0]];return rs;}
 function ctrActive(sd,st){var d=tenantDef(sd,st);if(!d.ctr)return null;if(st.fixed[st.tenant])return null;if(entEff(st,'noctr',1)!==1)return null;return d.ctr;}
 function fixCost(sd,st){return Math.floor(tenantNeed(sd,st)*0.5*skillEff('fix',1));}
@@ -492,6 +565,12 @@ function typeMult(sd,st,type){
  if(d.imm===type&&entEff(st,'noimm',1)===1)m*=skillEff('imm',0.25);
  var c=ctrActive(sd,st);if(c&&(c.type===type||c.type==='all'))m*=c.mult;
  m*=entType(st,type)*synType(st,type);
+ var b=bossActive(sd,st);
+ if(b){
+  if(b.def.rule==='cat'){ m*=0; } // only taps count for the Cat
+  else if(b.def.rule==='rotweak'){ var w=bossRotWeak(sd,st); m*= (type===w? (b.major?2:1.5) : 0.2); }
+  else if(b.def.imm && type===b.def.imm){ m*=0; }
+ }
  return m;
 }
 function roomFps(sd,st,rid){
@@ -508,15 +587,21 @@ function tapPower(sd,st,rid){
  var c=ctrActive(sd,st);if(c&&c.type==='tap')p*=c.mult;
  if(rid!==st.tloc)p*=0.4;
  if(ev&&ev.site===S.cur)p*=ev.mult*synEff(st,'evm',1);
+ var b=bossActive(sd,st);
+ if(b&&b.def.rule==='cat')p*=1.5; // cat is a tap race, reward tapping
  return Math.max(1,p);
 }
 function addFear(sd,st,n){
  st.fear+=n;st.total+=n;st.tprog+=n;
  if(st.tprog>=tenantNeed(sd,st)){
-  st.tprog=0;S.rep+=1;st.flees+=1;S.stats.flees+=1;
-  var e=Math.floor(10*(st.tenant+1)*sd.ecto*S.perm.ecto*(1+0.5*perk('vein'))*synEff(st,'ecto',1));S.ecto+=e;
-  var old=tenantName(sd,st);S.tally=S.tally||{};var tn0=tenantDef(sd,st).name;S.tally[tn0]=(S.tally[tn0]||0)+1;st.tenant+=1;st.tloc=null;st.tmove=0;
-  var m=old.charAt(0).toUpperCase()+old.slice(1)+' fled '+sd.name+'. +'+e+' ectoplasm.';
+  var boss=bossActive(sd,st);
+  st.tprog=0;S.rep+=(boss?(boss.major?3:2):1);st.flees+=1;S.stats.flees+=1;
+  var mult=boss?(boss.major?6:3):1;
+  var e=Math.floor(10*(st.tenant+1)*sd.ecto*S.perm.ecto*(1+0.5*perk('vein'))*synEff(st,'ecto',1)*mult);S.ecto+=e;
+  var old=tenantName(sd,st);S.tally=S.tally||{};var tn0=tenantDef(sd,st).name;S.tally[tn0]=(S.tally[tn0]||0)+1;
+  if(boss){S.bossKills=S.bossKills||{};S.bossKills[boss.id]=(S.bossKills[boss.id]||0)+1;S.stats.bosses=(S.stats.bosses||0)+1;}
+  st.tenant+=1;st.tloc=null;st.tmove=0;st._boss={};st._rival=0;st._bossEnd=0;
+  var m=(boss?'\u2605 '+old+' defeated at ':old.charAt(0).toUpperCase()+old.slice(1)+' fled ')+sd.name+'. +'+e+' ectoplasm.';
   if(sd.id===S.cur)log(m);else toast(m);
   flash();
  }
@@ -639,6 +724,9 @@ var ACH=[
  {id:'owl',n:'Night Shift',d:'Come back to 1,000+ fear earned while away',t:function(){return !!S.offlineBig;}},
  {id:'storm',n:'Storm Chaser',d:'Tap 50 times during events',t:function(){return (S.evTaps||0)>=50;}},
  {id:'million',n:'Seven Figures',d:'Hold 1,000,000 fear at one site',t:function(){for(var k in S.sites)if(S.sites[k].fear>=1e6)return true;return false;}},
+ {id:'boss1',n:'Overtime',d:'Defeat your first boss',t:function(){return (S.stats.bosses||0)>=1;}},
+ {id:'boss10',n:'Middle Management',d:'Defeat 10 bosses',t:function(){return (S.stats.bosses||0)>=10;}},
+ {id:'cat',n:'Who Let the Cat In',d:'Defeat the Cat',t:function(){return !!(S.bossKills&&S.bossKills.cat);}},
  {id:'contract5',n:'Contractor',d:'Complete 5 HQ contracts',t:function(){return (S.stats.contracts||0)>=5;}},
  {id:'syn1',n:'Better Together',d:'Activate any synergy',t:function(){for(var k in S.sites)for(var i=0;i<SYN.length;i++)if(synOn(S.sites[k],SYN[i]))return true;return false;}},
  {id:'fr1',n:'Sold Out',d:'Franchise for the first time',t:function(){return S.franchise>=1;}},
@@ -660,18 +748,40 @@ function renderCo(){
  else{$('promobar').style.width='100%';$('promolabel').innerHTML='<b>CEO \u00b7 top of the ladder</b>';}
  var pend=canPromote();for(var k in S.choices)if(S.choices[k]==='pending')pend=true;$('hqdot').textContent=pend?'\u25cf':'';
  var sb=$('sites');sb.innerHTML='';var n=Object.keys(S.sites).length;sb.style.display=n>1?'flex':'none';
- SITES.forEach(function(sd){if(!S.sites[sd.id])return;var b=document.createElement('button');b.className=sd.id===S.cur?'on':'';b.textContent=sd.name+' \u00b7 '+fmt(siteFps(sd,S.sites[sd.id]))+'/s';b.addEventListener('click',function(){if(sd.id!==S.cur){S.cur=sd.id;dispFear=S.sites[sd.id].fear;if(ev){clearTimeout(evT);ev=null;}renderAll();}});sb.appendChild(b);});
+ SITES.forEach(function(sd){if(!S.sites[sd.id])return;var b=document.createElement('button');var hasBoss=bossActive(sd,S.sites[sd.id]);b.className=(sd.id===S.cur?'on':'')+(hasBoss?' bosson':'');b.textContent=(hasBoss?'\u2605 ':'')+sd.name+' \u00b7 '+fmt(siteFps(sd,S.sites[sd.id]))+'/s';b.addEventListener('click',function(){if(sd.id!==S.cur){S.cur=sd.id;dispFear=S.sites[sd.id].fear;if(ev){clearTimeout(evT);ev=null;}renderAll();}});sb.appendChild(b);});
 }
 function renderTenant(){
  var sd=curDef(),st=cur(),d=tenantDef(sd,st),c=ctrActive(sd,st);
- $('tname').textContent=tenantName(sd,st);
+ var boss=bossActive(sd,st);
  var pct=Math.min(100,st.tprog/tenantNeed(sd,st)*100);$('tbar').style.width=pct+'%';$('tpct').textContent=Math.floor(pct)+'%';
- var h='<span class="chip weak">Weak: '+TYPES[d.weak]+'</span>';
- if(d.imm)h+='<span class="chip imm">Immune: '+TYPES[d.imm]+(entEff(st,'noimm',1)!==1?'\u2717':'')+'</span>';
- if(c)h+='<span class="chip ctr">'+c.name+'</span>';
- if(st.tloc)h+='<span class="chip here">In: '+roomById(sd,st.tloc).name+'</span>';
- $('tchips').innerHTML=h;
- var fb=$('fixbtn');if(c){fb.style.display='block';fb.textContent=c.fix+' \u00b7 '+fmt(fixCost(sd,st))+' fear';fb.style.opacity=st.fear>=fixCost(sd,st)?1:0.55;}else fb.style.display='none';
+ var bb=$('bossbox'),rv=$('rivalbar'),bar=$('tbar').parentElement;
+ if(boss){
+  bar.classList.add('boss');
+  var extra='';
+  if(boss.def.rule==='rotweak')extra='Weak now: '+TYPES[bossRotWeak(sd,st)]+' (rotating)';
+  else if(boss.def.imm)extra='Immune: '+TYPES[boss.def.imm];
+  else if(boss.def.rule==='cat')extra='Only tapping counts';
+  else if(boss.def.rule==='hoa')extra='Installs cost double';
+  else if(boss.def.rule==='rival')extra='Beat the rival bar';
+  else if(boss.def.rule==='bulldozer')extra='Beat the clock';
+  var timer='';
+  if(boss.def.timed){var bs=bossState(st);if(bs.deadline){var left=Math.max(0,Math.ceil((bs.deadline-Date.now())/1000));timer='<span class="bosstimer">'+left+'s</span>';}}
+  bb.style.display='block';
+  bb.innerHTML='<div class="bosswrap">'+bossImg(boss.id)+'<div class="bossmeta"><div class="bosslabel">'+(boss.major?'MAJOR BOSS':'BOSS')+' '+timer+'</div><div class="bossname">'+tenantName(sd,st)+'</div><div class="bossblurb">'+boss.def.blurb+' \u00b7 '+extra+'</div></div></div>';
+  $('tname').textContent='';
+  $('tchips').innerHTML= st.tloc?'<span class="chip here">In: '+roomById(sd,st.tloc).name+'</span>':'';
+  if(boss.def.rule==='rival'){rv.style.display='block';rv.firstElementChild.style.width=Math.min(100,(st._rival||0)/tenantNeed(sd,st)*100)+'%';}else rv.style.display='none';
+ } else {
+  bar.classList.remove('boss');bb.style.display='none';rv.style.display='none';
+  $('tname').textContent=tenantName(sd,st);
+  var h='<span class="chip weak">Weak: '+TYPES[d.weak]+'</span>';
+  if(d.imm)h+='<span class="chip imm">Immune: '+TYPES[d.imm]+(entEff(st,'noimm',1)!==1?'\u2717':'')+'</span>';
+  if(c)h+='<span class="chip ctr">'+c.name+'</span>';
+  if(st.tloc)h+='<span class="chip here">In: '+roomById(sd,st.tloc).name+'</span>';
+  if((encounterNo(st)+1)%10===0)h+='<span class="chip" style="border-color:var(--orange);color:var(--orange)">Boss next</span>';
+  $('tchips').innerHTML=h;
+ }
+ var fb=$('fixbtn');if(c&&!boss){fb.style.display='block';fb.textContent=c.fix+' \u00b7 '+fmt(fixCost(sd,st))+' fear';fb.style.opacity=st.fear>=fixCost(sd,st)?1:0.55;}else fb.style.display='none';
  $('hauntval').textContent='+'+fmt(tapPower(sd,st,st.tloc))+' fear';
 }
 function renderRooms(){
@@ -776,7 +886,7 @@ var bh=$('bighaunt');
 bh.addEventListener('pointerdown',function(e){e.preventDefault();initAudio();if(AC&&AC.state==='suspended')AC.resume();doHaunt();});
 $('fixbtn').addEventListener('click',function(){var sd=curDef(),st=cur(),c=ctrActive(sd,st);if(!c)return;var cost=fixCost(sd,st);if(st.fear>=cost){st.fear-=cost;dispFear=st.fear;st.fixed[st.tenant]=1;S.stats.fixes+=1;blip(500);toast(c.fix+'. '+c.name+' is gone.');save();renderAll();}else toast('Not enough fear');});
 Array.prototype.forEach.call(document.querySelectorAll('.tabs button'),function(b){b.addEventListener('click',function(){Array.prototype.forEach.call(document.querySelectorAll('.tabs button'),function(x){x.classList.remove('on');});b.classList.add('on');Array.prototype.forEach.call(document.querySelectorAll('.page'),function(p){p.classList.remove('on');});$('p-'+b.getAttribute('data-p')).classList.add('on');$('scroll').scrollTop=0;$('scroll').className=b.getAttribute('data-p')==='site'?'map':'';renderAll();});});
-$('ver').addEventListener('click',function(){toast('Haunt Inc. v4.7 \u00b7 Sep 12 2026');});
+$('ver').addEventListener('click',function(){toast('Haunt Inc. v4.8 \u00b7 Sep 12 2026');});
 Array.prototype.forEach.call(document.querySelectorAll('.subtabs button'),function(b){b.addEventListener('click',function(){Array.prototype.forEach.call(document.querySelectorAll('.subtabs button'),function(x){x.classList.remove('on');});b.classList.add('on');['crew','skills','syn'].forEach(function(k){$('st-'+k).style.display=k===b.getAttribute('data-st')?'block':'none';});});});
 $('shelfbtn').addEventListener('click',function(){location.href='../';});
 $('gear').addEventListener('click',function(){$('setpanel').classList.add('on');});
@@ -800,6 +910,20 @@ setInterval(function(){
   if(!st.tloc||now-st.tmove>20000){moveTenant(sd,st);if(k===S.cur)moved=true;}
   var g=siteFps(sd,st)*dt;if(g>0){addFear(sd,st,g);if(S.contract&&S.contract.on&&S.contract.site===k&&S.contract.k==='fear')S.contract.prog+=g;}
   var c=ctrActive(sd,st);if(c&&c.type==='drain'&&st.fear>0)st.fear-=st.fear*c.mult*dt;
+  var b=bossActive(sd,st);
+  if(b){
+   var bs=bossState(st);
+   if(b.def.timed){ if(!bs.deadline)bs.deadline=now+b.def.timed*1000;
+    if(now>bs.deadline){ // fail: soft penalty, advance past the boss
+     bossFail(sd,st,b); }
+   }
+   if(b.def.rule==='rival'){ if(bs.rivalAt===undefined)bs.rivalAt=now;
+    var rate=tenantNeed(sd,st)/ (b.major?90:70); // rival fills over ~70-90s
+    st._rival=(st._rival||0)+rate*dt;
+    if(st._rival>=tenantNeed(sd,st)){ bossFail(sd,st,b); }
+   }
+   if(b.def.rule==='babysitter'){ if(!bs.mvAt||now-bs.mvAt>6000){moveTenant(sd,st);bs.mvAt=now;if(k===S.cur)moved=true;} }
+  }
  }
  contractTick();if(S.contract&&S.contract.on)renderContract();
  if(FLED){FLED=false;chime();shake();}
