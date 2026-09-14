@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Measure Up">
-<title>Measure Up v0.96</title>
+<title>Measure Up v0.97</title>
 <style>
 :root{
   --bg:#0e0b1e; --panel:#1d1636; --panel2:#28204a; --ink:#f4f0ff; --dim:#a89cd8;
@@ -928,14 +928,14 @@ svg .charg{will-change:transform}
 <div id="toast"></div>
 <button id="homeBtn" onclick="goHome()" aria-label="Back to Garage">🏠</button>
 <button id="ellyBtn" onclick="openEllyHelp()" aria-label="Ask Elly for help"></button>
-<div id="vbadge">v0.96 · Sep 12</div>
+<div id="vbadge">v0.97 · Sep 12</div>
 
 <script>
 'use strict';
 /* ============ UTILS ============ */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const VERSION='v0.96 · Sep 12';
+const VERSION='v0.97 · Sep 12';
 const RM=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -11409,6 +11409,193 @@ talkTo=function(id){ _talkToGate(id); var mb=$('#mbox'); if(!mb)return; var b=[]
     if(st.folding>=1||typeof requestAnimationFrame!=='function')judge(); else anim();
   };
 })();
+
+</script>
+<script>
+/* ================= v0.97 · STAR RANKS + GALACTIC VARIANTS + TIMPANI (missing numbers) (build date stamped at ship) =================
+   Every member earns 0-3 stars from the level they reach in their concept (uses the existing curve).
+   1 star at Lvl 4+ (Bronze tier), 2 at Lvl 7+ (Silver), 3 at Lvl 11+ (Gold). At 3 stars the member unlocks
+   a GALACTIC variant: a starfield-recolor + glow overlay of the same creature, shown everywhere and toggleable.
+   Plus Timmy on timpani: concept 'missnum' (missing number, a + ? = b), the pre-algebra seed. */
+
+/* ---------- star ranks ---------- */
+function starOf(memberId){ var m=BY_ID[memberId]; if(!m||!m.concept)return 0; var L=Math.floor(lvlOf(m.concept)); return L>=11?3:L>=7?2:L>=4?1:0; }
+var STAR_NEED=[4,7,11];   /* level needed for star 1, 2, 3 */
+function starStars(n){ return '\u2605'.repeat(n)+'\u2606'.repeat(3-n); }
+function goldCount(){ return BAND.filter(function(m){ return starOf(m.id)>=3; }).length; }
+function starToNext(memberId){ var s=starOf(memberId); if(s>=3)return null; var L=Math.floor(lvlOf(BY_ID[memberId].concept)); return {star:s+1,need:STAR_NEED[s],have:L}; }
+
+/* ---------- galactic variant ---------- */
+if(!S.starSkin)S.starSkin={};   /* id -> true = show galactic look (default on once unlocked) */
+var _loadStar=load; load=function(){ _loadStar(); if(!S.starSkin)S.starSkin={}; };
+function galacticOn(memberId){ return starOf(memberId)>=3 && S.starSkin[memberId]!==false; }
+var GAL_PALETTE=['#6a5cff','#b06cff','#4cc6ff','#ff7ad9','#8f7dff','#5de0ff'];
+function galacticize(svg,memberId){
+  /* recolor every non-outline fill/stroke to a cosmic hue keyed off the original, add a soft star glow + orbit */
+  var seen={}, order=[]; svg.replace(/(?:fill|stroke)="(#[0-9a-fA-F]{3,6})"/g,function(_,h){ h=h.toLowerCase(); if(!seen[h]){seen[h]=1;order.push(h);} return _; });
+  var map={};
+  order.forEach(function(h,i){ if(PAINT_SKIP&&PAINT_SKIP[h])return; var lumv=lum(h); if(lumv<40)return; /* keep near-black outlines */
+    var base=GAL_PALETTE[i%GAL_PALETTE.length]; map[h]=shade(base,(lumv-140)/255*0.6); });
+  Object.keys(map).forEach(function(h){ ['fill','stroke'].forEach(function(a){ svg=svg.split(a+'="'+h+'"').join(a+'="'+map[h]+'"').split(a+'="'+h.toUpperCase()+'"').join(a+'="'+map[h]+'"'); }); });
+  /* inject stars + glow just after the opening <svg ...> */
+  var mm=svg.match(/<svg[^>]*viewBox="([^"]*)"[^>]*>/); var vb=(mm&&mm[1]?mm[1].split(/\s+/).map(Number):[0,0,140,140]); var W=vb[2]||140,H=vb[3]||140;
+  var gid='glow'+(memberId||'x');
+  var stars=''; var seed=0; for(var i=0;i<memberId.length;i++)seed+=memberId.charCodeAt(i);
+  function rnd(){ seed=(seed*9301+49297)%233280; return seed/233280; }
+  for(var s=0;s<14;s++){ var sx=rnd()*W, sy=rnd()*H, sr=.6+rnd()*1.4; stars+='<circle cx="'+sx.toFixed(1)+'" cy="'+sy.toFixed(1)+'" r="'+sr.toFixed(1)+'" fill="#fff" opacity="'+(0.4+rnd()*0.5).toFixed(2)+'"/>'; }
+  var defs='<defs><radialGradient id="'+gid+'" cx="50%" cy="45%" r="60%"><stop offset="0%" stop-color="#8f7dff" stop-opacity=".45"/><stop offset="100%" stop-color="#8f7dff" stop-opacity="0"/></radialGradient></defs>';
+  var glow='<ellipse cx="'+(W/2)+'" cy="'+(H*0.52)+'" rx="'+(W*0.46)+'" ry="'+(H*0.46)+'" fill="url(#'+gid+')"/>';
+  var orbit='<g opacity=".8"><ellipse cx="'+(W/2)+'" cy="'+(H*0.55)+'" rx="'+(W*0.42)+'" ry="'+(H*0.16)+'" fill="none" stroke="#b9a8ff" stroke-width="1.2" opacity=".5"/><circle cx="'+(W*0.9)+'" cy="'+(H*0.55)+'" r="2.4" fill="#ffe9b0"/></g>';
+  return svg.replace(/(<svg[^>]*>)/, '$1'+defs+glow+stars) .replace('</svg>', orbit+'</svg>');
+}
+var _memberSVGStar=memberSVG;
+memberSVG=function(id,sz){ var s=_memberSVGStar(id,sz); return galacticOn(id)?galacticize(s,id):s; };
+
+/* ---------- unlock celebration ---------- */
+function starCheck(memberId){
+  if(!S.starSeen)S.starSeen={}; var s=starOf(memberId); var prev=S.starSeen[memberId]||0;
+  if(s>prev){ S.starSeen[memberId]=s; save();
+    if(s>=3){ S.starSkin[memberId]=true; save(); later(function(){ starUnlockModal(memberId); },500); }
+    else later(function(){ toast(mName(memberId)+' earned '+starStars(s)+'!'); },400);
+  } else if(s>prev){ S.starSeen[memberId]=s; save(); }
+}
+function starUnlockModal(memberId){
+  sFanfare(); confetti(30);
+  modal('<div class="center">'+memberSVG(memberId,120)+'<h2>\u2B50\u2B50\u2B50 '+mName(memberId)+' is GOLD</h2><div class="sub">3 stars \u00b7 '+CONCEPT_NAMES[BY_ID[memberId].concept]+' mastered</div></div>'+
+    '<div class="card center">'+nameify(mName(memberId)+' put on a coat of stars. This is the GALACTIC look, and it only comes from mastering the math.')+'</div>'+
+    '<div class="sub center">'+goldCount()+' of '+BAND.length+' bandmates are gold. Get them all for a fully galactic Cosmic Orchestra.</div>'+
+    '<button class="btn wide" onclick="closeModal()">\u2728 Shine on</button>'+
+    '<button class="btn wide ghost" onclick="S.starSkin[\''+memberId+'\']=false;save();closeModal();if(typeof renderHub===\'function\')renderHub();">Keep the normal look for now</button>');
+}
+/* hook the places skills go up: adjust() raises S.skills[concept] */
+var _adjustStar=adjust;
+adjust=function(concept,correct,fast,auditionMode){ var r=_adjustStar(concept,correct,fast,auditionMode); try{ BAND.forEach(function(m){ if(m.concept===concept)starCheck(m.id); }); }catch(e){} return r; };
+
+/* ---------- card + modal display ---------- */
+var _renderHubStar=renderHub;
+renderHub=function(){ _renderHubStar();
+  var g=$('#bandGrid'); if(g){ BAND.forEach(function(m){ if(m.recruit&&!S.band[m.id])return; var cards=g.querySelectorAll('.mcard'); }); }
+  /* add a star row to each card by matching name text */
+  if(g){ [].slice.call(g.querySelectorAll('.mcard')).forEach(function(card){ var nm=card.querySelector('.nm'); if(!nm)return; var id=BAND.filter(function(m){ return !(m.recruit&&!S.band[m.id]); }).map(function(m){return m.id;}).find(function(x){ return nm.textContent.indexOf(mName(x))>=0; }); if(!id||card.querySelector('.starrow'))return; var s=starOf(id); var sr=document.createElement('div'); sr.className='starrow'; sr.style.cssText='font-size:13px;letter-spacing:2px;color:'+(s>=3?'#ffd158':'#9a86e0')+';margin-top:2px'; sr.textContent=starStars(s); card.querySelector('.tt').insertAdjacentElement('afterend',sr); }); }
+  var hb=$('#hubBandCount'); if(hb&&goldCount()>0){ hb.textContent+=' \u00b7 \u2B50'+goldCount(); }
+  var tot=$('#starTotal'); if(!tot){ var host=$('#hubName'); if(host&&host.parentNode){ var el=document.createElement('div'); el.id='starTotal'; el.className='sub'; el.style.cssText='margin-top:2px;font-weight:800;color:#ffd158'; host.parentNode.insertBefore(el,host.nextSibling); } tot=$('#starTotal'); }
+  if(tot)tot.textContent='\u2605 '+goldCount()+' / '+BAND.length+' gold';
+};
+var _talkToStar=talkTo;
+talkTo=function(id){ _talkToStar(id); var mb=$('#mbox'); if(!mb||!BY_ID[id]||!BY_ID[id].concept)return;
+  var s=starOf(id), nx=starToNext(id);
+  var row='<div class="card" style="text-align:center;padding:8px 10px;margin:6px 0"><div style="font-size:20px;letter-spacing:4px;color:'+(s>=3?'#ffd158':'#9a86e0')+'">'+starStars(s)+'</div>'+
+    (nx?'<div class="sub" style="margin-top:2px">Reach Lvl '+nx.need+' in '+CONCEPT_NAMES[BY_ID[id].concept]+' for star '+nx.star+' (you\u2019re at Lvl '+nx.have+')</div>':'<div class="sub" style="margin-top:2px">Gold! '+CONCEPT_NAMES[BY_ID[id].concept]+' mastered.</div>')+
+    (s>=3?'<button class="btn small ghost" style="margin-top:6px" onclick="toggleStarSkin(\''+id+'\')">'+(galacticOn(id)?'Show normal look':'Show galactic look')+'</button>':'')+'</div>';
+  var art=mb.querySelector('h2'); if(art){ var holder=document.createElement('div'); holder.innerHTML=row; art.parentNode.insertBefore(holder.firstChild, art.nextSibling); }
+};
+function toggleStarSkin(id){ sTap(); S.starSkin[id]=galacticOn(id)?false:true; save(); if(JK&&JK.cur){} closeModal(); talkTo(id); if(typeof renderHub==='function')renderHub(); }
+
+/* ---------- TIMMY on timpani: missing number ---------- */
+function mnEq(L){ var op,a,x,b;
+  if(L<4){ x=R(1,9); a=R(1,9); return {op:'+',a:a,x:x,b:a+x,ask:'x'}; }
+  if(L<7){ if(Math.random()<.5){ x=R(1,12); a=R(1,10); return {op:'+',a:a,x:x,b:a+x,ask:'x'}; } b=R(6,18); x=R(1,b-1); return {op:'\u2212',a:b,x:x,b:b-x,ask:'x'}; }
+  if(L<11){ if(Math.random()<.5){ x=R(2,15); a=R(1,15); return {op:'+',a:a,x:x,b:a+x,ask:Math.random()<.5?'x':'a'}; } var res=R(1,15); x=R(1,15); return {op:'\u2212',a:res+x,x:x,b:res,ask:Math.random()<.5?'x':'a'}; }
+  if(Math.random()<.5){ x=R(2,20); a=R(1,20); return {op:'+',a:a,x:x,b:a+x,ask:pick(['x','a'])}; } var r2=R(1,20),xx=R(1,20); return {op:'\u2212',a:r2+xx,x:xx,b:r2,ask:pick(['x','a'])};
+}
+function mnAns(eq){ return eq.ask==='x'?eq.x:eq.a; }
+function mnShow(eq,reveal){
+  var box=function(v,hot){ return '<span style="display:inline-block;min-width:44px;padding:4px 10px;margin:0 4px;border-radius:10px;font-weight:900;'+(hot?'background:#ffd158;color:#3a2a00;border:2px solid #e0a92e':'background:#2a1f55;color:#f4f0ff;border:2px solid #4b3f86')+'">'+v+'</span>'; };
+  var A=eq.ask==='a'?box(reveal!=null?reveal:'?',reveal==null):box(eq.a,false);
+  var X=eq.ask==='x'?box(reveal!=null?reveal:'?',reveal==null):box(eq.x,false);
+  return '<div style="font-size:30px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;margin:10px 0">'+A+'<span style="margin:0 2px">'+eq.op+'</span>'+X+'<span style="margin:0 6px">=</span>'+box(eq.b,false)+'</div>';
+}
+function mnChoices(eq){ var ans=mnAns(eq); var out=[ans]; [ans+1,ans-1,ans+2,ans-2,eq.b,ans+3].forEach(function(v){ if(out.length<4&&v>=0&&out.indexOf(v)<0)out.push(v); }); return shuffle(out).map(String); }
+/* drum SVG: two kettledrums with a pedal, tunable */
+function timpaniSVG(crewId,sz){
+  var O='#221a44'; var b=
+    '<ellipse cx="46" cy="128" rx="30" ry="6" fill="#0d0d20"/><ellipse cx="98" cy="128" rx="26" ry="6" fill="#0d0d20"/>'+
+    '<path d="M22 92 q24 26 48 0 l-4 30 q-20 12 -40 0z" fill="#b98a3a"/><ellipse cx="46" cy="92" rx="24" ry="9" fill="#e8cf9a"/><ellipse cx="46" cy="92" rx="24" ry="9" fill="none" stroke="#8a6a2a" stroke-width="2"/>'+
+    '<path d="M78 98 q20 22 40 0 l-3 26 q-17 10 -34 0z" fill="#b98a3a"/><ellipse cx="98" cy="98" rx="20" ry="8" fill="#e8cf9a"/><ellipse cx="98" cy="98" rx="20" ry="8" fill="none" stroke="#8a6a2a" stroke-width="2"/>'+
+    /* mallets */
+    '<line x1="54" y1="70" x2="74" y2="54" stroke="#c8a56a" stroke-width="3" stroke-linecap="round"/><circle cx="76" cy="52" r="6" fill="#f0e0c0"/>'+
+    '<line x1="60" y1="74" x2="82" y2="60" stroke="#c8a56a" stroke-width="3" stroke-linecap="round"/><circle cx="84" cy="58" r="6" fill="#f0e0c0"/>'+
+    /* little conductor-creature behind, the member face */
+    '<circle cx="70" cy="52" r="20" fill="#7a6cff"/><circle cx="63" cy="50" r="4.5" fill="'+O+'"/><circle cx="77" cy="50" r="4.5" fill="'+O+'"/><circle cx="64.5" cy="48.5" r="1.5" fill="#fff"/><circle cx="78.5" cy="48.5" r="1.5" fill="#fff"/>'+
+    '<path d="M62 60 q8 6 16 0" stroke="'+O+'" stroke-width="3" fill="none" stroke-linecap="round"/>'+
+    '<circle cx="56" cy="56" r="3.5" fill="#ff9ec4" opacity=".6"/><circle cx="84" cy="56" r="3.5" fill="#ff9ec4" opacity=".6"/>'+
+    '<path d="M56 34 l4 -10 l4 10z" fill="#ffd158"/><path d="M76 34 l4 -10 l4 10z" fill="#ffd158"/>';
+  return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 140 140"><g class="charg">'+b+'</g></svg>';
+}
+CONCEPT_NAMES.missnum='Missing Numbers'; DEF.skills.missnum=1; if(S&&S.skills&&!S.skills.missnum)S.skills.missnum=1;
+QG.missnum=function(L){ var eq=mnEq(L); return {q:eq.ask==='a'?'What number did the drum START at?':'What is the missing number?', vis:mnShow(eq), choices:mnChoices(eq), a:String(mnAns(eq))}; };
+MEMBER_FAM.timmy='horn'; VOICE_LABELS.timmy='Drums';
+var _mNoteT=mNote; mNote=function(id,n,dur,when){ if(id==='timmy'){ timHit((n||60)<60); return; } return _mNoteT(id,n,dur,when); };
+SHOP.push({id:'rv_timmy_deep',type:'voice',who:'timmy',val:'deep',name:'Deep Kettle',rarity:'rare',notes:55,gold:0,desc:'A new sound for Timmy\u2019s timpani.'});
+SHOP.push({id:'rv_timmy_roll',type:'voice',who:'timmy',val:'roll',name:'Thunder Roll',rarity:'rare',notes:55,gold:0,desc:'A new sound for Timmy\u2019s timpani.'});
+function timHit(deep){ var a=ac(); if(!a)return; var o=a.createOscillator(),g=a.createGain(),o2=a.createOscillator(); o.type='sine'; o.frequency.setValueAtTime(deep?70:110,a.currentTime); o.frequency.exponentialRampToValueAtTime(deep?42:66,a.currentTime+.25); o2.type='triangle'; o2.frequency.value=deep?140:220; var g2=a.createGain(); g.gain.setValueAtTime(.5,a.currentTime); g.gain.exponentialRampToValueAtTime(.001,a.currentTime+.5); g2.gain.setValueAtTime(.12,a.currentTime); g2.gain.exponentialRampToValueAtTime(.001,a.currentTime+.15); o.connect(g); o2.connect(g2); g.connect(MASTER); g2.connect(MASTER); o.start(); o2.start(); o.stop(a.currentTime+.6); o2.stop(a.currentTime+.2); }
+
+MJGAMES.tuneup={id:'tuneup',name:'Tune Up',emoji:'\uD83E\uDD41',member:'timmy',concept:'missnum',
+setup:function(L,st){ var eq; do{ eq=mnEq(L); }while(eq.op!=='+'); st.eq=eq; st.ans=String(mnAns(eq));
+  return {call:'The drum is at '+eq.a+'. The song needs '+eq.b+'.', sub:'How far do you turn the pedal? Find the missing number.', html:mnShow(eq)+'<div class="mjcards" id="tuZ"></div>',
+    wire:function(){ $('#tuZ').innerHTML=mnChoices(eq).map(function(o){return '<button class="mjposter tub" data-v="'+o+'" style="font-size:24px">'+o+'</button>';}).join('');
+      $$('.tub').forEach(function(bt){ bt.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(bt.dataset.v===st.ans){ timHit(false); $('#tuZ').previousSibling; mjOK(eq.a+' + '+mnAns(eq)+' = '+eq.b+'. Tuned!'); } else { punch(bt); mjNo(eq.a+' + ? = '+eq.b+'. Count up from '+eq.a+' to '+eq.b+': that is '+mnAns(eq)+'.'); } }); }); }}; }};
+MJGAMES.tunedown={id:'tunedown',name:'Tune Down',emoji:'\uD83E\uDD41',member:'timmy',concept:'missnum',
+setup:function(L,st){ var eq; do{ eq=mnEq(Math.max(5,L)); }while(eq.op!=='\u2212'||eq.ask!=='x'); st.eq=eq; st.ans=String(mnAns(eq));
+  return {call:'The drum is at '+eq.a+'. Bring it down to '+eq.b+'.', sub:'How far down? Find the missing number.', html:mnShow(eq)+'<div class="mjcards" id="tdZ"></div>',
+    wire:function(){ $('#tdZ').innerHTML=mnChoices(eq).map(function(o){return '<button class="mjposter tdb" data-v="'+o+'" style="font-size:24px">'+o+'</button>';}).join('');
+      $$('.tdb').forEach(function(bt){ bt.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(bt.dataset.v===st.ans){ timHit(true); mjOK(eq.a+' \u2212 '+mnAns(eq)+' = '+eq.b+'. Down to pitch!'); } else { punch(bt); mjNo(eq.a+' \u2212 ? = '+eq.b+'. From '+eq.a+' down to '+eq.b+' is '+mnAns(eq)+'.'); } }); }); }}; }};
+MJGAMES.whatstart={id:'whatstart',name:'What Start?',emoji:'\uD83E\uDD41',member:'timmy',concept:'missnum',
+setup:function(L,st){ var eq; do{ eq=mnEq(Math.max(7,L)); }while(eq.ask!=='a'); st.eq=eq; st.ans=String(mnAns(eq));
+  return {call:'Where did the drum START?', sub:'You turned '+eq.op+eq.x+' and ended at '+eq.b+'. What was the start?', html:mnShow(eq)+'<div class="mjcards" id="wsZ"></div>',
+    wire:function(){ $('#wsZ').innerHTML=mnChoices(eq).map(function(o){return '<button class="mjposter wsb" data-v="'+o+'" style="font-size:24px">'+o+'</button>';}).join('');
+      $$('.wsb').forEach(function(bt){ bt.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(bt.dataset.v===st.ans){ timHit(false); mjOK('It started at '+mnAns(eq)+'. '+mnAns(eq)+' '+eq.op+' '+eq.x+' = '+eq.b+'.'); } else { punch(bt); mjNo('Undo the turn: '+eq.b+' '+(eq.op==='+'?'\u2212':'+')+' '+eq.x+' = '+mnAns(eq)+'.'); } }); }); }}; }};
+Object.assign(COACH,{
+  tuneup:{member:'timmy',verb:'TAP',hint:'tap',title:'\uD83E\uDD41 Tune Up',lines:['The pedal turns the drum UP by the missing number.','Count from the start up to the target. TAP how far!']},
+  tunedown:{member:'timmy',verb:'TAP',hint:'tap',title:'\uD83E\uDD41 Tune Down',lines:['Now the drum comes DOWN to a lower note.','Count from the start down to the target. TAP how far!']},
+  whatstart:{member:'timmy',verb:'TAP',hint:'tap',title:'\uD83E\uDD41 What Start?',lines:['You know the turn and the end. Work backward to the start.','Undo the turn: do the opposite. TAP the start number!']}
+});
+PLAY_RIGS.timmy={hint:'Two kettles. Low and high. Boom.',custom:function(el){ el.innerHTML='<div class="mjbig" style="font-size:44px">\uD83E\uDD41</div><div class="sub center">low kettle, high kettle</div><div class="row" style="justify-content:center;gap:16px;margin-top:14px"><button class="mjcymbal" id="tLo" style="border-color:#b98a3a">LOW</button><button class="mjcymbal" id="tHi" style="border-color:#e8cf9a">HIGH</button></div>'; $('#tLo').addEventListener('click',function(){ac();timHit(true);punch($('#tLo'));}); $('#tHi').addEventListener('click',function(){ac();timHit(false);punch($('#tHi'));}); }};
+MUSIC_CARDS.timmy={elly:'A timpani is a drum you TUNE. Turn the pedal and the pitch goes up or down by an exact amount. Timmy figures out that amount: the missing number.',body:'A missing number is a blank you solve for. If the drum is at 3 and the song needs 10, you turn it up by 7, because 3 + 7 = 10. That blank is the start of algebra: instead of "3 + 7 = ?", you already know the answer and hunt for the piece in the middle. Add to go up, subtract to go down, and work backward when you know the end but not the start.',example:'Listen: low boom, turn the pedal, higher boom. The turn is the missing number.'};
+MUSIC_DEMOS.timmy=function(){ timHit(true); later(function(){timHit(true);},260); later(function(){timHit(false);},540); later(function(){timHit(false);},760); later(function(){timHit(true);},1040); };
+LESSONS.timmy={game:function(){startMJ('tuneup');},steps:[
+  {say:'A timpani is a drum you TUNE. Turn the pedal and the pitch changes by an exact amount. My job is to find that amount.',vis:timpaniSVG('timmy',110)},
+  {say:'If the drum is at 3 and the song needs 10, how far do I turn? 3 plus WHAT is 10? Count up: 3 to 10 is 7. The missing number is 7.',vis:mnShow({op:'+',a:3,x:7,b:10,ask:'x'})},
+  {say:'To go DOWN, subtract. The drum is at 9 and needs 4. 9 minus what is 4? That is 5. Turn it down by 5.',vis:mnShow({op:'\u2212',a:9,x:5,b:4,ask:'x'})},
+  {say:'Sometimes you know the turn and the end but not the start. Work backward: undo the turn. That blank you solve for? That is the beginning of algebra. Let us tune some drums!',vis:mnShow({op:'+',a:6,x:4,b:10,ask:'a'})}
+]};
+METHOD.missnum={steps:[
+  {say:'A missing number is a blank in a number sentence. To find it, use the two numbers you DO have. For a plus with the blank in the middle, count up from the start to the total.',vis:mnShow({op:'+',a:4,x:6,b:10,ask:'x'})},
+  {say:'To find a missing START, do the opposite of the turn: if it was plus, subtract the total minus the turn; if it was minus, add. Undo it.',vis:mnShow({op:'+',a:7,x:5,b:12,ask:'a'})}
+]};
+STEPWALK.missnum=function(L){ var a=R(2,8), x=R(2,8), b=a+x; return {title:'Count up to the missing number',steps:[
+  {say:'The drum is at '+a+', the song needs '+b+'. We turn UP, so we add. '+a+' + ? = '+b+'.',vis:mnShow({op:'+',a:a,x:x,b:b,ask:'x'}),choices:['add','subtract'],a:'add'},
+  {say:'Count up from '+a+' to '+b+'. How many steps?',choices:numChoices(x,3).map(String),a:String(x)},
+  {say:'So the missing number is?',choices:numChoices(x,4).map(String),a:String(x),after:a+' + '+x+' = '+b+'. The blank was '+x+'. That is solving for the missing number.'}]}; };
+jamRegister({id:'pedaltune',title:'Pedal Tune',member:'timmy',concept:'missnum',emoji:'\uD83E\uDD41',scoreWord:'tune score',roundLabel:'Tune',
+  newRound:function(J){ var L=J.L(), st=J.state; var eq; do{ eq=mnEq(Math.max(2,L)); }while(eq.ask!=='x'); st.eq=eq; st.ans=mnAns(eq); st.max=Math.max(eq.a,eq.b,12)+2; st.val=eq.a; st.done=false;
+    J.call((eq.op==='+'?'Tune UP from '+eq.a+' to '+eq.b:'Tune DOWN from '+eq.a+' to '+eq.b),'Drag the pedal until the drum reads '+eq.b+', then let go. How far did you turn is the missing number.'); J.msg(eq.a+' '+eq.op+' ? = '+eq.b); },
+  draw:function(J,ctx,dt){ var st=J.state; if(!st.eq)return; var W=J.W,H=J.H; jkText(ctx,st.eq.a+' '+st.eq.op+' ?  =  '+st.eq.b,W/2,54,24,'#ffd158');
+    /* dial */
+    var cx=W/2, cy=H/2, r=Math.min(W,H)*0.24; ctx.strokeStyle='#4b3f86'; ctx.lineWidth=10; ctx.beginPath(); ctx.arc(cx,cy,r,Math.PI*0.75,Math.PI*0.25+ (st.val/st.max)*Math.PI*1.5 > Math.PI*2.25?Math.PI*2.25:Math.PI*0.75+(st.val/st.max)*Math.PI*1.5); ctx.stroke();
+    ctx.strokeStyle='#2a1f55'; ctx.lineWidth=10; ctx.beginPath(); ctx.arc(cx,cy,r,Math.PI*0.75,Math.PI*2.25); ctx.stroke();
+    ctx.strokeStyle='#ffd158'; ctx.lineWidth=10; ctx.beginPath(); ctx.arc(cx,cy,r,Math.PI*0.75,Math.PI*0.75+Math.max(0,Math.min(1.5,st.val/st.max*1.5))*Math.PI); ctx.stroke();
+    /* target tick */
+    var ta=Math.PI*0.75+(st.eq.b/st.max)*Math.PI*1.5; ctx.strokeStyle='#7dff8a'; ctx.lineWidth=4; ctx.beginPath(); ctx.moveTo(cx+(r-14)*Math.cos(ta),cy+(r-14)*Math.sin(ta)); ctx.lineTo(cx+(r+14)*Math.cos(ta),cy+(r+14)*Math.sin(ta)); ctx.stroke();
+    jkText(ctx,String(st.val),cx,cy-6,40,'#f4f0ff'); jkText(ctx,'drum pitch',cx,cy+26,13,'#a89cd8');
+    var turned=Math.abs(st.val-st.eq.a); jkText(ctx,'turned: '+turned,W/2,cy+r+40,18,'#ffd158');
+    jkText(ctx,st.done?'':'drag up or down, stop the drum on the green tick',W/2,H-40,13,'#a89cd8'); },
+  onDown:function(J,x,y){ var st=J.state; if(st.done)return; st.drag=true; st.baseY=y; st.baseV=st.val; },
+  onMove:function(J,x,y){ var st=J.state; if(!st.drag)return; var dv=Math.round((st.baseY-y)/16); st.val=Math.max(0,Math.min(st.max,st.baseV+dv)); if(st.val!==st._last){ st._last=st.val; tone(120+st.val*18,.03,'sine',.14); } },
+  onUp:function(J,x,y){ var st=J.state; if(!st.drag||st.done)return; st.drag=false; st.done=true; if(st.val===st.eq.b){ var turned=Math.abs(st.val-st.eq.a); timHit(st.eq.op==='\u2212'); J.win('You turned '+turned+'. '+st.eq.a+' '+st.eq.op+' '+turned+' = '+st.eq.b+'. The missing number was '+st.ans+'!'); } else { J.miss('The drum landed on '+st.val+', not '+st.eq.b+'. The turn was '+st.ans+', so stop on '+st.eq.b+'.'); } }
+});
+jamCoach('pedaltune','timmy','\uD83E\uDD41 Pedal Tune',['The green tick is the note the song needs.','DRAG the pedal up or down and stop the drum exactly on the tick!'],'DRAG','drag');
+addRecruit({id:'timmy',name:'Timmy',emoji:'\uD83E\uDD41',title:'Timpani',concept:'missnum',conceptName:'Missing Numbers',color:'#7a6cff',rig:'kettledrums',draw:timpaniSVG,crewId:'timmy',
+  bio:'A timpani is a drum you tune. Turn the pedal by exactly the right amount and the pitch is perfect. That amount is the missing number, and finding it is the first step into algebra.',
+  lines:['Three plus what is ten? Seven. Turn it seven.','A blank is not scary. It is just a number hiding.','Know the end but not the start? Work backward.'],
+  dreams:['The Timekeepers played every note at the same pitch and never tuned. You found the missing number every time.','My dream: an equation so big it needs two pedals and both feet.','A blank you solve for is where the real math begins.','Up is plus, down is minus, backward is the opposite. That is the whole trick.','Every song needs a low boom that lands exactly on pitch. That is me.'],
+  key:'timekeepers',bandName:'The Timekeepers',crew:{name:'The Timekeepers',members:[
+    {id:'bassdrum',emoji:'\uD83E\uDD41',name:'Bruno',line:'One note. Loud. Forever.'},{id:'gongg',emoji:'\uD83D\uDD14',name:'Gwen',line:'CRASH. Was that in tune? Who knows.'},{id:'chimes',emoji:'\uD83C\uDFB5',name:'Cass',line:'Pretty, but never the right pitch.'},{id:'timmy',emoji:'\uD83E\uDD41',name:'Timmy',star:true,line:'Three plus seven is ten. Tuned exactly.'}]},
+  loseEmoji:'\uD83E\uDD41',loseTitle:'The Timekeepers stay out of tune',winLine:'You held the crowd AND found every missing number. Timmy pumped the pedal, landed one perfect low boom, and rolled the kettles to your stage.',
+  starHint:'Win the tuning rounds to fill the recruit spark and get Timmy to switch stages.',btnStyle:'linear-gradient(90deg,#3a2a6a,#7a6cff)',
+  gigLine:'Timmy pumps the pedal and lands one perfect boom. "Right on pitch. The missing number never misses, frontman."',meetLine:'And Timmy on timpani, out of The Timekeepers. Turn the pedal by the missing number: the first step into algebra.'});
+HEADLINE_JAM.timmy='pedaltune'; LESSONS.timmy.game=function(){ startJam('pedaltune'); };
+
 
 </script>
 </body>
