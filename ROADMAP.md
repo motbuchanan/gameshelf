@@ -1,7 +1,7 @@
 # Game Shelf — Roadmap
 
 Repo: `motbuchanan/gameshelf` · Live: https://motbuchanan.github.io/gameshelf/
-Last updated: 2026-08-23
+Last updated: 2026-09-22
 
 This file is the single organizing record for the shelf: what each app is,
 what state it's in, what's shipped, and what's next. Update it when a version
@@ -19,6 +19,12 @@ ships or a decision changes. Keep entries short. Status tags:
 - [x] **Share the Shelf** — double-tap the version badge (`verBadge`) shows a QR
   to the shelf index + Add-to-Home-Screen hint. Wired natively into shelf
   **v59** and tested 2026-08-23. Styled to the shelf's gold/dark theme.
+- [x] **Nazca in the Toys bin** (shelf **v62**, 2026-09-22) — Mot's infinite-canvas
+  drawing app wired into the OLD TOYS bin (now 11 toys), sitting after Color Lab.
+  Its own copy of the app lives at `/nazca/` (copied from the site repo; self-contained,
+  no leak-out links). Tile art = Mot-supplied sand-carved bird icon (base64 img in the
+  toy `art` field). sw.js precache += `nazca/index.html`, `nazca/manifest.json`,
+  `nazca/sw.js`, `nazca/icon-192.png`; CACHE + visible badge bumped 59/61 → **v62**.
 - [ ] **This roadmap** — keep `ROADMAP.md` current as the shelf's source of truth. **ACTIVE**
 - [ ] Per-app version badges + shared deploy ritual audit across all apps. **IDEA**
 
