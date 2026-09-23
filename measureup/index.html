@@ -625,7 +625,7 @@ svg .charg{will-change:transform}
 <!-- HUB -->
 <div class="scr" id="scr-hub">
   <div class="topbar">
-    <a id="shelfbtn" class="btn ghost small" href="../" style="display:inline-block;text-decoration:none" aria-label="Back to Game Shelf">🎮 Shelf</a>
+    <a class="btn ghost small" href="../" style="display:inline-block;text-decoration:none" aria-label="Back to Game Shelf">🎮 Shelf</a>
     <div class="chip">🎵 <span class="cv" id="hudNotes">0</span></div>
     <div class="chip">📀 <span class="cv" id="hudGold">0</span></div>
     <div class="spacer"></div>
@@ -928,14 +928,14 @@ svg .charg{will-change:transform}
 <div id="toast"></div>
 <button id="homeBtn" onclick="goHome()" aria-label="Back to Garage">🏠</button>
 <button id="ellyBtn" onclick="openEllyHelp()" aria-label="Ask Elly for help"></button>
-<div id="vbadge">v0.99 · Sep 22</div>
+<div id="vbadge">v0.99 · Sep 23</div>
 
 <script>
 'use strict';
 /* ============ UTILS ============ */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const VERSION='v0.99 · Sep 22';
+const VERSION='v0.99 · Sep 23';
 const RM=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -11598,6 +11598,545 @@ HEADLINE_JAM.timmy='pedaltune'; LESSONS.timmy.game=function(){ startJam('pedaltu
 
 
 </script>
-<script>if(window.self!==window.top){var _s=document.getElementById('shelfbtn');if(_s)_s.style.display='none';}</script>
+<script>
+/* ================= v0.99 · SETLIST SPIRAL + GUEST SPOTS + LESSON FADE + LIBBY / RULA / TESSA (Sep 23 2026) =================
+   The research-backed overhaul (see measureup-PEDAGOGY-research.md):
+   1. SPIRAL REVIEW that reads as new content. Every mastered concept (1+ stars) carries a hidden review clock on an
+      expanding schedule (1 / 3 / 7 / 14 / 30 days). When one comes due it is NOT replayed: it shows up as a
+      GUEST SPOT, one question dropped into round 3 of whatever game or jam is being played, asked by the member
+      who owns it, one level harder each time it returns. (S.spiral)
+   2. TONIGHT'S SETLIST: a once-a-day supergroup set on the hub. Five songs, five different bandmates, one skill
+      each (due concepts first). Interleaved retrieval that feels like a new mode; streak counts nights, never
+      guilts. Includes SPOTLIGHT: Garrett picks which bandmate he wants to push next (autonomy). (S.setlist)
+   3. LESSON FADE: after the first-play lesson, the 2nd and 3rd starts of a member's games show a "Finish this one"
+      completion problem (Elly does the first steps, the kid does the last), then the guidance drops out.
+      Expertise-reversal fix. (S.fade)
+   4. Three new members in the validated sequence: Libby (balance scale: the equal sign means SAME, non-standard
+      forms, true/false sentences), Rula (function machine: hidden rule in/out), Tessa (slide / flip / turn).
+      All 3+1, all disguised higher math, all mixed into the normal roster. */
+
+/* ---------- state ---------- */
+DEF.spiral={}; DEF.setlist=null; DEF.fade={}; DEF.spotlight=null;
+function st099(){ if(!S.spiral)S.spiral={}; if(!S.fade)S.fade={}; if(!('spotlight' in S))S.spotlight=null; }
+st099();
+var _load099=load; load=function(){ _load099(); st099(); };
+function dayKey(d){ d=d||new Date(); var p=function(n){return (n<10?'0':'')+n;}; return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()); }
+function memberForConcept(c){ for(var i=0;i<BAND.length;i++){ if(BAND[i].concept===c)return BAND[i]; } return null; }
+function conceptInBand(c){ var m=memberForConcept(c); return !!(m&&(S.band[m.id]||S.auditioned[m.id])); }
+
+/* ================= 1. SPIRAL CLOCKS ================= */
+var SPIRAL_GAPS=[1,3,7,14,30];
+function spiralRec(c){ if(!S.spiral[c])S.spiral[c]={last:0,gap:1,n:0}; return S.spiral[c]; }
+function spiralTouch(c){ var r=spiralRec(c); r.last=Date.now(); }
+function spiralPass(c){ var r=spiralRec(c); r.n=Math.min(SPIRAL_GAPS.length-1,r.n+1); r.gap=SPIRAL_GAPS[r.n]; r.last=Date.now(); save(); }
+function spiralFail(c){ var r=spiralRec(c); r.n=Math.max(0,r.n-1); r.gap=SPIRAL_GAPS[r.n]; r.last=Date.now(); save(); }
+function spiralMastered(c){ return Math.floor(lvlOf(c))>=STAR_NEED[0] && conceptInBand(c) && !!QG[c] && c!=='conduct'; }
+function spiralOverdue(c){ var r=spiralRec(c); var days=(Date.now()-(r.last||0))/86400000; return days/(r.gap||1); }
+function spiralDue(exclude){
+  return Object.keys(CONCEPT_NAMES).filter(function(c){ return c!==exclude&&spiralMastered(c)&&spiralOverdue(c)>=1; })
+    .sort(function(a,b){ return spiralOverdue(b)-spiralOverdue(a); });
+}
+function spiralLevel(c){ var r=spiralRec(c); return Math.max(1,Math.min(capOf(c),Math.floor(lvlOf(c))+Math.min(2,Math.floor(r.n/2)))); }
+/* normal play of a concept counts as its own review */
+var _adjust099=adjust;
+adjust=function(concept,correct,fast,auditionMode){ var r=_adjust099(concept,correct,fast,auditionMode); try{ if(correct)spiralTouch(concept); }catch(e){} return r; };
+
+/* ---------- one shared question card (guest spots + setlist) ---------- */
+function reviewCard(o,done){
+  /* o: {concept, title, sub, L, tag, reward} ; done(correct) */
+  var c=o.concept, m=memberForConcept(c); if(!m||!QG[c]){ done(true); return; }
+  var item; try{ item=QG[c](o.L||Math.floor(lvlOf(c))); }catch(e){ done(true); return; }
+  var ch=(item.choices||[]).map(String); var answered=false;
+  modal('<div class="center">'+memberSVG(m.id,84)+'<h2 style="margin-top:4px">'+o.title+'</h2>'+(o.sub?'<div class="sub">'+o.sub+'</div>':'')+'</div>'+
+    '<div class="card" style="padding:10px 12px"><div style="font-weight:900;color:#ffd158;font-size:13px">'+(o.tag||'')+CONCEPT_NAMES[c]+'</div>'+
+    (item.vis?'<div class="center" style="margin:8px 0">'+item.vis+'</div>':'')+'<div style="font-weight:800;font-size:17px;text-align:center;margin:6px 0">'+item.q+'</div></div>'+
+    '<div class="mjcards" id="rvZ">'+ch.map(function(x){ return '<button class="mjposter rvb" data-v="'+x.replace(/"/g,'&quot;')+'" style="font-size:20px;min-width:64px">'+x+'</button>'; }).join('')+'</div>'+
+    '<div class="jammsg" id="rvMsg" style="min-height:22px"></div>');
+  $$('.rvb').forEach(function(bt){ bt.addEventListener('click',function(){ if(answered)return; answered=true; ac();
+    var ok=bt.dataset.v===String(item.a); var msg=$('#rvMsg');
+    if(ok){ sCorrect(1); confetti(8); bt.style.background='linear-gradient(180deg,#7dff8a,#4ccf6a)'; bt.style.color='#12331c'; if(msg)msg.textContent=pick(['Nailed it!','Still got it!','Clean.','That is the one.']); }
+    else { ellyChime(); punch(bt); bt.style.borderColor='#ff5d5d'; $$('.rvb').forEach(function(b2){ if(b2.dataset.v===String(item.a)){ b2.style.background='linear-gradient(180deg,#7dff8a,#4ccf6a)'; b2.style.color='#12331c'; } }); if(msg)msg.textContent='It was '+item.a+'. Next time.'; }
+    later(function(){ closeModal(); done(ok); },ok?900:1500);
+  }); });
+}
+
+/* ================= GUEST SPOTS (round 3 of any game or jam) ================= */
+function guestPick(cur){ var due=spiralDue(cur); if(S.spotlight&&BY_ID[S.spotlight]){ var sc=BY_ID[S.spotlight].concept; if(sc!==cur&&spiralMastered(sc)&&due.indexOf(sc)<0&&spiralOverdue(sc)>=0.5)due.unshift(sc); } return due[0]||null; }
+function guestSpot(c,cont){
+  var m=memberForConcept(c); if(!m){ cont(); return; }
+  drum('clap');
+  reviewCard({concept:c,title:'🎤 Guest spot: '+mName(m.id)+'!',sub:nameify(mName(m.id)+' sits in for one. '+pick(['Still got it?','Quick one.','Show them.','One for the road.'])),L:spiralLevel(c),tag:'Sitting in with: '},
+    function(ok){ if(ok){ spiralPass(c); adjust(c,true,false); addNotes(3+(typeof perkBonus==='function'?perkBonus():0)); toast('🎤 Guest spot nailed: +3 🎵'); } else { spiralFail(c); } cont(); });
+}
+var _mjNext099=mjNext;
+mjNext=function(){ if(MJ.on&&!MJ.practice&&MJ.round===2&&!MJ._guest){ var c=guestPick(MJ.def.concept); if(c){ MJ._guest=true; guestSpot(c,function(){ if(MJ.on)_mjNext099(); }); return; } } _mjNext099(); };
+var _startMJ099g=startMJ; startMJ=function(id,practice){ MJ._guest=false; return _startMJ099g(id,practice); };
+var _jamNext099=jamNext;
+jamNext=function(J){ if(J&&J.on&&!J.practice&&J.round===2&&!J._guest){ var c=guestPick(J.def.concept); if(c){ J._guest=true; J.busy=true; guestSpot(c,function(){ if(J.on){ J.busy=false; _jamNext099(J); } }); return; } } _jamNext099(J); };
+
+/* ================= 2. TONIGHT'S SETLIST ================= */
+function setlistEligible(){ return Object.keys(CONCEPT_NAMES).filter(function(c){ return c!=='conduct'&&QG[c]&&conceptInBand(c); }); }
+function setlistBuild(){
+  var due=spiralDue(); var picks=[]; var add=function(c){ if(c&&picks.indexOf(c)<0&&picks.length<5)picks.push(c); };
+  if(S.spotlight&&BY_ID[S.spotlight])add(BY_ID[S.spotlight].concept);
+  due.forEach(add);
+  var rest=setlistEligible().filter(function(c){ return picks.indexOf(c)<0; }).sort(function(a,b){ return lvlOf(b)-lvlOf(a); });
+  shuffle(rest.slice(0,10)).forEach(add); rest.forEach(add);
+  return picks;
+}
+function setlistState(){ var today=dayKey(); if(!S.setlist||S.setlist.day!==today){ S.setlist={day:today,done:false,score:0,picks:setlistBuild(),streak:(S.setlist&&S.setlist.streak)||0,lastDay:(S.setlist&&S.setlist.lastDay)||null}; save(); } return S.setlist; }
+function setlistOpen(){ sTap(); var sl=setlistState();
+  if(sl.picks.length<3){ modal('<div class="center">'+ellySVG(60)+'<h2>🌟 Tonight’s Setlist</h2></div><div class="card center">Recruit three bandmates and the nightly setlist opens: five songs, five bandmates, one skill each.</div><button class="btn wide" onclick="closeModal()">OK</button>'); return; }
+  if(sl.done){ setlistDoneModal(); return; }
+  var faces=sl.picks.map(function(c){ var m=memberForConcept(c); return m?'<div style="text-align:center;width:64px">'+memberSVG(m.id,56)+'<div style="font-size:11px;font-weight:800;color:#c9b8ff">'+mName(m.id)+'</div></div>':''; }).join('');
+  modal('<div class="center">'+ellySVG(60)+'<h2>🌟 Tonight’s Setlist</h2><div class="sub">'+sl.picks.length+' songs · '+sl.picks.length+' bandmates · one skill each. Once a night.</div></div>'+
+    '<div class="row" style="justify-content:center;flex-wrap:wrap;gap:6px;margin:8px 0">'+faces+'</div>'+
+    '<div class="speak"><b>Elly:</b> “'+nameify(pick(['Supergroup night. Everybody gets one song.','No repeats, no warm-up. Five bandmates, five skills, go.','Tonight the whole band shares the stage. One song each.']))+'”</div>'+
+    (sl.streak>0?'<div class="sub center">🌙 '+sl.streak+' night'+(sl.streak===1?'':'s')+' in a row</div>':'')+
+    '<button class="btn wide" onclick="setlistPlay()">▶ Play the set</button>'+
+    '<button class="btn wide ghost" onclick="spotlightPick()">🔦 Spotlight: '+(S.spotlight&&BY_ID[S.spotlight]?mName(S.spotlight):'pick a bandmate to push')+'</button>'+
+    '<button class="btn wide ghost" onclick="closeModal()">Later</button>');
+}
+function setlistPlay(){ var sl=setlistState(); if(sl.done)return; var i=0, right=0; var results=[];
+  var next=function(){ if(i>=sl.picks.length){ setlistFinish(right,results); return; } var c=sl.picks[i]; var m=memberForConcept(c); i++;
+    reviewCard({concept:c,title:'Song '+i+' of '+sl.picks.length+' · '+(m?mName(m.id):''),sub:'',L:spiralMastered(c)?spiralLevel(c):Math.floor(lvlOf(c)),tag:''},
+      function(ok){ results.push({c:c,ok:ok}); if(ok){ right++; adjust(c,true,false); if(spiralMastered(c))spiralPass(c); } else { adjust(c,false,false); if(spiralMastered(c))spiralFail(c); } next(); }); };
+  next();
+}
+function setlistFinish(right,results){ var sl=setlistState(); var n=sl.picks.length; var y=new Date(); y.setDate(y.getDate()-1); var yk=dayKey(y);
+  sl.streak=(sl.lastDay===yk)?(sl.streak||0)+1:1; sl.lastDay=sl.day; sl.done=true; sl.score=right; sl.results=results; save();
+  var notes=right*4+(right===n?20:0); addNotes(notes); if(right===n){ sFanfare(); confetti(40); } else sCorrect(1);
+  setlistDoneModal(true);
+}
+function setlistDoneModal(fresh){ var sl=setlistState(); var n=sl.picks.length; var res=(sl.results||[]).map(function(r){ var m=memberForConcept(r.c); return '<div style="text-align:center;width:64px;opacity:'+(r.ok?1:.55)+'">'+(m?memberSVG(m.id,50):'')+'<div style="font-size:12px">'+(r.ok?'⭐':'★')+'</div></div>'; }).join('');
+  modal('<div class="center">'+ellySVG(60)+'<h2>'+(sl.score===n?'🌟 Perfect set!':'🌟 Set played')+'</h2><div class="sub">'+sl.score+' of '+n+' songs landed'+(fresh?' · +'+(sl.score*4+(sl.score===n?20:0))+' 🎵':'')+'</div></div>'+
+    '<div class="row" style="justify-content:center;flex-wrap:wrap;gap:6px;margin:8px 0">'+res+'</div>'+
+    '<div class="card center"><b>🌙 '+sl.streak+' night'+(sl.streak===1?'':'s')+' in a row</b><div class="sub">A new setlist drops tomorrow.</div></div>'+
+    '<button class="btn wide" onclick="closeModal()">🤘</button>');
+}
+function spotlightPick(){ sTap(); var ids=BAND.filter(function(m){ return S.band[m.id]||S.auditioned[m.id]; }).map(function(m){ return m.id; });
+  modal('<div class="center">'+ellySVG(52)+'<h2>🔦 Spotlight</h2><div class="sub">Who do you want to push next? Their skill sneaks into guest spots and every setlist.</div></div>'+
+    '<div class="row" style="justify-content:center;flex-wrap:wrap;gap:6px;margin:8px 0">'+ids.map(function(id){ return '<button class="mjposter" onclick="spotlightSet(\''+id+'\')" style="width:78px;padding:6px;'+(S.spotlight===id?'border-color:#ffd158;background:#3a2a6a':'')+'">'+memberSVG(id,44)+'<div style="font-size:11px">'+mName(id)+'</div></button>'; }).join('')+'</div>'+
+    '<button class="btn wide ghost" onclick="spotlightSet(null)">No spotlight</button>');
+}
+function spotlightSet(id){ sTap(); S.spotlight=id||null; save(); if(id)toast('🔦 Spotlight on '+mName(id)); closeModal(); setlistOpen(); if(typeof renderHub==='function')renderHub(); }
+
+/* ---------- hub card ---------- */
+var _renderHub099=renderHub;
+renderHub=function(){ _renderHub099();
+  var host=$('#musicTeaser'); if(!host)return; var el=$('#setlistTeaser');
+  if(!el){ el=document.createElement('div'); el.className='rivalteaser'; el.id='setlistTeaser'; el.style.borderColor='#ffd15888'; el.onclick=setlistOpen; host.parentNode.insertBefore(el,host); }
+  var sl=setlistState(); var due=spiralDue().length;
+  var faces=sl.picks.slice(0,5).map(function(c){ var m=memberForConcept(c); return m?'<span style="display:inline-block;vertical-align:middle">'+memberSVG(m.id,26)+'</span>':''; }).join('');
+  el.innerHTML='🌟 Tonight’s Setlist <span style="font-weight:700;color:#ffd158">'+(sl.done?'✓ played · 🌙 '+sl.streak:'· '+sl.picks.length+' songs')+'</span>'+
+    '<div style="margin-top:3px">'+faces+'</div><div style="font-size:11px;font-weight:600;opacity:.85;margin-top:2px">'+(sl.done?'new set tomorrow':'five bandmates, one skill each, once a night')+(S.spotlight&&BY_ID[S.spotlight]?' · 🔦 '+mName(S.spotlight):'')+'</div>';
+  /* spotlight chip on the member card */
+  if(S.spotlight){ var g=$('#bandGrid'); if(g){ [].slice.call(g.querySelectorAll('.mcard')).forEach(function(card){ var nm=card.querySelector('.nm'); if(nm&&nm.textContent.indexOf(mName(S.spotlight))>=0&&!card.querySelector('.spotchip')){ var sp=document.createElement('div'); sp.className='spotchip'; sp.style.cssText='font-size:11px;font-weight:800;color:#ffd158'; sp.textContent='🔦 spotlight'; nm.insertAdjacentElement('afterend',sp); } }); } }
+};
+
+/* ================= 3. LESSON FADE: completion problems on starts 2 and 3 ================= */
+function fadeGate(memberId,concept,cont){
+  if(!lessonDone(memberId)||!STEPWALK[concept])return false;
+  var n=S.fade[memberId]||0; if(n>=2)return false;
+  var sw; try{ sw=STEPWALK[concept](Math.floor(lvlOf(concept))); }catch(e){ return false; }
+  if(!sw||!sw.steps||sw.steps.length<2)return false;
+  S.fade[memberId]=n+1; save();
+  var last=sw.steps[sw.steps.length-1]; var done=sw.steps.slice(0,-1); var answered=false;
+  modal('<div class="center">'+ellySVG(52)+memberSVG(memberId,58)+'<h2 style="margin-top:4px">✏️ Finish this one</h2><div class="sub">'+sw.title+'</div></div>'+
+    '<div class="speak"><b>Elly:</b> “'+(n===0?'I did the first part. You do the last step.':'Last time with training wheels. You take it from here.')+'”</div>'+
+    done.map(function(s){ return '<div class="card" style="padding:8px 10px;margin:6px 0;opacity:.85"><div class="sub" style="text-align:left;margin:0">'+s.say+'</div>'+(s.vis?'<div class="center" style="margin:4px 0">'+s.vis+'</div>':'')+'<div style="font-weight:900;color:#7dff8a;text-align:right">✓ '+s.a+'</div></div>'; }).join('')+
+    '<div class="card" style="padding:8px 10px;margin:6px 0;border-color:#ffd158"><div style="font-weight:800">'+last.say+'</div>'+(last.vis?'<div class="center" style="margin:4px 0">'+last.vis+'</div>':'')+'</div>'+
+    '<div class="mjcards" id="fdZ">'+(last.choices||[]).map(function(x){ return '<button class="mjposter fdb" data-v="'+String(x).replace(/"/g,'&quot;')+'" style="font-size:20px;min-width:64px">'+x+'</button>'; }).join('')+'</div>'+
+    '<div class="jammsg" id="fdMsg" style="min-height:22px"></div><div id="fdGo"></div>');
+  $$('.fdb').forEach(function(bt){ bt.addEventListener('click',function(){ if(answered)return; answered=true; ac(); var ok=bt.dataset.v===String(last.a); var msg=$('#fdMsg');
+    if(ok){ sCorrect(1); confetti(8); bt.style.background='linear-gradient(180deg,#7dff8a,#4ccf6a)'; bt.style.color='#12331c'; if(msg)msg.textContent=last.after||'That is it. Now the real thing.'; }
+    else { ellyChime(); punch(bt); bt.style.borderColor='#ff5d5d'; if(msg)msg.textContent='It was '+last.a+'. '+(last.after||''); }
+    $('#fdGo').innerHTML='<button class="btn wide" id="fdPlay">▶ Play</button>'; $('#fdPlay').addEventListener('click',function(){ sTap(); closeModal(); cont(); });
+  }); });
+  return true;
+}
+var _startMJ099f=startMJ;
+startMJ=function(id,practice){ var g=MJGAMES[id]; if(g&&g.member&&g.concept&&!practice&&fadeGate(g.member,g.concept,function(){ _startMJ099f(id,practice); }))return; _startMJ099f(id,practice); };
+var _startJam099f=startJam;
+startJam=function(id,practice){ var d=JAMS[id]; if(d&&d.member&&d.concept&&!practice&&fadeGate(d.member,d.concept,function(){ _startJam099f(id,practice); }))return; _startJam099f(id,practice); jamWatch(); };
+/* the jam canvas is flex:1; when the message or topbar wraps AFTER jamResize ran, the canvas shrinks and every
+   jam drew squished (found on the v0.99 renders). Watch the canvas and re-fit whenever its box changes. */
+function jamWatch(){ var J=JK.cur; if(!J||!J.cv||typeof ResizeObserver==='undefined')return; try{ if(J._ro)J._ro.disconnect(); J._ro=new ResizeObserver(function(){ if(!J.on){ J._ro.disconnect(); return; } var r=J.cv.getBoundingClientRect(); if(Math.abs(r.height-J.H)>2||Math.abs(r.width-J.W)>2){ jamResize(J); if(J.def.onResize)J.def.onResize(J); } }); J._ro.observe(J.cv); }catch(e){} }
+
+/* ================= 4a. LIBBY on crash cymbals: BALANCE & EQUALS ================= */
+/* an equation is two sides; each side is a list of {op,v}; v may be '?' */
+function eqSideVal(side,x){ var t=0; side.forEach(function(k,i){ var v=k.v==='?'?x:k.v; t+=(i>0&&k.op==='-')?-v:v; }); return t; }
+function eqSideText(side,reveal){ return side.map(function(k,i){ var v=k.v==='?'?(reveal!=null?reveal:'?'):k.v; return (i>0?' '+k.op+' ':'')+v; }).join(''); }
+function eqMake(L){
+  var small=L<4?9:L<7?12:L<11?20:30;
+  var forms=L<4?['a+?=b','b=a+?']:L<7?['a+?=b','b=a+?','?+a=b','b=?+a']:L<11?['a+b=?+c','?+a=b+c','b=?+a','a-?=b']:['a+b=?+c','a+b=c+?','a-?=b','?-a=b','a+b=?-c'];
+  var f=pick(forms), a=R(1,small), x=R(1,small), b, c, T=function(v,op){ return {op:op||'+',v:v}; };
+  switch(f){
+    case 'a+?=b': return {L:[T(a),T('?')],R:[T(a+x)],x:x,f:f};
+    case 'b=a+?': return {L:[T(a+x)],R:[T(a),T('?')],x:x,f:f};
+    case '?+a=b': return {L:[T('?'),T(a)],R:[T(a+x)],x:x,f:f};
+    case 'b=?+a': return {L:[T(a+x)],R:[T('?'),T(a)],x:x,f:f};
+    case 'a+b=?+c': b=R(1,small); c=R(1,a+b-1); return {L:[T(a),T(b)],R:[T('?'),T(c)],x:a+b-c,f:f};
+    case 'a+b=c+?': b=R(1,small); c=R(1,a+b-1); return {L:[T(a),T(b)],R:[T(c),T('?')],x:a+b-c,f:f};
+    case '?+a=b+c': b=R(1,small); c=R(1,small); a=R(1,b+c-1); return {L:[T('?'),T(a)],R:[T(b),T(c)],x:b+c-a,f:f};
+    case 'a-?=b': b=R(0,small); return {L:[T(x+b),T('?','-')],R:[T(b)],x:x,f:f};
+    case '?-a=b': b=R(1,small); return {L:[T('?'),T(a,'-')],R:[T(b)],x:a+b,f:f};
+    case 'a+b=?-c': b=R(1,small); c=R(1,small); return {L:[T(a),T(b)],R:[T('?'),T(c,'-')],x:a+b+c,f:f};
+  }
+}
+function eqNoQ(side){ return side.every(function(k){ return k.v!=='?'; }); }
+function eqTF(L){ /* a full number sentence, true or false */
+  var e=eqMake(L); var Lside=e.L.map(function(k){ return {op:k.op,v:k.v==='?'?e.x:k.v}; }), Rside=e.R.map(function(k){ return {op:k.op,v:k.v==='?'?e.x:k.v}; });
+  var truth=Math.random()<.5; if(!truth){ var side=Math.random()<.5?Lside:Rside; var k=side[side.length-1]; var d=pick([1,-1,2,-2]); k.v=Math.max(0,k.v+d); if(eqSideVal(Lside)===eqSideVal(Rside))k.v+=1; }
+  return {L:Lside,R:Rside,truth:eqSideVal(Lside)===eqSideVal(Rside)};
+}
+function scaleSVG(Lside,Rside,tilt,reveal){
+  /* tilt: -1 left heavy, 0 level, +1 right heavy */
+  var ang=(tilt||0)*9; var lt=eqSideText(Lside,reveal), rt=eqSideText(Rside,reveal);
+  var pan=function(x,txt,hot){ return '<g><line x1="'+x+'" y1="30" x2="'+(x-30)+'" y2="66" stroke="#8a6a2a" stroke-width="2"/><line x1="'+x+'" y1="30" x2="'+(x+30)+'" y2="66" stroke="#8a6a2a" stroke-width="2"/><path d="M'+(x-38)+' 66 q38 22 76 0 z" fill="'+(hot?'#ffd158':'#e8cf9a')+'" stroke="#8a6a2a" stroke-width="2"/><rect x="'+(x-46)+'" y="70" width="92" height="30" rx="8" fill="#2a1f55" stroke="#4b3f86" stroke-width="2"/><text x="'+x+'" y="91" text-anchor="middle" font-size="19" font-weight="900" fill="'+(hot?'#ffd158':'#f4f0ff')+'">'+txt+'</text></g>'; };
+  return '<svg viewBox="0 0 260 130" width="100%" style="max-width:260px;display:block;margin:0 auto">'+
+    '<rect x="122" y="30" width="16" height="84" rx="4" fill="#5a3f1a"/><rect x="88" y="112" width="84" height="12" rx="6" fill="#3a2a10"/>'+
+    '<g transform="rotate('+ang+' 130 30)"><rect x="24" y="26" width="212" height="8" rx="4" fill="#b98a3a"/>'+pan(60,lt,lt.indexOf('?')>=0)+pan(200,rt,rt.indexOf('?')>=0)+'</g>'+
+    '<circle cx="130" cy="30" r="7" fill="#ffd158" stroke="#8a6a0e" stroke-width="2"/><text x="130" y="15" text-anchor="middle" font-size="18" font-weight="900" fill="#ffd158">=</text></svg>';
+}
+function eqChoices(e){ return numChoices(e.x,3); }
+CONCEPT_NAMES.equal='Balance & Equals'; DEF.skills.equal=1; if(S&&S.skills&&!S.skills.equal)S.skills.equal=1;
+QG.equal=function(L){
+  if(L>=4&&Math.random()<.3){ var t=eqTF(L); return {q:'True or false? '+eqSideText(t.L)+' = '+eqSideText(t.R),vis:scaleSVG(t.L,t.R,0),choices:['TRUE','FALSE'],a:t.truth?'TRUE':'FALSE'}; }
+  var e=eqMake(L); return {q:'What makes both sides the SAME?',vis:scaleSVG(e.L,e.R,0),choices:eqChoices(e),a:String(e.x)};
+};
+function cymCrash(soft){ var a=ac(); if(!a)return; var t=a.currentTime; noiseHit(t,soft?.35:.9,'highpass',soft?7000:4500,soft?.18:.34); noiseHit(t,.12,'bandpass',3200,.16); }
+function libbySVG(crewId,sz){
+  var O='#221a44'; var b=
+    '<ellipse cx="70" cy="128" rx="34" ry="6" fill="#0d0d20"/>'+
+    /* two cymbals held wide, one each hand */
+    '<ellipse cx="26" cy="72" rx="20" ry="7" fill="#e8cf9a" stroke="#8a6a2a" stroke-width="2"/><ellipse cx="26" cy="70" rx="7" ry="3" fill="#ffd158"/>'+
+    '<ellipse cx="114" cy="72" rx="20" ry="7" fill="#e8cf9a" stroke="#8a6a2a" stroke-width="2"/><ellipse cx="114" cy="70" rx="7" ry="3" fill="#ffd158"/>'+
+    '<line x1="44" y1="78" x2="58" y2="86" stroke="#4fb3a9" stroke-width="7" stroke-linecap="round"/><line x1="96" y1="78" x2="82" y2="86" stroke="#4fb3a9" stroke-width="7" stroke-linecap="round"/>'+
+    /* body: a round teal creature with a level-bubble on the belly */
+    '<ellipse cx="70" cy="92" rx="30" ry="30" fill="#4fb3a9"/><rect x="50" y="94" width="40" height="12" rx="6" fill="#d9fff8" stroke="'+O+'" stroke-width="2"/><circle cx="70" cy="100" r="4" fill="#ffd158"/>'+
+    '<circle cx="70" cy="56" r="22" fill="#5fcbc0"/><circle cx="62" cy="54" r="4.5" fill="'+O+'"/><circle cx="78" cy="54" r="4.5" fill="'+O+'"/><circle cx="63.5" cy="52.5" r="1.5" fill="#fff"/><circle cx="79.5" cy="52.5" r="1.5" fill="#fff"/>'+
+    '<path d="M62 64 q8 6 16 0" stroke="'+O+'" stroke-width="3" fill="none" stroke-linecap="round"/>'+
+    '<path d="M56 38 q14 -14 28 0" stroke="#ffd158" stroke-width="4" fill="none" stroke-linecap="round"/><circle cx="70" cy="30" r="4" fill="#ffd158"/>';
+  return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 140 140"><g class="charg">'+b+'</g></svg>';
+}
+MEMBER_FAM.libby='bell'; VOICE_LABELS.libby='Cymbals';
+var _mNoteL=mNote; mNote=function(id,n,dur,when){ if(id==='libby'){ cymCrash((n||60)>=72); return; } return _mNoteL(id,n,dur,when); };
+MJGAMES.tipscale={id:'tipscale',name:'Tip the Scale',emoji:'⚖️',member:'libby',concept:'equal',
+setup:function(L,st){ var e=eqMake(L); st.e=e; st.ans=String(e.x);
+  return {call:'Make both sides the same', sub:eqSideText(e.L)+' = '+eqSideText(e.R)+'. What weight goes in the ? pan?', html:scaleSVG(e.L,e.R,0)+'<div class="mjcards" id="tsZ"></div>',
+    wire:function(){ $('#tsZ').innerHTML=eqChoices(e).map(function(o){return '<button class="mjposter tsb" data-v="'+o+'" style="font-size:24px">'+o+'</button>';}).join('');
+      $$('.tsb').forEach(function(bt){ bt.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(bt.dataset.v===st.ans){ cymCrash(false); $('#mjZone').firstChild.outerHTML=scaleSVG(e.L,e.R,0,e.x); mjOK(eqSideText(e.L,e.x)+' = '+eqSideText(e.R,e.x)+'. Level!'); } else { punch(bt); var v=+bt.dataset.v; var lt=eqSideVal(e.L,v), rt=eqSideVal(e.R,v); $('#mjZone').firstChild.outerHTML=scaleSVG(e.L,e.R,lt>rt?-1:1,v); mjNo((lt>rt?'Left':'Right')+' side is heavier with '+v+'. Both sides must be '+eqSideVal(e.L,e.x)+': the answer was '+e.x+'.'); } }); }); }}; }};
+MJGAMES.truefalse={id:'truefalse',name:'True or False',emoji:'⚖️',member:'libby',concept:'equal',
+setup:function(L,st){ var t=eqTF(Math.max(2,L)); st.t=t;
+  return {call:'True or false?', sub:eqSideText(t.L)+' = '+eqSideText(t.R)+'. Does the scale sit level?', html:scaleSVG(t.L,t.R,0)+'<div class="mjcards" id="tfZ"></div>',
+    wire:function(){ $('#tfZ').innerHTML='<button class="mjposter tfb" data-v="TRUE" style="font-size:22px;min-width:110px;border-color:#7dff8a">TRUE ✓</button><button class="mjposter tfb" data-v="FALSE" style="font-size:22px;min-width:110px;border-color:#ff5d5d">FALSE ✗</button>';
+      $$('.tfb').forEach(function(bt){ bt.addEventListener('click',function(){ if(MJ.busy)return; ac(); var lt=eqSideVal(t.L), rt=eqSideVal(t.R); var truth=lt===rt; $('#mjZone').firstChild.outerHTML=scaleSVG(t.L,t.R,truth?0:(lt>rt?-1:1));
+        if((bt.dataset.v==='TRUE')===truth){ cymCrash(!truth); mjOK(truth?lt+' = '+rt+'. Level. TRUE.':lt+' is not '+rt+'. It tips. FALSE.'); } else { punch(bt); mjNo(truth?'Both sides make '+lt+'. That IS level, so it was TRUE.':'Left makes '+lt+', right makes '+rt+'. Not the same, so FALSE.'); } }); }); }}; }};
+MJGAMES.bothsides={id:'bothsides',name:'Both Sides',emoji:'⚖️',member:'libby',concept:'equal',
+setup:function(L,st){ var e; do{ e=eqMake(Math.max(7,L)); }while(e.L.length!==2||e.R.length!==2); st.e=e; st.ans=String(e.x);
+  return {call:'Two weights on each side', sub:eqSideText(e.L)+' = '+eqSideText(e.R)+'. Add up the full side first, then find the ?', html:scaleSVG(e.L,e.R,0)+'<div class="mjcards" id="bsZ"></div>',
+    wire:function(){ $('#bsZ').innerHTML=eqChoices(e).map(function(o){return '<button class="mjposter bsb" data-v="'+o+'" style="font-size:24px">'+o+'</button>';}).join('');
+      $$('.bsb').forEach(function(bt){ bt.addEventListener('click',function(){ if(MJ.busy)return; ac(); var full=eqNoQ(e.L)?e.L:e.R; var tot=eqSideVal(full); if(bt.dataset.v===st.ans){ cymCrash(false); $('#mjZone').firstChild.outerHTML=scaleSVG(e.L,e.R,0,e.x); mjOK('The full side makes '+tot+', so the other side must make '+tot+' too. ? = '+e.x+'.'); } else { punch(bt); mjNo('The full side makes '+tot+'. The other side needs to make '+tot+'. ? = '+e.x+'.'); } }); }); }}; }};
+Object.assign(COACH,{
+  tipscale:{member:'libby',verb:'TAP',hint:'tap',title:'⚖️ Tip the Scale',lines:['The = sign means both pans weigh the SAME.','Find the weight that makes it level. TAP it!']},
+  truefalse:{member:'libby',verb:'TAP',hint:'tap',title:'⚖️ True or False',lines:['Add up each side on its own.','Same total? TRUE. Different? FALSE. TAP it!']},
+  bothsides:{member:'libby',verb:'TAP',hint:'tap',title:'⚖️ Both Sides',lines:['One side is complete. Add it up first.','The other side must reach that same total. TAP the ?']}
+});
+PLAY_RIGS.libby={hint:'Left cymbal, right cymbal. Together = CRASH.',custom:function(el){ el.innerHTML='<div class="mjbig" style="font-size:44px">⚖️</div><div class="sub center">tap one, or both for the crash</div><div class="row" style="justify-content:center;gap:16px;margin-top:14px"><button class="mjcymbal" id="cyL">LEFT</button><button class="mjcymbal" id="cyR">RIGHT</button></div>'; $('#cyL').addEventListener('click',function(){ac();cymCrash(true);punch($('#cyL'));}); $('#cyR').addEventListener('click',function(){ac();cymCrash(false);punch($('#cyR'));}); }};
+MUSIC_CARDS.libby={elly:'Crash cymbals only sound right when both plates meet at the same time with the same push. Libby lives for that moment: two sides, exactly equal.',body:'The equal sign is not "the answer comes next." It means SAME. 3 + 4 = 7 says the left side and the right side weigh the same. So 7 = 3 + 4 is just as true, and 6 + 2 = 5 + 3 is true too, because both pans hold 8. When a number is missing, you are not finishing a sum: you are finding the weight that makes the scale sit level. That one idea is the front door to algebra.',example:'Listen: one plate, one plate, then both together. Equal push, one CRASH.'};
+MUSIC_DEMOS.libby=function(){ cymCrash(true); later(function(){cymCrash(true);},350); later(function(){cymCrash(false);},800); };
+LESSONS.libby={game:function(){startMJ('tipscale');},steps:[
+  {say:'I play crash cymbals. Two plates. They only sound right when both sides are exactly equal. My scale works the same way.',vis:libbySVG('libby',110)},
+  {say:'This sign, =, does not mean "the answer is next." It means SAME. Both pans must weigh the same. 3 + 4 on the left, 7 on the right. Level.',vis:scaleSVG([{op:'+',v:3},{op:'+',v:4}],[{op:'+',v:7}],0)},
+  {say:'So this is fine too: 7 = 3 + 4. And so is 6 + 2 = 5 + 3, because both pans hold 8.',vis:scaleSVG([{op:'+',v:6},{op:'+',v:2}],[{op:'+',v:5},{op:'+',v:3}],0)},
+  {say:'When a weight is missing, find what makes it level. 10 = 3 + ? The left pan holds 10, so the right needs 7 more. Let us balance some scales!',vis:scaleSVG([{op:'+',v:10}],[{op:'+',v:3},{op:'+',v:'?'}],0)}
+]};
+METHOD.equal={steps:[
+  {say:'Add up the side that has no blank. That total is what BOTH sides must weigh.',vis:scaleSVG([{op:'+',v:6},{op:'+',v:2}],[{op:'+',v:'?'},{op:'+',v:3}],0)},
+  {say:'Now the other side: what plus the number you have makes that total? 8 needs 5 more than 3. The blank is 5.',vis:scaleSVG([{op:'+',v:6},{op:'+',v:2}],[{op:'+',v:5},{op:'+',v:3}],0)}
+]};
+STEPWALK.equal=function(L){ var a=R(2,7), b=R(2,7), c=R(1,a+b-1), x=a+b-c; return {title:'Balance both sides',steps:[
+  {say:a+' + '+b+' = ? + '+c+'. Which side has no blank? Add it up first.',vis:scaleSVG([{op:'+',v:a},{op:'+',v:b}],[{op:'+',v:'?'},{op:'+',v:c}],0),choices:numChoices(a+b,3),a:String(a+b)},
+  {say:'So the right side must make '+(a+b)+' too. '+c+' plus what is '+(a+b)+'?',choices:numChoices(x,3),a:String(x),after:x+' + '+c+' = '+(a+b)+'. Both pans hold '+(a+b)+'. Level.'}]}; };
+jamRegister({id:'weighin',title:'Weigh In',member:'libby',concept:'equal',emoji:'⚖️',scoreWord:'balance score',roundLabel:'Scale',
+  newRound:function(J){ var L=J.L(), st=J.state; var e; do{ e=eqMake(Math.max(1,L)); }while(e.f==='a-?=b'||e.f==='?-a=b'||e.f==='a+b=?-c');
+    var full=eqNoQ(e.L)?e.L:e.R, part=eqNoQ(e.L)?e.R:e.L; st.leftW=full.map(function(k){return k.v;}); st.fixed=part.filter(function(k){return k.v!=='?';}).map(function(k){return k.v;}); st.target=eqSideVal(full); st.x=e.x;
+    st.pool=L<4?[1,2,5]:L<7?[1,2,5,10]:[1,2,5,10,20]; st.added=[]; st.drag=null; st.tilt=0; st.done=false;
+    st.slots=[]; weighSlots(J);
+    J.call('Balance: '+eqSideText(e.L)+' = '+eqSideText(e.R),'Drag weights onto the empty pan until the beam sits level, then CRASH.'); J.msg('Left pan is set. Load the right pan to match.'); },
+  draw:function(J,ctx,dt){ var st=J.state; if(!st.slots)return; weighSlots(J); var W=J.W,H=J.H; var lt=st.target, rt=st.fixed.concat(st.added).reduce(function(a,b){return a+b;},0);
+    var want=lt===rt?0:(lt>rt?-1:1); st.tilt+= (want-st.tilt)*Math.min(1,dt*6);
+    var cx=W/2, top=90; jkText(ctx,st.leftW.join(' + ')+'  =  '+(st.fixed.length?st.fixed.join(' + ')+' + ':'')+'?',cx,44,20,'#ffd158');
+    ctx.fillStyle='#5a3f1a'; ctx.fillRect(cx-8,top,16,H-top-220); ctx.fillStyle='#3a2a10'; ctx.fillRect(cx-40,H-226,80,10);
+    ctx.save(); ctx.translate(cx,top); ctx.rotate(st.tilt*0.16); ctx.fillStyle='#b98a3a'; ctx.fillRect(-W*0.4,-5,W*0.8,10);
+    var pan=function(px,vals,hot,label){ ctx.strokeStyle='#8a6a2a'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(px,0); ctx.lineTo(px-40,60); ctx.moveTo(px,0); ctx.lineTo(px+40,60); ctx.stroke(); ctx.beginPath(); ctx.moveTo(px-52,60); ctx.quadraticCurveTo(px,100,px+52,60); ctx.closePath(); ctx.fillStyle=hot?'#ffd158':'#e8cf9a'; ctx.fill(); ctx.stroke();
+      var tot=vals.reduce(function(a,b){return a+b;},0); jkText(ctx,String(tot),px,72,22,'#3a2a00'); jkText(ctx,label,px,112,12,'#a89cd8'); return {px:px}; };
+    pan(-W*0.3,st.leftW,false,'left pan'); pan(W*0.3,st.fixed.concat(st.added),lt===rt&&st.added.length>0,'right pan');
+    ctx.restore();
+    /* weights sitting on the right pan */
+    st.added.forEach(function(v,i){ var wx=cx+W*0.3-30+(i%4)*20, wy=top+140+Math.floor(i/4)*22; drawWeight(ctx,wx,wy,v,false); });
+    /* crash button */
+    jkText(ctx,lt===rt?'level!':(lt>rt?'left is heavier by '+(lt-rt):'right is heavier by '+(rt-lt)),W/2,H-196,14,lt===rt?'#7dff8a':'#a89cd8');
+    st.crash={x:cx-60,y:H-180,w:120,h:44}; jkRound(ctx,st.crash.x,st.crash.y,120,44,12,lt===rt?'#7dff8a':'#3a2f6e',lt===rt?'#12331c':'#9d7cff',2); jkText(ctx,'CRASH ⚖️',cx,H-158,16,lt===rt?'#12331c':'#c9b8ff');
+    jkRound(ctx,16,H-100,W-32,88,14,'#1d1636','#3a2f6e',2); jkText(ctx,'WEIGHTS',W/2,H-88,11,'#a89cd8');
+    st.slots.forEach(function(s){ drawWeight(ctx,s.x,s.y,s.v,false); });
+    if(st.drag)drawWeight(ctx,st.drag.x,st.drag.y,st.drag.v,true); },
+  onDown:function(J,x,y){ var st=J.state; if(!st.slots||st.done)return; var lt=st.target, rt=st.fixed.concat(st.added).reduce(function(a,b){return a+b;},0);
+    if(st.crash&&jkHit(x,y,st.crash)){ if(lt===rt){ st.done=true; cymCrash(false); var add=st.added.reduce(function(a,b){return a+b;},0); J.win('Level! You added '+add+'. '+st.leftW.join(' + ')+' = '+(st.fixed.length?st.fixed.join(' + ')+' + ':'')+add+'. Both sides '+lt+'.'); } else { ellyChime(); J.msg(lt>rt?'Not yet: right side needs '+(lt-rt)+' more.':'Too much: take '+(rt-lt)+' off the right pan.'); } return; }
+    for(var i=0;i<st.slots.length;i++){ var s=st.slots[i]; if(jkDist(x,y,s.x,s.y)<=26){ st.drag={x:x,y:y,v:s.v,from:'tray'}; tone(500+s.v*20,.06,'triangle',.12); return; } }
+    /* pick a weight back off the pan */
+    var cx=J.W/2, top=90; for(var k=st.added.length-1;k>=0;k--){ var wx=cx+J.W*0.3-30+(k%4)*20, wy=top+140+Math.floor(k/4)*22; if(jkDist(x,y,wx,wy)<=22){ var v=st.added.splice(k,1)[0]; st.drag={x:x,y:y,v:v,from:'pan'}; return; } } },
+  onMove:function(J,x,y){ var st=J.state; if(st.drag){ st.drag.x=x; st.drag.y=y; } },
+  onUp:function(J,x,y){ var st=J.state; if(!st.drag)return; var onRight=x>J.W/2&&y<J.H-200; if(onRight){ st.added.push(st.drag.v); tone(700,.08,'triangle',.14); } else if(st.drag.from==='pan'){ tone(300,.08,'triangle',.1); } st.drag=null; }
+});
+function weighSlots(J){ var st=J.state; if(!st.pool)return; st.slots=st.pool.map(function(v,i){ return {v:v,x:52+i*(J.W-170)/Math.max(1,st.pool.length-1),y:J.H-50}; }); }
+function drawWeight(ctx,x,y,v,lift){ ctx.save(); if(lift){ ctx.shadowColor='rgba(0,0,0,.5)'; ctx.shadowBlur=12; ctx.shadowOffsetY=6; } var r=v>=20?24:v>=10?21:v>=5?18:v>=2?15:13; jkRound(ctx,x-r,y-r,2*r,2*r,6,'#6a5cff','#2a1f55',2); ctx.fillStyle='#2a1f55'; ctx.fillRect(x-6,y-r-6,12,7); ctx.restore(); jkText(ctx,String(v),x,y+1,Math.round(r*0.9),'#f4f0ff'); }
+jamCoach('weighin','libby','⚖️ Weigh In',['The left pan is loaded. The = sign says the right pan must weigh the SAME.','DRAG weights onto the right pan until the beam is level, then tap CRASH!'],'DRAG','drag');
+addRecruit({id:'libby',name:'Libby',emoji:'⚖️',title:'Crash Cymbals',concept:'equal',conceptName:'Balance & Equals',color:'#4fb3a9',rig:'crash cymbals',draw:libbySVG,crewId:'libby',
+  bio:'Crash cymbals only sound right when both plates meet with the exact same push. Libby hears the equal sign the same way: not "the answer is next," but "both sides are the SAME."',
+  lines:['Equal means same. Both pans. Level.','Seven equals three plus four. Say it backward, still true.','A blank is just the weight that makes it level.'],
+  dreams:['The Lopsiders crashed one plate at a time and called it music. You made both sides match every round.','My dream: a number sentence so long it needs a third pan.','Six plus two, five plus three. Same weight. That is the whole secret.','When you see =, do not rush to answer. Ask: what makes both sides the same?','Every big equation is just a scale that wants to sit level.'],
+  key:'lopsiders',bandName:'The Lopsiders',crew:{name:'The Lopsiders',members:[
+    {id:'heavyl',emoji:'🥁',name:'Heavy',line:'More on the left. Always more on the left.'},{id:'tilt',emoji:'🎵',name:'Tilt',line:'Equal? Nah. The answer just comes next.'},{id:'wobble',emoji:'🔔',name:'Wobble',line:'Seven equals three plus... whatever.'},{id:'libby',emoji:'⚖️',name:'Libby',star:true,line:'Both sides the same. CRASH.'}]},
+  loseEmoji:'⚖️',loseTitle:'The Lopsiders keep tipping over',winLine:'You held the crowd AND kept every scale level. Libby clapped both plates together once, dead even, and walked her cymbals to your stage.',
+  starHint:'Win the balance rounds to fill the recruit spark and get Libby to switch stages.',btnStyle:'linear-gradient(90deg,#1f4f4a,#4fb3a9)',
+  gigLine:'Libby brings both plates together on the last beat. "Even. Both sides. That is the only way I crash, frontman."',meetLine:'And Libby on crash cymbals, out of The Lopsiders. Equal means SAME, both pans level: the front door to algebra.'});
+HEADLINE_JAM.libby='weighin'; LESSONS.libby.game=function(){ startJam('weighin'); };
+
+/* ================= 4b. RULA on the Rule Box: FUNCTION MACHINES ================= */
+var RULES=[
+  {k:'+1',name:'add 1',f:function(x){return x+1;},inv:function(y){return y-1;},t:1},{k:'+2',name:'add 2',f:function(x){return x+2;},inv:function(y){return y-2;},t:1},{k:'+3',name:'add 3',f:function(x){return x+3;},inv:function(y){return y-3;},t:1},{k:'+4',name:'add 4',f:function(x){return x+4;},inv:function(y){return y-4;},t:1},{k:'+5',name:'add 5',f:function(x){return x+5;},inv:function(y){return y-5;},t:1},
+  {k:'+6',name:'add 6',f:function(x){return x+6;},inv:function(y){return y-6;},t:2},{k:'+8',name:'add 8',f:function(x){return x+8;},inv:function(y){return y-8;},t:2},{k:'+10',name:'add 10',f:function(x){return x+10;},inv:function(y){return y-10;},t:2},
+  {k:'-1',name:'take 1',f:function(x){return x-1;},inv:function(y){return y+1;},t:2},{k:'-2',name:'take 2',f:function(x){return x-2;},inv:function(y){return y+2;},t:2},{k:'-3',name:'take 3',f:function(x){return x-3;},inv:function(y){return y+3;},t:2},{k:'-5',name:'take 5',f:function(x){return x-5;},inv:function(y){return y+5;},t:2},
+  {k:'×2',name:'double',f:function(x){return x*2;},inv:function(y){return y/2;},t:3},{k:'×3',name:'times 3',f:function(x){return x*3;},inv:function(y){return y/3;},t:3},{k:'×5',name:'times 5',f:function(x){return x*5;},inv:function(y){return y/5;},t:3},{k:'×10',name:'times 10',f:function(x){return x*10;},inv:function(y){return y/10;},t:3},
+  {k:'×2 +1',name:'double, add 1',f:function(x){return x*2+1;},inv:function(y){return (y-1)/2;},t:4},{k:'×2 −1',name:'double, take 1',f:function(x){return x*2-1;},inv:function(y){return (y+1)/2;},t:4},{k:'×3 +1',name:'times 3, add 1',f:function(x){return x*3+1;},inv:function(y){return (y-1)/3;},t:4},{k:'×2 +3',name:'double, add 3',f:function(x){return x*2+3;},inv:function(y){return (y-3)/2;},t:4}
+];
+function rulePool(L){ var t=L<4?1:L<7?2:L<11?3:4; return RULES.filter(function(r){ return r.t<=t&&r.t>=(t>=3?t-1:1); }); }
+function ruleIn(rule,L){ var lo=rule.k[0]==='-'?(+rule.k.slice(1))+1:1; return R(lo,L<4?8:L<7?10:12); }
+function ruleMake(L){ var rule=pick(rulePool(L)); var ins=[]; while(ins.length<3){ var v=ruleIn(rule,L); if(ins.indexOf(v)<0)ins.push(v); } var q=ruleIn(rule,L); var g=0; while(ins.indexOf(q)>=0&&g++<20)q=ruleIn(rule,L); return {rule:rule,pairs:ins.map(function(v){ return [v,rule.f(v)]; }),q:q,out:rule.f(q)}; }
+function machineSVG(pairs,q,reveal,ruleTxt){
+  var rows=pairs.map(function(p,i){ return '<text x="30" y="'+(38+i*22)+'" font-size="16" font-weight="900" fill="#f4f0ff">'+p[0]+' → '+p[1]+'</text>'; }).join('');
+  var qrow=q!=null?'<text x="30" y="'+(38+pairs.length*22)+'" font-size="18" font-weight="900" fill="#ffd158">'+q+' → '+(reveal!=null?reveal:'?')+'</text>':'';
+  return '<svg viewBox="0 0 260 130" width="100%" style="max-width:260px;display:block;margin:0 auto">'+
+    '<rect x="150" y="20" width="96" height="90" rx="14" fill="#2a1f55" stroke="#9d7cff" stroke-width="3"/><rect x="164" y="34" width="68" height="30" rx="6" fill="#0d0d20"/><text x="198" y="55" text-anchor="middle" font-size="'+(ruleTxt&&ruleTxt.length>4?13:18)+'" font-weight="900" fill="#7dff8a">'+(ruleTxt||'? ? ?')+'</text>'+
+    '<circle cx="176" cy="84" r="9" fill="#ffd158"/><circle cx="198" cy="84" r="9" fill="#ff7ad9"/><circle cx="220" cy="84" r="9" fill="#4dd6ff"/>'+
+    '<path d="M140 30 l-8 -6 v12z" fill="#9d7cff"/><path d="M256 64 l8 0" stroke="#9d7cff" stroke-width="3"/>'+
+    '<rect x="12" y="14" width="126" height="'+(30+(pairs.length+(q!=null?1:0))*22)+'" rx="10" fill="#1d1636" stroke="#3a2f6e" stroke-width="2"/><text x="30" y="18" font-size="10" fill="#a89cd8">IN → OUT</text>'+rows+qrow+'</svg>';
+}
+function ruleChoices(rule,L){ var pool=rulePool(L).map(function(r){return r.name;}); return pickChoices(rule.name,pool.length>=4?pool:RULES.map(function(r){return r.name;})); }
+CONCEPT_NAMES.funcm='Rule Machines'; DEF.skills.funcm=1; if(S&&S.skills&&!S.skills.funcm)S.skills.funcm=1;
+QG.funcm=function(L){ var m=ruleMake(L); var ask=L<4?'out':pick(L<7?['out','out','rule']:['out','rule','in']);
+  if(ask==='rule')return {q:'What is the hidden rule?',vis:machineSVG(m.pairs,null),choices:ruleChoices(m.rule,L),a:m.rule.name};
+  if(ask==='in')return {q:'What went IN to make '+m.out+' come out?',vis:machineSVG(m.pairs,'?',m.out,m.rule.k),choices:numChoices(m.q,3),a:String(m.q)};
+  return {q:'What comes OUT?',vis:machineSVG(m.pairs,m.q),choices:numChoices(m.out,Math.max(2,Math.round(m.out/4))),a:String(m.out)};
+};
+function rulaSVG(crewId,sz){
+  var O='#221a44'; var b=
+    '<ellipse cx="70" cy="128" rx="34" ry="6" fill="#0d0d20"/>'+
+    /* the rule box */
+    '<rect x="30" y="78" width="80" height="44" rx="10" fill="#2a1f55" stroke="#9d7cff" stroke-width="3"/><rect x="40" y="86" width="60" height="14" rx="4" fill="#0d0d20"/><text x="70" y="97" text-anchor="middle" font-size="10" font-weight="900" fill="#7dff8a">IN → OUT</text>'+
+    '<circle cx="46" cy="112" r="5" fill="#ffd158"/><circle cx="70" cy="112" r="5" fill="#ff7ad9"/><circle cx="94" cy="112" r="5" fill="#4dd6ff"/>'+
+    '<path d="M20 100 l10 0" stroke="#9d7cff" stroke-width="3"/><path d="M110 100 l10 0" stroke="#9d7cff" stroke-width="3"/>'+
+    /* creature: a boxy purple body peeking over the box, antenna dial */
+    '<rect x="42" y="30" width="56" height="52" rx="16" fill="#9d7cff"/><circle cx="60" cy="52" r="5" fill="'+O+'"/><circle cx="80" cy="52" r="5" fill="'+O+'"/><circle cx="61.5" cy="50.5" r="1.6" fill="#fff"/><circle cx="81.5" cy="50.5" r="1.6" fill="#fff"/>'+
+    '<path d="M60 64 q10 8 20 0" stroke="'+O+'" stroke-width="3" fill="none" stroke-linecap="round"/>'+
+    '<line x1="70" y1="30" x2="70" y2="16" stroke="'+O+'" stroke-width="3"/><circle cx="70" cy="13" r="6" fill="#7dff8a" stroke="'+O+'" stroke-width="2"/><line x1="70" y1="13" x2="74" y2="9" stroke="'+O+'" stroke-width="2"/>'+
+    '<circle cx="50" cy="60" r="3.5" fill="#ff9ec4" opacity=".6"/><circle cx="90" cy="60" r="3.5" fill="#ff9ec4" opacity=".6"/>';
+  return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 140 140"><g class="charg">'+b+'</g></svg>';
+}
+MEMBER_FAM.rula='keys'; VOICE_LABELS.rula='Rule Box';
+function ruleBlip(n){ tone(ntf(n||72),.12,'square',.14); tone(ntf((n||72)+12),.1,'sine',.08,.06); }
+MJGAMES.whatout={id:'whatout',name:'What Comes Out',emoji:'🎛️',member:'rula',concept:'funcm',
+setup:function(L,st){ var m=ruleMake(L); st.m=m; st.ans=String(m.out);
+  return {call:'Same rule every time', sub:'Look at the pairs that already went through. What comes out when '+m.q+' goes in?', html:machineSVG(m.pairs,m.q)+'<div class="mjcards" id="woZ"></div>',
+    wire:function(){ $('#woZ').innerHTML=numChoices(m.out,Math.max(2,Math.round(m.out/4))).map(function(o){return '<button class="mjposter wob" data-v="'+o+'" style="font-size:24px">'+o+'</button>';}).join('');
+      $$('.wob').forEach(function(bt){ bt.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(bt.dataset.v===st.ans){ ruleBlip(76); $('#mjZone').firstChild.outerHTML=machineSVG(m.pairs,m.q,m.out,m.rule.k); mjOK('The rule is '+m.rule.name+'. '+m.q+' → '+m.out+'.'); } else { punch(bt); $('#mjZone').firstChild.outerHTML=machineSVG(m.pairs,m.q,m.out,m.rule.k); mjNo('Every pair follows '+m.rule.name+'. So '+m.q+' → '+m.out+'.'); } }); }); }}; }};
+MJGAMES.findrule={id:'findrule',name:'Find the Rule',emoji:'🎛️',member:'rula',concept:'funcm',
+setup:function(L,st){ var m=ruleMake(Math.max(3,L)); st.m=m; st.ans=m.rule.name;
+  return {call:'What is the rule?', sub:'Three pairs went through the box. What does the box DO to every number?', html:machineSVG(m.pairs,null)+'<div class="mjcards" id="frZ"></div>',
+    wire:function(){ $('#frZ').innerHTML=ruleChoices(m.rule,Math.max(3,L)).map(function(o){return '<button class="mjposter frb" data-v="'+o+'" style="font-size:18px">'+o+'</button>';}).join('');
+      $$('.frb').forEach(function(bt){ bt.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(bt.dataset.v===st.ans){ ruleBlip(79); $('#mjZone').firstChild.outerHTML=machineSVG(m.pairs,null,null,m.rule.k); mjOK('Rule found: '+m.rule.name+'. Check: '+m.pairs[0][0]+' → '+m.pairs[0][1]+'.'); } else { punch(bt); $('#mjZone').firstChild.outerHTML=machineSVG(m.pairs,null,null,m.rule.k); mjNo('Try it on one pair: '+m.pairs[0][0]+' → '+m.pairs[0][1]+'. That is '+m.rule.name+'.'); } }); }); }}; }};
+MJGAMES.whatin={id:'whatin',name:'What Went In',emoji:'🎛️',member:'rula',concept:'funcm',
+setup:function(L,st){ var m=ruleMake(Math.max(5,L)); st.m=m; st.ans=String(m.q);
+  return {call:'Work backward', sub:'The rule is '+m.rule.name+'. '+m.out+' came out. What went IN?', html:machineSVG(m.pairs,'?',m.out,m.rule.k)+'<div class="mjcards" id="wiZ"></div>',
+    wire:function(){ $('#wiZ').innerHTML=numChoices(m.q,3).map(function(o){return '<button class="mjposter wib" data-v="'+o+'" style="font-size:24px">'+o+'</button>';}).join('');
+      $$('.wib').forEach(function(bt){ bt.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(bt.dataset.v===st.ans){ ruleBlip(74); mjOK(m.q+' went in. '+m.q+' → '+m.out+' by '+m.rule.name+'.'); } else { punch(bt); mjNo('Undo the rule on '+m.out+'. '+m.q+' → '+m.out+', so '+m.q+' went in.'); } }); }); }}; }};
+Object.assign(COACH,{
+  whatout:{member:'rula',verb:'TAP',hint:'tap',title:'🎛️ What Comes Out',lines:['The box does the SAME thing to every number.','Spot the rule from the pairs, then TAP what comes out!']},
+  findrule:{member:'rula',verb:'TAP',hint:'tap',title:'🎛️ Find the Rule',lines:['Look at one pair: what happened to the number?','Check it on the next pair. TAP the rule!']},
+  whatin:{member:'rula',verb:'TAP',hint:'tap',title:'🎛️ What Went In',lines:['You know the rule and the OUT. Go backward.','Undo the rule: do the opposite. TAP what went in!']}
+});
+PLAY_RIGS.rula={hint:'Play a note in, the box plays a note out. Same rule every time.',custom:function(el){ el.innerHTML='<div class="mjbig" style="font-size:44px">🎛️</div><div class="sub center">tap a note IN, hear what comes OUT (rule: up 4)</div><div class="row" style="justify-content:center;gap:10px;margin-top:14px;flex-wrap:wrap">'+[60,62,64,65,67].map(function(n){return '<button class="mjcymbal rlb" data-n="'+n+'" style="width:56px;height:56px;font-size:12px">'+['C','D','E','F','G'][[60,62,64,65,67].indexOf(n)]+'</button>';}).join('')+'</div>'; $$('.rlb').forEach(function(b){ b.addEventListener('click',function(){ ac(); var n=+b.dataset.n; tone(ntf(n),.18,'triangle',.2); later(function(){ ruleBlip(n+4); },220); punch(b); }); }); }};
+MUSIC_CARDS.rula={elly:'A rule box is a little machine on Rula’s keys: play a note in, and it plays a note out, changed by one rule every time. Same rule, every note. That is a function.',body:'A rule machine takes a number IN, does one thing to it, and sends a number OUT. If 2 goes in and 5 comes out, and 4 goes in and 7 comes out, the rule is "add 3." Once you know the rule you can predict any output, and you can run it backward to find what went in. Music does this constantly: play a riff, then play it again three notes higher. Same shape, one rule.',example:'Listen: a note in, then the same note pushed up by the rule. In, out. In, out.'};
+MUSIC_DEMOS.rula=function(){ [60,64,62].forEach(function(n,i){ later(function(){ tone(ntf(n),.16,'triangle',.2); },i*520); later(function(){ ruleBlip(n+4); },i*520+240); }); };
+LESSONS.rula={game:function(){startMJ('whatout');},steps:[
+  {say:'My keys have a Rule Box. Play a note in, and it plays a note out, changed by ONE rule. The same rule every single time.',vis:rulaSVG('rula',110)},
+  {say:'Watch. 2 goes in, 5 comes out. 4 goes in, 7 comes out. 6 goes in, 9 comes out. What is the box doing?',vis:machineSVG([[2,5],[4,7],[6,9]],null)},
+  {say:'It adds 3 every time. So if 10 goes in, 13 comes out. Once you know the rule, you can predict ANY number.',vis:machineSVG([[2,5],[4,7],[6,9]],10,13,'+3')},
+  {say:'And you can run it backward: if 13 came out, and the rule is add 3, then 10 went in. In, rule, out. Let us find some rules!',vis:machineSVG([[2,5],[4,7]],'?',13,'+3')}
+]};
+METHOD.funcm={steps:[
+  {say:'Take ONE pair and ask: what happened to the number? 3 became 6. Could be add 3, could be double.',vis:machineSVG([[3,6],[5,10],[7,14]],null)},
+  {say:'Check your guess on the NEXT pair. 5 became 10. Add 3 would give 8, so it is not that. Double gives 10. The rule is double.',vis:machineSVG([[3,6],[5,10],[7,14]],null,null,'×2')}
+]};
+STEPWALK.funcm=function(L){ var k=R(2,5), a=R(1,6), b=a+R(1,4), q=b+R(1,4); return {title:'Find the rule, then use it',steps:[
+  {say:a+' → '+(a+k)+' and '+b+' → '+(b+k)+'. What did the box do?',vis:machineSVG([[a,a+k],[b,b+k]],null),choices:pickChoices('add '+k,['add '+k,'add '+(k+1),'take '+k,'double']),a:'add '+k},
+  {say:'So when '+q+' goes in, what comes out?',choices:numChoices(q+k,3),a:String(q+k),after:q+' + '+k+' = '+(q+k)+'. Same rule every time.'}]}; };
+jamRegister({id:'patchbay',title:'Patch Bay',member:'rula',concept:'funcm',emoji:'🎛️',scoreWord:'patch score',roundLabel:'Patch',
+  newRound:function(J){ var L=J.L(), st=J.state; var m=ruleMake(Math.max(1,L)); st.m=m; st.done=false; st.drag=null; st.t=0;
+    var opts=numChoices(m.out,Math.max(2,Math.round(m.out/4))).map(Number); st.tokens=opts.map(function(v,i){ return {v:v,i:i,x:0,y:0,bx:0,by:0}; });
+    J.call('The box has a hidden rule','Read the pairs, work out the rule, then DRAG the right number into the OUT socket.'); J.msg(m.q+' is going in. What comes out?'); },
+  draw:function(J,ctx,dt){ var st=J.state; if(!st.m)return; var W=J.W,H=J.H; st.t+=dt; var m=st.m;
+    jkRound(ctx,16,50,W*0.42,150,12,'#1d1636','#3a2f6e',2); jkText(ctx,'IN → OUT',16+W*0.21,66,12,'#a89cd8'); m.pairs.forEach(function(p,i){ jkText(ctx,p[0]+' → '+p[1],16+W*0.21,92+i*30,20,'#f4f0ff'); });
+    var bx=W*0.52, by=60, bw=W*0.42, bh=140; jkRound(ctx,bx,by,bw,bh,16,'#2a1f55','#9d7cff',3); jkText(ctx,st.done?m.rule.k:'? ? ?',bx+bw/2,by+40,st.done&&m.rule.k.length>4?18:26,'#7dff8a');
+    [['#ffd158',0.25],['#ff7ad9',0.5],['#4dd6ff',0.75]].forEach(function(c,i){ ctx.beginPath(); ctx.arc(bx+bw*c[1],by+80,8+Math.sin(st.t*4+i)*2,0,Math.PI*2); ctx.fillStyle=c[0]; ctx.fill(); });
+    /* in slot */
+    var inx=16+W*0.21, iny=by+bh+40; jkText(ctx,'IN',inx,iny-26,11,'#a89cd8'); jkText(ctx,String(m.q)+' \u2192',inx,iny,28,'#ffd158');
+    /* out socket */
+    st.sock={x:bx+bw/2-34,y:by+bh+16,w:68,h:48}; jkRound(ctx,st.sock.x,st.sock.y,68,48,10,'#0d0d20','#7dff8a',2); jkText(ctx,st.done?String(m.out):'OUT',bx+bw/2,by+bh+40,st.done?24:13,st.done?'#7dff8a':'#a89cd8');
+    st.tokens.forEach(function(t){ t.bx=40+t.i*(W-80)/3; t.by=H-70; if(st.drag===t)return; t.x=t.bx; t.y=t.by+Math.sin(st.t*3+t.i)*3; drawToken(ctx,t.x,t.y,t.v,false); });
+    if(st.drag)drawToken(ctx,st.drag.x,st.drag.y,st.drag.v,true);
+    jkText(ctx,st.done?'':'drag the OUT number into the socket',W/2,H-22,12,'#a89cd8'); },
+  onDown:function(J,x,y){ var st=J.state; if(!st.tokens||st.done)return; for(var i=0;i<st.tokens.length;i++){ var t=st.tokens[i]; if(jkDist(x,y,t.x,t.y)<=26){ st.drag=t; tone(500+t.v*6,.06,'triangle',.12); return; } } },
+  onMove:function(J,x,y){ var st=J.state; if(st.drag){ st.drag.x=x; st.drag.y=y; } },
+  onUp:function(J,x,y){ var st=J.state; if(!st.drag)return; var t=st.drag; st.drag=null; var m=st.m;
+    if(st.sock&&jkHit(x,y,{x:st.sock.x-14,y:st.sock.y-14,w:st.sock.w+28,h:st.sock.h+28})){ st.done=true; if(t.v===m.out){ ruleBlip(79); J.win('Rule: '+m.rule.name+'. '+m.q+' → '+m.out+'. Patched!'); } else { J.miss('The rule is '+m.rule.name+', so '+m.q+' → '+m.out+', not '+t.v+'.'); } }
+    else { t.x=t.bx; t.y=t.by; tone(300,.08,'triangle',.1); } }
+});
+function drawToken(ctx,x,y,v,lift){ ctx.save(); if(lift){ ctx.shadowColor='rgba(0,0,0,.5)'; ctx.shadowBlur=12; ctx.shadowOffsetY=6; } ctx.beginPath(); ctx.arc(x,y,24,0,Math.PI*2); ctx.fillStyle='#9d7cff'; ctx.fill(); ctx.lineWidth=2.5; ctx.strokeStyle='#2a1f55'; ctx.stroke(); ctx.restore(); jkText(ctx,String(v),x,y+1,v>=100?16:20,'#f4f0ff'); }
+jamCoach('patchbay','rula','🎛️ Patch Bay',['Three pairs already went through the box. Find what it does to EVERY number.','Then DRAG the number that comes out into the OUT socket!'],'DRAG','drag');
+addRecruit({id:'rula',name:'Rula',emoji:'🎛️',title:'Rule Box',concept:'funcm',conceptName:'Rule Machines',color:'#9d7cff',rig:'rule box',draw:rulaSVG,crewId:'rula',
+  bio:'Rula plays keys through a Rule Box: a note goes in, one rule changes it, a note comes out. Same rule, every time. Spot the rule from the pairs and you can predict any output, or run it backward to find the input.',
+  lines:['In, rule, out. Same rule every time.','Two became five, four became seven. Add three.','Know the rule? Then you know every answer.'],
+  dreams:['The Randomizers changed the rule every note and called it jazz. You found the real rule every round.','My dream: a rule box so long the output loops back in.','A rule is a promise: what it does to one number, it does to all of them.','Work backward and the box tells you what went in. Undo is a rule too.','Every pattern is a rule wearing a costume.'],
+  key:'randomizers',bandName:'The Randomizers',crew:{name:'The Randomizers',members:[
+    {id:'dicey',emoji:'🎲',name:'Dicey',line:'Different rule every time. Keeps it fresh.'},{id:'static',emoji:'📻',name:'Static',line:'Six in, whatever out. Who is counting?'},{id:'shuffle',emoji:'🔀',name:'Shuffle',line:'Rules are for drummers.'},{id:'rula',emoji:'🎛️',name:'Rula',star:true,line:'Same rule every time. Two in, five out. Add three.'}]},
+  loseEmoji:'🎛️',loseTitle:'The Randomizers never find the rule',winLine:'You held the crowd AND cracked every hidden rule. Rula ran one last note through the box, nodded at the output, and unplugged for your stage.',
+  starHint:'Win the rule rounds to fill the recruit spark and get Rula to switch stages.',btnStyle:'linear-gradient(90deg,#3a2a6a,#9d7cff)',
+  gigLine:'Rula runs the last chord through the box and it comes out three notes higher. "Same rule. Every note. That is the show, frontman."',meetLine:'And Rula on the Rule Box, out of The Randomizers. In, rule, out: a function machine, the algebra of what comes next.'});
+HEADLINE_JAM.rula='patchbay'; LESSONS.rula.game=function(){ startJam('patchbay'); };
+
+/* ================= 4c. TESSA on triangle: SLIDE, FLIP, TURN ================= */
+var XSHAPES={L:[[0,0],[0,1],[0,2],[1,2]],S:[[1,0],[2,0],[0,1],[1,1]],P:[[0,0],[1,0],[0,1],[1,1],[0,2]],F:[[1,0],[2,0],[0,1],[1,1],[1,2]]};
+function xfNorm(cells){ var mx=Math.min.apply(null,cells.map(function(c){return c[0];})), my=Math.min.apply(null,cells.map(function(c){return c[1];})); return cells.map(function(c){ return [c[0]-mx,c[1]-my]; }).sort(function(a,b){ return a[1]-b[1]||a[0]-b[0]; }); }
+function xfTurn(cells){ return xfNorm(cells.map(function(c){ return [-c[1],c[0]]; })); }   /* 90 degrees clockwise, y down */
+function xfFlip(cells){ return xfNorm(cells.map(function(c){ return [-c[0],c[1]]; })); }   /* mirror left-right */
+function xfKey(cells){ return xfNorm(cells).map(function(c){return c.join(',');}).join(';'); }
+function xfSame(a,b){ return xfKey(a)===xfKey(b); }
+function xfApply(cells,move,n){ n=n||1; for(var i=0;i<n;i++)cells=move==='turn'?xfTurn(cells):move==='flip'?xfFlip(cells):xfNorm(cells); return cells; }
+function xfSVG(cells,col,o){ o=o||{}; var u=o.cell||18, ox=o.ox||0, oy=o.oy||0, W=o.w||(4*u+8), H=o.h||(4*u+8);
+  var body=cells.map(function(c,i){ return '<rect x="'+(4+(c[0]+ox)*u)+'" y="'+(4+(c[1]+oy)*u)+'" width="'+u+'" height="'+u+'" rx="3" fill="'+(o.outline?'none':col)+'" stroke="'+(o.outline?col:'#221a44')+'" stroke-width="'+(o.outline?2.5:2)+'"'+(o.outline?' stroke-dasharray="5 3"':'')+'/>'; }).join('');
+  var dot=o.outline?'':'<circle cx="'+(4+(cells[0][0]+ox)*u+u/2)+'" cy="'+(4+(cells[0][1]+oy)*u+u/2)+'" r="'+(u*0.16)+'" fill="#221a44"/>';
+  return '<svg viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'" style="vertical-align:middle">'+(o.grid?'<rect x="4" y="4" width="'+(W-8)+'" height="'+(H-8)+'" fill="#1d1636" stroke="#3a2f6e" rx="6"/>':'')+body+dot+'</svg>'; }
+function xfPair(a,b,colA,colB){ return '<div style="display:flex;align-items:center;justify-content:center;gap:10px">'+xfSVG(a,colA||'#ff9f43')+'<span style="font-size:26px;font-weight:900;color:#ffd158">→</span>'+xfSVG(b,colB||'#ff9f43')+'</div>'; }
+function xfMake(L){ var nm=pick(L<4?['L','P']:['L','S','P','F']); var cells=XSHAPES[nm]; var moves=L<4?['slide','turn']:['slide','flip','turn']; var mv=pick(moves);
+  var after=mv==='slide'?cells:mv==='flip'?(L>=7&&Math.random()<.5?xfTurn(xfTurn(xfFlip(cells))):xfFlip(cells)):(L>=7&&Math.random()<.4?xfTurn(xfTurn(cells)):xfTurn(cells));
+  return {nm:nm,cells:cells,move:mv,after:after}; }
+function xfWrongs(base,right,mv){ var cands=[mv==='flip'?xfTurn(base):xfFlip(base),xfTurn(xfTurn(base)),base,xfFlip(xfTurn(base)),xfTurn(xfFlip(base)),xfTurn(xfTurn(xfTurn(base)))]; var out=[],seen={}; seen[xfKey(right)]=1; if(mv==='turn')seen[xfKey(xfTurn(xfTurn(xfTurn(base))))]=1; cands.forEach(function(c){ var k=xfKey(c); if(!seen[k]){ seen[k]=1; out.push(c); } }); return out.slice(0,3); }
+var MOVE_NAME={slide:'slide',flip:'flip',turn:'turn'}; var MOVE_EMO={slide:'➡️',flip:'🔀',turn:'🔄'};
+CONCEPT_NAMES.xform='Slides, Flips & Turns'; DEF.skills.xform=1; if(S&&S.skills&&!S.skills.xform)S.skills.xform=1;
+QG.xform=function(L){
+  if(L>=7&&Math.random()<.4){ var mv=pick(['flip','turn']); var m=xfMake(L); var base=m.cells; var right=mv==='flip'?xfFlip(base):xfTurn(base); var wrongs=xfWrongs(base,right,mv); var opts=shuffle([right].concat(wrongs)); var letters=['A','B','C','D']; var ai=opts.findIndex(function(o){ return xfSame(o,right); });
+    var vis='<div style="display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap"><div style="text-align:center">'+xfSVG(base,'#ff9f43')+'<div class="sub" style="margin:0">start</div></div><span style="font-size:22px;font-weight:900;color:#ffd158">'+MOVE_EMO[mv]+'</span>'+opts.map(function(o,i){ return '<div style="text-align:center">'+xfSVG(o,'#8ef0c9')+'<div style="font-weight:900;color:#ffd158">'+letters[i]+'</div></div>'; }).join('')+'</div>';
+    return {q:'Which picture shows the shape after a '+mv.toUpperCase()+'?',vis:vis,choices:letters,a:letters[ai]}; }
+  var x=xfMake(L); var diff=L>=4&&Math.random()<.2; var after=x.after; if(diff){ var other=pick(Object.keys(XSHAPES).filter(function(k){ return k!==x.nm; })); after=XSHAPES[other]; }
+  return {q:'Which move turns the first shape into the second?',vis:xfPair(x.cells,after),choices:['slide','flip','turn','different shape'],a:diff?'different shape':x.move};
+};
+function triTing(hi){ tone(ntf(hi?103:96),.9,'sine',.16); tone(ntf(hi?110:103),.6,'sine',.07,.01); tone(ntf(hi?122:115),.35,'triangle',.05,.02); }
+function tessaSVG(crewId,sz){
+  var O='#221a44'; var b=
+    '<ellipse cx="70" cy="128" rx="34" ry="6" fill="#0d0d20"/>'+
+    /* the triangle, hanging from a loop, beater in hand */
+    '<line x1="104" y1="24" x2="104" y2="40" stroke="#c8a56a" stroke-width="2"/><path d="M104 40 l24 42 h-48z" fill="none" stroke="#e8cf9a" stroke-width="5" stroke-linejoin="round"/>'+
+    '<line x1="70" y1="90" x2="96" y2="70" stroke="#c8a56a" stroke-width="3" stroke-linecap="round"/>'+
+    /* creature: an orange triangular body (it IS a slide/flip/turn shape) */
+    '<path d="M40 118 l30 -66 l30 66z" fill="#ff9f43"/><path d="M50 116 l20 -44 l20 44z" fill="#ffb86b" opacity=".6"/>'+
+    '<circle cx="62" cy="92" r="4.5" fill="'+O+'"/><circle cx="78" cy="92" r="4.5" fill="'+O+'"/><circle cx="63.5" cy="90.5" r="1.5" fill="#fff"/><circle cx="79.5" cy="90.5" r="1.5" fill="#fff"/>'+
+    '<path d="M62 102 q8 6 16 0" stroke="'+O+'" stroke-width="3" fill="none" stroke-linecap="round"/>'+
+    '<circle cx="54" cy="100" r="3.5" fill="#ff9ec4" opacity=".6"/><circle cx="86" cy="100" r="3.5" fill="#ff9ec4" opacity=".6"/>'+
+    '<circle cx="70" cy="50" r="5" fill="#ffd158" stroke="'+O+'" stroke-width="2"/>';
+  return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 140 140"><g class="charg">'+b+'</g></svg>';
+}
+MEMBER_FAM.tessa='bell'; VOICE_LABELS.tessa='Triangle';
+var _mNoteT2=mNote; mNote=function(id,n,dur,when){ if(id==='tessa'){ triTing((n||60)>=72); return; } return _mNoteT2(id,n,dur,when); };
+function moveBtns(cls,labels){ labels=labels||{}; return ['slide','flip','turn'].map(function(mv){ return '<button class="mjposter '+cls+'" data-v="'+mv+'" style="font-size:18px;min-width:84px">'+MOVE_EMO[mv]+'<br>'+(labels[mv]||mv)+'</button>'; }).join(''); }
+MJGAMES.namemove={id:'namemove',name:'Name the Move',emoji:'🔺',member:'tessa',concept:'xform',
+setup:function(L,st){ var x=xfMake(L); st.x=x; st.ans=x.move;
+  return {call:'Which move?', sub:'The first shape became the second. Was it a SLIDE, a FLIP, or a TURN?', html:xfPair(x.cells,x.after)+'<div class="mjcards" id="nmZ"></div>',
+    wire:function(){ $('#nmZ').innerHTML=moveBtns('nmb');
+      $$('.nmb').forEach(function(bt){ bt.addEventListener('click',function(){ if(MJ.busy)return; ac(); if(bt.dataset.v===st.ans){ triTing(false); mjOK('A '+st.ans+'. '+(st.ans==='slide'?'Same shape, same way up, new spot.':st.ans==='flip'?'Mirror image: it flipped over.':'It spun around: a turn.')); } else { punch(bt); mjNo('That was a '+st.ans+'. '+(st.ans==='slide'?'Nothing spun or mirrored; it only moved.':st.ans==='flip'?'It is a mirror image, so it flipped.':'Same shape spun around, not mirrored: a turn.')); } }); }); }}; }};
+MJGAMES.spotflip={id:'spotflip',name:'Spot the Flip',emoji:'🔺',member:'tessa',concept:'xform',
+setup:function(L,st){ var mv=L<4?'turn':pick(['flip','turn']); var x=xfMake(Math.max(4,L)); var base=x.cells; var right=mv==='flip'?xfFlip(base):xfTurn(base); var wrongs=xfWrongs(base,right,mv); var opts=shuffle([right].concat(wrongs)); st.mv=mv; st.right=right;
+  return {call:'Spot the '+mv.toUpperCase(), sub:'One of these is the shape after a '+mv+'. Tap it.', html:'<div class="center">'+xfSVG(base,'#ff9f43')+'<div class="sub" style="margin:0">start</div></div><div class="mjcards" id="sfZ"></div>',
+    wire:function(){ $('#sfZ').innerHTML=opts.map(function(o,i){ return '<button class="mjposter sfb" data-i="'+i+'" style="padding:6px">'+xfSVG(o,'#8ef0c9')+'</button>'; }).join('');
+      $$('.sfb').forEach(function(bt){ bt.addEventListener('click',function(){ if(MJ.busy)return; ac(); var o=opts[+bt.dataset.i]; if(xfSame(o,st.right)){ triTing(true); mjOK('That is the '+mv+'. '+(mv==='flip'?'A mirror image.':'Spun a quarter turn.')); } else { punch(bt); var what=xfSame(o,base)?'that is a slide (same way up)':xfSame(o,xfTurn(xfTurn(base)))?'that is a half turn':(mv==='flip'?'that is a turn, not a mirror':'that is a flip: a mirror image'); mjNo('Not that one: '+what+'. The '+mv+' was the '+(mv==='flip'?'mirror image':'quarter-turned one')+'.'); } }); }); }}; }};
+MJGAMES.fitoutline={id:'fitoutline',name:'Fit the Outline',emoji:'🔺',member:'tessa',concept:'xform',
+setup:function(L,st){ var nm=pick(L<4?['L','P']:['L','S','P','F']); var base=XSHAPES[nm]; var target=base; var n=L<4?1:L<7?R(1,2):R(1,3); var plan=[]; for(var i=0;i<n;i++){ var mv=pick(L<4?['turn']:['flip','turn']); plan.push(mv); target=xfApply(target,mv); } if(xfSame(target,base)){ target=xfTurn(base); } st.cur=base; st.target=target; st.moves=0;
+  var render=function(){ $('#foZ').innerHTML='<div style="display:flex;align-items:center;justify-content:center;gap:14px">'+xfSVG(st.cur,'#ff9f43')+'<span class="sub">fits?</span>'+xfSVG(st.target,'#8ef0c9',{outline:true})+'</div><div class="sub center" style="margin:2px 0">moves: '+st.moves+'</div>'; };
+  return {call:'Fit the outline', sub:'FLIP or TURN the orange shape until it matches the dashed outline, then SLIDE it in.', html:'<div id="foZ"></div><div class="mjcards" id="foB"></div>',
+    wire:function(){ render(); $('#foB').innerHTML=moveBtns('fob',{slide:'slide in'});
+      $$('.fob').forEach(function(bt){ bt.addEventListener('click',function(){ if(MJ.busy)return; ac(); var mv=bt.dataset.v;
+        if(mv==='slide'){ if(xfSame(st.cur,st.target)){ triTing(true); mjOK('It fits! '+st.moves+' move'+(st.moves===1?'':'s')+', then a slide.'); } else { punch(bt); var need=xfSame(xfFlip(st.cur),st.target)?'a FLIP':xfSame(xfTurn(st.cur),st.target)||xfSame(xfTurn(xfTurn(st.cur)),st.target)||xfSame(xfTurn(xfTurn(xfTurn(st.cur))),st.target)?'a TURN':'a flip and a turn'; mjNo('Not yet: it does not fit that way up. It needed '+need+' first.'); } return; }
+        st.cur=xfApply(st.cur,mv); st.moves++; tone(mv==='flip'?520:640,.08,'triangle',.12); render(); }); }); }}; }};
+Object.assign(COACH,{
+  namemove:{member:'tessa',verb:'TAP',hint:'tap',title:'🔺 Name the Move',lines:['Slide = same way up, new spot. Turn = spun. Flip = mirror.','Look at the before and after. TAP the move!']},
+  spotflip:{member:'tessa',verb:'TAP',hint:'tap',title:'🔺 Spot the Flip',lines:['A flip is a mirror image. A turn is a spin.','Only one picture is the real move. TAP it!']},
+  fitoutline:{member:'tessa',verb:'TAP',hint:'tap',title:'🔺 Fit the Outline',lines:['FLIP and TURN the shape until it matches the dashed outline.','When it matches, TAP slide in!']}
+});
+PLAY_RIGS.tessa={hint:'One triangle. Ting. Hold it open, ting rings; pinch it, ting stops.',custom:function(el){ el.innerHTML='<div class="mjbig" style="font-size:44px">🔺</div><div class="sub center">open ting, closed tick</div><div class="row" style="justify-content:center;gap:16px;margin-top:14px"><button class="mjcymbal" id="tgO" style="border-color:#e8cf9a">TING</button><button class="mjcymbal" id="tgC" style="border-color:#8a6a2a">TICK</button></div>'; $('#tgO').addEventListener('click',function(){ac();triTing(true);punch($('#tgO'));}); $('#tgC').addEventListener('click',function(){ac();tone(ntf(96),.08,'sine',.14);punch($('#tgC'));}); }};
+MUSIC_CARDS.tessa={elly:'A triangle is a shape you can hear. Tessa slides it, flips it, and turns it, and it is still the same triangle, still the same ting.',body:'There are three ways to move a shape without changing it. A SLIDE moves it to a new spot, same way up. A TURN spins it around a point. A FLIP turns it over, like a mirror. After any of the three, the shape is still the same shape: same sides, same corners. Music does the same thing to a riff: play it later (slide), play it upside down (flip), play it backward (turn). Same idea, moved.',example:'Listen: ting. Slide it: ting later. Flip it: the same ting, mirrored.'};
+MUSIC_DEMOS.tessa=function(){ triTing(false); later(function(){triTing(false);},500); later(function(){triTing(true);},1000); later(function(){triTing(false);},1300); };
+LESSONS.tessa={game:function(){startMJ('namemove');},steps:[
+  {say:'I play the triangle. It is a shape you can hear. And a shape can move three ways without changing what it is.',vis:tessaSVG('tessa',110)},
+  {say:'A SLIDE: same shape, same way up, just a new spot.',vis:xfPair(XSHAPES.L,XSHAPES.L)},
+  {say:'A TURN: the shape spins around. Still the same shape, just pointing a new way.',vis:xfPair(XSHAPES.L,xfTurn(XSHAPES.L))},
+  {say:'A FLIP: the shape turns over like a mirror. Look: the little notch swaps sides. Slide, flip, turn. Let us move some shapes!',vis:xfPair(XSHAPES.L,xfFlip(XSHAPES.L))}
+]};
+METHOD.xform={steps:[
+  {say:'To tell a flip from a turn, find one feature, like the notch. After a TURN it points a new direction but stays on the same side of the shape.',vis:xfPair(XSHAPES.S,xfTurn(XSHAPES.S))},
+  {say:'After a FLIP it swaps to the other side, like in a mirror. If nothing spun or swapped, it was just a slide.',vis:xfPair(XSHAPES.S,xfFlip(XSHAPES.S))}
+]};
+STEPWALK.xform=function(L){ var nm=pick(['L','P','F']); var base=XSHAPES[nm]; var mv=pick(['flip','turn']); var after=mv==='flip'?xfFlip(base):xfTurn(base); return {title:'Slide, flip or turn?',steps:[
+  {say:'Did the shape stay the same way up?',vis:xfPair(base,after),choices:['yes','no'],a:'no'},
+  {say:'So it is not a slide. Is the second shape a mirror image (flip) or spun around (turn)?',choices:['flip','turn'],a:mv,after:'A '+mv+'. '+(mv==='flip'?'The notch swapped sides, like a mirror.':'It spun a quarter turn; nothing mirrored.')}]}; };
+jamRegister({id:'shapeshift',title:'Shape Shift',member:'tessa',concept:'xform',emoji:'🔺',scoreWord:'shift score',roundLabel:'Shape',
+  newRound:function(J){ var L=J.L(), st=J.state; var nm=pick(L<4?['L','P']:['L','S','P','F']); var base=XSHAPES[nm]; var target=base; var n=L<4?1:L<7?R(1,2):R(2,3); for(var i=0;i<n;i++)target=xfApply(target,pick(L<4?['turn']:['flip','turn'])); if(xfSame(target,base))target=xfTurn(base);
+    st.cur=base; st.target=target; shiftGeom(J); st.hx=st.sx; st.hy=st.sy; st.drag=false; st.moves=0; st.done=false; st.anim=0;
+    J.call('Fit the dashed outline','Tap FLIP or TURN until the shape matches, then DRAG it onto the outline.'); J.msg('Same shape. Make it match the outline, then slide it in.'); },
+  draw:function(J,ctx,dt){ var st=J.state; if(!st.cur)return; var wasHome=(st.hx===st.sx&&st.hy===st.sy); shiftGeom(J); if(wasHome&&!st.drag&&!st.done){ st.hx=st.sx; st.hy=st.sy; } var W=J.W,H=J.H,u=st.u; if(st.anim>0)st.anim=Math.max(0,st.anim-dt*4);
+    var cellsAt=function(cells,cx,cy,fill,stroke,dash){ var w=(Math.max.apply(null,cells.map(function(c){return c[0];}))+1)*u, h=(Math.max.apply(null,cells.map(function(c){return c[1];}))+1)*u; cells.forEach(function(c,i){ var x=cx-w/2+c[0]*u, y=cy-h/2+c[1]*u; ctx.setLineDash(dash?[6,4]:[]); jkRound(ctx,x+1,y+1,u-2,u-2,4,fill,stroke,2); ctx.setLineDash([]); if(fill&&i===0){ ctx.beginPath(); ctx.arc(x+u/2,y+u/2,u*0.16,0,Math.PI*2); ctx.fillStyle='#221a44'; ctx.fill(); } }); };
+    cellsAt(st.target,st.tx,st.ty,null,'#8ef0c9',true); jkText(ctx,'outline',st.tx,st.ty+u*2.6,12,'#8ef0c9');
+    ctx.save(); ctx.translate(st.hx,st.hy); ctx.scale(1-st.anim*0.5,1); ctx.translate(-st.hx,-st.hy); cellsAt(st.cur,st.hx,st.hy,'#ff9f43','#221a44',false); ctx.restore();
+    st.btns.forEach(function(b){ jkRound(ctx,b.x,b.y,b.w,b.h,12,'#2a1f55','#9d7cff',2); jkText(ctx,MOVE_EMO[b.mv]+' '+b.mv.toUpperCase(),b.x+b.w/2,b.y+b.h/2,16,'#f4f0ff'); });
+    jkText(ctx,'moves: '+st.moves,W/2,H-24,13,'#a89cd8'); jkText(ctx,xfSame(st.cur,st.target)?'it matches! drag it onto the outline':'flip or turn until it matches',W/2,60,13,xfSame(st.cur,st.target)?'#7dff8a':'#a89cd8'); },
+  onDown:function(J,x,y){ var st=J.state; if(!st.cur||st.done)return; for(var i=0;i<st.btns.length;i++){ var b=st.btns[i]; if(jkHit(x,y,b)){ st.cur=xfApply(st.cur,b.mv); st.moves++; st.anim=1; tone(b.mv==='flip'?520:640,.08,'triangle',.12); return; } }
+    if(jkDist(x,y,st.hx,st.hy)<st.u*2.2){ st.drag=true; } },
+  onMove:function(J,x,y){ var st=J.state; if(st.drag){ st.hx=x; st.hy=y; } },
+  onUp:function(J,x,y){ var st=J.state; if(!st.drag)return; st.drag=false; if(jkDist(st.hx,st.hy,st.tx,st.ty)<st.u*1.4){ st.done=true; st.hx=st.tx; st.hy=st.ty; if(xfSame(st.cur,st.target)){ triTing(true); J.win('It fits! '+st.moves+' move'+(st.moves===1?'':'s')+' and a slide.'); } else { var need=xfSame(xfFlip(st.cur),st.target)?'a FLIP':'a TURN or two'; J.miss('It does not fit that way up. It still needed '+need+'.'); } } else { st.hx=st.sx; st.hy=st.sy; tone(300,.08,'triangle',.1); } }
+});
+function shiftGeom(J){ var st=J.state; st.u=Math.min(34,(J.W-60)/9); st.tx=J.W*0.62; st.ty=J.H*0.36; st.sx=J.W*0.22; st.sy=J.H*0.36; st.btns=[{mv:'flip',x:J.W/2-120,y:J.H-90,w:110,h:52},{mv:'turn',x:J.W/2+10,y:J.H-90,w:110,h:52}]; }
+jamCoach('shapeshift','tessa','🔺 Shape Shift',['FLIP mirrors the shape. TURN spins it a quarter.','Match the dashed outline, then DRAG the shape onto it. That last move is the slide!'],'DRAG','drag');
+addRecruit({id:'tessa',name:'Tessa',emoji:'🔺',title:'Triangle',concept:'xform',conceptName:'Slides, Flips & Turns',color:'#ff9f43',rig:'triangle',draw:tessaSVG,crewId:'tessa',
+  bio:'Tessa plays the triangle: a shape you can hear. Slide it, flip it, turn it, and it is still the same triangle. Three moves, one shape, and the beginning of geometry that moves.',
+  lines:['Slide, flip, turn. Same shape, three moves.','A flip is a mirror. A turn is a spin.','Still the same triangle. Still ting.'],
+  dreams:['The Stuck Statues never moved a shape in their lives. You slid, flipped and turned every one.','My dream: a shape that fits its outline from every angle.','If the notch swapped sides, it flipped. If it just points a new way, it turned.','Every puzzle piece is a shape waiting for the right move.','Ting. Same note wherever I hang the triangle. That is a slide.'],
+  key:'stuckstatues',bandName:'The Stuck Statues',crew:{name:'The Stuck Statues',members:[
+    {id:'block',emoji:'🧱',name:'Block',line:'Why move it? It is fine where it is.'},{id:'rigid',emoji:'🗿',name:'Rigid',line:'Flip? Turn? I do not bend.'},{id:'stone',emoji:'🏔️',name:'Stone',line:'A shape is a shape. Leave it.'},{id:'tessa',emoji:'🔺',name:'Tessa',star:true,line:'Slide, flip, turn. Watch it fit.'}]},
+  loseEmoji:'🔺',loseTitle:'The Stuck Statues never fit the outline',winLine:'You held the crowd AND fit every outline. Tessa flipped her triangle once, turned it twice, hung it from your mic stand, and rang it.',
+  starHint:'Win the shape rounds to fill the recruit spark and get Tessa to switch stages.',btnStyle:'linear-gradient(90deg,#6a3a1a,#ff9f43)',
+  gigLine:'Tessa rings one clean ting on the last beat. "Slid it, flipped it, turned it. Still fit. Still ting, frontman."',meetLine:'And Tessa on triangle, out of The Stuck Statues. Slide, flip, turn: the same shape moved three ways, the first step into geometry that moves.'});
+HEADLINE_JAM.tessa='shapeshift'; LESSONS.tessa.game=function(){ startJam('shapeshift'); };
+
+/* ================= what's new (once) ================= */
+var _renderHubNew099=renderHub;
+renderHub=function(){ _renderHubNew099(); if(S.flags&&!S.flags.seen099&&S.flags.introDone){ S.flags.seen099=true; save(); later(function(){ modal('<div class="center">'+ellySVG(60)+'<h2>✨ New on the tour</h2></div>'+
+  '<div class="card"><b>🌟 Tonight’s Setlist</b><div class="sub" style="text-align:left;margin:2px 0 0">Once a night, five bandmates share one stage. Tap the gold card in the Garage.</div></div>'+
+  '<div class="card"><b>🎤 Guest spots</b><div class="sub" style="text-align:left;margin:2px 0 0">Bandmates you have mastered will drop into other games for one song. Keep them sharp.</div></div>'+
+  '<div class="card"><b>⚔️ Three new rival bands</b><div class="sub" style="text-align:left;margin:2px 0 0">The Lopsiders, The Randomizers and The Stuck Statues are on the Battle of the Bands road. Beat them for Libby, Rula and Tessa.</div></div>'+
+  '<button class="btn wide" onclick="closeModal()">🤘</button>'); },600); } };
+window.BQ&&Object.assign(window.BQ,{spiralDue:spiralDue,spiralRec:spiralRec,setlistState:setlistState,setlistOpen:setlistOpen,setlistPlay:setlistPlay,guestSpot:guestSpot,fadeGate:fadeGate,eqMake:eqMake,eqTF:eqTF,ruleMake:ruleMake,xfMake:xfMake,xfTurn:xfTurn,xfFlip:xfFlip,xfSame:xfSame,XSHAPES:XSHAPES,RULES:RULES});
+
+</script>
 </body>
 </html>
