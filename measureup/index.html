@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Measure Up">
-<title>Measure Up v1.06</title>
+<title>Measure Up v1.07</title>
 <style>
 :root{
   --bg:#0e0b1e; --panel:#1d1636; --panel2:#28204a; --ink:#f4f0ff; --dim:#a89cd8;
@@ -928,14 +928,14 @@ svg .charg{will-change:transform}
 <div id="toast"></div>
 <button id="homeBtn" onclick="goHome()" aria-label="Back to Garage">🏠</button>
 <button id="ellyBtn" onclick="openEllyHelp()" aria-label="Ask Elly for help"></button>
-<div id="vbadge">v1.06 · Sep 27</div>
+<div id="vbadge">v1.07 · Sep 27</div>
 
 <script>
 'use strict';
 /* ============ UTILS ============ */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const VERSION='v1.06 · Sep 27';
+const VERSION='v1.07 · Sep 27';
 const RM=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -1254,7 +1254,7 @@ function show(id){
   stopAll();
   toastKill();
   $$('.scr').forEach(s=>s.classList.toggle('on',s.id===id));
-  const hb=$('#homeBtn'); if(hb)hb.classList.toggle('show', id!=='scr-hub'&&id!=='scr-title'&&id!=='scr-creator'&&id!=='scr-intro');
+  const hb=$('#homeBtn'); if(hb)hb.classList.toggle('show', id!=='scr-hub'&&id!=='scr-title'&&id!=='scr-creator'&&id!=='scr-intro'&&id!=='scr-town');
   const eb=$('#ellyBtn'); if(eb){ if(!eb.dataset.init){ eb.innerHTML=ellySVG(40); eb.dataset.init='1'; } eb.classList.toggle('show', id!=='scr-title'&&id!=='scr-creator'&&id!=='scr-intro'); }
   if(id==='scr-hub'){ const mb=$('#mgrBadge'); if(mb&&typeof achClaimableCount==='function'){ const c=achClaimableCount(); mb.textContent=c>0?('· 🔔 '+c+' to claim!'):''; } }
   var _ep=document.getElementById('ellyPop'); if(_ep&&id!=='scr-hub')_ep.remove();
@@ -4695,7 +4695,7 @@ function startIntroReplay(){ closeModal(); INTRO.replay=true; INTRO.active=true;
 /* ============ WIRING + INIT ============ */
 $('#btnStart').addEventListener('click',()=>{
   ac(); sTap();
-  if(S.creature){ renderHub(); show('scr-hub'); }
+  if(S.creature){ renderHub(); openTown(); }
   else if(!S.flags.introDone){ startIntro(); }
   else openCreator(false);
 });
@@ -14105,6 +14105,203 @@ function roadQuizEnd(rid,right,total){ var reg=ROAD_REGIONS.filter(function(x){r
   if(S.flags&&!S.flags.seen106&&S.flags.introDone){ S.flags.seen106=true; save(); later(function(){ if($('#modal').classList.contains('on'))return; modal('<div class="center">'+ellySVG(60)+'<h2>\u2728 New: On the Road</h2></div><div class="card"><b>\uD83D\uDDFA\uFE0F On the Road</b><div class="sub" style="text-align:left;margin:2px 0 0">Gus drives you across the country to learn every state and its capital, region by region. Tap the new teal card in the Garage. (Flags are coming in a later update.)</div></div><button class="btn wide" onclick="closeModal()">\uD83D\uDE8C</button>'); },900); }
 }; })();
 window.BQ&&Object.assign(window.BQ,{ROAD_STATES:ROAD_STATES,ROAD_REGIONS:ROAD_REGIONS,roadOf:roadOf,openRoad:openRoad,openRegion:openRegion,learnState:learnState,roadQuiz:roadQuiz,renderRoad:renderRoad});
+
+</script>
+<script>
+/* ================= v1.07 · TOWN HUB FRONT DOOR (Sep 27 2026) =================
+   Mot's direction: Measure Up becomes a town Garrett explores, not a single band screen.
+   A central town SQUARE runs shows/announcements; the subjects are buildings around it, all
+   reachable in any order; the town grows as new areas open. This block adds scr-town as the
+   new landing (returning players), routes the buildings into what already exists (the band
+   Garage + On the Road) and marks not-yet-built areas "soon". No band member, no math concept,
+   no rival: counts/parity tests untouched. Built from the game's real art (memberSVG/creatureSVG),
+   real palette, self-contained. Word Hoard (spelling & vocab) is the next area to go live here. */
+
+/* ---------- one-time CSS ---------- */
+(function(){
+  if(document.getElementById('twCSS'))return;
+  var st=document.createElement('style'); st.id='twCSS'; st.textContent=
+   '#scr-town{padding:0!important}'
+  +'#twStage{position:relative;width:100%;max-width:460px;margin:0 auto;height:1020px;overflow:hidden;font-family:inherit;background:#0a0716}'
+  +'.tw-top{position:absolute;top:10px;left:12px;right:12px;display:flex;align-items:center;gap:10px;z-index:30}'
+  +'.tw-top .g{display:flex}.tw-top .g svg{margin-left:-14px;filter:drop-shadow(0 3px 5px #0009)}.tw-top .g svg:first-child{margin-left:0}'
+  +'.tw-top h1{margin:0;font-size:20px;font-weight:800;color:#f4f0ff;text-shadow:0 2px 12px #000c;line-height:1.02}'
+  +'.tw-top p{margin:0;font-size:12px;font-weight:700;color:#c3b4f2;text-shadow:0 1px 6px #000b}'
+  +'.tw-grown{margin-left:auto;flex:none;display:flex;flex-direction:column;align-items:center;gap:1px;background:#1d1636e6;border:1.5px solid #4a3d84;border-radius:12px;padding:5px 9px;cursor:pointer}'
+  +'.tw-grown b{font-size:9px;letter-spacing:.4px;color:#c3b4f2}'
+  +'.tw-fac{position:absolute;width:150px;transform:translate(-50%,-50%);z-index:12;cursor:pointer}'
+  +'.tw-fb{position:relative;border-radius:14px 14px 10px 10px;background:linear-gradient(180deg,#241b46,#181031);border:2px solid var(--c);box-shadow:0 0 24px -6px var(--c),0 14px 22px #0009;padding:0 0 8px;transition:transform .12s}'
+  +'.tw-fac:active .tw-fb{transform:scale(.96)}'
+  +'.tw-awn{height:12px;border-radius:12px 12px 0 0;background:repeating-linear-gradient(90deg,var(--c),var(--c) 12px,#ffffffcc 12px,#ffffffcc 24px);opacity:.9}'
+  +'.tw-sign{position:relative;margin:-2px 8px 0;text-align:center;background:#120d28;border:2px solid var(--c);border-radius:9px;padding:5px 4px 4px;box-shadow:0 0 14px -3px var(--c)}'
+  +'.tw-sign .tg{font-size:8.5px;font-weight:900;letter-spacing:1.2px;color:var(--c)}'
+  +'.tw-sign .nm{font-size:15.5px;font-weight:800;color:#fff;line-height:1}'
+  +'.tw-wins{display:flex;justify-content:center;gap:7px;margin:7px 0 3px}'
+  +'.tw-wins i{width:20px;height:16px;border-radius:3px;background:#ffe08a;box-shadow:0 0 9px #ffe08a88}'
+  +'.tw-door{width:20px;height:22px;border-radius:6px 6px 0 0;background:#3a2740;margin:0 auto;position:relative}.tw-door:after{content:"";position:absolute;right:3px;top:10px;width:2px;height:2px;border-radius:50%;background:#ffd977}'
+  +'.tw-host{position:absolute;top:-42px;left:50%;transform:translateX(-50%);filter:drop-shadow(0 6px 8px #000b);z-index:2}'
+  +'.tw-badge{position:absolute;top:-10px;right:-8px;font-size:9px;font-weight:900;color:#0b2016;background:var(--c);border-radius:99px;padding:3px 8px;box-shadow:0 0 12px var(--c);z-index:3}'
+  +'.tw-fac.soon .tw-fb{filter:saturate(.5) brightness(.8)}.tw-fac.soon .tw-lk{position:absolute;top:-10px;right:-8px;font-size:9px;font-weight:900;color:#e9e2ff;background:#3a2f66;border:1px solid var(--c);border-radius:99px;padding:3px 8px;z-index:3}'
+  +'.tw-prog{font-size:10px;font-weight:800;color:#c3b4f2;text-align:center;margin-top:2px}'
+  +'.tw-marq{position:absolute;left:195px;top:560px;transform:translate(-50%,-50%);z-index:14;width:176px;text-align:center;cursor:pointer}'
+  +'.tw-marq .bd{background:linear-gradient(180deg,#3a2c66,#241a49);border:3px solid #ffd158;border-radius:14px;padding:8px 12px 9px;box-shadow:0 0 24px -3px #ffd15899,inset 0 1px 0 #fff2;position:relative}'
+  +'.tw-marq .bd:before,.tw-marq .bd:after{content:"";position:absolute;top:6px;bottom:6px;width:4px;background:repeating-linear-gradient(#ffe6a0,#ffe6a0 4px,transparent 4px,transparent 9px);border-radius:2px}'
+  +'.tw-marq .bd:before{left:3px}.tw-marq .bd:after{right:3px}'
+  +'.tw-marq .tt{font-size:8.5px;font-weight:900;letter-spacing:1.3px;color:#ffd158;margin-bottom:1px}'
+  +'.tw-marq .ev{font-size:13px;font-weight:800;color:#fff;line-height:1.05}'
+  +'.tw-marq .dt{font-size:9px;font-weight:700;color:#c3b4f2;margin-top:1px}'
+  +'.tw-tf{position:absolute;transform:translate(-50%,-50%);z-index:13;filter:drop-shadow(0 5px 6px #000a)}'
+  +'.tw-lot{position:absolute;left:195px;top:930px;transform:translate(-50%,-50%);z-index:8;width:150px;text-align:center;cursor:pointer}'
+  +'.tw-lot .p{height:56px;border:2px dashed #6a5aa8;border-radius:12px;background:repeating-linear-gradient(45deg,#181234,#181234 8px,#20184a 8px,#20184a 16px);display:flex;align-items:center;justify-content:center;gap:6px}'
+  +'.tw-lot .cap{font-size:9.5px;font-weight:800;color:#9a8fce;margin-top:3px;letter-spacing:.3px}'
+  +'.tw-foot{position:absolute;left:0;right:0;bottom:0;text-align:center;font-size:10.5px;color:#8a80c0;font-weight:700;padding:8px 14px;z-index:20}'
+  +'.tw-gate{position:absolute;transform:translate(-50%,-50%);z-index:12;text-align:center;width:80px;cursor:pointer}';
+  document.head.appendChild(st);
+})();
+
+/* ---------- environment SVG (literal hex only) ---------- */
+function twLamp(x,y){return '<g transform="translate('+x+' '+y+')"><rect x="-2" y="0" width="4" height="34" rx="2" fill="#2a2244"/><rect x="-8" y="34" width="16" height="4" rx="2" fill="#2a2244"/><ellipse cx="0" cy="-3" rx="7" ry="9" fill="#ffe6a0"/><ellipse cx="0" cy="-3" rx="16" ry="20" fill="#ffe6a0" opacity=".16"/></g>';}
+function twTree(x,y,s){s=s||1;return '<g transform="translate('+x+' '+y+') scale('+s+')"><ellipse cx="0" cy="3" rx="15" ry="5" fill="#00000066"/><rect x="-4" y="-16" width="8" height="20" rx="3" fill="#4a3320"/><circle cx="0" cy="-30" r="20" fill="#245e3c"/><circle cx="-12" cy="-22" r="13" fill="#2c6e46"/><circle cx="12" cy="-24" r="12" fill="#2c6e46"/><circle cx="-4" cy="-38" r="12" fill="#357c52"/><circle cx="3" cy="-30" r="4" fill="#7dff8a" opacity=".5"/></g>';}
+function twBush(x,y){return '<g transform="translate('+x+' '+y+')"><ellipse cx="0" cy="2" rx="16" ry="5" fill="#00000055"/><circle cx="-7" cy="-4" r="9" fill="#2c6e46"/><circle cx="6" cy="-5" r="10" fill="#2c6e46"/><circle cx="0" cy="-10" r="9" fill="#357c52"/></g>';}
+function twBench(x,y){return '<g transform="translate('+x+' '+y+')"><rect x="-14" y="-2" width="28" height="5" rx="2" fill="#5a4a2e"/><rect x="-14" y="-11" width="28" height="4" rx="2" fill="#6a5836"/><rect x="-12" y="3" width="3" height="7" fill="#3a2f1e"/><rect x="9" y="3" width="3" height="7" fill="#3a2f1e"/></g>';}
+function twBunt(x1,y1,x2,y2){var cols=['#ff5d5d','#ffd158','#7dff8a','#4dd6ff','#c58dff'];var mx=(x1+x2)/2,my=Math.max(y1,y2)+22;
+  var g='<path d="M'+x1+' '+y1+' Q'+mx+' '+my+' '+x2+' '+y2+'" stroke="#e9e2ff" stroke-width="1.5" fill="none" opacity=".5"/>';
+  for(var t=0.12;t<0.92;t+=0.12){var xt=(1-t)*(1-t)*x1+2*(1-t)*t*mx+t*t*x2;var yt=(1-t)*(1-t)*y1+2*(1-t)*t*my+t*t*y2;g+='<path d="M'+(xt-4)+' '+yt+' L'+(xt+4)+' '+yt+' L'+xt+' '+(yt+8)+' Z" fill="'+cols[Math.round(t*8)%5]+'"/>';}
+  return g;}
+function twSkyline(){var g='';var x=0;while(x<390){var w=18+Math.random()*26,h=30+Math.random()*70;g+='<rect x="'+x.toFixed(0)+'" y="'+(250-h).toFixed(0)+'" width="'+w.toFixed(0)+'" height="'+h.toFixed(0)+'" rx="3" fill="#1a1440"/>';
+  for(var wy=250-h+8;wy<246;wy+=12){for(var wx=x+4;wx<x+w-4;wx+=8){if(Math.random()>.45)g+='<rect x="'+wx.toFixed(0)+'" y="'+wy.toFixed(0)+'" width="3" height="4" fill="#ffe6a0" opacity="'+(0.3+Math.random()*0.5).toFixed(2)+'"/>';}}x+=w+3;}return g;}
+function twRoad(x1,y1,x2,y2){return '<path d="M'+x1+' '+y1+' L'+x2+' '+y2+'" stroke="#00000077" stroke-width="30" stroke-linecap="round"/>'
+  +'<path d="M'+x1+' '+y1+' L'+x2+' '+y2+'" stroke="#3a3160" stroke-width="20" stroke-linecap="round"/>'
+  +'<path d="M'+x1+' '+y1+' L'+x2+' '+y2+'" stroke="#5b4f8e" stroke-width="16" stroke-linecap="round"/>'
+  +'<path d="M'+x1+' '+y1+' L'+x2+' '+y2+'" stroke="#d8ccff" stroke-width="2.5" stroke-dasharray="2 12" opacity=".55" stroke-linecap="round"/>';}
+function twEnv(){
+  var W=390,H=1020,PLx=195,PLy=560;
+  var stars=''; for(var i=0;i<44;i++){stars+='<circle cx="'+(Math.random()*W).toFixed(0)+'" cy="'+(Math.random()*230).toFixed(0)+'" r="'+(Math.random()*1.1+.3).toFixed(1)+'" fill="#fff" opacity="'+(0.15+Math.random()*0.5).toFixed(2)+'"/>';}
+  var speck=''; for(var k=0;k<70;k++){speck+='<circle cx="'+(Math.random()*W).toFixed(0)+'" cy="'+(250+Math.random()*(H-260)).toFixed(0)+'" r="'+(Math.random()*1.1+.4).toFixed(1)+'" fill="#ffffff" opacity="0.04"/>';}
+  var pts=[[80,300],[312,300],[80,812],[312,812],[372,560]]; var roads=''; pts.forEach(function(p){roads+=twRoad(PLx,PLy,p[0],p[1]);});
+  var stageBulbs=''; for(var a=-52;a<=52;a+=13){stageBulbs+='<circle cx="'+a+'" cy="'+(-2-Math.round(Math.sqrt(Math.max(0,1-(a/56)*(a/56)))*38))+'" r="2.4" fill="#ffe6a0"/>';}
+  return '<svg style="position:absolute;inset:0;width:100%;height:'+H+'px;z-index:1" viewBox="0 0 '+W+' '+H+'">'
+    +'<defs><radialGradient id="twsky" cx="50%" cy="8%" r="90%"><stop offset="0" stop-color="#2c2064"/><stop offset="45%" stop-color="#1a1240"/><stop offset="100%" stop-color="#0a0716"/></radialGradient>'
+    +'<radialGradient id="twplz" cx="50%" cy="40%" r="60%"><stop offset="0" stop-color="#3a2c66"/><stop offset="100%" stop-color="#1c1440"/></radialGradient>'
+    +'<radialGradient id="twmn" cx="42%" cy="38%" r="60%"><stop offset="0" stop-color="#fff6df"/><stop offset="100%" stop-color="#ffd27a"/></radialGradient></defs>'
+    +'<rect x="0" y="0" width="'+W+'" height="'+H+'" fill="url(#twsky)"/>'+stars
+    +'<circle cx="315" cy="80" r="34" fill="url(#twmn)"/><circle cx="315" cy="80" r="46" fill="#ffd98f" opacity=".14"/>'
+    +twSkyline()
+    +'<rect x="0" y="240" width="'+W+'" height="'+(H-240)+'" fill="#14102c"/>'+speck+roads
+    +'<ellipse cx="'+PLx+'" cy="'+PLy+'" rx="132" ry="118" fill="url(#twplz)" stroke="#5b4a94" stroke-width="2"/>'
+    +'<ellipse cx="'+PLx+'" cy="'+PLy+'" rx="110" ry="98" fill="none" stroke="#6a5aa8" stroke-width="1" opacity=".5" stroke-dasharray="3 6"/>'
+    +'<g transform="translate('+PLx+' 476)"><path d="M-56 34 L-56 -2 A56 40 0 0 1 56 -2 L56 34 Z" fill="#241a49" stroke="#ffd158" stroke-width="2"/><path d="M-56 -2 A56 40 0 0 1 56 -2" fill="none" stroke="#ffd158" stroke-width="3"/>'+stageBulbs+'<rect x="-56" y="30" width="112" height="7" rx="2" fill="#3a2c66"/></g>'
+    +twBunt(90,470,300,470)+twBunt(70,540,120,650)+twBunt(320,540,270,650)
+    +twLamp(150,470)+twLamp(244,470)+twLamp(120,660)+twLamp(276,660)+twLamp(46,540)+twLamp(348,540)
+    +twTree(40,360,1.05)+twTree(352,360,1.05)+twTree(30,900,1.15)+twTree(360,900,1.1)+twTree(60,720,.8)+twTree(330,720,.8)
+    +twBush(150,660)+twBush(244,660)+twBush(120,470)+twBush(276,470)+twBench(150,630)+twBench(244,630)
+    +'<g transform="translate('+PLx+' 632)"><ellipse cx="0" cy="6" rx="30" ry="11" fill="#26305a" stroke="#4a5a9a" stroke-width="2"/><ellipse cx="0" cy="3" rx="20" ry="7" fill="#3a5aa0"/><rect x="-3" y="-14" width="6" height="16" rx="3" fill="#4a5a9a"/><circle cx="0" cy="-16" r="5" fill="#7fb0ff"/><path d="M0 -18 q-8 -8 -3 -16 M0 -18 q8 -8 3 -16" stroke="#bfe0ff" stroke-width="2" fill="none" opacity=".7"/></g>'
+    +'</svg>';
+}
+
+/* ---------- town marquee event (rotates by day) ---------- */
+function twEvent(){
+  var evs=[
+    {ev:'Boom’s Drum-Off',dt:'everyone’s invited · win a badge'},
+    {ev:'Capitals Parade',dt:'On the Road is showing off the states'},
+    {ev:'Open Mic at the Stage',dt:'the whole band is playing tonight'},
+    {ev:'Number Racket Rally',dt:'beat your best skill streak'}
+  ];
+  var d=new Date(); return evs[(d.getDate())%evs.length];
+}
+
+/* ---------- routing ---------- */
+function townGo(dest){
+  sTap();
+  if(dest==='band'){ renderHub(); show('scr-hub'); return; }
+  if(dest==='road'){ if(typeof openRoad==='function'){ openRoad(); } else { toast('On the Road is loading...'); } return; }
+  if(dest==='sci'){ toast('🌿 Critter Cove opens soon!'); return; }
+  if(dest==='words'){ toast('📚 The Word Hoard is being built next!'); return; }
+  if(dest==='grown'){ toast('👤 Grown-ups’ corner is coming soon'); return; }
+  if(dest==='lot'){ toast('🏗️ A brand-new area is going up here'); return; }
+  if(dest==='square'){ var e=twEvent(); modal('<div class="center"><h2>🎪 The Town Square</h2></div><div class="speak"><b>Tonight:</b> '+e.ev+'. '+e.dt+'.</div><div class="sub center">Shows and news show up here. Check back, the town keeps changing!</div><button class="btn wide" onclick="closeModal()">Cool!</button>'); return; }
+}
+
+/* ---------- build the town screen ---------- */
+function twMount(){
+  if(document.getElementById('scr-town'))return;
+  var d=document.createElement('div'); d.className='scr'; d.id='scr-town';
+  d.innerHTML='<div id="twStage"></div>';
+  var anchor=document.getElementById('modal'); if(anchor)document.body.insertBefore(d,anchor); else document.body.appendChild(d);
+  if(typeof ELLY_HINTS==='object')ELLY_HINTS['scr-town']='Welcome to town! Tap any building to go there. The Main Stage and Number Racket are your band. On the Road is a road trip. New places open as you grow.';
+}
+function renderTown(){
+  var stage=document.getElementById('twStage'); if(!stage)return;
+  var cr=(typeof S!=='undefined'&&S.creature)?S.creature:{body:'round',col:'#7dff8a',eyes:'dot',extra:'none',acc:'none',name:''};
+  var ev=twEvent();
+  var mathPct=0; try{ if(typeof BAND!=='undefined'&&typeof S!=='undefined'&&S.band){ var owned=BAND.filter(function(m){return S.band[m.id];}).length; mathPct=Math.round(owned/BAND.length*100); } }catch(e){}
+  var roadSeen=0; try{ if(typeof roadTotalSeen==='function')roadSeen=roadTotalSeen(); }catch(e){}
+  var V=[
+    {cx:80,cy:300,col:'#ff5d5d',tg:'MUSIC',nm:'The Main Stage',host:'boom',prog:'the band plays here',go:'band'},
+    {cx:312,cy:300,col:'#ffb347',tg:'NUMBERS',nm:'Number Racket',host:'combo',prog:mathPct+'% of skills',go:'band'},
+    {cx:80,cy:812,col:'#7dff8a',tg:'SCIENCE',nm:'Critter Cove',host:'fern',prog:'opens soon',badge:'NEW',go:'sci',soon:true},
+    {cx:312,cy:812,col:'#c58dff',tg:'WORDS',nm:'Word Hoard',host:'bibi',prog:'spelling & vocab',go:'words',soon:true}
+  ];
+  var html=twEnv();
+  html+='<div class="tw-top"><div class="g">'+creatureSVG(cr,42)+memberSVG('boom',42)+'</div>'
+    +'<div><h1>Welcome to town!</h1><p>go anywhere you like</p></div>'
+    +'<div class="tw-grown" onclick="townGo(\'grown\')">👤<b>GROWN-UPS</b></div></div>';
+  html+='<div class="tw-marq" onclick="townGo(\'square\')"><div class="bd"><div class="tt">✦ TONIGHT AT THE SQUARE</div><div class="ev">'+ev.ev+'</div><div class="dt">'+ev.dt+'</div></div></div>';
+  html+='<div class="tw-tf" style="left:150px;top:690px">'+memberSVG('luna',40)+'</div>';
+  html+='<div class="tw-tf" style="left:240px;top:694px">'+memberSVG('tock',40)+'</div>';
+  html+='<div class="tw-tf" style="left:196px;top:512px">'+memberSVG('mika',38)+'</div>';
+  html+='<div class="tw-tf" style="left:120px;top:380px">'+memberSVG('roscoe',36)+'</div>';
+  html+='<div class="tw-tf" style="left:300px;top:400px">'+memberSVG('plink',36)+'</div>';
+  html+='<div class="tw-gate" style="left:360px;top:548px" onclick="townGo(\'road\')">'
+    +'<div style="filter:drop-shadow(0 6px 8px #000a)">'+memberSVG('gus',42)+'</div>'
+    +'<div style="background:#120d28;border:2px solid #ffd158;border-radius:9px;padding:3px 5px;box-shadow:0 0 14px -3px #ffd158;margin-top:-4px">'
+    +'<div style="font-size:8.5px;font-weight:900;color:#ffd158">ON THE ROAD →</div><div style="font-size:8.5px;font-weight:700;color:#b7a9ee">'+roadSeen+'/50</div></div></div>';
+  V.forEach(function(v){
+    html+='<div class="tw-fac'+(v.soon?' soon':'')+'" style="left:'+v.cx+'px;top:'+v.cy+'px;--c:'+v.col+'" onclick="townGo(\''+v.go+'\')">'
+      +'<div class="tw-host">'+memberSVG(v.host,60)+'</div>'
+      +(v.badge?'<div class="tw-badge">✦ '+v.badge+'</div>':'')
+      +(v.soon?'<div class="tw-lk">🔒 SOON</div>':'')
+      +'<div class="tw-fb"><div class="tw-awn"></div>'
+      +'<div class="tw-sign"><div class="tg">'+v.tg+'</div><div class="nm">'+v.nm+'</div></div>'
+      +'<div class="tw-wins"><i></i><i></i></div><div class="tw-door"></div>'
+      +'<div class="tw-prog">'+v.prog+'</div></div></div>';
+  });
+  html+='<div class="tw-lot" onclick="townGo(\'lot\')"><div class="p"><span style="font-size:20px">🏗️</span><span style="font-size:20px">🚧</span></div><div class="cap">NEXT AREA COMING SOON</div></div>';
+  html+='<div class="tw-foot">A town, not a path. Every place is open, any order. The square runs the shows &amp; news, and new buildings keep going up.</div>';
+  stage.innerHTML=html;
+}
+function openTown(){
+  twMount(); renderTown(); show('scr-town');
+  if(typeof S!=='undefined'&&S.flags&&!S.flags.seenTown){ S.flags.seenTown=true; if(typeof save==='function')save();
+    later(function(){ modal('<div class="center">'+memberSVG('gus',56)+'<h2>🏙️ Welcome to town!</h2></div>'
+      +'<div class="speak"><b>Gus:</b> “This is your town now. Tap the <b>Main Stage</b> or <b>Number Racket</b> to hang with the band, or hop On the Road with me. New places open as you grow. Go anywhere you like!”</div>'
+      +'<button class="btn wide" onclick="closeModal()">Let’s explore!</button>'); },350); }
+}
+
+/* ---------- add a Town button to the Garage so you can get back ---------- */
+(function(){
+  var hub=document.getElementById('scr-hub'); if(!hub)return;
+  var bar=hub.querySelector('.topbar'); if(!bar||document.getElementById('btnTown'))return;
+  var b=document.createElement('button'); b.className='btn ghost small'; b.id='btnTown'; b.type='button'; b.innerHTML='🏙️ Town';
+  b.addEventListener('click',function(){ if(typeof sTap==='function')sTap(); openTown(); });
+  bar.insertBefore(b, bar.firstChild); // left-most, before the Shelf link
+})();
+
+/* ---------- what's new (once) ---------- */
+(function(){
+  if(typeof S==='undefined'||!S.flags)return;
+  var _rh=(typeof renderHub==='function')?renderHub:null; if(!_rh)return;
+  renderHub=function(){ _rh();
+    if(S.flags&&!S.flags.seen107&&S.flags.introDone){ S.flags.seen107=true; if(typeof save==='function')save();
+      later(function(){ var m=document.getElementById('modal'); if(m&&m.classList.contains('on'))return;
+        modal('<div class="center">'+ellySVG(58)+'<h2>✨ New: Your Town</h2></div>'
+        +'<div class="card"><b>🏙️ Measure Up is a town now.</b><div class="sub" style="text-align:left;margin:2px 0 0">A town square with shows, your band at the Main Stage &amp; Number Racket, On the Road, and new places opening soon. Tap <b>🏙️ Town</b> up top any time.</div></div>'
+        +'<button class="btn wide" onclick="closeModal()">🏙️</button>'); },700);
+    }
+  };
+})();
+
+if(window.BQ)Object.assign(window.BQ,{openTown:openTown,renderTown:renderTown,townGo:townGo});
 
 </script>
 </body>
