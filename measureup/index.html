@@ -928,14 +928,14 @@ svg .charg{will-change:transform}
 <div id="toast"></div>
 <button id="homeBtn" onclick="goHome()" aria-label="Back to Garage">🏠</button>
 <button id="ellyBtn" onclick="openEllyHelp()" aria-label="Ask Elly for help"></button>
-<div id="vbadge">v1.10 · Sep 27</div>
+<div id="vbadge">v1.11 · Sep 27</div>
 
 <script>
 'use strict';
 /* ============ UTILS ============ */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const VERSION='v1.10 · Sep 27';
+const VERSION='v1.11 · Sep 27';
 const RM=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -14608,6 +14608,282 @@ window.addEventListener('orientationchange',function(){ setTimeout(twFit,180); s
 if(window.visualViewport)window.visualViewport.addEventListener('resize',twFitIfShown);
 
 if(window.BQ)window.BQ.twFit=twFit;
+
+</script>
+<script>
+/* ================= v1.11 · HOME STATES + WHERE IN THE WORLD + WEEKLY SPOTLIGHT (Sep 27 2026) =================
+   Every one of the 54 band members now calls a real US state home (all 50 states covered; 4 states double up, which
+   is where the roster starts "doubling" as it grows). Three new things sit on top of On the Road (the geography wing):
+     1) BAND PASSPORT (scr-pass): browse the 50 states by region and see which bandmate lives where, with their
+        capital, home facts, places they have toured and what they are into.
+     2) WHERE IN THE WORLD (scr-wow): a "Where in the World is Carmen Sandiego" style case. A mystery member drops
+        escalating clues; guess the state they call home. Correct answers reinforce the state capital and pay coins.
+     3) WEEKLY SPOTLIGHT (in the Town Square): one member is featured each week (same for everyone, rotates by the
+        real calendar week). Each day brings a fresh KNOWLEDGE DROP about their state and a DAILY QUEST that pays a
+        reward when you actually do it (meet them, learn their capital, or solve their case).
+   Data reuses ROAD_STATES (v1.06) as the source of truth for capitals/regions/facts, so nothing is duplicated.
+   State key note: S.spotlight already belongs to the setlist feature, so the weekly system lives under S.wk. */
+
+/* ---------------- home-state data (state names MUST match ROAD_STATES.n) ---------------- */
+var MEMBER_HOME={
+ /* ---- OHIO (home base + a second Ohioan: the start of doubling up) ---- */
+ boom:{st:"Ohio",been:["Cedar Point in Sandusky","the Rock Hall in Cleveland"],likes:["marching-band drumlines","Buckeyes football"],hook:"Boom counts off every show the way a marching band counts off in his home state.",clues:["I am from the Great Lakes state everybody here calls home.","My state has the tallest, fastest roller coasters at Cedar Point.","My capital is Columbus, and folks call us the Buckeye State."]},
+ axel:{st:"Ohio",been:["the Rock and Roll Hall of Fame","a summer tour of Great Lakes cities"],likes:["loud guitar solos","record collecting"],hook:"Axel practically lives at the Rock and Roll Hall of Fame in Cleveland.",clues:["The very museum for rock and roll sits in my home state.","Two brothers from Dayton in my state built the first airplane.","My capital is Columbus, in the Buckeye State."]},
+ /* ---- MIDWEST ---- */
+ krag:{st:"Michigan",been:["Motor City recording studios","a Great Lakes lighthouse tour"],likes:["heavy riffs","muscle cars"],hook:"Krag likes his music like his home state builds cars: loud and put together in the right order.",clues:["My state is shaped like a mitten between the Great Lakes.","Detroit, the car city, is here.","My capital is Lansing."]},
+ tock:{st:"Indiana",been:["the big 500-mile car race","a county-fair midway"],likes:["fast laps","keeping the beat"],hook:"Tock loves a state so into timing it runs the most famous car race in the country.",clues:["Every May my state runs a 500-mile race around a track.","We are Midwest neighbors right next to Ohio.","My capital is Indianapolis."]},
+ reed:{st:"Illinois",been:["Chicago jazz clubs","the top of a very tall tower"],likes:["late-night jazz","deep-dish pizza"],hook:"Reed blows sax in the same city where jazz and blues fill the clubs: Chicago.",clues:["My biggest city sits on a Great Lake and is famous for jazz and tall buildings.","President Lincoln lived in my state.","My capital is Springfield, not the big city."]},
+ oompa:{st:"Wisconsin",been:["a dairy-country cheese festival","a giant lakeside music fest"],likes:["big brass sound","cheese curds"],hook:"Oompa measures volume for a living, so of course he is from the land of giant cheese wheels.",clues:["My state is famous for cheese and dairy farms.","Fans here wear foam cheese hats to football games.","My capital is Madison."]},
+ combo:{st:"Minnesota",been:["the biggest indoor mall in the country","a frozen winter lake"],likes:["synth grids","ice fishing"],hook:"Combo layers sounds in grids the way his home state stacks up thousands of lakes.",clues:["People call my state the land of ten thousand lakes.","One of the largest malls in the country is here.","My twin-city capital is Saint Paul."]},
+ maple:{st:"Iowa",been:["endless rows of cornfields","a state-fair butter sculpture"],likes:["neat rows and columns","summer corn"],hook:"Maple sees arrays everywhere, and his home state plants corn in perfect rows for miles.",clues:["Rows and rows of corn cover my whole state.","We hold a huge state fair every summer.","My capital is Des Moines."]},
+ gus:{st:"Missouri",been:["under the tall silver arch","a riverboat on the Mississippi"],likes:["road maps","long drives"],hook:"Gus drives the bus, so home is the crossroads state with the big Gateway Arch.",clues:["A giant silver arch stands in my biggest city.","Two great rivers meet in my state, and it sits smack in the middle of the map.","My capital is Jefferson City."]},
+ woody:{st:"North Dakota",been:["the wide northern plains","a badlands sunset"],likes:["tally marks","wide open sky"],hook:"Woody keeps a tally of everything, and there is a whole lot of open prairie to count up north.",clues:["My state is way up north on the Canada border.","We have wide plains and rugged badlands.","My capital is Bismarck."]},
+ cubby:{st:"South Dakota",been:["four faces carved in a mountain","the rocky badlands"],likes:["solid shapes","big rocks"],hook:"Cubby knows solid shapes, and his home state carved four giant faces into solid stone.",clues:["Four presidents faces are carved into a mountain in my state.","We share the badlands with our neighbor to the north.","My capital is Pierre."]},
+ bigtub:{st:"Nebraska",been:["a covered-wagon trail marker","a sea of prairie grass"],likes:["low booming notes","big skies"],hook:"Big Tub thumps the lowest notes from the wide, flat middle of the country.",clues:["Wagons once rolled west across my flat prairie.","We are corn-and-cattle country, right in the center.","My capital is Lincoln."]},
+ gauge:{st:"Kansas",been:["a wheat field to the horizon","a storm-chaser lookout"],likes:["measuring long distances","big flat roads"],hook:"Gauge measures distance, and you can measure forever across the flat Kansas plains.",clues:["My state is so flat you can see for miles of wheat.","A famous story has a girl and her dog swept away by a tornado here.","My capital is Topeka."]},
+ /* ---- NORTHEAST ---- */
+ della:{st:"Maine",been:["a rocky lighthouse coast","a lobster-boat dock"],likes:["wind chimes in the sea breeze","counting the tides"],hook:"Della hangs chimes where the ocean wind blows: the rocky, lighthouse-dotted coast of Maine.",clues:["My state is the farthest northeast corner, all rocky coast.","We are famous for lobster and lighthouses.","My capital is Augusta."]},
+ frankie:{st:"New Hampshire",been:["the White Mountains","a first-in-the-nation voting hall"],likes:["conga lines","being first in line"],hook:"Frankie is all about who is first, and his state votes first in the nation every election.",clues:["My little state has the White Mountains and blazing fall leaves.","We are proud to be first in the nation to vote.","My capital is Concord."]},
+ bonnie:{st:"Vermont",been:["a maple-sugar farm","a covered bridge"],likes:["hand bells","warm maple syrup"],hook:"Bonnie rings gentle bells from cozy, maple-syrup Vermont.",clues:["My state makes more maple syrup than anywhere in the country.","We have green mountains and old covered bridges.","My capital is Montpelier."]},
+ grace:{st:"Massachusetts",been:["where the Pilgrims landed","a famous old university"],likes:["choir harmony","big libraries"],hook:"Grace leads a choir from the state packed with famous old schools and colonial history.",clues:["The Pilgrims first landed in my state long ago.","Boston, with its famous universities, is here.","My capital IS Boston."]},
+ shimmer:{st:"Rhode Island",been:["a seaside mansion tour","a tiny harbor town"],likes:["doubling and halving","sailboats"],hook:"Shimmer is all about halving, so home is the smallest state you could cut down to.",clues:["I am from the very smallest state on the whole map.","We are tucked on the coast between two bigger states.","My capital is Providence."]},
+ rula:{st:"Connecticut",been:["an old clock-making town","a leafy commuter train"],likes:["rule machines","clockwork"],hook:"Rula loves rules that run the same every time, like the clocks her state once built for the country.",clues:["My small state sits between New York and Boston.","We were once the clock-making capital of the country.","My capital is Hartford."]},
+ slice:{st:"New York",been:["a giant green statue in the harbor","a huge thundering waterfall"],likes:["cutting a pizza into fractions","bright city lights"],hook:"Slice cuts everything into fractions, starting with a big New York pizza pie.",clues:["A giant green statue holds a torch in my harbor.","My biggest city has bright lights and famous pizza.","My capital is Albany, not the big city."]},
+ flow:{st:"New York",been:["the Bronx block parties","a subway platform show"],likes:["chopping up samples","hip-hop beats"],hook:"Flow chops samples where hip-hop was born: the Bronx.",clues:["Hip-hop music was invented in my state, up in the Bronx.","The same state has a huge waterfall on its northern border.","My capital is Albany."]},
+ miles:{st:"New Jersey",been:["a boardwalk by the sea","a numbered turnpike exit"],likes:["reading the odometer","diner milkshakes"],hook:"Miles watches numbers roll by, and the Jersey turnpike numbers every single exit.",clues:["My state is famous for its beaches and boardwalks by the shore.","Our big highway numbers every exit in order.","My capital is Trenton."]},
+ libby:{st:"Pennsylvania",been:["the cracked Liberty Bell","a chocolate-town factory"],likes:["balancing both sides","big bells"],hook:"Libby hears the equal sign like a bell, and the most famous bell in the country is in her state.",clues:["The cracked Liberty Bell rings from my state.","A whole town here smells like chocolate.","My capital is Harrisburg."]},
+ fern:{st:"Pennsylvania",been:["Independence Hall","a fife-and-drum parade"],likes:["flags with stripes","marching fifes"],hook:"Fern marches with a fife, and the first flag with stripes was sewn in her home state.",clues:["The country declared independence in my state.","Old fife-and-drum bands still march in our parades.","My capital is Harrisburg, same as my bandmate Libby."]},
+ /* ---- SOUTHEAST ---- */
+ reg:{st:"Delaware",been:["a quiet beach town","a busy business office"],likes:["counting change","tidy ledgers"],hook:"Register handles money, so home is the tiny first state where so many companies sign up.",clues:["I am from the very first state to join the country.","We are small, with quiet beaches and lots of businesses.","My capital is Dover."]},
+ viola:{st:"Maryland",been:["the Naval Academy docks","a blue-crab feast"],likes:["angles of a sail","seafood by the bay"],hook:"Viola hears angles, and sailors at her state academy read the angle of every sail.",clues:["Blue crabs and a big bay make my state famous.","Sailors train at the Naval Academy on my shore.","My capital is Annapolis."]},
+ sam:{st:"Virginia",been:["a colonial living-history town","a Blue Ridge overlook"],likes:["telling stories","old history"],hook:"Sam tells stories, and more presidents were born in his state than any other.",clues:["More presidents were born in my state than anywhere else.","We have the misty Blue Ridge Mountains.","My capital is Richmond."]},
+ willow:{st:"West Virginia",been:["a whitewater river gorge","a mountain fiddle festival"],likes:["old-time fiddle reels","mountain trails"],hook:"Willow saws old-time reels from a state that is almost nothing but mountains.",clues:["My state is nearly all mountains, top to bottom.","We have a giant bridge over a deep river gorge.","My capital is Charleston."]},
+ tessa:{st:"North Carolina",been:["the sand dunes at Kitty Hawk","the Smoky Mountains"],likes:["flips and turns","gliding and spinning"],hook:"Tessa flips and turns her triangle, and the first airplane flipped into the air over her state.",clues:["The first airplane ever flew off the dunes in my state.","We have both ocean beaches and the Smoky Mountains.","My capital is Raleigh."]},
+ dub:{st:"South Carolina",been:["a warm palmetto beach","a historic harbor town"],likes:["one-drop bass lines","warm ocean waves"],hook:"Dub keeps a laid-back one-drop groove on the warm, palm-lined coast.",clues:["Warm beaches and palmetto palms line my coast.","The historic city of Charleston sits on my harbor.","My capital is Columbia."]},
+ bea:{st:"Georgia",been:["a peach orchard","a big southern city skyline"],likes:["guessing how many in the jar","juicy peaches"],hook:"Bea guesses how many are in the jar, and her state grows so many peaches they call it the Peach State.",clues:["I am from the Peach State, deep in the Southeast.","Atlanta, a huge southern city, is here.","My capital IS Atlanta."]},
+ sunny:{st:"Florida",been:["a rocket launch pad","the swampy Everglades"],likes:["warm weather","reading the thermometer"],hook:"Sunny reads the thermometer, so of course home is the Sunshine State.",clues:["My state is the warm, sunny peninsula with beaches all around.","Rockets blast off from my coast, and theme parks fill my middle.","My capital is Tallahassee."]},
+ roscoe:{st:"Kentucky",been:["a horse-racing track","a bluegrass barn dance"],likes:["banjo rolls","fast horses"],hook:"Roscoe rolls the banjo from the home of bluegrass and fast racehorses.",clues:["My state is famous for bluegrass music and racehorses.","The biggest horse race runs here every spring.","My capital is Frankfort."]},
+ bibi:{st:"Tennessee",been:["the country-music stage in Nashville","a Smoky Mountain lookout"],likes:["big vocal solos","country and pop songs"],hook:"Bibi belts lead vocals from Music City itself.",clues:["My state is the home of country music.","Nashville and its music halls are here.","My capital IS Nashville."]},
+ tripp:{st:"Alabama",been:["a Gulf-coast beach","a historic march route"],likes:["three tones that belong together","warm southern nights"],hook:"Tripp plays three tones that belong together, and his state is where three great music styles grew up close.",clues:["I am from a deep-South state on the Gulf of Mexico.","Important marches for equal rights happened in my state.","My capital is Montgomery."]},
+ reese:{st:"Mississippi",been:["a Delta blues juke joint","a riverboat landing"],likes:["twelve-bar blues","harmonica wails"],hook:"Reese bends the blues harp where the blues was born: the Mississippi Delta.",clues:["The blues was born along the great river in my state.","My state is even named after that mighty river.","My capital is Jackson."]},
+ /* ---- SOUTH ---- */
+ cadence:{st:"Texas",been:["a giant high-school football stadium","a space-mission control room"],likes:["marching in ranks of ten","everything bigger"],hook:"Cadence lines up the band in ranks of ten, and everything is bigger in her home state.",clues:["I am from the biggest state in the lower forty-eight.","We have the Alamo and mission control for astronauts.","My capital is Austin."]},
+ jingle:{st:"Oklahoma",been:["a stretch of old Route 66","a windy wheat plain"],likes:["ringing on the hour","road trips"],hook:"Jingle rings when time passes, and the historic road across the country cuts right through his state.",clues:["The famous old Route 66 highway crosses my state.","We have wind, plains, and many Native nations.","My capital is Oklahoma City."]},
+ flip:{st:"Arkansas",been:["a dig-your-own diamond field","a steamy hot spring"],likes:["mirror symmetry","sparkly gems"],hook:"Flip folds shapes in half, and his state lets you dig up real diamonds shaped just so.",clues:["My state has a park where you can dig up real diamonds.","We are also famous for warm, steamy hot springs.","My capital is Little Rock."]},
+ doot:{st:"Louisiana",been:["a New Orleans jazz parade","a swampy bayou tour"],likes:["brass-horn lines","gumbo"],hook:"Doot splits one breath into equal notes, right where jazz marches down the street: New Orleans.",clues:["Jazz music and gumbo come from my state.","We have swampy bayous and lively parades.","My capital is Baton Rouge."]},
+ luna:{st:"New Mexico",been:["the giant radio telescopes","the white sand dunes"],likes:["star calendars","clear night skies"],hook:"Luna tracks the calendar by the stars, and her state has some of the darkest, clearest night skies anywhere.",clues:["My state has desert, adobe houses, and famously clear starry skies.","Giant radio telescopes listen to space out on my plains.","My capital is Santa Fe."]},
+ timmy:{st:"New Mexico",been:["a science lab in the mountains","white gypsum dunes"],likes:["solving for the unknown","big experiments"],hook:"Timmy tunes a drum to the exact right number, like the scientists solving big unknowns in his state.",clues:["Famous scientists worked out big secrets in my mountain state.","We share desert skies with my bandmate Luna.","My capital is Santa Fe."]},
+ perry:{st:"Arizona",been:["the rim of the Grand Canyon","a red-rock desert trail"],likes:["counting around the edge","big canyons"],hook:"Perry counts the distance all the way around the rim, and no rim is grander than the Grand Canyon.",clues:["The Grand Canyon is in my state.","We have red rock, cactus, and hot desert.","My capital is Phoenix."]},
+ /* ---- WEST ---- */
+ harper:{st:"Colorado",been:["a mile-high city","a snowy mountain pass"],likes:["low-to-high number lines","mountain peaks"],hook:"Harper hears low-to-high like a harp, and the Rockies climb from low to high across her state.",clues:["The Rocky Mountains run right through my state.","Our biggest city sits exactly one mile above the sea.","My capital is Denver, the Mile-High City."]},
+ mika:{st:"Wyoming",been:["the first national park","a wide-open cattle ranch"],likes:["hitting her mark on the grid","geyser watching"],hook:"Mika hits her mark on a grid, and her state is a near-perfect rectangle, like one big grid.",clues:["My state is shaped almost like a perfect rectangle.","Yellowstone, the first national park, is here.","My capital is Cheyenne."]},
+ riot:{st:"Montana",been:["a glacier park trail","a wide big-sky ranch"],likes:["stripped-down punk","wide open country"],hook:"Riot strips music down to the loud part, out under Montana big sky where nothing is in the way.",clues:["People call my home Big Sky Country.","We have Glacier National Park and huge ranches.","My capital is Helena."]},
+ round:{st:"Idaho",been:["a whitewater rafting river","a potato farm"],likes:["sliding to the nearest number","river rapids"],hook:"Swoop slides to the closest note the way a raft swoops down Idaho whitewater.",clues:["My state is famous for growing potatoes.","We have jagged Sawtooth Mountains and wild rafting rivers.","My capital is Boise."]},
+ piper:{st:"Utah",been:["a natural stone arch","a super-salty lake"],likes:["building shapes from pieces","red rock towers"],hook:"Piper builds big shapes from little ones, and nature built stone arches and towers all over her state.",clues:["My state has giant natural stone arches you can walk under.","A huge salty lake sits near our biggest city.","My capital is Salt Lake City."]},
+ glitch:{st:"Nevada",been:["the bright lights of Las Vegas","a lonely desert highway"],likes:["rolling the dice","random surprises"],hook:"Glitch runs the randomizer, and no place spins more chance than the bright lights of Las Vegas.",clues:["The bright, flashy lights of Las Vegas are in my state.","Beyond the lights we are mostly quiet desert.","My capital is Carson City, not Vegas."]},
+ gain:{st:"California",been:["the lowest, hottest desert valley","a giant redwood forest"],likes:["above and below zero","turning the volume up"],hook:"Gain works the board above and below zero, and his state has the lowest point AND a super-tall peak.",clues:["My state has the most people of any, plus Hollywood.","We have the lowest, hottest desert and giant redwood trees.","My capital is Sacramento."]},
+ rumble:{st:"Oregon",been:["a deep blue crater lake","a misty evergreen coast"],likes:["mellow low end","quiet rainy days"],hook:"Rumble likes the mellow low notes, matching his calm, rainy, evergreen home.",clues:["My state is green, rainy, and covered in evergreen trees.","We have a deep blue lake inside an old volcano.","My capital is Salem."]},
+ pixel:{st:"Washington",been:["a tall space needle","a snowy volcano peak"],likes:["grids of lights","new tech gadgets"],hook:"Pixel builds songs from grids of light, at home in the state full of tech and evergreens.",clues:["Evergreen trees and Mount Rainier fill my state.","Big tech companies and the Space Needle are in Seattle.","My capital is Olympia."]},
+ lumi:{st:"Alaska",been:["under the northern lights","a giant glacier"],likes:["glowing light floors","the aurora"],hook:"Lumi runs the glowing light floor, matching the greatest light show of all: the northern lights.",clues:["My state is the biggest of all, way up north and icy.","On dark nights the northern lights glow across my sky.","My capital is Juneau."]},
+ plink:{st:"Hawaii",been:["island to island by boat","a rainbow after the rain"],likes:["hopping in patterns","warm ocean waves"],hook:"Plink hops in skip-counting patterns, like island-hopping across the Hawaiian chain.",clues:["My home is a chain of islands out in the middle of the ocean.","We have volcanoes, surfing, and rainbows.","My capital is Honolulu."]}
+};
+
+/* ---------------- helpers ---------------- */
+function roadInfo(name){ if(typeof ROAD_STATES==='undefined')return null; for(var i=0;i<ROAD_STATES.length;i++){ if(ROAD_STATES[i].n===name)return ROAD_STATES[i]; } return null; }
+/* merged home record for a member id */
+function HOME(id){ var h=MEMBER_HOME[id]; if(!h)return null; var r=roadInfo(h.st)||{c:'',r:'',f:''}; return {id:id,st:h.st,cap:r.c,region:r.r,fact:r.f,been:h.been||[],likes:h.likes||[],hook:h.hook||'',clues:h.clues||[]}; }
+function stateMembers(name){ var out=[]; if(typeof BAND!=='undefined')BAND.forEach(function(m){ if(MEMBER_HOME[m.id]&&MEMBER_HOME[m.id].st===name)out.push(m.id); }); return out; }
+function homeStatesCovered(){ var s={}; for(var k in MEMBER_HOME)s[MEMBER_HOME[k].st]=1; return Object.keys(s).length; }
+function mHomeName(id){ if(typeof mName==='function')return mName(id); var m=(typeof BY_ID!=='undefined'&&BY_ID[id]); return m?m.name:id; }
+
+/* ---------------- state: weekly spotlight + case tracking ---------------- */
+if(typeof DEF==='object'){ DEF.wk={star:'',wkkey:'',mark:{},claim:{}}; DEF.wow={solved:0,streak:0,best:0}; }
+function wkState(){ if(typeof S==='undefined')return; if(!S.wk)S.wk={star:'',wkkey:'',mark:{},claim:{}}; ['mark','claim'].forEach(function(k){ if(!S.wk[k])S.wk[k]={}; }); if(!S.wow)S.wow={solved:0,streak:0,best:0}; }
+wkState();
+(function(){ if(typeof load==='function'){ var _l=load; load=function(){ _l(); wkState(); }; } })();
+
+function dayKey(){ var d=new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
+/* whole-week index that is the same for everyone and rotates every 7 days */
+function weekIx(){ return Math.floor((Date.now()/86400000+4)/7); }
+function weekKey(){ return String(weekIx()); }
+function dayIx(){ return new Date().getDay(); } /* 0 Sun .. 6 Sat */
+
+/* deterministic featured member of the week */
+function spotStar(){ if(typeof BAND==='undefined'||!BAND.length)return null; var idx=((weekIx()%BAND.length)+BAND.length)%BAND.length; return BAND[idx]; }
+
+/* one knowledge drop per weekday, built from the star's home record */
+function dropOfDay(id){ var h=HOME(id); if(!h)return {t:'A new bandmate joins the map soon.'}; var nm=mHomeName(id); var oh=roadInfo('Ohio');
+ var drops=[
+  {t:'\uD83C\uDFE0 '+nm+' is from '+h.st+'. The capital of '+h.st+' is '+h.cap+'.'},
+  {t:'\u2728 Fun fact about '+h.st+': '+h.fact},
+  {t:'\u2708\uFE0F '+nm+' has toured '+(h.been[0]||'all over')+(h.been[1]?' and '+h.been[1]:'')+'.'},
+  {t:'\uD83C\uDF88 '+nm+' is really into '+(h.likes[0]||'music')+(h.likes[1]?' and '+h.likes[1]:'')+'.'},
+  {t:'\uD83C\uDFB5 '+h.hook},
+  {t:'\uD83D\uDDFA\uFE0F Ohio\u2019s capital is Columbus. '+h.st+'\u2019s capital is '+h.cap+'. Can you find both on the map?'},
+  {t:'\uD83C\uDFAF Quick check: what is the capital of '+h.st+'? Play Where in the World to prove it.'}
+ ];
+ return drops[dayIx()%drops.length]; }
+
+/* one daily quest, tied to the star. Each has a real completion check. */
+function questOfDay(id){ var h=HOME(id); var nm=mHomeName(id); var types=['meet','road','wow','passport'];
+ var t=types[dayIx()%types.length];
+ if(t==='meet')return {type:'meet',t:'Meet '+nm+' and hear their story.',go:function(){ if(typeof talkTo==='function')talkTo(id); }};
+ if(t==='road')return {type:'road',t:'Learn the capital of '+(h?h.st:'a new state')+' on the map.',go:function(){ if(typeof openRoad==='function')openRoad(); }};
+ if(t==='passport')return {type:'passport',t:'Find '+nm+'\u2019s home on the Band Passport.',go:function(){ openPassport(h?h.st:null); }};
+ return {type:'wow',t:'Solve today\u2019s Where in the World case starring '+nm+'.',go:function(){ openWow(id); }};
+}
+function startQuest(){ var s=spotStar(); if(s)questOfDay(s.id).go(); }
+function wkMark(type){ wkState(); var dk=dayKey(); if(!S.wk.mark[dk])S.wk.mark[dk]={}; S.wk.mark[dk][type]=true; if(typeof save==='function')save(); }
+function questDone(id){ wkState(); var q=questOfDay(id); var h=HOME(id); var dk=dayKey(); var mk=S.wk.mark[dk]||{};
+ if(q.type==='road')return !!(h&&S.road&&S.road.seen&&S.road.seen[h.st])||!!mk.road;
+ return !!mk[q.type]; }
+function questClaimed(){ wkState(); return !!S.wk.claim[dayKey()]; }
+function claimQuest(){ wkState(); var star=spotStar(); if(!star)return; if(questClaimed()||!questDone(star.id))return; S.wk.claim[dayKey()]=true; if(typeof save==='function')save();
+ if(typeof addNotes==='function')addNotes(20); if(typeof addGold==='function')addGold(1); if(typeof confetti==='function')confetti();
+ modal('<div class="center"><h2>\uD83C\uDF81 Quest complete!</h2></div><div class="speak center">You earned <b>20 \uD83C\uDFB5</b> and <b>1 \uD83C\uDF1F</b>. Come back tomorrow for a new quest from this week\u2019s star.</div><button class="btn wide" onclick="closeModal();openSquare()">Nice!</button>');
+}
+
+/* ---------------- Town Square: weekly spotlight ---------------- */
+function openSquare(){ if(typeof sTap==='function')sTap(); wkState(); var star=spotStar(); if(!star){ modal('<div class="center"><h2>\uD83C\uDFAA The Town Square</h2></div><div class="speak center">The stage is being set. Check back soon!</div><button class="btn wide" onclick="closeModal()">OK</button>'); return; }
+ var h=HOME(star.id); var nm=mHomeName(star.id); var drop=dropOfDay(star.id); var q=questOfDay(star.id); var done=questDone(star.id); var claimed=questClaimed();
+ var ev=(typeof twEvent==='function')?twEvent():{ev:'',dt:''};
+ var svg=(typeof memberSVG==='function')?memberSVG(star.id,96):'';
+ var html='<div class="center"><div class="sub" style="letter-spacing:2px;color:#ffd158;font-weight:900">\u2605 THE TOWN SQUARE \u2605</div></div>';
+ html+='<div class="card" style="background:linear-gradient(180deg,#241c48,#160f33);border:2px solid #ffd158;box-shadow:0 0 20px -6px #ffd158">'
+   +'<div class="center">'+svg+'<h2 style="margin:4px 0 0">\uD83C\uDF1F This week: '+nm+'</h2>'
+   +'<div class="sub" style="margin:2px 0 6px">'+(star.emoji||'')+' '+star.title+(h?' \u00b7 from '+h.st:'')+'</div></div>';
+ html+='<div class="speak" style="background:#160f33;text-align:left"><b>Knowledge drop</b><br>'+drop.t+'</div>';
+ html+='<div class="speak" style="background:#1a2440;text-align:left;border:1px solid #2f3d63"><b>\uD83C\uDFAF Today\u2019s quest</b><br>'+q.t+(done?' <b style="color:#7dff8a">\u2713 done</b>':'')+'</div>';
+ if(done&&!claimed)html+='<button class="btn wide" style="background:linear-gradient(180deg,#ffd158,#c99a1f);color:#2a1f05;box-shadow:0 5px 0 #7e6212" onclick="claimQuest()">\uD83C\uDF81 Claim 20 \uD83C\uDFB5 + 1 \uD83C\uDF1F</button>';
+ else if(claimed)html+='<div class="sub center" style="color:#7dff8a;margin:4px 0">\u2713 Reward claimed. New quest tomorrow!</div>';
+ else html+='<button class="btn wide" onclick="closeModal();startQuest()">Start the quest \u2192</button>';
+ html+='</div>';
+ html+='<button class="btn wide" onclick="closeModal();openWow()">\uD83D\uDD0E Where in the World?</button>';
+ html+='<button class="btn wide ghost" onclick="closeModal();openPassport()">\uD83D\uDDFA\uFE0F Band Passport (all 50 states)</button>';
+ if(ev.ev)html+='<div class="sub center" style="margin-top:6px">Also tonight: '+ev.ev+'. '+ev.dt+'.</div>';
+ html+='<button class="btn wide ghost small" onclick="closeModal()">Close</button>';
+ modal(html);
+}
+
+/* make the marquee feature the weekly star some days too */
+(function(){ if(typeof twEvent!=='function')return; var _te=twEvent; window.twEvent=twEvent=function(){ var star=spotStar(); if(star&&(new Date().getDate()%3===0)){ return {ev:'\uD83C\uDF1F '+mHomeName(star.id)+' is in the spotlight',dt:'daily quest + knowledge drop at the square'}; } return _te(); }; })();
+
+/* route the square through the rich spotlight (keep other destinations intact) */
+(function(){ if(typeof townGo!=='function')return; var _tg=townGo; window.townGo=townGo=function(dest){ if(dest==='square'){ if(typeof sTap==='function')sTap(); openSquare(); return; } return _tg(dest); }; })();
+
+/* ---------------- Where in the World (scr-wow) ---------------- */
+var WOW=null; /* {id, st, choices, shown, solved} */
+function wowMount(){ if(document.getElementById('scr-wow'))return; var d=document.createElement('div'); d.className='scr'; d.id='scr-wow';
+ d.innerHTML='<div class="wow-top"><button class="btn ghost small" onclick="openTown()">\u2190 Town</button><div class="wow-score" id="wowScore"></div></div><div id="wowBody" style="padding:4px 2px 24px"></div>';
+ var anchor=document.getElementById('modal'); if(anchor)document.body.insertBefore(d,anchor); else document.body.appendChild(d);
+ if(!document.getElementById('wowCSS')){ var st=document.createElement('style'); st.id='wowCSS'; st.textContent=
+   '.wow-top{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 2px 8px}'
+  +'.wow-score{font-weight:900;color:#ffd158;font-size:13px}'
+  +'.wow-clue{background:#160f33;border:1px solid #2f3d63;border-radius:12px;padding:10px 12px;margin:6px 0;text-align:left;animation:wowIn .25s ease}'
+  +'.wow-clue b{color:#ff7ad9}'
+  +'@keyframes wowIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}'
+  +'.wow-pick{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}'
+  +'.wow-pick .btn{margin:0}'
+  +'.wow-shake{animation:wowShake .4s}'
+  +'@keyframes wowShake{0%,100%{transform:none}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}';
+   document.head.appendChild(st); }
+ if(typeof ELLY_HINTS==='object')ELLY_HINTS['scr-wow']='A mystery bandmate gives clues. Read them, then tap the state you think they call home. Guess with fewer clues to earn more coins!';
+}
+function wowChoices(st){ var pool=(typeof ROAD_STATES!=='undefined')?ROAD_STATES.slice():[]; var tgt=roadInfo(st); var same=pool.filter(function(s){ return tgt&&s.r===tgt.r&&s.n!==st; }); var other=pool.filter(function(s){ return (!tgt||s.r!==tgt.r)&&s.n!==st; });
+ if(typeof shuffle==='function'){ same=shuffle(same.slice()); other=shuffle(other.slice()); }
+ var picks=[st]; if(same[0])picks.push(same[0].n); if(same[1])picks.push(same[1].n); while(picks.length<4&&other.length)picks.push(other.shift().n); while(picks.length<4&&same.length)picks.push(same.shift().n);
+ return (typeof shuffle==='function')?shuffle(picks):picks; }
+function openWow(id){ wowMount(); wkState(); var star; if(id&&MEMBER_HOME[id])star=id; else { var ids=Object.keys(MEMBER_HOME); star=ids[Math.floor(Math.random()*ids.length)]; }
+ var h=HOME(star); WOW={id:star,st:h.st,choices:wowChoices(h.st),shown:1,solved:false};
+ wowRender(); show('scr-wow'); var b=document.getElementById('scr-wow'); if(b)b.scrollTop=0;
+}
+function wowRender(){ var body=document.getElementById('wowBody'); if(!body||!WOW)return; var h=HOME(WOW.id); var nm=mHomeName(WOW.id); var sc=document.getElementById('wowScore'); if(sc)sc.textContent='\uD83D\uDD75\uFE0F '+(S.wow.solved||0)+' solved \u00b7 streak '+(S.wow.streak||0);
+ var svg=(typeof memberSVG==='function')?memberSVG(WOW.id,84):'';
+ var html='<div class="center">'+svg+'<h2 style="margin:4px 0 0">\uD83D\uDD0E Where in the World?</h2><div class="sub" style="margin:2px 0 4px">A mystery bandmate. Where do they call home?</div></div>';
+ for(var i=0;i<WOW.shown&&i<h.clues.length;i++){ html+='<div class="wow-clue"><b>Clue '+(i+1)+':</b> '+h.clues[i]+'</div>'; }
+ if(WOW.solved){ html+='<div class="wow-clue" style="border-color:#7dff8a"><b style="color:#7dff8a">Solved!</b> It is '+nm+', from <b style="color:#ffd158">'+h.st+'</b>. The capital of '+h.st+' is <b>'+h.cap+'</b>.</div>';
+   html+='<div class="speak" style="text-align:left">'+h.hook+'</div>';
+   html+='<button class="btn wide" onclick="wowNext()">\uD83D\uDD0E Next case</button>';
+   html+='<button class="btn wide ghost" onclick="openTown()">\u2190 Back to town</button>';
+   body.innerHTML=html; return; }
+ if(WOW.shown<h.clues.length)html+='<button class="btn wide ghost" onclick="wowMoreClue()">Give me another clue (worth fewer coins)</button>';
+ html+='<div class="sub center" style="margin:8px 0 2px">Tap the state you think is home:</div>';
+ html+='<div class="wow-pick" id="wowPick">';
+ WOW.choices.forEach(function(n){ html+='<button class="btn" onclick="wowGuess(\''+n.replace(/'/g,"\\'")+'\')">'+n+'</button>'; });
+ html+='</div>';
+ body.innerHTML=html;
+}
+function wowMoreClue(){ if(!WOW)return; var h=HOME(WOW.id); if(WOW.shown<h.clues.length)WOW.shown++; if(typeof sTap==='function')sTap(); wowRender(); }
+function wowGuess(name){ if(!WOW||WOW.solved)return; if(name===WOW.st){ wowSolve(); }
+ else { if(typeof punch==='function')punch(); var pick=document.getElementById('wowPick'); if(pick){ pick.classList.add('wow-shake'); setTimeout(function(){ pick.classList.remove('wow-shake'); },420); }
+   var h=HOME(WOW.id); if(WOW.shown<h.clues.length){ WOW.shown++; if(typeof toast==='function')toast('Not quite. Here is another clue.'); } else if(typeof toast==='function')toast('Not quite, try again.');
+   S.wow.streak=0; if(typeof save==='function')save(); wowRender(); }
+}
+function wowSolve(){ wkState(); WOW.solved=true; var earned=[15,10,6][Math.min(WOW.shown-1,2)]||5; S.wow.solved=(S.wow.solved||0)+1; S.wow.streak=(S.wow.streak||0)+1; if(S.wow.streak>(S.wow.best||0))S.wow.best=S.wow.streak; if(typeof save==='function')save();
+ if(typeof sCorrect==='function')sCorrect(); if(typeof confetti==='function')confetti(); if(typeof addNotes==='function')addNotes(earned);
+ wkMark('wow'); if(typeof toast==='function')toast('Case solved! +'+earned+' \uD83C\uDFB5'); wowRender();
+}
+function wowNext(){ openWow(); }
+
+/* ---------------- Band Passport (scr-pass) ---------------- */
+function passMount(){ if(document.getElementById('scr-pass'))return; var d=document.createElement('div'); d.className='scr'; d.id='scr-pass';
+ d.innerHTML='<div class="wow-top"><button class="btn ghost small" onclick="openTown()">\u2190 Town</button><div class="wow-score" id="passScore"></div></div><div id="passBody" style="padding:4px 2px 24px"></div>';
+ var anchor=document.getElementById('modal'); if(anchor)document.body.insertBefore(d,anchor); else document.body.appendChild(d);
+ if(!document.getElementById('passCSS')){ var st=document.createElement('style'); st.id='passCSS'; st.textContent=
+   '.pass-reg{margin:12px 0 4px;font-weight:900;font-size:13px;letter-spacing:1px}'
+  +'.pass-st{display:flex;align-items:center;gap:8px;background:#160f33;border:1px solid #2b2350;border-radius:12px;padding:8px 10px;margin:6px 0;cursor:pointer;text-align:left}'
+  +'.pass-st .nm{font-weight:800;font-size:14px}'
+  +'.pass-st .cap{font-size:11px;color:#b7a9ee}'
+  +'.pass-st .who{margin-left:auto;display:flex;gap:2px;align-items:center}'
+  +'.pass-st.empty{opacity:.5}';
+   document.head.appendChild(st); }
+ if(typeof ELLY_HINTS==='object')ELLY_HINTS['scr-pass']='The whole band lives across all 50 states! Tap any state to meet the bandmate who calls it home.';
+}
+function openPassport(focusState){ passMount(); passRender(); show('scr-pass'); var b=document.getElementById('scr-pass'); if(b)b.scrollTop=0; if(focusState)passState(focusState); }
+function passRender(){ var body=document.getElementById('passBody'); if(!body)return; var sc=document.getElementById('passScore'); if(sc)sc.textContent='\uD83D\uDDFA\uFE0F '+homeStatesCovered()+' / 50 states';
+ var html='<div class="center"><h2 style="margin:2px 0 0">\uD83D\uDDFA\uFE0F Band Passport</h2><div class="sub" style="margin:2px 0 6px">The band lives in all 50 states. Tap a state to meet who is from there.</div></div>';
+ if(typeof ROAD_REGIONS!=='undefined'&&typeof roadOf==='function'){
+   ROAD_REGIONS.forEach(function(reg){ html+='<div class="pass-reg" style="color:'+reg.color+'">'+reg.name+'</div>';
+     roadOf(reg.id).forEach(function(s){ var mem=stateMembers(s.n); var who=''; mem.forEach(function(mid){ who+=(typeof memberSVG==='function')?memberSVG(mid,30):''; });
+       html+='<div class="pass-st'+(mem.length?'':' empty')+'" onclick="passState(\''+s.n.replace(/'/g,"\\'")+'\')">'
+         +'<div><div class="nm">'+s.n+'</div><div class="cap">capital: '+s.c+'</div></div>'
+         +'<div class="who">'+(who||'<span class="cap">open</span>')+'</div></div>'; });
+   });
+ }
+ body.innerHTML=html;
+}
+function passState(name){ if(typeof sTap==='function')sTap(); var s=roadInfo(name); if(!s)return; var mem=stateMembers(name);
+ var html='<div class="center"><h2 style="margin:2px 0 0">'+name+'</h2><div class="sub" style="margin:2px 0 6px">capital: <b>'+s.c+'</b> \u00b7 '+s.r+'</div></div>';
+ html+='<div class="speak" style="text-align:left">'+s.f+'</div>';
+ if(mem.length){ mem.forEach(function(mid){ var h=HOME(mid); var nm=mHomeName(mid); var m=(typeof BY_ID!=='undefined')?BY_ID[mid]:null; var svg=(typeof memberSVG==='function')?memberSVG(mid,72):'';
+   html+='<div class="card" style="text-align:left"><div class="row" style="align-items:center;gap:8px">'+svg+'<div><b>'+(m?m.emoji+' ':'')+nm+'</b><div class="sub">'+(m?m.title:'')+'</div></div></div>';
+   html+='<div class="sub" style="margin:6px 0 0"><b>Been to:</b> '+(h.been.join(', ')||'all over')+'</div>';
+   html+='<div class="sub" style="margin:2px 0 0"><b>Into:</b> '+(h.likes.join(', ')||'music')+'</div>';
+   html+='<button class="btn wide small" style="margin-top:8px" onclick="closeModal();openWow(\''+mid+'\')">\uD83D\uDD0E Play '+nm+'\u2019s case</button>';
+   html+='</div>'; });
+ } else { html+='<div class="sub center">No bandmate lives here yet. As the roster grows, someone will call '+name+' home.</div>'; }
+ html+='<button class="btn wide ghost small" onclick="closeModal()">Close</button>';
+ modal(html);
+}
+
+/* ---------------- add nav buttons onto On the Road (region list view) ---------------- */
+(function(){ if(typeof renderRoad!=='function')return; var _rr=renderRoad; window.renderRoad=renderRoad=function(){ _rr(); try{ if(typeof ROAD_VIEW!=='undefined'&&ROAD_VIEW)return; var body=document.getElementById('roadBody'); if(!body||document.getElementById('roadWowNav'))return;
+   var nav=document.createElement('div'); nav.id='roadWowNav'; nav.style.margin='4px 0 10px';
+   nav.innerHTML='<button class="btn wide" style="background:linear-gradient(180deg,#ff7ad9,#7a2f6a)" onclick="openWow()">\uD83D\uDD0E Where in the World? (mystery bandmate)</button>'
+     +'<button class="btn wide ghost" onclick="openPassport()">\uD83D\uDDFA\uFE0F Band Passport \u00b7 meet who lives in all 50 states</button>';
+   body.insertBefore(nav,body.firstChild); }catch(e){} }; })();
+
+/* ---------------- home chip on the member card (talkTo) ---------------- */
+(function(){ if(typeof talkTo!=='function')return; var _tt=talkTo; window.talkTo=talkTo=function(id){ _tt(id);
+  try{ var star=spotStar(); if(star&&star.id===id){ wkMark('meet'); if(dayIx()%4===0)wkMark('meet'); } }catch(e){}
+  try{ var h=HOME(id); if(!h)return; var box=document.getElementById('mbox'); if(!box)return; var speaks=box.querySelectorAll('.speak'); var bio=null; for(var i=0;i<speaks.length;i++){ if((speaks[i].getAttribute('style')||'').indexOf('241c48')>=0)bio=speaks[i]; } if(!bio)bio=speaks[speaks.length-1]; if(!bio)return;
+    var chip=document.createElement('div'); chip.className='speak'; chip.setAttribute('style','background:#1a2440;border:1px solid #2f3d63;text-align:left');
+    chip.innerHTML='<b>\uD83C\uDFE0 Home:</b> '+h.st+' (capital '+h.cap+'). <span style="color:#ff7ad9;font-weight:700;cursor:pointer" onclick="closeModal();openWow(\''+id+'\')">Play their case \u2192</span>';
+    bio.parentNode.insertBefore(chip,bio.nextSibling);
+  }catch(e){} }; })();
+
+/* ---------------- exports for tests ---------------- */
+if(window.BQ)Object.assign(window.BQ,{MEMBER_HOME:MEMBER_HOME,HOME:HOME,roadInfo:roadInfo,stateMembers:stateMembers,homeStatesCovered:homeStatesCovered,spotStar:spotStar,dropOfDay:dropOfDay,questOfDay:questOfDay,wowChoices:wowChoices,openWow:openWow,openPassport:openPassport,openSquare:openSquare,weekIx:weekIx});
 
 </script>
 </body>
