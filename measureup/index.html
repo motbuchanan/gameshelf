@@ -928,14 +928,14 @@ svg .charg{will-change:transform}
 <div id="toast"></div>
 <button id="homeBtn" onclick="goHome()" aria-label="Back to Garage">🏠</button>
 <button id="ellyBtn" onclick="openEllyHelp()" aria-label="Ask Elly for help"></button>
-<div id="vbadge">v1.13 · Sep 29</div>
+<div id="vbadge">v1.14 · Sep 29</div>
 
 <script>
 'use strict';
 /* ============ UTILS ============ */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const VERSION='v1.13 · Sep 29';
+const VERSION='v1.14 · Sep 29';
 const RM=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -15429,6 +15429,149 @@ function collageSave(){ if(CLG.items.length<5){ zNo('Use at least 5 shapes so Pi
    +'<button class="btn wide" onclick="closeModal()">Go explore</button>'); },700); } }catch(e){} }; })();
 
 if(window.BQ)Object.assign(window.BQ,{openCove:openCove,openHall:openHall,openArtStudio:openArtStudio,wxLog:wxLog,gardenStage:gardenStage,gardenSvg:gardenSvg,STAGES:STAGES,SEEDS:SEEDS,CENSUS_QS:CENSUS_QS,HELPERS:HELPERS,MAP_PLACES:MAP_PLACES,mapQuiz:mapQuiz,MIXES:MIXES,WARMCOOL:WARMCOOL,collageSvg:collageSvg,censusQ:censusQ});
+
+</script>
+<script>
+/* ================= v1.14 · TOWN PLAN: DISTRICTS + ROOM TO GROW (Sep 29 2026) =================
+   Mot (Sep 29): "We're building a town here. The map is not set yet. Give thought to the layout keeping in mind the
+   planned growth of the game." The v1.12 Main Street strip read like a tab bar and the v1.13 uptown pair was bolted
+   on. This replaces renderTown with a PLANNED map:
+     - One district per subject, stacked north to south with the SQUARE in the middle. Every building is the same
+       full facade. Every district row has a signpost and an empty LOT with a sign for what is coming.
+     - The map is 390 x 1600 design px and SCROLLS vertically; scale = min(width fit, ~820 design px visible), so
+       about one screen is readable in either orientation and the rest scrolls (v1.09 scale-to-fit is retired).
+     - Friends is a bench in the Square, not a shop. The bus depot to On the Road sits on the Square's east side.
+   Adding a building later = add a row entry to TOWN_PLAN (or fill a lot). Nothing else to touch.
+   Chain note: earlier versions WRAP renderTown (v108 un-SOON, v112 shops, v113 uptown). This ASSIGNS a new
+   renderTown, which drops the whole wrap chain on purpose; their features are re-expressed in the plan below. */
+
+var TOWN_W=390, TOWN_H=1620, TOWN_SQ={x:195,y:700};
+/* the plan: rows of two slots. slot = building {..} or lot {lot:true,cap:'...'} */
+function townPlan(){
+  var mathPct=0; try{ var owned=BAND.filter(function(m){return S.band[m.id];}).length; mathPct=Math.round(owned/BAND.length*100); }catch(e){}
+  var n=function(f){ try{ return f(); }catch(e){ return 0; } };
+  return [
+   {y:250,name:'UPTOWN',sub:'civic & social studies',color:'#7ad9ff',slots:[
+     {col:'#7ad9ff',tg:'SOCIAL STUDIES',nm:'Town Hall',host:'woody',prog:n(function(){return Object.keys(S.zone.census).length;})+' census days',go:'hall'},
+     {lot:true,cap:'HISTORY · Luna’s Almanac',icon:'📜'} ]},
+   {y:470,name:'STAGE STREET · NUMBER STREET',sub:'music & math, where it all started',color:'#ff9f43',slots:[
+     {col:'#ff5d5d',tg:'MUSIC',nm:'The Main Stage',host:'boom',prog:'the band plays here',go:'band'},
+     {col:'#ffb347',tg:'NUMBERS',nm:'Number Racket',host:'combo',prog:mathPct+'% of skills',go:'band'} ]},
+   /* the square sits at y 700 (drawn by the env + marquee + bench + depot), not a row */
+   {y:960,name:'THE COVE',sub:'science & nature',color:'#7dff8a',slots:[
+     {col:'#7dff8a',tg:'SCIENCE',nm:'Critter Cove',host:'fern',prog:n(function(){return Object.keys(S.zone.wx).length;})+' weather logs',go:'sci'},
+     {lot:true,cap:'BUILDER’S YARD · Cubby',icon:'🧱'} ]},
+   {y:1180,name:'WORD ROW',sub:'reading, spelling & vocabulary',color:'#c58dff',slots:[
+     {col:'#c58dff',tg:'WORDS',nm:'Word Hoard',host:'bibi',prog:n(function(){return hoardCount();})+' words hoarded',go:'words'},
+     {col:'#ffd158',tg:'READ',nm:'Library',host:'sam',prog:n(function(){return libDoneCount();})+'/'+n(function(){return LIB_STORIES.length;})+' stories',go:'lib'} ]},
+   {y:1400,name:'POST & ART',sub:'writing & making',color:'#ff7ad9',slots:[
+     {col:'#7ad9ff',tg:'MAIL',nm:'Post Office',host:'della',prog:n(function(){return Object.keys(S.post.got).length;})+' postcards',go:'post'},
+     {col:'#ff7ad9',tg:'ART',nm:'Art Studio',host:'lumi',prog:n(function(){return S.zone.collage.length;})+' pictures',go:'studio'} ]}
+  ];
+}
+
+(function(){ if(document.getElementById('twPlanCSS'))return; var st=document.createElement('style'); st.id='twPlanCSS'; st.textContent=
+   '#scr-town{padding:0!important;overflow-y:auto!important;overflow-x:hidden!important;display:none;align-items:center!important;justify-content:flex-start!important}'
+  +'#scr-town.on{display:flex}'
+  +'#twStage{width:390px!important;height:'+TOWN_H+'px!important;max-width:none!important;flex:0 0 auto;margin:0 auto!important;position:relative;transform-origin:top center;will-change:transform}'
+  +'.tw-dist{position:absolute;left:50%;transform:translateX(-50%);z-index:11;text-align:center;pointer-events:none}'
+  +'.tw-dist .p{display:inline-block;background:#120d28;border:2px solid var(--c);border-radius:8px;padding:3px 10px;box-shadow:0 0 14px -3px var(--c)}'
+  +'.tw-dist .n{font-size:9px;font-weight:900;letter-spacing:1.6px;color:var(--c)}.tw-dist .s{font-size:8px;font-weight:700;color:#b7a9ee}'
+  +'.tw-dist:before{content:"";position:absolute;left:50%;top:100%;width:3px;height:14px;background:#2a2244;transform:translateX(-50%)}'
+  +'.tw-lot2{position:absolute;width:150px;transform:translate(-50%,-50%);z-index:12;text-align:center;cursor:pointer}'
+  +'.tw-lot2 .p{height:86px;border:2px dashed #6a5aa8;border-radius:14px;background:repeating-linear-gradient(45deg,#181234,#181234 8px,#20184a 8px,#20184a 16px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}'
+  +'.tw-lot2 .ic{font-size:22px}.tw-lot2 .cap{font-size:8.5px;font-weight:900;color:#9a8fce;letter-spacing:.4px;padding:0 8px;line-height:1.2}.tw-lot2 .soon{font-size:8px;font-weight:800;color:#6a5aa8}'
+  +'.tw-bench{position:absolute;transform:translate(-50%,-50%);z-index:14;text-align:center;cursor:pointer;width:84px}'
+  +'.tw-bench .b{background:#120d28;border:2px solid #7dff8a;border-radius:9px;padding:3px 5px;box-shadow:0 0 14px -3px #7dff8a;margin-top:-4px}'
+  +'.tw-bench .t{font-size:8.5px;font-weight:900;color:#7dff8a}.tw-bench .c{font-size:8.5px;font-weight:700;color:#b7a9ee}';
+  document.head.appendChild(st); })();
+
+/* taller environment: sky + skyline, one main street down the middle, the square, side lanes to each facade */
+function twEnv2(plan){
+  var W=TOWN_W,H=TOWN_H,PLx=TOWN_SQ.x,PLy=TOWN_SQ.y;
+  var stars=''; for(var i=0;i<44;i++){stars+='<circle cx="'+(Math.random()*W).toFixed(0)+'" cy="'+(Math.random()*230).toFixed(0)+'" r="'+(Math.random()*1.1+.3).toFixed(1)+'" fill="#fff" opacity="'+(0.15+Math.random()*0.5).toFixed(2)+'"/>';}
+  var speck=''; for(var k=0;k<110;k++){speck+='<circle cx="'+(Math.random()*W).toFixed(0)+'" cy="'+(250+Math.random()*(H-260)).toFixed(0)+'" r="'+(Math.random()*1.1+.4).toFixed(1)+'" fill="#ffffff" opacity="0.04"/>';}
+  var roads='';
+  /* main street: square up to uptown and down to the last row */
+  roads+=twRoad(PLx,PLy,PLx,plan[0].y+40)+twRoad(PLx,PLy,PLx,plan[plan.length-1].y);
+  /* side lanes from main street to each slot */
+  plan.forEach(function(r){ roads+=twRoad(PLx,r.y+34,80,r.y+34)+twRoad(PLx,r.y+34,312,r.y+34); });
+  roads+=twRoad(PLx,PLy,372,PLy);
+  var stageBulbs=''; for(var a=-52;a<=52;a+=13){stageBulbs+='<circle cx="'+a+'" cy="'+(-2-Math.round(Math.sqrt(Math.max(0,1-(a/56)*(a/56)))*38))+'" r="2.4" fill="#ffe6a0"/>';}
+  var green=''; plan.forEach(function(r,i){ green+=twTree(24,r.y-30,.9)+twTree(366,r.y-30,.9)+twBush(120,r.y+70)+twBush(270,r.y+70); });
+  return '<svg style="position:absolute;inset:0;width:100%;height:'+H+'px;z-index:1" viewBox="0 0 '+W+' '+H+'">'
+    +'<defs><radialGradient id="twsky2" cx="50%" cy="6%" r="70%"><stop offset="0" stop-color="#2c2064"/><stop offset="45%" stop-color="#1a1240"/><stop offset="100%" stop-color="#0a0716"/></radialGradient>'
+    +'<radialGradient id="twplz2" cx="50%" cy="40%" r="60%"><stop offset="0" stop-color="#3a2c66"/><stop offset="100%" stop-color="#1c1440"/></radialGradient>'
+    +'<radialGradient id="twmn2" cx="42%" cy="38%" r="60%"><stop offset="0" stop-color="#fff6df"/><stop offset="100%" stop-color="#ffd27a"/></radialGradient></defs>'
+    +'<rect x="0" y="0" width="'+W+'" height="'+H+'" fill="url(#twsky2)"/>'+stars
+    +'<circle cx="315" cy="80" r="34" fill="url(#twmn2)"/><circle cx="315" cy="80" r="46" fill="#ffd98f" opacity=".14"/>'
+    +twSkyline()
+    +'<rect x="0" y="240" width="'+W+'" height="'+(H-240)+'" fill="#14102c"/>'+speck+roads
+    +'<ellipse cx="'+PLx+'" cy="'+PLy+'" rx="132" ry="118" fill="url(#twplz2)" stroke="#5b4a94" stroke-width="2"/>'
+    +'<ellipse cx="'+PLx+'" cy="'+PLy+'" rx="110" ry="98" fill="none" stroke="#6a5aa8" stroke-width="1" opacity=".5" stroke-dasharray="3 6"/>'
+    +'<g transform="translate('+PLx+' '+(PLy-84)+')"><path d="M-56 34 L-56 -2 A56 40 0 0 1 56 -2 L56 34 Z" fill="#241a49" stroke="#ffd158" stroke-width="2"/><path d="M-56 -2 A56 40 0 0 1 56 -2" fill="none" stroke="#ffd158" stroke-width="3"/>'+stageBulbs+'<rect x="-56" y="30" width="112" height="7" rx="2" fill="#3a2c66"/></g>'
+    +twBunt(90,PLy-90,300,PLy-90)+twBunt(70,PLy-20,120,PLy+90)+twBunt(320,PLy-20,270,PLy+90)
+    +twLamp(150,PLy-90)+twLamp(244,PLy-90)+twLamp(120,PLy+100)+twLamp(276,PLy+100)+twLamp(46,PLy-20)+twLamp(348,PLy-20)
+    +twBush(150,PLy+100)+twBush(244,PLy+100)+twBush(120,PLy-90)+twBush(276,PLy-90)+twBench(244,PLy+70)
+    +'<g transform="translate('+PLx+' '+(PLy+72)+')"><ellipse cx="0" cy="6" rx="30" ry="11" fill="#26305a" stroke="#4a5a9a" stroke-width="2"/><ellipse cx="0" cy="3" rx="20" ry="7" fill="#3a5aa0"/><rect x="-3" y="-14" width="6" height="16" rx="3" fill="#4a5a9a"/><circle cx="0" cy="-16" r="5" fill="#7fb0ff"/><path d="M0 -18 q-8 -8 -3 -16 M0 -18 q8 -8 3 -16" stroke="#bfe0ff" stroke-width="2" fill="none" opacity=".7"/></g>'
+    +green
+    +'</svg>';
+}
+
+function townFacade(v,x,y){
+  return '<div class="tw-fac" style="left:'+x+'px;top:'+y+'px;--c:'+v.col+'" onclick="townGo(\''+v.go+'\')">'
+    +'<div class="tw-host">'+memberSVG(v.host,60)+'</div>'
+    +(v.badge?'<div class="tw-badge">✦ '+v.badge+'</div>':'')
+    +'<div class="tw-fb"><div class="tw-awn"></div>'
+    +'<div class="tw-sign"><div class="tg">'+v.tg+'</div><div class="nm">'+v.nm+'</div></div>'
+    +'<div class="tw-wins"><i></i><i></i></div><div class="tw-door"></div>'
+    +'<div class="tw-prog">'+v.prog+'</div></div></div>';
+}
+function townLot(l,x,y){ return '<div class="tw-lot2" style="left:'+x+'px;top:'+y+'px" onclick="townGo(\'lot:'+l.cap.replace(/'/g,'')+'\')"><div class="p"><div class="ic">'+(l.icon||'🏗️')+'</div><div class="cap">'+l.cap+'</div><div class="soon">LOT · coming</div></div></div>'; }
+
+renderTown=function(){
+  var stage=document.getElementById('twStage'); if(!stage)return;
+  if(typeof zoneState==='function')zoneState(); if(typeof jobState==='function')jobState(); if(typeof wkState==='function')wkState();
+  var cr=(typeof S!=='undefined'&&S.creature)?S.creature:{body:'round',col:'#7dff8a',eyes:'dot',extra:'none',acc:'none',name:''};
+  var plan=townPlan(); var ev=(typeof twEvent==='function')?twEvent():{ev:'',dt:''};
+  var roadSeen=0; try{ roadSeen=roadTotalSeen(); }catch(e){}
+  var met=0,total=0; try{ var fl=friendsList(); total=fl.length; met=fl.filter(function(f){return f.met;}).length; }catch(e){}
+  var html=twEnv2(plan);
+  html+='<div class="tw-top"><div class="g">'+creatureSVG(cr,42)+memberSVG('boom',42)+'</div><div><h1>Welcome to town!</h1><p>go anywhere you like · scroll for more</p></div><div class="tw-grown" onclick="townGo(\'grown\')">👤<b>GROWN-UPS</b></div></div>';
+  /* the square */
+  var sq=TOWN_SQ;
+  html+='<div class="tw-marq" style="top:'+sq.y+'px" onclick="townGo(\'square\')"><div class="bd"><div class="tt">✦ TONIGHT AT THE SQUARE</div><div class="ev">'+ev.ev+'</div><div class="dt">'+ev.dt+'</div></div></div>';
+  html+='<div class="tw-tf" style="left:'+(sq.x)+'px;top:'+(sq.y-52)+'px">'+memberSVG('mika',38)+'</div>';
+  html+='<div class="tw-tf" style="left:'+(sq.x-50)+'px;top:'+(sq.y+118)+'px">'+memberSVG('luna',40)+'</div>';
+  html+='<div class="tw-tf" style="left:'+(sq.x+52)+'px;top:'+(sq.y+122)+'px">'+memberSVG('tock',40)+'</div>';
+  html+='<div class="tw-gate" style="left:360px;top:'+(sq.y-8)+'px" onclick="townGo(\'road\')"><div style="filter:drop-shadow(0 6px 8px #000a)">'+memberSVG('gus',42)+'</div><div style="background:#120d28;border:2px solid #ffd158;border-radius:9px;padding:3px 5px;box-shadow:0 0 14px -3px #ffd158;margin-top:-4px"><div style="font-size:8.5px;font-weight:900;color:#ffd158">ON THE ROAD →</div><div style="font-size:8.5px;font-weight:700;color:#b7a9ee">'+roadSeen+'/50</div></div></div>';
+  html+='<div class="tw-bench" style="left:60px;top:'+(sq.y+62)+'px" onclick="townGo(\'friends\')"><div style="filter:drop-shadow(0 6px 8px #000a)">'+creatureSVG(cr,40)+'</div><div class="b"><div class="t">🤝 FRIENDS</div><div class="c">'+met+' / '+total+' met</div></div></div>';
+  /* district rows */
+  plan.forEach(function(r){
+    html+='<div class="tw-dist" style="top:'+(r.y-112)+'px;--c:'+r.color+'"><div class="p"><div class="n">'+r.name+'</div><div class="s">'+r.sub+'</div></div></div>';
+    r.slots.forEach(function(s,i){ var x=i===0?80:312; html+=s.lot?townLot(s,x,r.y+6):townFacade(s,x,r.y); });
+  });
+  /* strollers */
+  html+='<div class="tw-tf" style="left:196px;top:'+(plan[1].y+92)+'px">'+memberSVG('roscoe',36)+'</div>';
+  html+='<div class="tw-tf" style="left:196px;top:'+(plan[3].y-70)+'px">'+memberSVG('plink',36)+'</div>';
+  html+='<div class="tw-foot" style="bottom:0">A town, not a path. Every place is open, any order. Each district has room to grow: the dashed lots are next.</div>';
+  stage.innerHTML=html;
+};
+
+/* scroll-fit: about one screen readable, the rest scrolls; both orientations */
+twFit=function(){ var s=document.getElementById('scr-town'), st=document.getElementById('twStage'); if(!s||!st)return;
+  var aw=s.clientWidth||window.innerWidth||390, ah=s.clientHeight||window.innerHeight||844; if(!aw||!ah)return;
+  var sc=Math.min(aw/TOWN_W, ah/820); if(!(sc>0)||!isFinite(sc))sc=1;
+  st.style.transform='scale('+sc.toFixed(4)+')'; st.style.marginBottom=(TOWN_H*sc-TOWN_H)+'px'; st.style.marginLeft=st.style.marginRight='auto';
+  /* keep it horizontally centered when scaled down inside the flex container */
+  st.style.left='0'; };
+
+/* routing for lots + keep every earlier destination */
+(function(){ if(typeof townGo!=='function')return; var _tg=townGo; window.townGo=townGo=function(dest){ if(typeof dest==='string'&&dest.indexOf('lot:')===0){ if(typeof sTap==='function')sTap(); if(typeof toast==='function')toast('🏗️ This lot is saved for '+dest.slice(4)+'. Coming soon.'); return; } if(dest==='lot'){ if(typeof toast==='function')toast('🏗️ Every district has a lot for what comes next.'); return; } return _tg(dest); }; })();
+if(typeof ELLY_HINTS==='object')ELLY_HINTS['scr-town']='Welcome to town! Scroll up and down. Each street is a subject, the Square is in the middle, and the dashed lots are where new places will be built.';
+if(window.BQ)Object.assign(window.BQ,{townPlan:townPlan,TOWN_H:TOWN_H,TOWN_SQ:TOWN_SQ});
+/* always open at the top of the map */
+(function(){ if(typeof openTown!=='function')return; var _ot=openTown; window.openTown=openTown=function(){ _ot(); var s=document.getElementById('scr-town'); if(s)s.scrollTop=0; if(typeof later==='function')later(function(){ var s2=document.getElementById('scr-town'); if(s2)s2.scrollTop=0; },80); }; })();
 
 </script>
 </body>
