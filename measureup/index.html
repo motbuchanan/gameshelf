@@ -928,14 +928,14 @@ svg .charg{will-change:transform}
 <div id="toast"></div>
 <button id="homeBtn" onclick="goHome()" aria-label="Back to Garage">🏠</button>
 <button id="ellyBtn" onclick="openEllyHelp()" aria-label="Ask Elly for help"></button>
-<div id="vbadge">v1.11 · Sep 27</div>
+<div id="vbadge">v1.13 · Sep 29</div>
 
 <script>
 'use strict';
 /* ============ UTILS ============ */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const VERSION='v1.11 · Sep 27';
+const VERSION='v1.13 · Sep 29';
 const RM=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -14884,6 +14884,551 @@ function passState(name){ if(typeof sTap==='function')sTap(); var s=roadInfo(nam
 
 /* ---------------- exports for tests ---------------- */
 if(window.BQ)Object.assign(window.BQ,{MEMBER_HOME:MEMBER_HOME,HOME:HOME,roadInfo:roadInfo,stateMembers:stateMembers,homeStatesCovered:homeStatesCovered,spotStar:spotStar,dropOfDay:dropOfDay,questOfDay:questOfDay,wowChoices:wowChoices,openWow:openWow,openPassport:openPassport,openSquare:openSquare,weekIx:weekIx});
+
+</script>
+<script>
+/* ================= v1.12 · TOWN JOBS: SAM'S LIBRARY + DELLA'S POST OFFICE + FRIENDS (Sep 29 2026) =================
+   Existing band members get a SECOND JOB in town (their instrument stays their identity; the job is how they show up
+   in other wings). Every one of the 54 has a job in MEMBER_JOB. Two jobs are BUILT this version, both music-linked:
+     1) SAM'S LIBRARY (scr-lib): read-along story cards. Sentences light up one at a time on a drum beat (the music
+        link), then a vocabulary-in-context question, a "what happens next" prediction, and a short writing prompt
+        the kid types (saved). Ohio ELA: RL.2.1/2.3 key details + how characters respond, RL.2.4 words and phrases,
+        W.2.3 narrative writing. Stories star bandmates on tour in their home states, so geography rides along.
+     2) DELLA'S POST OFFICE (scr-post): a postcard arrives daily from a bandmate's home state (built from
+        MEMBER_HOME). The kid addresses the reply (home state + capital), writes back with the parts of a letter
+        (greeting, body, closing, signature: W.2, L.2.2 commas in greetings/closings), seals it into a postcard
+        ALBUM, and runs the MAIL RUN (match letters to who lives in that state).
+     3) FRIENDS (scr-friends): the town roster. Answers Garrett's "can I add them to my band?": new townsfolk are
+        not band members, but every person he meets anywhere is collected here. Band + the 5 Word Hoard keepers.
+   Town: the empty lot becomes a Main Street strip with three small storefronts (Library, Post Office, Friends). */
+
+/* ---------------- town jobs for all 54 (the instrument stays; this is their second job) ---------------- */
+var MEMBER_JOB={
+ boom:{job:"Town Drummer",place:"the Bandstand",wing:"music"}, rumble:{job:"Sound Check Crew",place:"the Main Stage",wing:"music"},
+ combo:{job:"Arcade Tech",place:"the Arcade",wing:"logic"}, slice:{job:"Pizza Counter",place:"the Kitchen",wing:"science"},
+ tock:{job:"Town Clock Keeper",place:"the Clock Tower",wing:"time"}, gauge:{job:"Surveyor",place:"the Map Room",wing:"social"},
+ luna:{job:"Almanac Editor",place:"the Town Almanac",wing:"social"}, doot:{job:"Parade Leader",place:"the Square",wing:"music"},
+ gain:{job:"Radio Engineer",place:"the Radio Station",wing:"science"}, plink:{job:"Playground Monitor",place:"the Playground",wing:"health"},
+ reg:{job:"Banker",place:"the Bank",wing:"social"}, round:{job:"Weather Helper",place:"the Weather Station",wing:"science"},
+ roscoe:{job:"Front Porch Storyteller",place:"the Front Porch",wing:"ela"}, bigtub:{job:"Ferry Captain",place:"the Dock",wing:"social"},
+ shimmer:{job:"Bakery Helper",place:"the Kitchen",wing:"science"}, axel:{job:"Rock Hall Guide",place:"the Rock Hall",wing:"music"},
+ reed:{job:"Jazz Club Host",place:"the Jazz Club",wing:"music"}, mika:{job:"Dance Teacher",place:"the Theater",wing:"health"},
+ cadence:{job:"Marching Band Captain",place:"the Field",wing:"music"}, lumi:{job:"Light Show Designer",place:"the Theater",wing:"science"},
+ flow:{job:"Beat Lab DJ",place:"the Radio Station",wing:"music"}, glitch:{job:"Arcade Keeper",place:"the Arcade",wing:"logic"},
+ viola:{job:"Sailing Instructor",place:"the Dock",wing:"science"}, grace:{job:"Theater Director",place:"the Theater",wing:"ela"},
+ dub:{job:"Lifeguard",place:"the Beach",wing:"health"}, flip:{job:"Mirror Maze Keeper",place:"the Arcade",wing:"logic"},
+ pixel:{job:"Computer Lab Lead",place:"the Arcade",wing:"logic"}, willow:{job:"Front Porch Fiddler",place:"the Front Porch",wing:"ela"},
+ reese:{job:"Blues Radio Host",place:"the Radio Station",wing:"music"}, jingle:{job:"Bell Ringer",place:"the Clock Tower",wing:"time"},
+ krag:{job:"Garage Mechanic",place:"the Garage",wing:"science"}, bibi:{job:"Word Hoard Host",place:"the Word Hoard",wing:"ela"},
+ riot:{job:"Skate Park Crew",place:"the Skate Park",wing:"health"}, oompa:{job:"Cheese Shop Owner",place:"the Kitchen",wing:"science"},
+ timmy:{job:"Science Lab Tech",place:"the Science Lab",wing:"science"}, libby:{job:"Judge of the Fair",place:"the Fairgrounds",wing:"social"},
+ rula:{job:"Rule Box Inventor",place:"the Science Lab",wing:"logic"}, tessa:{job:"Kite Builder",place:"the Field",wing:"science"},
+ harper:{job:"Trail Guide",place:"the Mountain Trail",wing:"science"}, gus:{job:"Tour Guide",place:"On the Road",wing:"social"},
+ bonnie:{job:"Choir Bells",place:"the Chapel Bells",wing:"music"}, cubby:{job:"Builder's Yard Foreman",place:"the Builder's Yard",wing:"science"},
+ maple:{job:"Head Gardener",place:"the Garden",wing:"science"}, perry:{job:"Fence Builder",place:"the Builder's Yard",wing:"math"},
+ piper:{job:"Puzzle Shop Keeper",place:"the Arcade",wing:"logic"}, bea:{job:"Kitchen Estimator",place:"the Kitchen",wing:"science"},
+ woody:{job:"Town Census Taker",place:"Town Hall",wing:"social"}, frankie:{job:"Parade Line Leader",place:"the Square",wing:"social"},
+ fern:{job:"Critter Cove Ranger",place:"Critter Cove",wing:"science"}, tripp:{job:"Fact Family Coach",place:"the Field",wing:"math"},
+ sunny:{job:"Weather Reporter",place:"the Weather Station",wing:"science"}, sam:{job:"Librarian",place:"the Library",wing:"ela"},
+ della:{job:"Postmaster",place:"the Post Office",wing:"ela"}, miles:{job:"Map Room Keeper",place:"the Map Room",wing:"social"}
+};
+function JOB(id){ return MEMBER_JOB[id]||null; }
+
+/* ---------------- state ---------------- */
+if(typeof DEF==='object'){ DEF.lib={read:{},done:{},written:{}}; DEF.post={got:{},run:{},sent:0}; DEF.friends={met:{}}; }
+function jobState(){ if(typeof S==='undefined')return; if(!S.lib)S.lib={read:{},done:{},written:{}}; ['read','done','written'].forEach(function(k){ if(!S.lib[k])S.lib[k]={}; });
+ if(!S.post)S.post={got:{},run:{},sent:0}; if(!S.post.got)S.post.got={}; if(!S.post.run)S.post.run={}; if(!S.friends)S.friends={met:{}}; if(!S.friends.met)S.friends.met={}; }
+jobState();
+(function(){ if(typeof load==='function'){ var _l=load; load=function(){ _l(); jobState(); }; } })();
+function jobDayKey(){ var d=new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
+function jobDays(){ return Math.floor(Date.now()/86400000); }
+function creatureName(){ return (typeof S!=='undefined'&&S.creature&&S.creature.name)?S.creature.name:'Me'; }
+function sideScr(id,backLabel,scoreId,bodyId){ if(document.getElementById(id))return; var d=document.createElement('div'); d.className='scr'; d.id=id;
+ d.innerHTML='<div class="wow-top"><button class="btn ghost small" onclick="openTown()">\u2190 Town</button><div class="wow-score" id="'+scoreId+'"></div></div><div id="'+bodyId+'" style="padding:4px 2px 24px"></div>';
+ var a=document.getElementById('modal'); if(a)document.body.insertBefore(d,a); else document.body.appendChild(d); }
+(function(){ if(document.getElementById('jobCSS'))return; var st=document.createElement('style'); st.id='jobCSS'; st.textContent=
+   '.lib-card{background:#160f33;border:1px solid #2b2350;border-radius:12px;padding:10px 12px;margin:6px 0;cursor:pointer;text-align:left;display:flex;gap:10px;align-items:center}'
+  +'.lib-card .t{font-weight:800;font-size:15px}.lib-card .s{font-size:11px;color:#b7a9ee}.lib-card.done{border-color:#7dff8a}'
+  +'.lib-page{background:#fff8e8;color:#2a1f3d;border-radius:14px;padding:14px 14px 10px;margin:8px 0;font-size:17px;line-height:1.55;font-family:Georgia,serif;box-shadow:0 8px 20px #0007}'
+  +'.lib-page .sn{border-radius:6px;padding:1px 3px;transition:background .15s}.lib-page .sn.on{background:#ffd158;color:#1a1030}.lib-page .sn.hid{display:none}'
+  +'.lib-tempo{display:flex;gap:6px;justify-content:center;margin:6px 0}.lib-tempo .btn{margin:0;padding:8px 12px;font-size:13px}.lib-tempo .btn.sel{outline:2px solid #ffd158}'
+  +'.lib-ta{width:100%;min-height:90px;border-radius:12px;border:1px solid #2f3d63;background:#120d28;color:#fff;padding:10px;font-size:16px;font-family:inherit;box-sizing:border-box}'
+  +'.post-card{background:#fff8e8;color:#2a1f3d;border-radius:12px;padding:12px;margin:8px 0;font-family:Georgia,serif;font-size:15.5px;line-height:1.5;box-shadow:0 8px 20px #0007;position:relative;border:6px double #d8c9a3}'
+  +'.post-stamp{position:absolute;top:8px;right:8px;width:52px;height:60px;border:2px dashed #b9a67a;border-radius:4px;display:flex;align-items:center;justify-content:center;background:#fff;font-size:8px;text-align:center;color:#6b5a3a;font-weight:700}'
+  +'.post-pick{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}.post-pick .btn{margin:0}'
+  +'.post-part{margin:6px 0}.post-part .lb{font-size:11px;font-weight:900;letter-spacing:1px;color:#ff7ad9;margin-bottom:4px}'
+  +'.post-chips{display:flex;flex-wrap:wrap;gap:6px}.post-chips .btn{margin:0;padding:7px 10px;font-size:13px}.post-chips .btn.sel{outline:2px solid #ffd158}'
+  +'.post-album{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.post-album .pc{background:#160f33;border:1px solid #2b2350;border-radius:10px;padding:6px;text-align:center;font-size:10px;font-weight:800;color:#b7a9ee;cursor:pointer}'
+  +'.fr-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.fr-card{background:#160f33;border:1px solid #2b2350;border-radius:12px;padding:8px 4px;text-align:center;cursor:pointer}'
+  +'.fr-card .n{font-weight:800;font-size:12px;margin-top:2px}.fr-card .j{font-size:9.5px;color:#b7a9ee;line-height:1.2}.fr-card.no{opacity:.45;filter:grayscale(.8)}.fr-card.met{border-color:#7dff8a}'
+  +'.tw-shop{position:absolute;transform:translate(-50%,-50%);z-index:12;width:112px;text-align:center;cursor:pointer}'
+  +'.tw-shop .h{filter:drop-shadow(0 5px 6px #000b);margin-bottom:-6px}'
+  +'.tw-shop .b{background:linear-gradient(180deg,#241b46,#181031);border:2px solid var(--c);border-radius:10px;padding:5px 4px 6px;box-shadow:0 0 18px -5px var(--c),0 10px 18px #0009}'
+  +'.tw-shop .tg{font-size:7.5px;font-weight:900;letter-spacing:1px;color:var(--c)}.tw-shop .nm{font-size:12.5px;font-weight:800;color:#fff;line-height:1.05}.tw-shop .pr{font-size:9px;font-weight:800;color:#c3b4f2;margin-top:3px}'
+  +'.tw-shop:active .b{transform:scale(.96)}';
+  document.head.appendChild(st); })();
+
+/* =====================================================================================================
+   SAM'S LIBRARY
+   ===================================================================================================== */
+var LIB_STORIES=[
+ {id:'aurora',title:'The Night the Lights Went Out',by:'lumi',lvl:2,
+  text:["The tour bus rolled into Alaska just as the sun gave up for the day.","Lumi had promised the whole band a light show, but when she flipped the switch on her glowing floor, nothing happened.","The generator had frozen solid, and every cable was stiff as a candy cane.","Boom groaned, Bibi sighed, and Gus started muttering about the long drive back.","Then Lumi looked up, and her mouth fell open.","Ribbons of green and violet were unrolling across the whole sky, slow and silent and enormous."],
+  ending:"Lumi laughed. \"Forget my floor. Tonight the sky is running the light show, and it is luminous.\"",
+  next:{q:'What do you think Lumi does next?',opts:['Gives up and goes to bed','Lets the northern lights be the show','Yells at the generator'],a:1},
+  vocab:{w:'luminous',q:'In this story, "luminous" means...',opts:['glowing with light','very cold','loud and noisy','far away'],a:0},
+  prompt:'Write about a time a plan went wrong and something better happened instead. What did you see?'},
+ {id:'detour',title:'Gus Takes the Long Way',by:'gus',lvl:1,
+  text:["Gus never gets lost, but he does get curious.","On the way through Missouri, a sign said ROAD CLOSED, and a little arrow pointed the other way.","\"Detour,\" said Gus, and he grinned, because a detour is just a road you did not plan on.","The bus wound past a river as wide as a lake and a boat with a giant paddle wheel.","Then the road bent, and there it was: a silver arch so tall the clouds seemed to duck under it."],
+  ending:"\"Sometimes,\" said Gus, \"the wrong way is the best way to see something you would have missed.\"",
+  next:{q:'What is the band most likely to do at the arch?',opts:['Drive right past it','Stop and look up at it','Turn around and go home'],a:1},
+  vocab:{w:'detour',q:'A "detour" is...',opts:['a different road than you planned','a kind of bus','a rest stop','a map'],a:0},
+  prompt:'Describe a place you saw by accident. What did it look like?'},
+ {id:'cheese',title:'Oompa and the Colossal Wheel',by:'oompa',lvl:2,
+  text:["In Wisconsin, Oompa met a cheese wheel taller than he was.","It sat on a cart at the county fair, round and golden, with a sign that read GUESS THE WEIGHT.","Everyone else guessed wild numbers: a hundred pounds, a thousand pounds, a million.","Oompa closed his eyes and thought about his tuba, which is really just a giant bucket of air.","He pictured how many buckets of cheese would fill that colossal wheel, and did the math in his head."],
+  ending:"\"Two hundred and twelve pounds,\" said Oompa, and the judge dropped her clipboard. He was off by one.",
+  next:{q:'How does Oompa make his guess?',opts:['He picks a random number','He thinks about how much fits inside','He asks Bea'],a:1},
+  vocab:{w:'colossal',q:'"Colossal" means...',opts:['tiny','extremely large','made of cheese','slippery'],a:1},
+  prompt:'Pick something huge you have seen. Write three sentences that help someone picture how big it was.'},
+ {id:'dice',title:'Glitch and the Improbable Night',by:'glitch',lvl:3,
+  text:["Las Vegas glittered like somebody had spilled a jar of stars on the desert.","Glitch loved it, because the whole city ran on chance, and chance was his favorite thing.","At a carnival booth, a man offered a prize for rolling three sixes in a row.","\"That is improbable,\" Glitch said, \"about one chance in two hundred sixteen.\"","The man laughed and said nobody ever wins.","Glitch shook the dice, thought about every roll he had ever rolled, and let them fly."],
+  ending:"Six. Six. Six. The man stopped laughing. \"Improbable,\" said Glitch, \"is not the same as impossible.\"",
+  next:{q:'What is the lesson Glitch is teaching?',opts:['Unlikely things can still happen','Dice are always lucky','Never play games'],a:0},
+  vocab:{w:'improbable',q:'"Improbable" means...',opts:['not likely to happen','very easy','loud','impossible'],a:0},
+  prompt:'Write about something unlikely that happened to you or someone you know.'},
+ {id:'voice',title:'Bibi Loses Her Voice',by:'bibi',lvl:2,
+  text:["The Nashville show was sold out, and Bibi had rehearsed until her throat felt like sandpaper.","On the morning of the concert she opened her mouth and out came a croak.","Her voice was hoarse, scratchy and thin, and it would not sing a single note.","She wanted to hide under the bus.","Instead, Grace gathered the whole band in a circle and whispered a plan."],
+  ending:"That night, fifty-three bandmates sang Bibi's parts together, and she stood in the middle and conducted with a smile.",
+  next:{q:'What is Grace\u2019s plan most likely to be?',opts:['Cancel the show','Have the band sing for Bibi','Make Bibi sing anyway'],a:1},
+  vocab:{w:'hoarse',q:'A "hoarse" voice sounds...',opts:['rough and scratchy','high and clear','like a horse','very quiet'],a:0},
+  prompt:'Write about a time friends helped you when you could not do something alone.'},
+ {id:'letter',title:'Della and the Weathered Letter',by:'della',lvl:3,
+  text:["The lighthouse keeper in Maine handed Della a letter with no stamp and no name.","The paper was weathered, soft and gray from years of salt air, and the ink had faded to the color of tea.","Only three words could still be read: BRING THE BELLS.","Della turned the letter over, sniffed it (it smelled like seaweed), and held it up to the light.","Hidden in the paper, faint as a whisper, was a tiny drawing of a hand bell."],
+  ending:"\"Bonnie,\" Della said. \"Somebody has been waiting a very long time for Bonnie.\"",
+  next:{q:'Who does the letter seem to be for?',opts:['Della','Bonnie','The lighthouse keeper'],a:1},
+  vocab:{w:'weathered',q:'"Weathered" paper is paper that has been...',opts:['worn by wind, sun and rain','freshly printed','folded in half','painted gold'],a:0},
+  prompt:'You find a mystery letter with only three words on it. What do the words say, and what do you do?'},
+ {id:'stars',title:'Woody Counts the Stars',by:'woody',lvl:1,
+  text:["North Dakota at night is a vast, dark ocean of sky.","Woody lay on his back in the grass and decided to count every single star.","Tap, tap, tap, tap, and a slash: a bundle of five.","Tap, tap, tap, tap, slash: ten.","By the time he reached two hundred, the stars had started to blur and multiply."],
+  ending:"Woody gave up counting, put his hands behind his head, and simply looked. Some things are for looking, not counting.",
+  next:{q:'What does Woody learn?',opts:['Counting is always the point','Some things are for enjoying, not counting','There are exactly 200 stars'],a:1},
+  vocab:{w:'vast',q:'"Vast" means...',opts:['very big and wide','very fast','very dark','very cold'],a:0},
+  prompt:'Describe the night sky where you live. Use at least one word that means big.'},
+ {id:'rim',title:'Perry at the Rim',by:'perry',lvl:2,
+  text:["Perry stood at the edge of the Grand Canyon and felt very small.","The rim stretched left and right farther than he could see, and the bottom was a mile straight down.","He tapped his frame drum once, and the sound reverberated off the canyon walls: boom, boom, boom, softer each time.","\"How far around is it?\" asked Sam.","Perry thought about adding up every side, the way he always did."],
+  ending:"\"Nobody knows for sure,\" Perry admitted. \"But I am going to start counting.\"",
+  next:{q:'What does Perry do?',opts:['Refuses to guess','Starts counting the distance around','Climbs down to the bottom'],a:1},
+  vocab:{w:'reverberated',q:'"Reverberated" means the sound...',opts:['bounced back as echoes','stopped right away','turned into music','got louder'],a:0},
+  prompt:'Write about the biggest hole, cliff, or drop you have ever seen. How did it make you feel?'},
+ {id:'train',title:'Reese and the Midnight Train',by:'reese',lvl:3,
+  text:["Somewhere in Mississippi, a train whistled in the dark, low and mournful.","Reese sat on the porch with his harmonica and answered it.","One long note from the train, one long note from the harp, back and forth like two old friends.","Willow came out with her fiddle, then Roscoe with his banjo, and the porch filled with music.","The train got farther away, but its whistle kept coming, softer and softer."],
+  ending:"When the whistle finally faded, Reese lowered his harmonica and said, \"That is the blues. You do not play it alone.\"",
+  next:{q:'What is Reese saying about the blues?',opts:['It is sad music you play by yourself','It is music you share with others','It is only for trains'],a:1},
+  vocab:{w:'mournful',q:'A "mournful" sound feels...',opts:['sad','happy','silly','angry'],a:0},
+  prompt:'Write about a sound you hear at night. What does it remind you of?'},
+ {id:'islands',title:'Plink Hops the Islands',by:'plink',lvl:1,
+  text:["Hawaii is not one place. It is a chain of islands, and Plink wanted to hop every one.","Boat to the first island: rainbows.","Boat to the second: a volcano, quiet and steaming.","Boat to the third: a waterfall that fell like a cascade of silver beads.","Three, six, nine: Plink counted the boat rides in threes, because that is how Plink counts everything."],
+  ending:"On the last island, Plink stood in the rain and got a rainbow of her very own. \"Twelve!\" she shouted. \"I hopped them all!\"",
+  next:{q:'How does Plink count her trips?',opts:['One at a time','In skips of three','She does not count'],a:1},
+  vocab:{w:'cascade',q:'A "cascade" is...',opts:['water falling in steps','a kind of boat','a rainbow','a volcano'],a:0},
+  prompt:'Write about a trip you took. List the places in order, first, second, third.'}
+];
+function libStory(id){ for(var i=0;i<LIB_STORIES.length;i++)if(LIB_STORIES[i].id===id)return LIB_STORIES[i]; return null; }
+var LIB=null; /* {id, ix, playing, tempo, step:'read'|'next'|'vocab'|'write'|'done', nextOK, vocabOK} */
+var LIB_TIMER=null;
+function libMount(){ sideScr('scr-lib','Town','libScore','libBody'); if(typeof ELLY_HINTS==='object')ELLY_HINTS['scr-lib']='Sam keeps the stories. Press play and read along with the beat, then answer and write a little of your own.'; }
+function openLibrary(){ if(typeof sTap==='function')sTap(); libMount(); jobState(); LIB=null; libStop(); libRender(); show('scr-lib'); var b=document.getElementById('scr-lib'); if(b)b.scrollTop=0; }
+function libDoneCount(){ return Object.keys(S.lib.done).length; }
+function libRender(){ var body=document.getElementById('libBody'); if(!body)return; var sc=document.getElementById('libScore'); if(sc)sc.textContent='\uD83D\uDCD6 '+libDoneCount()+' / '+LIB_STORIES.length+' stories';
+ if(!LIB){ var html='<div class="center">'+(typeof memberSVG==='function'?memberSVG('sam',84):'')+'<h2 style="margin:4px 0 0">\uD83D\uDCDA Sam\u2019s Library</h2><div class="sub" style="margin:2px 0 8px">Pick a story. Read along with the beat.</div></div>';
+   LIB_STORIES.forEach(function(st){ var d=!!S.lib.done[st.id]; html+='<div class="lib-card'+(d?' done':'')+'" onclick="libOpen(\''+st.id+'\')">'+(typeof memberSVG==='function'?memberSVG(st.by,44):'')+'<div><div class="t">'+st.title+'</div><div class="s">told by '+mHomeName(st.by)+' \u00b7 '+['','easy','medium','big words'][st.lvl]+(d?' \u00b7 \u2713 done':'')+'</div></div></div>'; });
+   body.innerHTML=html; return; }
+ var st=libStory(LIB.id); var html='<div class="center">'+(typeof memberSVG==='function'?memberSVG(st.by,64):'')+'<h2 style="margin:2px 0 0">'+st.title+'</h2><div class="sub" style="margin:2px 0 4px">told by '+mHomeName(st.by)+'</div></div>';
+ html+='<div class="lib-page" id="libPage">'; st.text.forEach(function(s,i){ html+='<span class="sn'+(i===LIB.ix&&LIB.playing?' on':'')+'" onclick="libJump('+i+')">'+s+'</span> '; });
+ html+='<span class="sn'+(LIB.step==='read'||LIB.step==='next'?' hid':'')+(LIB.ix===st.text.length&&LIB.playing?' on':'')+'" id="libEnd">'+st.ending+'</span></div>';
+ if(LIB.step==='read'){
+   html+='<div class="lib-tempo">'+[['slow',900],['medium',620],['fast',430]].map(function(t){ return '<button class="btn ghost'+(LIB.tempo===t[1]?' sel':'')+'" onclick="libTempo('+t[1]+')">'+t[0]+'</button>'; }).join('')+'</div>';
+   html+='<button class="btn wide" onclick="'+(LIB.playing?'libStop();libRender()':'libPlay()')+'">'+(LIB.playing?'\u23F8 Pause':'\u25B6 Read along with the beat')+'</button>';
+   html+='<button class="btn wide ghost" onclick="libStep(\'next\')">I read it. What happens next? \u2192</button>';
+ } else if(LIB.step==='next'){
+   html+='<div class="speak" style="text-align:left"><b>\uD83D\uDD2E '+st.next.q+'</b></div><div class="post-pick" style="grid-template-columns:1fr">';
+   st.next.opts.forEach(function(o,i){ html+='<button class="btn" onclick="libNext('+i+')">'+o+'</button>'; }); html+='</div>';
+ } else if(LIB.step==='vocab'){
+   html+='<div class="speak" style="text-align:left"><b>\uD83D\uDD24 Big word: '+st.vocab.w+'</b><br>'+st.vocab.q+'</div><div class="post-pick">';
+   st.vocab.opts.forEach(function(o,i){ html+='<button class="btn" onclick="libVocab('+i+')">'+o+'</button>'; }); html+='</div>';
+ } else if(LIB.step==='write'){
+   html+='<div class="speak" style="text-align:left"><b>\u270F\uFE0F Your turn</b><br>'+st.prompt+'</div>';
+   html+='<textarea class="lib-ta" id="libTA" placeholder="Type your story here...">'+(S.lib.written[st.id]||'')+'</textarea>';
+   html+='<button class="btn wide" onclick="libWrite()">\uD83D\uDCE8 Give it to Sam</button>';
+ } else {
+   html+='<div class="speak center" style="border:1px solid #7dff8a"><b style="color:#7dff8a">Story complete!</b><br>You read, predicted, learned <b>'+st.vocab.w+'</b>, and wrote your own.</div>';
+   if(S.lib.written[st.id])html+='<div class="lib-page" style="font-size:15px"><b>By '+creatureName()+':</b><br>'+S.lib.written[st.id].replace(/</g,'&lt;')+'</div>';
+   html+='<button class="btn wide" onclick="LIB=null;libRender()">\uD83D\uDCDA Back to the shelf</button>';
+ }
+ html+='<button class="btn wide ghost small" onclick="libStop();LIB=null;libRender()">\u2190 All stories</button>';
+ body.innerHTML=html;
+}
+function libOpen(id){ if(typeof sTap==='function')sTap(); LIB={id:id,ix:0,playing:false,tempo:620,step:'read'}; libRender(); var b=document.getElementById('scr-lib'); if(b)b.scrollTop=0; }
+function libTempo(t){ if(LIB){ LIB.tempo=t; if(LIB.playing){ libStop(); LIB.playing=true; libTick(); } libRender(); } }
+function libStop(){ if(LIB_TIMER){ clearInterval(LIB_TIMER); LIB_TIMER=null; } if(LIB)LIB.playing=false; }
+function libJump(i){ if(!LIB)return; LIB.ix=i; libHi(); }
+function libHi(){ var pg=document.getElementById('libPage'); if(!pg)return; var sn=pg.querySelectorAll('.sn'); for(var i=0;i<sn.length;i++)sn[i].classList.toggle('on',i===LIB.ix&&LIB.playing); }
+function libBeats(sentence){ var w=(sentence||'').split(/\s+/).length; return Math.max(2,Math.min(8,Math.round(w/3))); }
+function libPlay(){ if(!LIB)return; var st=libStory(LIB.id); var total=st.text.length+(LIB.step==='read'||LIB.step==='next'?0:1); if(LIB.ix>=total)LIB.ix=0; LIB.playing=true; libRender(); libTick(); }
+function libTick(){ var st=libStory(LIB.id); var total=st.text.length+(LIB.step==='read'||LIB.step==='next'?0:1); var beat=0, need=libBeats(LIB.ix<st.text.length?st.text[LIB.ix]:st.ending); libHi(); try{ if(typeof drum==='function')drum('kick'); }catch(e){}
+ LIB_TIMER=setInterval(function(){ if(!LIB||!LIB.playing){ libStop(); return; } beat++; try{ if(typeof drum==='function')drum(beat%2?'hat':'snare'); }catch(e){}
+   if(beat>=need){ beat=0; LIB.ix++; if(LIB.ix>=total){ libStop(); LIB.ix=0; S.lib.read[LIB.id]=true; if(typeof save==='function')save(); libRender(); return; } need=libBeats(LIB.ix<st.text.length?st.text[LIB.ix]:st.ending); try{ if(typeof drum==='function')drum('kick'); }catch(e){} libHi(); }
+ },LIB.tempo); }
+function libStep(s){ libStop(); if(LIB){ LIB.step=s; S.lib.read[LIB.id]=true; if(typeof save==='function')save(); libRender(); } }
+function libNext(i){ var st=libStory(LIB.id); if(i===st.next.a){ if(typeof sCorrect==='function')sCorrect(); if(typeof toast==='function')toast('Yes! Here is how it ends.'); LIB.nextOK=true; } else { if(typeof ellyChime==='function')ellyChime(); if(typeof toast==='function')toast('Not quite. Read the ending and see.'); }
+ LIB.step='vocab'; libRender(); var end=document.getElementById('libEnd'); if(end){ end.classList.remove('hid'); end.classList.add('on'); } }
+function libVocab(i){ var st=libStory(LIB.id); if(i===st.vocab.a){ if(typeof sCorrect==='function')sCorrect(); LIB.vocabOK=true; if(typeof toast==='function')toast('Right! '+st.vocab.w+' = '+st.vocab.opts[st.vocab.a]); LIB.step='write'; libRender(); }
+ else { if(typeof ellyChime==='function')ellyChime(); if(typeof toast==='function')toast('Look back at the sentence with "'+st.vocab.w+'" and try again.'); } }
+function libWrite(){ var ta=document.getElementById('libTA'); var txt=(ta?ta.value:'').trim(); var words=txt.split(/\s+/).filter(Boolean).length; if(words<5){ if(typeof toast==='function')toast('Write at least 5 words. Sam wants the whole picture!'); return; }
+ S.lib.written[LIB.id]=txt.slice(0,600); var first=!S.lib.done[LIB.id]; S.lib.done[LIB.id]=true; if(typeof save==='function')save();
+ if(first){ var pay=10+(LIB.nextOK?5:0)+(LIB.vocabOK?5:0)+10; if(typeof addNotes==='function')addNotes(pay); if(typeof confetti==='function')confetti(); if(typeof toast==='function')toast('Sam loved it! +'+pay+' \uD83C\uDFB5'); }
+ LIB.step='done'; libRender(); }
+
+/* =====================================================================================================
+   DELLA'S POST OFFICE
+   ===================================================================================================== */
+var POST=null; /* {id, step:'read'|'address'|'write'|'sealed', stOK, capOK, g, c, body} */
+function postMount(){ sideScr('scr-post','Town','postScore','postBody'); if(typeof ELLY_HINTS==='object')ELLY_HINTS['scr-post']='Della runs the mail. Read today\u2019s postcard, address your reply, write back, and seal it into your album.'; }
+function postTodayId(){ var ids=Object.keys(MEMBER_HOME).sort(); return ids[jobDays()%ids.length]; }
+function postText(id){ var h=HOME(id); var nm=mHomeName(id); var you=creatureName(); var b0=h.been[0]||'all over', b1=h.been[1]||'', l0=h.likes[0]||'music';
+ var t=[
+  'Dear '+you+',',
+  'Greetings from '+h.st+'! I am writing from '+h.cap+', the capital.',
+  'Yesterday I went to '+b0+(b1?', and tomorrow we head to '+b1:'')+'.',
+  'Fun fact: '+h.fact,
+  'I keep thinking about '+l0+' the whole trip.',
+  'Wish you were here. Write back soon!',
+  'Your friend, '+nm
+ ];
+ return t; }
+function openPost(){ if(typeof sTap==='function')sTap(); postMount(); jobState(); var id=postTodayId(); POST={id:id,step:S.post.got[id]?'sealed':'read',view:'today'}; postRender(); show('scr-post'); var b=document.getElementById('scr-post'); if(b)b.scrollTop=0; }
+function postCard(id){ var h=HOME(id); var lines=postText(id); var html='<div class="post-card"><div class="post-stamp">'+(typeof memberSVG==='function'?memberSVG(id,34):'')+'<div>'+h.st+'</div></div>';
+ lines.forEach(function(l,i){ html+='<div style="'+(i===0?'font-weight:700;margin-bottom:6px':'')+(i===lines.length-1?'margin-top:8px;font-style:italic;':'')+'padding-right:'+(i<3?'62px':'0')+'">'+l+'</div>'; }); return html+'</div>'; }
+function postRender(){ var body=document.getElementById('postBody'); if(!body||!POST)return; var sc=document.getElementById('postScore'); if(sc)sc.textContent='\u2709\uFE0F '+Object.keys(S.post.got).length+' postcards';
+ var html='<div class="center">'+(typeof memberSVG==='function'?memberSVG('della',72):'')+'<h2 style="margin:2px 0 0">\uD83D\uDCEE Della\u2019s Post Office</h2></div>';
+ html+='<div class="lib-tempo"><button class="btn ghost'+(POST.view==='today'?' sel':'')+'" onclick="POST.view=\'today\';postRender()">Today\u2019s mail</button><button class="btn ghost'+(POST.view==='album'?' sel':'')+'" onclick="POST.view=\'album\';postRender()">Album</button><button class="btn ghost'+(POST.view==='run'?' sel':'')+'" onclick="postRunStart()">Mail run</button></div>';
+ if(POST.view==='album'){ var ids=Object.keys(S.post.got); html+='<div class="sub">'+(ids.length?ids.length+' postcards collected. Tap one to read it again.':'No postcards yet. Seal today\u2019s reply to start your album.')+'</div><div class="post-album">';
+   ids.forEach(function(id){ var h=HOME(id); html+='<div class="pc" onclick="postReread(\''+id+'\')">'+(typeof memberSVG==='function'?memberSVG(id,40):'')+'<div>'+mHomeName(id)+'</div><div style="color:#ffd158">'+(h?h.st:'')+'</div></div>'; });
+   html+='</div>'; body.innerHTML=html; return; }
+ if(POST.view==='run'){ body.innerHTML=html+postRunHtml(); return; }
+ var id=POST.id, h=HOME(id), nm=mHomeName(id);
+ if(POST.step==='read'){ html+='<div class="sub">A postcard just arrived from <b>'+nm+'</b>!</div>'+postCard(id)+'<button class="btn wide" onclick="POST.step=\'address\';postRender()">\u270F\uFE0F Address my reply \u2192</button>'; }
+ else if(POST.step==='address'){ if(!POST.stc){ POST.stc=wowChoices(h.st); POST.capc=postCapChoices(h.cap); }
+   html+='<div class="speak" style="text-align:left"><b>\uD83D\uDCCD Where does '+nm+' live?</b> Pick the state for the envelope.</div><div class="post-pick">'; POST.stc.forEach(function(n){ html+='<button class="btn'+(POST.stOK&&n===h.st?'':' ')+'" onclick="postPickState(\''+n.replace(/'/g,"\\'")+'\')"'+(POST.stOK?' disabled':'')+'>'+n+'</button>'; }); html+='</div>';
+   if(POST.stOK){ html+='<div class="speak" style="text-align:left;margin-top:10px"><b>\uD83C\uDFDB\uFE0F And the capital city of '+h.st+'?</b></div><div class="post-pick">'; POST.capc.forEach(function(n){ html+='<button class="btn" onclick="postPickCap(\''+n.replace(/'/g,"\\'")+'\')">'+n+'</button>'; }); html+='</div>'; } }
+ else if(POST.step==='write'){ if(!POST.g)POST.g='Dear'; if(!POST.c)POST.c='Your friend,';
+   html+='<div class="speak" style="text-align:left"><b>\u270F\uFE0F Write back to '+nm+'.</b> A letter has four parts. Build yours.</div>';
+   html+='<div class="post-part"><div class="lb">1 \u00b7 GREETING (ends with a comma)</div><div class="post-chips">'+['Dear','Hi','Hello','Howdy'].map(function(g){ return '<button class="btn ghost'+(POST.g===g?' sel':'')+'" onclick="POST.g=\''+g+'\';postRender()">'+g+' '+nm+',</button>'; }).join('')+'</div></div>';
+   html+='<div class="post-part"><div class="lb">2 \u00b7 BODY (tap a starter, then keep typing)</div><div class="post-chips">'+['Thank you for the postcard from '+h.st+'.','I have never been to '+h.st+'.','My favorite part of your trip was','Someday I want to see','Here at home in Ohio we'].map(function(s){ return '<button class="btn ghost" onclick="postStarter(this)">'+s+'</button>'; }).join('')+'</div>';
+   html+='<textarea class="lib-ta" id="postTA" placeholder="Type your letter here..." oninput="POST.body=this.value">'+(POST.body||'')+'</textarea></div>';
+   html+='<div class="post-part"><div class="lb">3 \u00b7 CLOSING (ends with a comma)</div><div class="post-chips">'+['Your friend,','Sincerely,','See you on tour,','Write back soon,'].map(function(c){ return '<button class="btn ghost'+(POST.c===c?' sel':'')+'" onclick="POST.c=\''+c+'\';postRender()">'+c+'</button>'; }).join('')+'</div></div>';
+   html+='<div class="post-part"><div class="lb">4 \u00b7 SIGNATURE</div><div class="sub" style="text-align:left;margin:0">'+creatureName()+' (that is you)</div></div>';
+   html+='<button class="btn wide" onclick="postSeal()">\uD83D\uDCEC Seal and send</button>'; }
+ else { html+='<div class="speak center" style="border:1px solid #7dff8a"><b style="color:#7dff8a">Sent!</b> '+nm+'\u2019s postcard is in your album. A new one arrives tomorrow.</div>'+postCard(id);
+   if(S.post.letters&&S.post.letters[id])html+='<div class="post-card" style="border-color:#b9d3ff"><div style="font-weight:700">'+S.post.letters[id].g+'</div><div style="margin:6px 0">'+S.post.letters[id].body.replace(/</g,'&lt;')+'</div><div style="font-style:italic">'+S.post.letters[id].c+'</div><div>'+creatureName()+'</div></div>';
+   html+='<button class="btn wide ghost" onclick="POST.view=\'album\';postRender()">\uD83D\uDCD4 Open the album</button><button class="btn wide" onclick="postRunStart()">\uD83D\uDE9A Do the mail run</button>'; }
+ body.innerHTML=html; }
+function postCapChoices(cap){ var pool=(typeof ROAD_STATES!=='undefined')?ROAD_STATES.map(function(s){return s.c;}).filter(function(c){return c!==cap;}):[]; if(typeof shuffle==='function')pool=shuffle(pool); var out=[cap].concat(pool.slice(0,3)); return (typeof shuffle==='function')?shuffle(out):out; }
+function postPickState(n){ var h=HOME(POST.id); if(n===h.st){ POST.stOK=true; if(typeof sCorrect==='function')sCorrect(); } else { if(typeof ellyChime==='function')ellyChime(); if(typeof toast==='function')toast('Check the stamp on the postcard for a hint.'); } postRender(); }
+function postPickCap(n){ var h=HOME(POST.id); if(n===h.cap){ POST.capOK=true; if(typeof sCorrect==='function')sCorrect(); POST.step='write'; if(typeof toast==='function')toast('Addressed to '+h.cap+', '+h.st+'!'); } else { if(typeof ellyChime==='function')ellyChime(); if(typeof toast==='function')toast('Not that one. Reread the first line of the postcard.'); } postRender(); }
+function postStarter(btn){ var ta=document.getElementById('postTA'); if(!ta)return; var s=btn.textContent; ta.value=(ta.value?ta.value.trim()+' ':'')+s+' '; POST.body=ta.value; ta.focus(); }
+function postSeal(){ var ta=document.getElementById('postTA'); var body=(ta?ta.value:POST.body||'').trim(); var words=body.split(/\s+/).filter(Boolean).length; if(words<6){ if(typeof toast==='function')toast('Write at least 6 words in the body so '+mHomeName(POST.id)+' has something to read.'); return; }
+ var nm=mHomeName(POST.id); if(!S.post.letters)S.post.letters={}; S.post.letters[POST.id]={g:POST.g+' '+nm+',',body:body.slice(0,500),c:POST.c}; var first=!S.post.got[POST.id]; S.post.got[POST.id]=true; S.post.sent=(S.post.sent||0)+1; if(typeof save==='function')save();
+ if(first){ if(typeof addNotes==='function')addNotes(15); if(typeof confetti==='function')confetti(); if(typeof toast==='function')toast('Sealed! +15 \uD83C\uDFB5'); }
+ if(typeof wkMark==='function')wkMark('post'); POST.step='sealed'; postRender(); }
+function postReread(id){ if(typeof sTap==='function')sTap(); var L=S.post.letters&&S.post.letters[id]; modal('<div class="center"><h3 style="margin:0">From '+mHomeName(id)+'</h3></div>'+postCard(id)+(L?'<div class="post-card" style="border-color:#b9d3ff;font-size:14px"><div style="font-weight:700">'+L.g+'</div><div style="margin:6px 0">'+L.body.replace(/</g,'&lt;')+'</div><div style="font-style:italic">'+L.c+'</div><div>'+creatureName()+'</div></div>':'')+'<button class="btn wide ghost small" onclick="closeModal()">Close</button>'); }
+/* mail run: 5 letters, match each to who lives in that state */
+var RUN=null;
+function postRunStart(){ if(typeof sTap==='function')sTap(); var ids=Object.keys(MEMBER_HOME); if(typeof shuffle==='function')ids=shuffle(ids); var rounds=[];
+ for(var i=0;i<5&&i<ids.length;i++){ var id=ids[i]; var h=HOME(id); var others=ids.filter(function(o){ return o!==id&&MEMBER_HOME[o].st!==h.st; }); if(typeof shuffle==='function')others=shuffle(others); var faces=[id,others[0],others[1]]; if(typeof shuffle==='function')faces=shuffle(faces); rounds.push({id:id,st:h.st,faces:faces}); }
+ RUN={rounds:rounds,ix:0,right:0}; POST.view='run'; postRender(); }
+function postRunHtml(){ if(!RUN)return ''; var dk=jobDayKey(); if(RUN.ix>=RUN.rounds.length){ var paid=S.post.run[dk]; var html='<div class="speak center" style="border:1px solid #7dff8a"><b style="color:#7dff8a">Mail run done!</b><br>'+RUN.right+' of '+RUN.rounds.length+' delivered to the right door.</div>';
+   if(RUN.right>=4&&!paid){ S.post.run[dk]=true; if(typeof save==='function')save(); if(typeof addNotes==='function')addNotes(12); if(typeof confetti==='function')confetti(); html+='<div class="sub" style="color:#7dff8a">+12 \uD83C\uDFB5 for a clean run</div>'; } else if(paid)html+='<div class="sub">Today\u2019s run is already paid. Practice runs are free.</div>';
+   return html+'<button class="btn wide" onclick="postRunStart()">\uD83D\uDE9A Run it again</button><button class="btn wide ghost" onclick="POST.view=\'today\';postRender()">\u2190 Back to the mail</button>'; }
+ var r=RUN.rounds[RUN.ix]; var html='<div class="sub">Letter '+(RUN.ix+1)+' of '+RUN.rounds.length+' \u00b7 '+RUN.right+' right</div><div class="post-card" style="text-align:center;font-size:18px"><b>To: my bandmate in '+r.st+'</b><div style="font-size:12px;color:#6b5a3a">Who lives there? Tap the right face.</div></div><div class="post-pick" style="grid-template-columns:1fr 1fr 1fr">';
+ r.faces.forEach(function(f){ html+='<button class="btn ghost" style="padding:8px 4px" onclick="postRunPick(\''+f+'\')">'+(typeof memberSVG==='function'?memberSVG(f,48):'')+'<div style="font-size:12px">'+mHomeName(f)+'</div></button>'; });
+ return html+'</div>'; }
+function postRunPick(f){ var r=RUN.rounds[RUN.ix]; if(f===r.id){ RUN.right++; if(typeof sCorrect==='function')sCorrect(); } else { if(typeof ellyChime==='function')ellyChime(); if(typeof toast==='function')toast(mHomeName(r.id)+' lives in '+r.st+'.'); } RUN.ix++; postRender(); }
+
+/* =====================================================================================================
+   FRIENDS (town roster)
+   ===================================================================================================== */
+function friendsList(){ var out=[]; if(typeof BAND!=='undefined')BAND.forEach(function(m){ var j=JOB(m.id); out.push({id:m.id,name:mHomeName(m.id),kind:'band',svg:function(sz){ return memberSVG(m.id,sz); },sub:j?j.job:m.title,met:!!(S.band[m.id]||S.friends.met[m.id])}); });
+ if(typeof WORD_TRACKS!=='undefined')WORD_TRACKS.forEach(function(t){ out.push({id:'kn_'+t.id,name:t.kn,kind:'keeper',svg:function(sz){ return (typeof creatureSVG==='function')?creatureSVG(Object.assign({acc:'none',name:''},t.keeper),sz):''; },sub:'Keeper of '+t.name,met:!!(S.friends.met['kn_'+t.id]||(S.hoard&&S.hoard.done&&S.hoard.done[t.id])||(S.hoard&&S.hoard.got&&Object.keys(S.hoard.got).length&&t.gems.some(function(g){return S.hoard.got[g.w];}))),track:t.id}); });
+ return out; }
+function friendsMount(){ sideScr('scr-friends','Town','frScore','frBody'); if(typeof ELLY_HINTS==='object')ELLY_HINTS['scr-friends']='Everyone you meet in town lands here. Bandmates, keepers, and new friends as the town grows.'; }
+function openFriends(){ if(typeof sTap==='function')sTap(); friendsMount(); jobState(); friendsRender(); show('scr-friends'); var b=document.getElementById('scr-friends'); if(b)b.scrollTop=0; }
+function friendsRender(){ var body=document.getElementById('frBody'); if(!body)return; var list=friendsList(); var met=list.filter(function(f){return f.met;}).length; var sc=document.getElementById('frScore'); if(sc)sc.textContent='\uD83E\uDD1D '+met+' / '+list.length+' friends';
+ var cr=(typeof S!=='undefined'&&S.creature)?S.creature:{body:'round',col:'#7dff8a',eyes:'dot',extra:'none',acc:'none',name:''};
+ var html='<div class="center">'+(typeof creatureSVG==='function'?creatureSVG(cr,72):'')+'<h2 style="margin:2px 0 0">\uD83E\uDD1D Friends</h2><div class="sub" style="margin:2px 0 8px">Everyone you have met in town. Not everyone is in the band, and that is the point: the town is bigger than the band now.</div></div><div class="fr-grid">';
+ list.forEach(function(f){ html+='<div class="fr-card'+(f.met?' met':' no')+'" onclick="friendTap(\''+f.id+'\')">'+f.svg(48)+'<div class="n">'+(f.met?f.name:'???')+'</div><div class="j">'+(f.met?f.sub:'not met yet')+'</div></div>'; });
+ body.innerHTML=html+'</div>'; }
+function friendTap(id){ if(typeof sTap==='function')sTap(); if(id.indexOf('kn_')===0){ if(typeof openHoard==='function')openHoard(); return; } if(typeof talkTo==='function')talkTo(id); }
+
+/* =====================================================================================================
+   WIRING: member card job chip, met tracking, town storefronts, routing, road/square links, what's new
+   ===================================================================================================== */
+(function(){ if(typeof talkTo!=='function')return; var _tt=talkTo; window.talkTo=talkTo=function(id){ _tt(id);
+  try{ jobState(); if(!S.friends.met[id]){ S.friends.met[id]=true; if(typeof save==='function')save(); } }catch(e){}
+  try{ var j=JOB(id); if(!j)return; var box=document.getElementById('mbox'); if(!box)return; var speaks=box.querySelectorAll('.speak'); var anchor=null; for(var i=0;i<speaks.length;i++){ if(/Home:/.test(speaks[i].textContent))anchor=speaks[i]; } if(!anchor){ for(var k=0;k<speaks.length;k++){ if((speaks[k].getAttribute('style')||'').indexOf('241c48')>=0)anchor=speaks[k]; } } if(!anchor)anchor=speaks[speaks.length-1]; if(!anchor)return;
+    var chip=document.createElement('div'); chip.className='speak'; chip.setAttribute('style','background:#1a2440;border:1px solid #2f3d63;text-align:left');
+    var link=''; if(id==='sam')link=' <span style="color:#ff7ad9;font-weight:700;cursor:pointer" onclick="closeModal();openLibrary()">Visit the Library \u2192</span>'; if(id==='della')link=' <span style="color:#ff7ad9;font-weight:700;cursor:pointer" onclick="closeModal();openPost()">Visit the Post Office \u2192</span>';
+    chip.innerHTML='<b>\uD83D\uDCBC Town job:</b> '+j.job+' at '+j.place+'.'+link; anchor.parentNode.insertBefore(chip,anchor.nextSibling);
+  }catch(e){} }; })();
+(function(){ if(typeof openChest==='function'){ var _oc=openChest; window.openChest=openChest=function(t){ try{ jobState(); var id='kn_'+(typeof t==='string'?t:(t&&t.id)); if(!S.friends.met[id]){ S.friends.met[id]=true; if(typeof save==='function')save(); } }catch(e){} return _oc.apply(this,arguments); }; } })();
+(function(){ if(typeof townGo!=='function')return; var _tg=townGo; window.townGo=townGo=function(dest){ if(dest==='lib'){ openLibrary(); return; } if(dest==='post'){ openPost(); return; } if(dest==='friends'){ openFriends(); return; } if(dest==='lot'){ if(typeof toast==='function')toast('\uD83C\uDFD7\uFE0F Main Street is open! More shops coming.'); return; } return _tg(dest); }; })();
+(function(){ if(typeof renderTown!=='function')return; var _rt=renderTown; window.renderTown=renderTown=function(){ _rt(); try{ jobState(); var stage=document.getElementById('twStage'); if(!stage)return; var lot=stage.querySelector('.tw-lot'); if(lot)lot.remove();
+   var cr=(typeof S!=='undefined'&&S.creature)?S.creature:{body:'round',col:'#7dff8a',eyes:'dot',extra:'none',acc:'none',name:''}; var met=friendsList().filter(function(f){return f.met;}).length;
+   var shops=[
+     {x:72,c:'#ffd158',tg:'READ',nm:'Library',host:memberSVG('sam',40),pr:libDoneCount()+'/'+LIB_STORIES.length+' stories',go:'lib'},
+     {x:195,c:'#7ad9ff',tg:'MAIL',nm:'Post Office',host:memberSVG('della',40),pr:Object.keys(S.post.got).length+' postcards',go:'post'},
+     {x:318,c:'#7dff8a',tg:'TOWN',nm:'Friends',host:(typeof creatureSVG==='function'?creatureSVG(cr,40):''),pr:met+' met',go:'friends'}
+   ];
+   var wrap=document.createElement('div'); var html=''; shops.forEach(function(s){ html+='<div class="tw-shop" style="left:'+s.x+'px;top:914px;--c:'+s.c+'" onclick="townGo(\''+s.go+'\')"><div class="h">'+s.host+'</div><div class="b"><div class="tg">'+s.tg+'</div><div class="nm">'+s.nm+'</div><div class="pr">'+s.pr+'</div></div></div>'; });
+   wrap.innerHTML=html; while(wrap.firstChild)stage.appendChild(wrap.firstChild);
+ }catch(e){} }; })();
+/* square + road get links */
+(function(){ if(typeof openSquare!=='function')return; var _os=openSquare; window.openSquare=openSquare=function(){ _os(); try{ var box=document.getElementById('mbox'); if(!box)return; var btns=box.querySelectorAll('button'); var last=btns[btns.length-1]; if(!last)return; var b=document.createElement('button'); b.className='btn wide ghost'; b.innerHTML='\uD83D\uDCEE Today\u2019s postcard \u00b7 \uD83D\uDCDA Library'; b.onclick=function(){ closeModal(); openPost(); }; last.parentNode.insertBefore(b,last); }catch(e){} }; })();
+/* the weekly quest gains a "post" type on top of v1.11's four, without breaking existing checks */
+(function(){ if(typeof questOfDay!=='function')return; var _q=questOfDay; window.questOfDay=questOfDay=function(id){ var d=new Date().getDay(); if(d===6){ var nm=mHomeName(id); return {type:'post',t:'Send a postcard reply at the Post Office (today\u2019s is from '+mHomeName(postTodayId())+').',go:function(){ openPost(); }}; } return _q(id); }; })();
+/* what's new (once) */
+(function(){ if(typeof openTown!=='function')return; var _ot=openTown; window.openTown=openTown=function(){ _ot(); try{ if(S.flags&&!S.flags.seen112&&S.flags.introDone){ S.flags.seen112=true; if(typeof save==='function')save();
+  later(function(){ var m=document.getElementById('modal'); if(m&&m.classList.contains('on'))return; modal('<div class="center"><div class="row" style="justify-content:center;gap:6px">'+memberSVG('sam',52)+memberSVG('della',52)+'</div><h2>\u2728 Main Street is open</h2></div>'
+   +'<div class="card" style="text-align:left"><b>\uD83D\uDCDA Sam\u2019s Library.</b> <span class="sub" style="display:inline;margin:0">Stories about your bandmates. Read along with the beat, guess what happens next, and write your own ending.</span></div>'
+   +'<div class="card" style="text-align:left"><b>\uD83D\uDCEE Della\u2019s Post Office.</b> <span class="sub" style="display:inline;margin:0">A postcard arrives every day from a bandmate\u2019s home state. Address it, write back, collect them all.</span></div>'
+   +'<div class="card" style="text-align:left"><b>\uD83E\uDD1D Friends.</b> <span class="sub" style="display:inline;margin:0">Everyone you meet in town, band or not. The town is bigger than the band now.</span></div>'
+   +'<button class="btn wide" onclick="closeModal()">Let\u2019s go</button>'); },700); } }catch(e){} }; })();
+
+if(window.BQ)Object.assign(window.BQ,{MEMBER_JOB:MEMBER_JOB,JOB:JOB,LIB_STORIES:LIB_STORIES,libStory:libStory,openLibrary:openLibrary,libOpen:libOpen,openPost:openPost,postTodayId:postTodayId,postText:postText,postCapChoices:postCapChoices,friendsList:friendsList,openFriends:openFriends});
+
+</script>
+<script>
+/* ================= v1.13 · THREE NEW ZONES, TWO RESIDENTS EACH (Sep 29 2026) =================
+   Mot: Garrett touches a little of everything each week (social studies, math, science, art, not much history yet),
+   so every zone gets 1-2 established characters now, to make exploring the town the habit.
+     SCIENCE  · Critter Cove (the facade that said SOON is now open, Fern is the ranger at the door)
+                Sunny's Weather Station: a daily weather log (sky + thermometer + what you wore), a week strip, and
+                  a weather-detective quiz. Ohio 2.ESS: observe and record weather patterns.
+                Maple's Garden: plant a seed, water it once a real day, it grows a stage per day (seed, sprout,
+                  leaves, flower, harvest) with a life-cycle question at each stage. Ohio 2.LS: plant life cycles.
+     SOCIAL   · Town Hall (new, uptown)
+                Woody's Census: one survey question a day about his own household/community, building tally charts
+                  over time, plus a Community Helpers match. Ohio SS grade 2: community, helpers, goods & services.
+                Miles's Map Room: a town map with a compass rose and legend; "which direction" and "follow the route"
+                  rounds. Ohio SS grade 2: cardinal directions, map keys.
+     ART      · Art Studio (new, uptown)
+                Lumi's Color Lab: predict then mix primaries into secondaries, warm vs cool sorting.
+                Piper's Shape Collage: build a picture from shapes on a prompt of the day, saved to a gallery.
+   Every activity pays notes once per day (log-type) or once per completion (game-type). All state under S.zone. */
+
+if(typeof DEF==='object'){ DEF.zone={wx:{},wxq:{},garden:null,census:{},helpers:{},map:{},color:{},collage:[],collageDay:{}}; }
+function zoneState(){ if(typeof S==='undefined')return; if(!S.zone)S.zone={}; var z=S.zone; ['wx','wxq','census','helpers','map','color','collageDay'].forEach(function(k){ if(!z[k])z[k]={}; }); if(!Array.isArray(z.collage))z.collage=[]; if(z.garden===undefined)z.garden=null; }
+zoneState();
+(function(){ if(typeof load==='function'){ var _l=load; load=function(){ _l(); zoneState(); }; } })();
+function zDay(){ var d=new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
+function zDays(){ return Math.floor(Date.now()/86400000); }
+function zPay(n,msg){ if(typeof addNotes==='function')addNotes(n); if(typeof confetti==='function')confetti(); if(typeof toast==='function')toast((msg||'Nice!')+' +'+n+' \uD83C\uDFB5'); }
+function zOK(){ if(typeof sCorrect==='function')sCorrect(); } function zNo(m){ if(typeof ellyChime==='function')ellyChime(); if(typeof toast==='function'&&m)toast(m); }
+function zSvg(id,sz){ return (typeof memberSVG==='function')?memberSVG(id,sz):''; }
+function zScr(id,scoreId,bodyId,hint){ if(!document.getElementById(id)){ var d=document.createElement('div'); d.className='scr'; d.id=id; d.innerHTML='<div class="wow-top"><button class="btn ghost small" onclick="openTown()">\u2190 Town</button><div class="wow-score" id="'+scoreId+'"></div></div><div id="'+bodyId+'" style="padding:4px 2px 24px"></div>'; var a=document.getElementById('modal'); if(a)document.body.insertBefore(d,a); else document.body.appendChild(d); } if(typeof ELLY_HINTS==='object'&&hint)ELLY_HINTS[id]=hint; }
+function zTabs(cur,tabs,fn){ return '<div class="lib-tempo">'+tabs.map(function(t){ return '<button class="btn ghost'+(cur===t[0]?' sel':'')+'" onclick="'+fn+'(\''+t[0]+'\')">'+t[1]+'</button>'; }).join('')+'</div>'; }
+function zRoom(id,title,sub){ return '<div class="center">'+zSvg(id,64)+'<h2 style="margin:2px 0 0">'+title+'</h2><div class="sub" style="margin:2px 0 6px">'+sub+'</div></div>'; }
+(function(){ if(document.getElementById('zoneCSS'))return; var st=document.createElement('style'); st.id='zoneCSS'; st.textContent=
+   '.z-pick{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}.z-pick .btn{margin:0}.z-pick.three{grid-template-columns:1fr 1fr 1fr}.z-pick.five{grid-template-columns:repeat(5,1fr)}.z-pick .btn.sel{outline:2px solid #ffd158}'
+  +'.z-strip{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin:8px 0}.z-strip .d{background:#160f33;border:1px solid #2b2350;border-radius:8px;padding:6px 2px;text-align:center;font-size:10px;color:#b7a9ee}.z-strip .d b{display:block;font-size:18px}.z-strip .d.today{border-color:#ffd158}'
+  +'.z-therm{width:100%;margin:8px 0}.z-big{font-size:34px;font-weight:900;text-align:center;color:#ffd158}'
+  +'.z-tally{background:#160f33;border:1px solid #2b2350;border-radius:10px;padding:8px 10px;margin:6px 0;text-align:left;font-size:14px}.z-tally .bar{display:inline-block;height:12px;background:#7dff8a;border-radius:6px;vertical-align:middle;margin-left:6px}'
+  +'.z-map{width:100%;max-width:340px;margin:6px auto;display:block;border-radius:12px;background:#0f0b22;border:1px solid #2b2350}'
+  +'.z-sw{display:flex;gap:8px;justify-content:center;align-items:center;margin:8px 0}.z-sw .s{width:64px;height:64px;border-radius:14px;border:3px solid #fff3;box-shadow:0 6px 14px #0008}.z-sw .plus{font-size:26px;font-weight:900;color:#ffd158}'
+  +'.z-canvas{width:100%;max-width:340px;height:260px;margin:6px auto;display:block;border-radius:12px;background:#fff8e8;border:4px solid #d8c9a3;touch-action:manipulation}'
+  +'.z-tools{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:6px 0}.z-tools .t{width:40px;height:40px;border-radius:10px;border:2px solid #fff2;display:flex;align-items:center;justify-content:center;font-size:20px;background:#160f33;cursor:pointer}.z-tools .t.sel{border-color:#ffd158;box-shadow:0 0 10px #ffd158}'
+  +'.z-gal{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.z-gal svg{width:100%;height:auto;border-radius:8px;background:#fff8e8}'
+  +'.tw-up{position:absolute;transform:translate(-50%,-50%);z-index:12;width:118px;text-align:center;cursor:pointer}.tw-up .h{filter:drop-shadow(0 5px 6px #000b);margin-bottom:-6px}.tw-up .b{background:linear-gradient(180deg,#241b46,#181031);border:2px solid var(--c);border-radius:10px;padding:5px 4px 6px;box-shadow:0 0 18px -5px var(--c),0 10px 18px #0009}.tw-up .tg{font-size:7.5px;font-weight:900;letter-spacing:1px;color:var(--c)}.tw-up .nm{font-size:12.5px;font-weight:800;color:#fff;line-height:1.05}.tw-up .pr{font-size:9px;font-weight:800;color:#c3b4f2;margin-top:3px}.tw-up:active .b{transform:scale(.96)}';
+  document.head.appendChild(st); })();
+
+/* =====================================================================================================
+   SCIENCE · CRITTER COVE: Sunny's Weather Station + Maple's Garden
+   ===================================================================================================== */
+var COVE='wx'; var WX={sky:null,temp:60,wore:null}; var WXQ=null;
+var SKIES=[['sun','\u2600\uFE0F','sunny'],['cloud','\u2601\uFE0F','cloudy'],['rain','\uD83C\uDF27\uFE0F','rainy'],['snow','\u2744\uFE0F','snowy'],['wind','\uD83C\uDF2C\uFE0F','windy']];
+var WORE=[['tee','\uD83D\uDC55','t-shirt'],['hoodie','\uD83E\uDDE5','hoodie'],['coat','\uD83E\uDDE5\uD83E\uDDE3','coat + hat'],['rain','\u2602\uFE0F','raincoat']];
+var WX_FACTS=['Water in clouds is liquid drops or ice crystals. When drops get heavy, it rains.','Below 32 degrees F, water freezes. Snow needs the air to be that cold all the way down.','Wind is air moving from where there is more of it to where there is less.','A thermometer line rises when the liquid inside warms up and takes more room.','Weather changes day to day. Climate is what a place is usually like over many years.','Fluffy white clouds are cumulus. Flat gray sheets are stratus. Wispy high ones are cirrus.','The same sun feels hotter in summer because it climbs higher and shines longer.'];
+function openCove(tab){ if(typeof sTap==='function')sTap(); zoneState(); zScr('scr-cove','coveScore','coveBody','Critter Cove is science. Sunny logs the weather. Maple grows the garden. Come back every day and watch things change.'); COVE=tab||COVE; coveRender(); show('scr-cove'); var b=document.getElementById('scr-cove'); if(b)b.scrollTop=0; }
+function coveTab(t){ if(typeof sTap==='function')sTap(); COVE=t; coveRender(); }
+function coveRender(){ var body=document.getElementById('coveBody'); if(!body)return; var sc=document.getElementById('coveScore'); if(sc)sc.textContent='\uD83C\uDF3F '+Object.keys(S.zone.wx).length+' weather logs \u00b7 '+(S.zone.garden?'day '+gardenStage().day:'no seed yet');
+ var html='<div class="center"><div class="row" style="justify-content:center;gap:4px">'+zSvg('fern',40)+zSvg('sunny',40)+zSvg('maple',40)+'</div><h2 style="margin:2px 0 0">\uD83C\uDF3F Critter Cove</h2></div>'+zTabs(COVE,[['wx','\u2600\uFE0F Weather Station'],['garden','\uD83C\uDF31 Garden']],'coveTab');
+ body.innerHTML=html+(COVE==='wx'?wxHtml():gardenHtml()); }
+/* --- weather station --- */
+function wxHtml(){ var dk=zDay(); var today=S.zone.wx[dk]; var html=zRoom('sunny','Sunny\u2019s Weather Station','Look outside. Log what you see, every day.');
+ /* week strip */
+ html+='<div class="z-strip">'; for(var i=6;i>=0;i--){ var d=new Date(Date.now()-i*86400000); var k=d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); var e=S.zone.wx[k]; var sk=e?SKIES.filter(function(s){return s[0]===e.sky;})[0]:null; html+='<div class="d'+(i===0?' today':'')+'">'+['Su','Mo','Tu','We','Th','Fr','Sa'][d.getDay()]+'<b>'+(sk?sk[1]:'\u00b7')+'</b>'+(e?e.temp+'\u00b0':'')+'</div>'; } html+='</div>';
+ if(today){ html+='<div class="speak center" style="border:1px solid #7dff8a"><b style="color:#7dff8a">Logged for today.</b> '+SKIES.filter(function(s){return s[0]===today.sky;})[0][2]+', '+today.temp+'\u00b0F, wearing '+WORE.filter(function(w){return w[0]===today.wore;})[0][2]+'.</div>';
+   html+='<div class="speak" style="text-align:left"><b>\u2600\uFE0F Sunny says:</b> '+WX_FACTS[zDays()%WX_FACTS.length]+'</div>';
+   html+=S.zone.wxq[dk]?'<div class="sub">Weather detective solved today. New case tomorrow.</div>':'<button class="btn wide" onclick="wxQuizStart()">\uD83D\uDD0D Weather detective (3 questions)</button>';
+   if(WXQ)html+=wxQuizHtml(); return html; }
+ html+='<div class="sub" style="text-align:left;margin:6px 0 2px"><b>1 \u00b7 What is the sky doing?</b></div><div class="z-pick five">'+SKIES.map(function(s){ return '<button class="btn ghost'+(WX.sky===s[0]?' sel':'')+'" style="padding:8px 2px;font-size:22px" onclick="WX.sky=\''+s[0]+'\';coveRender()">'+s[1]+'</button>'; }).join('')+'</div>';
+ html+='<div class="sub" style="text-align:left;margin:10px 0 2px"><b>2 \u00b7 How warm is it?</b> Slide the thermometer.</div><div class="z-big" id="wxTemp">'+WX.temp+'\u00b0F</div><input class="z-therm" type="range" min="-10" max="100" value="'+WX.temp+'" oninput="WX.temp=+this.value;document.getElementById(\'wxTemp\').textContent=this.value+\'\u00b0F\'">';
+ html+='<div class="sub" style="font-size:12px">-10 freezing \u00b7 32 ice melts \u00b7 70 just right \u00b7 100 too hot</div>';
+ html+='<div class="sub" style="text-align:left;margin:10px 0 2px"><b>3 \u00b7 What did you wear outside?</b></div><div class="z-pick">'+WORE.map(function(w){ return '<button class="btn ghost'+(WX.wore===w[0]?' sel':'')+'" onclick="WX.wore=\''+w[0]+'\';coveRender()">'+w[1]+' '+w[2]+'</button>'; }).join('')+'</div>';
+ html+='<button class="btn wide" style="margin-top:10px" onclick="wxLog()">\uD83D\uDCDD Log today\u2019s weather</button>'; return html; }
+function wxLog(){ if(!WX.sky||!WX.wore){ zNo('Pick the sky and what you wore first.'); return; } var dk=zDay(); S.zone.wx[dk]={sky:WX.sky,temp:WX.temp,wore:WX.wore}; if(typeof save==='function')save(); zPay(10,'Logged!'); if(typeof wkMark==='function')wkMark('sci'); coveRender(); }
+function wxQuizStart(){ if(typeof sTap==='function')sTap(); var t=S.zone.wx[zDay()]; var qs=[
+  {q:'Your thermometer said '+t.temp+'\u00b0F. Is water outside frozen, melting, or liquid?',opts:['frozen (below 32)','right at 32','liquid (above 32)'],a:t.temp<32?0:(t.temp===32?1:2)},
+  {q:'It is '+t.temp+'\u00b0F and '+SKIES.filter(function(s){return s[0]===t.sky;})[0][2]+'. Best plan?',opts:[t.temp<45?'coat and hat':'t-shirt is fine','swimsuit','nothing, stay in bed'],a:0},
+  {q:'Which cloud is the fluffy white cotton-ball kind?',opts:['cumulus','stratus','cirrus'],a:0},
+  {q:'Rain happens when...',opts:['cloud drops get heavy and fall','the sun gets tired','wind pushes water up'],a:0},
+  {q:'What does a thermometer measure?',opts:['how hot or cold the air is','how windy it is','how many clouds there are'],a:0}
+ ]; if(typeof shuffle==='function')qs=shuffle(qs); WXQ={qs:qs.slice(0,3),ix:0,right:0}; coveRender(); }
+function wxQuizHtml(){ if(WXQ.ix>=WXQ.qs.length){ var dk=zDay(); if(!S.zone.wxq[dk]){ S.zone.wxq[dk]=WXQ.right; if(typeof save==='function')save(); if(WXQ.right>=2)zPay(8,'Detective!'); } var r=WXQ.right; WXQ=null; return '<div class="speak center" style="border:1px solid #7dff8a">'+r+' of 3 solved.</div>'; }
+ var q=WXQ.qs[WXQ.ix]; return '<div class="speak" style="text-align:left"><b>\uD83D\uDD0D '+(WXQ.ix+1)+'/3:</b> '+q.q+'</div><div class="z-pick" style="grid-template-columns:1fr">'+q.opts.map(function(o,i){ return '<button class="btn" onclick="wxQuizPick('+i+')">'+o+'</button>'; }).join('')+'</div>'; }
+function wxQuizPick(i){ var q=WXQ.qs[WXQ.ix]; if(i===q.a){ WXQ.right++; zOK(); } else zNo('The answer was: '+q.opts[q.a]); WXQ.ix++; coveRender(); }
+/* --- garden --- */
+var SEEDS={bean:{n:'Bean',emoji:'\uD83E\uDED8',col:'#7dff8a',fruit:'green bean pods'},sunflower:{n:'Sunflower',emoji:'\uD83C\uDF3B',col:'#ffd158',fruit:'a head full of seeds'},pumpkin:{n:'Pumpkin',emoji:'\uD83C\uDF83',col:'#ff9f43',fruit:'a fat orange pumpkin'}};
+var STAGES=[{n:'Seed',hint:'A seed is a tiny plant asleep inside a shell, with packed food for its first days.',q:{q:'What is inside a seed?',opts:['a tiny plant and its food','a rock','water only'],a:0}},
+ {n:'Sprout',hint:'The root grows DOWN first, to find water. Then the shoot grows UP toward light.',q:{q:'Which part grows first, and which way?',opts:['the root, down','the flower, up','the leaf, sideways'],a:0}},
+ {n:'Leaves',hint:'Leaves are food factories. They use sunlight, air and water to make sugar for the plant.',q:{q:'What do leaves need to make food?',opts:['sunlight, air and water','dirt only','darkness'],a:0}},
+ {n:'Flower',hint:'Flowers make pollen. Bees and wind carry it flower to flower so seeds can form.',q:{q:'Who helps carry pollen?',opts:['bees and wind','fish','the moon'],a:0}},
+ {n:'Harvest',hint:'The flower becomes fruit with new seeds inside. Plant one and the cycle starts again.',q:{q:'What is inside the fruit?',opts:['new seeds','more flowers','roots'],a:0}}];
+function gardenStage(){ var g=S.zone.garden; if(!g)return {day:0,ix:0}; var waters=Object.keys(g.water||{}).length; return {day:waters,ix:Math.min(waters,4)}; }
+function gardenSvg(kind,ix,sz){ var c=SEEDS[kind]||SEEDS.bean; sz=sz||160; var s='<svg viewBox="0 0 160 160" width="'+sz+'" height="'+sz+'" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="160" height="160" rx="16" fill="#bfe3ff"/><rect x="0" y="112" width="160" height="48" rx="0" fill="#6b4a2b"/><rect x="0" y="104" width="160" height="12" fill="#3e8f3e"/>';
+ if(ix===0)s+='<ellipse cx="80" cy="124" rx="9" ry="6" fill="#c9a36b" stroke="#7a5a2c" stroke-width="2"/>';
+ if(ix>=1){ s+='<path d="M80 124 v-'+(ix>=2?46:22)+'" stroke="#2f8f52" stroke-width="5" stroke-linecap="round" fill="none"/><path d="M80 126 q-6 12 -2 22 M80 126 q6 12 2 22" stroke="#e0c08a" stroke-width="3" fill="none"/>'; }
+ if(ix===1)s+='<ellipse cx="72" cy="104" rx="9" ry="5" fill="#7dff8a" transform="rotate(-30 72 104)"/><ellipse cx="88" cy="104" rx="9" ry="5" fill="#7dff8a" transform="rotate(30 88 104)"/>';
+ if(ix>=2){ s+='<ellipse cx="64" cy="96" rx="15" ry="7" fill="#3fbf5f" transform="rotate(-35 64 96)"/><ellipse cx="96" cy="96" rx="15" ry="7" fill="#3fbf5f" transform="rotate(35 96 96)"/><ellipse cx="66" cy="84" rx="12" ry="6" fill="#5ad67a" transform="rotate(-25 66 84)"/><ellipse cx="94" cy="84" rx="12" ry="6" fill="#5ad67a" transform="rotate(25 94 84)"/>'; }
+ if(ix===3){ for(var i=0;i<8;i++){ var a=i*45; s+='<ellipse cx="80" cy="64" rx="7" ry="14" fill="'+c.col+'" transform="rotate('+a+' 80 78)"/>'; } s+='<circle cx="80" cy="78" r="9" fill="#7a4a1f"/>'; }
+ if(ix>=4){ if(kind==='pumpkin')s+='<ellipse cx="80" cy="98" rx="26" ry="18" fill="#ff9f43" stroke="#c9671b" stroke-width="3"/><path d="M70 82 v32 M90 82 v32" stroke="#c9671b" stroke-width="2"/><rect x="77" y="74" width="6" height="10" rx="2" fill="#3e8f3e"/>'; else if(kind==='sunflower'){ for(var j=0;j<10;j++){ s+='<ellipse cx="80" cy="56" rx="9" ry="20" fill="#ffd158" transform="rotate('+(j*36)+' 80 78)"/>'; } s+='<circle cx="80" cy="78" r="15" fill="#5a3416"/><circle cx="80" cy="78" r="10" fill="#7a4a1f" stroke="#3e2410" stroke-dasharray="2 2"/>'; } else s+='<path d="M66 84 q-8 16 0 30 M80 86 q-6 16 2 32 M94 84 q8 16 0 30" stroke="#2f8f52" stroke-width="7" stroke-linecap="round" fill="none"/>'; }
+ return s+'</svg>'; }
+function gardenHtml(){ var g=S.zone.garden; var html=zRoom('maple','Maple\u2019s Garden','Plant it, water it every day, watch it change.');
+ if(!g){ html+='<div class="sub">Pick a seed to plant in the garden bed.</div><div class="z-pick three">'+Object.keys(SEEDS).map(function(k){ return '<button class="btn ghost" style="padding:10px 4px;font-size:22px" onclick="gardenPlant(\''+k+'\')">'+SEEDS[k].emoji+'<div style="font-size:12px">'+SEEDS[k].n+'</div></button>'; }).join('')+'</div>'; return html; }
+ var st=gardenStage(); var stage=STAGES[st.ix]; var dk=zDay(); var watered=!!g.water[dk];
+ html+='<div class="center">'+gardenSvg(g.kind,st.ix,170)+'<div class="sub" style="margin:4px 0 0"><b>'+SEEDS[g.kind].n+'</b> \u00b7 stage '+(st.ix+1)+' of 5: <b style="color:#7dff8a">'+stage.n+'</b> \u00b7 watered '+st.day+' day'+(st.day===1?'':'s')+'</div></div>';
+ html+='<div class="speak" style="text-align:left"><b>\uD83C\uDF31 Maple says:</b> '+stage.hint+'</div>';
+ if(!watered)html+='<button class="btn wide" onclick="gardenWater()">\uD83D\uDCA7 Water it today</button>'; else if(st.ix>=4&&st.day>=5)html+='<div class="speak center" style="border:1px solid #ffd158"><b style="color:#ffd158">Harvest!</b> You grew '+SEEDS[g.kind].fruit+'. The seeds inside can start it all again.</div><button class="btn wide" onclick="gardenHarvest()">\uD83E\uDDFA Harvest and plant a new seed</button>'; else html+='<div class="sub" style="color:#7dff8a">\u2713 Watered today. Come back tomorrow and see what changed.</div>';
+ if(!g.q[st.ix])html+='<button class="btn wide ghost" onclick="gardenAsk()">\u2753 Stage question</button>'; else html+='<div class="sub">Stage question answered.</div>';
+ return html; }
+function gardenPlant(k){ if(typeof sTap==='function')sTap(); S.zone.garden={kind:k,water:{},q:{},planted:zDay()}; if(typeof save==='function')save(); coveRender(); }
+function gardenWater(){ var g=S.zone.garden; var dk=zDay(); if(g.water[dk])return; g.water[dk]=true; if(typeof save==='function')save(); zPay(8,'Glug glug.'); if(typeof wkMark==='function')wkMark('sci'); coveRender(); }
+function gardenAsk(){ var st=gardenStage(); var q=STAGES[st.ix].q; modal('<div class="center">'+zSvg('maple',56)+'<h3 style="margin:4px 0">'+q.q+'</h3></div>'+q.opts.map(function(o,i){ return '<button class="btn wide" onclick="gardenAnswer('+i+')">'+o+'</button>'; }).join('')); }
+function gardenAnswer(i){ var st=gardenStage(); var q=STAGES[st.ix].q; closeModal(); if(i===q.a){ S.zone.garden.q[st.ix]=true; if(typeof save==='function')save(); zOK(); zPay(6,'Right!'); } else zNo('The answer was: '+q.opts[q.a]); coveRender(); }
+function gardenHarvest(){ var g=S.zone.garden; if(!S.zone.harvests)S.zone.harvests=0; S.zone.harvests++; S.zone.garden=null; if(typeof save==='function')save(); zPay(25,'Harvest #'+S.zone.harvests+'!'); coveRender(); }
+
+/* =====================================================================================================
+   SOCIAL STUDIES · TOWN HALL: Woody's Census + Miles's Map Room
+   ===================================================================================================== */
+var HALL='census'; var HELP=null; var MAPQ=null;
+var CENSUS_QS=[{id:'people',q:'How many people live in your house?',opts:['2','3','4','5','6 or more']},{id:'pets',q:'How many pets live with you?',opts:['0','1','2','3 or more']},{id:'season',q:'Favorite season?',opts:['spring','summer','fall','winter']},{id:'breakfast',q:'What did you eat for breakfast?',opts:['cereal','eggs','pancakes','fruit','something else']},{id:'helper',q:'Which community helper did you see this week?',opts:['mail carrier','firefighter','doctor or nurse','librarian','none']},{id:'travel',q:'How did you get around today?',opts:['car','walked','bike','bus','stayed home']},{id:'chore',q:'What job did you do at home today?',opts:['dishes','laundry','fed a pet','cleaned up','none yet']}];
+var HELPERS=[{who:'Firefighter',emoji:'\uD83D\uDE92',need:'a kitchen fire'},{who:'Mail carrier',emoji:'\u2709\uFE0F',need:'a letter to Grandma'},{who:'Doctor',emoji:'\uD83E\uDE7A',need:'a bad earache'},{who:'Librarian',emoji:'\uD83D\uDCDA',need:'a book about volcanoes'},{who:'Police officer',emoji:'\uD83D\uDC6E',need:'a lost bike'},{who:'Farmer',emoji:'\uD83D\uDE9C',need:'fresh corn for dinner'},{who:'Teacher',emoji:'\uD83E\uDDD1\u200D\uD83C\uDFEB',need:'help learning to read'},{who:'Garbage collector',emoji:'\uD83D\uDEBB',need:'a full trash can on the curb'},{who:'Mayor',emoji:'\uD83C\uDFDB\uFE0F',need:'a new park for the town'}];
+function openHall(tab){ if(typeof sTap==='function')sTap(); zoneState(); zScr('scr-hall','hallScore','hallBody','Town Hall is social studies. Woody counts the town. Miles keeps the maps.'); HALL=tab||HALL; hallRender(); show('scr-hall'); var b=document.getElementById('scr-hall'); if(b)b.scrollTop=0; }
+function hallTab(t){ if(typeof sTap==='function')sTap(); HALL=t; hallRender(); }
+function hallRender(){ var body=document.getElementById('hallBody'); if(!body)return; var sc=document.getElementById('hallScore'); if(sc)sc.textContent='\uD83C\uDFDB\uFE0F '+Object.keys(S.zone.census).length+' census days \u00b7 '+Object.keys(S.zone.map).length+' map days';
+ var html='<div class="center"><div class="row" style="justify-content:center;gap:4px">'+zSvg('woody',40)+zSvg('miles',40)+'</div><h2 style="margin:2px 0 0">\uD83C\uDFDB\uFE0F Town Hall</h2></div>'+zTabs(HALL,[['census','\uD83D\uDCCA Census'],['map','\uD83E\uDDED Map Room']],'hallTab');
+ body.innerHTML=html+(HALL==='census'?censusHtml():mapHtml()); }
+function censusQ(){ return CENSUS_QS[zDays()%CENSUS_QS.length]; }
+function censusHtml(){ var q=censusQ(); var dk=zDay(); var done=S.zone.census[dk]; var html=zRoom('woody','Woody\u2019s Census','One question a day. Your answers pile up into charts.');
+ if(!done){ html+='<div class="speak" style="text-align:left"><b>\uD83D\uDCCB Today:</b> '+q.q+'</div><div class="z-pick">'+q.opts.map(function(o){ return '<button class="btn" onclick="censusAnswer(\''+o.replace(/'/g,"\\'")+'\')">'+o+'</button>'; }).join('')+'</div>'; }
+ else html+='<div class="speak center" style="border:1px solid #7dff8a"><b style="color:#7dff8a">Counted.</b> You said <b>'+done.a+'</b> for "'+q.q+'"</div>';
+ /* tally charts of everything so far */
+ var byQ={}; Object.keys(S.zone.census).forEach(function(k){ var e=S.zone.census[k]; if(!byQ[e.id])byQ[e.id]={}; byQ[e.id][e.a]=(byQ[e.id][e.a]||0)+1; });
+ var ids=Object.keys(byQ); if(ids.length){ html+='<div class="sub" style="text-align:left;margin:10px 0 2px"><b>\uD83D\uDCCA Your tally charts</b> (Woody style: bundles of five)</div>'; ids.forEach(function(id){ var qq=CENSUS_QS.filter(function(x){return x.id===id;})[0]; html+='<div class="z-tally"><b>'+(qq?qq.q:id)+'</b>'; Object.keys(byQ[id]).forEach(function(a){ var n=byQ[id][a]; var t=''; for(var i=1;i<=n;i++)t+=(i%5===0?'\u0338 ':'|'); html+='<div>'+a+': <span style="font-family:monospace;color:#ffd158">'+t+'</span> '+n+'<span class="bar" style="width:'+(n*14)+'px"></span></div>'; }); html+='</div>'; }); }
+ html+='<button class="btn wide ghost" style="margin-top:8px" onclick="helpersStart()">\uD83E\uDDD1\u200D\uD83D\uDE92 Community helpers match</button>'; if(HELP)html+=helpersHtml(); return html; }
+function censusAnswer(a){ var q=censusQ(); S.zone.census[zDay()]={id:q.id,a:a}; if(typeof save==='function')save(); zPay(8,'Counted!'); if(typeof wkMark==='function')wkMark('soc'); hallRender(); }
+function helpersStart(){ if(typeof sTap==='function')sTap(); var hs=(typeof shuffle==='function')?shuffle(HELPERS):HELPERS.slice(); HELP={rounds:hs.slice(0,5).map(function(h){ var others=HELPERS.filter(function(o){return o.who!==h.who;}); if(typeof shuffle==='function')others=shuffle(others); var opts=[h].concat(others.slice(0,2)); if(typeof shuffle==='function')opts=shuffle(opts); return {h:h,opts:opts}; }),ix:0,right:0}; hallRender(); }
+function helpersHtml(){ if(HELP.ix>=HELP.rounds.length){ var dk=zDay(); var r=HELP.right; if(!S.zone.helpers[dk]&&r>=4){ S.zone.helpers[dk]=r; if(typeof save==='function')save(); zPay(10,'Helpers matched!'); } HELP=null; return '<div class="speak center" style="border:1px solid #7dff8a">'+r+' of 5 matched.</div>'; }
+ var r=HELP.rounds[HELP.ix]; return '<div class="speak" style="text-align:left"><b>\uD83D\uDCDE '+(HELP.ix+1)+'/5:</b> Who do you need for <b>'+r.h.need+'</b>?</div><div class="z-pick three">'+r.opts.map(function(o){ return '<button class="btn ghost" style="padding:8px 2px" onclick="helpersPick(\''+o.who+'\')"><div style="font-size:24px">'+o.emoji+'</div><div style="font-size:11px">'+o.who+'</div></button>'; }).join('')+'</div>'; }
+function helpersPick(who){ var r=HELP.rounds[HELP.ix]; if(who===r.h.who){ HELP.right++; zOK(); } else zNo('That job goes to the '+r.h.who.toLowerCase()+'.'); HELP.ix++; hallRender(); }
+/* --- map room --- */
+var MAP_PLACES=[{n:'Library',e:'\uD83D\uDCDA',x:1,y:1},{n:'Post Office',e:'\uD83D\uDCEE',x:3,y:1},{n:'Park',e:'\uD83C\uDF33',x:0,y:3},{n:'School',e:'\uD83C\uDFEB',x:3,y:3},{n:'Bakery',e:'\uD83E\uDD50',x:1,y:4},{n:'Fire Station',e:'\uD83D\uDE92',x:4,y:2}];
+function mapSvg(hl){ var s='<svg class="z-map" viewBox="0 0 250 250" xmlns="http://www.w3.org/2000/svg">'; for(var i=0;i<5;i++)for(var j=0;j<5;j++)s+='<rect x="'+(20+i*42)+'" y="'+(20+j*42)+'" width="42" height="42" fill="'+((i+j)%2?'#181234':'#1e1740')+'" stroke="#2b2350"/>';
+ MAP_PLACES.forEach(function(p){ var cx=41+p.x*42, cy=41+p.y*42; s+='<circle cx="'+cx+'" cy="'+cy+'" r="17" fill="'+(hl&&hl.indexOf(p.n)>=0?'#ffd158':'#2a2150')+'"/><text x="'+cx+'" y="'+(cy+7)+'" font-size="20" text-anchor="middle">'+p.e+'</text>'; });
+ s+='<g transform="translate(232 232)"><circle r="14" fill="#120d28" stroke="#ffd158"/><text y="-4" font-size="8" fill="#ffd158" text-anchor="middle" font-weight="700">N</text><text y="11" font-size="7" fill="#b7a9ee" text-anchor="middle">S</text><text x="-9" y="4" font-size="7" fill="#b7a9ee" text-anchor="middle">W</text><text x="9" y="4" font-size="7" fill="#b7a9ee" text-anchor="middle">E</text></g>';
+ return s+'</svg>'; }
+function mapQuiz(){ var ps=(typeof shuffle==='function')?shuffle(MAP_PLACES):MAP_PLACES.slice(); var rounds=[]; var tries=0;
+ while(rounds.length<5&&tries<60){ tries++; var a=ps[Math.floor(Math.random()*ps.length)], b=ps[Math.floor(Math.random()*ps.length)]; if(a===b)continue;
+  if(rounds.length%2===0){ /* direction: need same row or column */ if(a.x!==b.x&&a.y!==b.y)continue; var dir=a.x===b.x?(b.y<a.y?'north':'south'):(b.x<a.x?'west':'east'); rounds.push({t:'dir',q:'The <b>'+b.n+'</b> is which way from the <b>'+a.n+'</b>?',opts:['north','south','east','west'],a:dir,hl:[a.n,b.n]}); }
+  else { var dx=b.x-a.x, dy=b.y-a.y; var steps=[]; if(dx)steps.push(Math.abs(dx)+' '+(dx>0?'east':'west')); if(dy)steps.push(Math.abs(dy)+' '+(dy>0?'south':'north')); var others=MAP_PLACES.filter(function(p){return p!==b;}); if(typeof shuffle==='function')others=shuffle(others); var opts=[b.n,others[0].n,others[1].n,others[2].n]; if(typeof shuffle==='function')opts=shuffle(opts); rounds.push({t:'route',q:'Start at the <b>'+a.n+'</b>. Go '+steps.join(', then ')+'. Where are you?',opts:opts,a:b.n,hl:[a.n]}); } }
+ return rounds; }
+function mapHtml(){ var dk=zDay(); var html=zRoom('miles','Miles\u2019s Map Room','North is up. Read the key, follow the route.');
+ if(!MAPQ){ html+=mapSvg([])+'<div class="sub">'+MAP_PLACES.map(function(p){return p.e+' '+p.n;}).join(' \u00b7 ')+'</div>'+(S.zone.map[dk]?'<div class="sub" style="color:#7dff8a">Today\u2019s map run is paid. Practice runs are free.</div>':'')+'<button class="btn wide" onclick="mapStart()">\uD83E\uDDED Start the map run (5 rounds)</button>'; return html; }
+ if(MAPQ.ix>=MAPQ.rounds.length){ var r=MAPQ.right; if(!S.zone.map[dk]&&r>=4){ S.zone.map[dk]=r; if(typeof save==='function')save(); zPay(12,'Navigator!'); if(typeof wkMark==='function')wkMark('soc'); } MAPQ=null; return html+'<div class="speak center" style="border:1px solid #7dff8a">'+r+' of 5 right.</div><button class="btn wide" onclick="mapStart()">Run it again</button>'; }
+ var q=MAPQ.rounds[MAPQ.ix]; html+=mapSvg(q.hl)+'<div class="speak" style="text-align:left"><b>'+(MAPQ.ix+1)+'/5:</b> '+q.q+'</div><div class="z-pick">'+q.opts.map(function(o){ return '<button class="btn" onclick="mapPick(\''+o+'\')">'+o+'</button>'; }).join('')+'</div>'; return html; }
+function mapStart(){ if(typeof sTap==='function')sTap(); MAPQ={rounds:mapQuiz(),ix:0,right:0}; hallRender(); }
+function mapPick(o){ var q=MAPQ.rounds[MAPQ.ix]; if(o===q.a){ MAPQ.right++; zOK(); } else zNo('It was '+q.a+'.'); MAPQ.ix++; hallRender(); }
+
+/* =====================================================================================================
+   ART · ART ARTTAB: Lumi's Color Lab + Piper's Shape Collage
+   ===================================================================================================== */
+var ARTTAB='color'; var COL=null; var CLG={shape:'circle',col:'#ff5d5d',items:[]};
+var PRIM={red:'#ff3b3b',yellow:'#ffd600',blue:'#2f6bff',white:'#ffffff'};
+var MIXES=[{a:'red',b:'yellow',r:'orange',hex:'#ff8c1a'},{a:'red',b:'blue',r:'purple',hex:'#8a3fd1'},{a:'blue',b:'yellow',r:'green',hex:'#3fbf5f'},{a:'red',b:'white',r:'pink',hex:'#ff9ec4'},{a:'blue',b:'white',r:'light blue',hex:'#9ec8ff'}];
+var WARMCOOL=[{c:'#ff3b3b',n:'red',w:true},{c:'#ff8c1a',n:'orange',w:true},{c:'#ffd600',n:'yellow',w:true},{c:'#2f6bff',n:'blue',w:false},{c:'#3fbf5f',n:'green',w:false},{c:'#8a3fd1',n:'purple',w:false}];
+var CLG_PROMPTS=['a house with a sun','a rocket ship','a face that is surprised','a boat on the water','a robot','a flower garden','a city at night'];
+function openArtStudio(tab){ if(typeof sTap==='function')sTap(); zoneState(); zScr('scr-art','artScore','artBody','The Art Studio. Lumi mixes color. Piper builds pictures from shapes.'); ARTTAB=tab||ARTTAB; artRender(); show('scr-art'); var b=document.getElementById('scr-art'); if(b)b.scrollTop=0; }
+function artTab(t){ if(typeof sTap==='function')sTap(); ARTTAB=t; artRender(); }
+function artRender(){ var body=document.getElementById('artBody'); if(!body)return; var sc=document.getElementById('artScore'); if(sc)sc.textContent='\uD83C\uDFA8 '+S.zone.collage.length+' pictures \u00b7 '+Object.keys(S.zone.color).length+' color days';
+ var html='<div class="center"><div class="row" style="justify-content:center;gap:4px">'+zSvg('lumi',40)+zSvg('piper',40)+'</div><h2 style="margin:2px 0 0">\uD83C\uDFA8 Art Studio</h2></div>'+zTabs(ARTTAB,[['color','\uD83C\uDF08 Color Lab'],['collage','\u25B2\u25CF\u25A0 Collage']],'artTab');
+ body.innerHTML=html+(ARTTAB==='color'?colorHtml():collageHtml()); if(ARTTAB==='collage')collageDraw(); }
+function colorStart(){ if(typeof sTap==='function')sTap(); var rounds=[]; var mx=(typeof shuffle==='function')?shuffle(MIXES):MIXES.slice(); mx.slice(0,4).forEach(function(m){ var wrong=MIXES.filter(function(o){return o.r!==m.r;}).map(function(o){return o.r;}); if(typeof shuffle==='function')wrong=shuffle(wrong); var opts=[m.r,wrong[0],wrong[1]]; if(typeof shuffle==='function')opts=shuffle(opts); rounds.push({t:'mix',m:m,opts:opts}); });
+ var wc=(typeof shuffle==='function')?shuffle(WARMCOOL):WARMCOOL.slice(); wc.slice(0,2).forEach(function(c){ rounds.push({t:'wc',c:c}); }); if(typeof shuffle==='function')rounds=shuffle(rounds); COL={rounds:rounds,ix:0,right:0,reveal:false}; artRender(); }
+function colorHtml(){ var dk=zDay(); var html=zRoom('lumi','Lumi\u2019s Color Lab','Guess the mix before you see it.');
+ if(!COL){ html+='<div class="z-sw"><div class="s" style="background:'+PRIM.red+'"></div><div class="s" style="background:'+PRIM.yellow+'"></div><div class="s" style="background:'+PRIM.blue+'"></div></div><div class="sub">Red, yellow and blue are the primaries. Every other color starts from them.</div>'+(S.zone.color[dk]?'<div class="sub" style="color:#7dff8a">Today\u2019s lab is paid. Practice is free.</div>':'')+'<button class="btn wide" onclick="colorStart()">\uD83E\uDDEA Start the lab (6 rounds)</button>'; return html; }
+ if(COL.ix>=COL.rounds.length){ var r=COL.right; if(!S.zone.color[dk]&&r>=4){ S.zone.color[dk]=r; if(typeof save==='function')save(); zPay(12,'Color scientist!'); if(typeof wkMark==='function')wkMark('art'); } COL=null; return html+'<div class="speak center" style="border:1px solid #7dff8a">'+r+' of 6 right.</div><button class="btn wide" onclick="colorStart()">Mix again</button>'; }
+ var q=COL.rounds[COL.ix];
+ if(q.t==='mix'){ html+='<div class="z-sw"><div class="s" style="background:'+PRIM[q.m.a]+'"></div><div class="plus">+</div><div class="s" style="background:'+PRIM[q.m.b]+'"></div><div class="plus">=</div><div class="s" style="background:'+(COL.reveal?q.m.hex:'#2a2150')+';border-style:'+(COL.reveal?'solid':'dashed')+'"></div></div>';
+   html+='<div class="speak" style="text-align:left"><b>'+(COL.ix+1)+'/6:</b> '+q.m.a+' + '+q.m.b+' makes...</div><div class="z-pick three">'+q.opts.map(function(o){ return '<button class="btn" onclick="colorPick(\''+o+'\')">'+o+'</button>'; }).join('')+'</div>'; }
+ else { html+='<div class="z-sw"><div class="s" style="background:'+q.c.c+';width:90px;height:90px"></div></div><div class="speak" style="text-align:left"><b>'+(COL.ix+1)+'/6:</b> Is '+q.c.n+' a WARM color (fire, sun) or a COOL color (water, leaves)?</div><div class="z-pick"><button class="btn" onclick="colorPick(\'warm\')">\uD83D\uDD25 warm</button><button class="btn" onclick="colorPick(\'cool\')">\uD83E\uDDCA cool</button></div>'; }
+ return html; }
+function colorPick(o){ var q=COL.rounds[COL.ix]; var ok=q.t==='mix'?(o===q.m.r):((o==='warm')===q.c.w); if(ok){ COL.right++; zOK(); } else zNo(q.t==='mix'?('It makes '+q.m.r+'.'):(q.c.n+' is '+(q.c.w?'warm':'cool')+'.'));
+ if(q.t==='mix'){ COL.reveal=true; artRender(); setTimeout(function(){ if(COL){ COL.ix++; COL.reveal=false; artRender(); } },900); } else { COL.ix++; artRender(); } }
+/* --- collage --- */
+var CLG_SHAPES=[['circle','\u25CF'],['square','\u25A0'],['triangle','\u25B2'],['half','\u25D2'],['star','\u2605']]; var CLG_COLS=['#ff5d5d','#ff9f43','#ffd158','#7dff8a','#5d8bff','#c58dff','#ff7ad9','#2a1f3d','#ffffff'];
+function collagePrompt(){ return CLG_PROMPTS[zDays()%CLG_PROMPTS.length]; }
+function collageHtml(){ var dk=zDay(); var html=zRoom('piper','Piper\u2019s Shape Collage','Today\u2019s idea: <b>'+collagePrompt()+'</b>. Tap the paper to place shapes.');
+ html+='<div class="z-tools">'+CLG_SHAPES.map(function(s){ return '<div class="t'+(CLG.shape===s[0]?' sel':'')+'" onclick="CLG.shape=\''+s[0]+'\';artRender()">'+s[1]+'</div>'; }).join('')+'</div>';
+ html+='<div class="z-tools">'+CLG_COLS.map(function(c){ return '<div class="t'+(CLG.col===c?' sel':'')+'" style="background:'+c+'" onclick="CLG.col=\''+c+'\';artRender()"></div>'; }).join('')+'<div class="t" onclick="CLG.items.pop();collageDraw()" title="undo">\u21B6</div><div class="t" onclick="CLG.items=[];collageDraw()" title="clear">\uD83D\uDDD1\uFE0F</div></div>';
+ html+='<canvas class="z-canvas" id="clgCanvas" width="340" height="260"></canvas>';
+ html+='<button class="btn wide" onclick="collageSave()">\uD83D\uDDBC\uFE0F Hang it in the gallery</button>'+(S.zone.collageDay[dk]?'<div class="sub">Today\u2019s picture is paid. Make more for fun.</div>':'');
+ if(S.zone.collage.length){ html+='<div class="sub" style="text-align:left;margin:10px 0 2px"><b>\uD83D\uDDBC\uFE0F Gallery</b></div><div class="z-gal">'+S.zone.collage.slice(-6).reverse().map(function(p){ return '<div>'+collageSvg(p.items,110)+'<div class="sub" style="font-size:10px;margin:2px 0 0">'+p.prompt+'</div></div>'; }).join('')+'</div>'; }
+ return html; }
+function collageShapePath(it,ctx){ var s=it.s,x=it.x,y=it.y,r=it.r||22; ctx.beginPath(); if(s==='circle')ctx.arc(x,y,r,0,Math.PI*2); else if(s==='square')ctx.rect(x-r,y-r,r*2,r*2); else if(s==='triangle'){ ctx.moveTo(x,y-r); ctx.lineTo(x+r,y+r); ctx.lineTo(x-r,y+r); ctx.closePath(); } else if(s==='half'){ ctx.arc(x,y,r,Math.PI,0); ctx.closePath(); } else { for(var i=0;i<10;i++){ var a=-Math.PI/2+i*Math.PI/5, rr=i%2?r*0.45:r; ctx.lineTo(x+Math.cos(a)*rr,y+Math.sin(a)*rr); } ctx.closePath(); } }
+function collageDraw(){ var c=document.getElementById('clgCanvas'); if(!c)return; var ctx=c.getContext('2d'); if(!ctx)return; ctx.clearRect(0,0,c.width,c.height); CLG.items.forEach(function(it){ ctx.fillStyle=it.c; collageShapePath(it,ctx); ctx.fill(); });
+ if(!c.dataset.wired){ c.dataset.wired='1'; c.addEventListener('pointerdown',function(e){ var r=c.getBoundingClientRect(); var x=(e.clientX-r.left)*c.width/r.width, y=(e.clientY-r.top)*c.height/r.height; CLG.items.push({s:CLG.shape,c:CLG.col,x:Math.round(x),y:Math.round(y),r:22}); if(typeof sTap==='function')sTap(); collageDraw(); }); } }
+function collageSvg(items,sz){ var s='<svg viewBox="0 0 340 260" width="'+sz+'" xmlns="http://www.w3.org/2000/svg">'; items.forEach(function(it){ var x=it.x,y=it.y,r=it.r||22,c=it.c; if(it.s==='circle')s+='<circle cx="'+x+'" cy="'+y+'" r="'+r+'" fill="'+c+'"/>'; else if(it.s==='square')s+='<rect x="'+(x-r)+'" y="'+(y-r)+'" width="'+(r*2)+'" height="'+(r*2)+'" fill="'+c+'"/>'; else if(it.s==='triangle')s+='<polygon points="'+x+','+(y-r)+' '+(x+r)+','+(y+r)+' '+(x-r)+','+(y+r)+'" fill="'+c+'"/>'; else if(it.s==='half')s+='<path d="M'+(x-r)+' '+y+' A'+r+' '+r+' 0 0 1 '+(x+r)+' '+y+' Z" fill="'+c+'"/>'; else { var pts=[]; for(var i=0;i<10;i++){ var a=-Math.PI/2+i*Math.PI/5, rr=i%2?r*0.45:r; pts.push((x+Math.cos(a)*rr).toFixed(1)+','+(y+Math.sin(a)*rr).toFixed(1)); } s+='<polygon points="'+pts.join(' ')+'" fill="'+c+'"/>'; } }); return s+'</svg>'; }
+function collageSave(){ if(CLG.items.length<5){ zNo('Use at least 5 shapes so Piper can see the picture.'); return; } var dk=zDay(); S.zone.collage.push({prompt:collagePrompt(),items:CLG.items.slice(),day:dk}); if(S.zone.collage.length>12)S.zone.collage=S.zone.collage.slice(-12); var first=!S.zone.collageDay[dk]; S.zone.collageDay[dk]=true; if(typeof save==='function')save(); if(first){ zPay(12,'Hung in the gallery!'); if(typeof wkMark==='function')wkMark('art'); } else if(typeof toast==='function')toast('Added to the gallery.'); CLG.items=[]; artRender(); }
+
+/* =====================================================================================================
+   WIRING: town (Critter Cove opens, Uptown row), routing, job-chip links, weekly quest types, what's new
+   ===================================================================================================== */
+(function(){ if(typeof townGo!=='function')return; var _tg=townGo; window.townGo=townGo=function(dest){ if(dest==='sci'){ openCove(); return; } if(dest==='hall'){ openHall(); return; } if(dest==='studio'){ openArtStudio(); return; } return _tg(dest); }; })();
+(function(){ if(typeof renderTown!=='function')return; var _rt=renderTown; window.renderTown=renderTown=function(){ _rt(); try{ zoneState(); var stage=document.getElementById('twStage'); if(!stage)return;
+   /* open Critter Cove */
+   $$('#twStage .tw-fac').forEach(function(el){ if(/Critter Cove/.test(el.innerHTML)){ el.classList.remove('soon'); var lk=el.querySelector('.tw-lk'); if(lk)lk.remove(); var pr=el.querySelector('.tw-prog'); if(pr)pr.textContent=Object.keys(S.zone.wx).length+' weather logs'; } });
+   /* uptown row: Town Hall + Art Studio, tucked under the skyline */
+   var ups=[{x:118,c:'#7ad9ff',tg:'SOCIAL STUDIES',nm:'Town Hall',host:zSvg('woody',40),pr:Object.keys(S.zone.census).length+' census days',go:'hall'},{x:272,c:'#ff7ad9',tg:'ART',nm:'Art Studio',host:zSvg('lumi',40),pr:S.zone.collage.length+' pictures',go:'studio'}];
+   var wrap=document.createElement('div'); var html=''; ups.forEach(function(s){ html+='<div class="tw-up" style="left:'+s.x+'px;top:146px;--c:'+s.c+'" onclick="townGo(\''+s.go+'\')"><div class="h">'+s.host+'</div><div class="b"><div class="tg">'+s.tg+'</div><div class="nm">'+s.nm+'</div><div class="pr">'+s.pr+'</div></div></div>'; });
+   wrap.innerHTML=html; while(wrap.firstChild)stage.appendChild(wrap.firstChild);
+ }catch(e){} }; })();
+/* job chip gets a door for the six residents */
+(function(){ if(typeof talkTo!=='function')return; var doors={sunny:['openCove(\'wx\')','Weather Station'],maple:['openCove(\'garden\')','Garden'],fern:['openCove()','Critter Cove'],woody:['openHall(\'census\')','Census'],miles:['openHall(\'map\')','Map Room'],lumi:['openArtStudio(\'color\')','Color Lab'],piper:['openArtStudio(\'collage\')','Collage']};
+ var _tt=talkTo; window.talkTo=talkTo=function(id){ _tt(id); try{ var d=doors[id]; if(!d)return; var box=document.getElementById('mbox'); if(!box)return; var sp=box.querySelectorAll('.speak'); var chip=null; for(var i=0;i<sp.length;i++)if(/Town job:/.test(sp[i].textContent))chip=sp[i]; if(!chip)return; var a=document.createElement('span'); a.setAttribute('style','color:#ff7ad9;font-weight:700;cursor:pointer'); a.textContent=' Visit the '+d[1]+' \u2192'; a.onclick=function(){ closeModal(); eval(d[0]); }; chip.appendChild(a); }catch(e){} }; })();
+/* weekly quest: Tue = science log, Thu = town hall, Fri = art (v1.11 types keep the other days) */
+(function(){ if(typeof questOfDay!=='function')return; var _q=questOfDay; window.questOfDay=questOfDay=function(id){ var d=new Date().getDay();
+ if(d===2)return {type:'sci',t:'Log today\u2019s weather or water the garden at Critter Cove.',go:function(){ openCove(); }};
+ if(d===4)return {type:'soc',t:'Answer Woody\u2019s census question or run the map at Town Hall.',go:function(){ openHall(); }};
+ if(d===5)return {type:'art',t:'Mix colors or hang a picture at the Art Studio.',go:function(){ openArtStudio(); }};
+ return _q(id); }; })();
+(function(){ if(typeof openTown!=='function')return; var _ot=openTown; window.openTown=openTown=function(){ _ot(); try{ if(S.flags&&!S.flags.seen113&&S.flags.introDone){ S.flags.seen113=true; if(typeof save==='function')save();
+  later(function(){ var m=document.getElementById('modal'); if(m&&m.classList.contains('on'))return; modal('<div class="center"><div class="row" style="justify-content:center;gap:4px">'+zSvg('sunny',44)+zSvg('maple',44)+zSvg('woody',44)+zSvg('miles',44)+zSvg('lumi',44)+zSvg('piper',44)+'</div><h2>\u2728 Three places just opened</h2></div>'
+   +'<div class="card" style="text-align:left"><b>\uD83C\uDF3F Critter Cove</b> <span class="sub" style="display:inline;margin:0">is open. Sunny logs the weather, Maple grows a garden one day at a time.</span></div>'
+   +'<div class="card" style="text-align:left"><b>\uD83C\uDFDB\uFE0F Town Hall</b> <span class="sub" style="display:inline;margin:0">(uptown). Woody counts the town, Miles reads the map.</span></div>'
+   +'<div class="card" style="text-align:left"><b>\uD83C\uDFA8 Art Studio</b> <span class="sub" style="display:inline;margin:0">(uptown). Lumi mixes colors, Piper builds pictures from shapes.</span></div>'
+   +'<button class="btn wide" onclick="closeModal()">Go explore</button>'); },700); } }catch(e){} }; })();
+
+if(window.BQ)Object.assign(window.BQ,{openCove:openCove,openHall:openHall,openArtStudio:openArtStudio,wxLog:wxLog,gardenStage:gardenStage,gardenSvg:gardenSvg,STAGES:STAGES,SEEDS:SEEDS,CENSUS_QS:CENSUS_QS,HELPERS:HELPERS,MAP_PLACES:MAP_PLACES,mapQuiz:mapQuiz,MIXES:MIXES,WARMCOOL:WARMCOOL,collageSvg:collageSvg,censusQ:censusQ});
 
 </script>
 </body>
