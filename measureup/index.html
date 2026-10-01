@@ -928,14 +928,14 @@ svg .charg{will-change:transform}
 <div id="toast"></div>
 <button id="homeBtn" onclick="goHome()" aria-label="Back to Garage">🏠</button>
 <button id="ellyBtn" onclick="openEllyHelp()" aria-label="Ask Elly for help"></button>
-<div id="vbadge">v1.28 · Oct 1</div>
+<div id="vbadge">v1.29 · Oct 1</div>
 
 <script>
 'use strict';
 /* ============ UTILS ============ */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const VERSION='v1.28 · Oct 1';
+const VERSION='v1.29 · Oct 1';
 const RM=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -16952,6 +16952,41 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
   }catch(e){} }; }
 
   if(window.BQ){ window.BQ.citSpotKind=citSpotKind; }
+})();
+
+</script>
+<script>
+/* ================= v1.29 · CRITICAL FIX: correct answers were throwing in the audio (Oct 1 2026) =============
+   Garrett: correct answers do nothing, wrong answers register. Root cause (device only): sCorrect(streak) is called
+   with NO argument from 7 places - zOK() (which 14 zone games use: Color Lab, Census, Weather, Map, Garden, Body
+   Map, Tooth quiz, Word Meter...), the Library (libNext/libVocab), the Post Office (postPickState/postPickCap), the
+   mail run (postRunPick) and Where-in-the-World (wowSolve). With streak undefined, Math.min(undefined,7) is NaN, so
+   SCALE[NaN] is undefined, and tone(undefined,...) sets a non-finite AudioParam, which THROWS. The throw aborts the
+   handler before it advances/scores (e.g. postPickCap sets POST.step='write' AFTER sCorrect()), so the correct answer
+   looks dead. Wrong answers call ellyChime() instead, so they keep working. jsdom stubs AudioContext (tone exits
+   early, never throws), which is why the whole test suite missed it on every prior version.
+   Fix: sCorrect clamps a missing/non-finite streak to a real note, and tone() now bails on any non-finite value and
+   never lets an audio error escape into game logic. This repairs the correct-answer path across the whole game. */
+
+(function(){
+  if(typeof SCALE==='undefined'||typeof tone!=='function')return;
+
+  /* hard shield: a bad audio value can never again throw into a gameplay handler */
+  var _tone=tone;
+  window.tone=tone=function(freq,dur,type,vol,when){
+    if(!isFinite(freq)||freq<=0)return;
+    if(dur!=null&&!isFinite(dur))return;
+    if(vol!=null&&!isFinite(vol))return;
+    if(when!=null&&!isFinite(when))return;
+    try{ return _tone(freq,dur,type,vol,when); }catch(e){}
+  };
+
+  /* the actual culprit: default a missing streak to a valid note index */
+  window.sCorrect=sCorrect=function(streak){
+    var s=(typeof streak==='number'&&isFinite(streak))?Math.floor(streak):1;
+    var i=Math.max(0,Math.min(s,7));
+    try{ tone(SCALE[i],.14,'triangle',.3); tone(SCALE[i]*1.25,.18,'triangle',.24,.09); }catch(e){}
+  };
 })();
 
 </script>
