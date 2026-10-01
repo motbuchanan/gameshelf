@@ -928,14 +928,14 @@ svg .charg{will-change:transform}
 <div id="toast"></div>
 <button id="homeBtn" onclick="goHome()" aria-label="Back to Garage">🏠</button>
 <button id="ellyBtn" onclick="openEllyHelp()" aria-label="Ask Elly for help"></button>
-<div id="vbadge">v1.21 · Sep 30</div>
+<div id="vbadge">v1.28 · Oct 1</div>
 
 <script>
 'use strict';
 /* ============ UTILS ============ */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const VERSION='v1.21 · Sep 30';
+const VERSION='v1.28 · Oct 1';
 const RM=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -16366,6 +16366,593 @@ function musAnswer(i){ var e=MUSEUM.filter(function(x){return x.id===MUSV;})[0];
    +'<div class="card" style="text-align:left"><b>🏛️ Museum.</b> <span class="sub" style="display:inline;margin:0">Then-and-now exhibits, our symbols, and the home of the City Chronicle and the Midnight Whistle.</span></div>'
    +'<button class="btn wide" onclick="closeModal()">Let’s explore</button>'); },700); } }catch(e){} }; })();
 if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENTS,ALM:ALM,MUSEUM:MUSEUM,tlStart:tlStart,tlPick:tlPick,almToday:almToday,almPick:almPick,musOpen:musOpen,musAnswer:musAnswer,histState:histState});
+
+</script>
+<script>
+/* ================= v1.22 · BUG AUDIT + FIX: COLOR LAB FEEDBACK & TAP-LOCK (Sep 30 2026) =================
+   Garrett hit this: in Lumi's Color Lab he was asked blue + yellow, tapped green (correct) and it looked like
+   nothing happened, then a second tap landed as a wrong answer. Cause: after an answer the mix swatch revealed for
+   900ms but the buttons stayed live with no correct/wrong marking and no lock, so (a) a correct tap read as dead
+   and (b) a second tap re-answered the same question and scheduled a second advance. A full jsdom audit of every
+   other answer handler (WoW, weather detective, helpers, map, body map, tooth quiz, word meter, timeline, almanac,
+   museum, garden, library, post office) found correct answers register and wrong ones are rejected in all of them.
+   Fix here: rewrite colorPick + colorHtml to LOCK after the first tap, clearly mark the correct button green and a
+   wrong choice red, and advance after a short beat. Reassigns the two globals; artRender calls them by name. */
+
+(function(){
+  if(typeof colorHtml!=='function'||typeof colorPick!=='function')return;
+
+  window.colorHtml=colorHtml=function(){ var dk=zDay(); var html=zRoom('lumi','Lumi’s Color Lab','Guess the mix before you see it.');
+    if(!COL){ html+='<div class="z-sw"><div class="s" style="background:'+PRIM.red+'"></div><div class="s" style="background:'+PRIM.yellow+'"></div><div class="s" style="background:'+PRIM.blue+'"></div></div><div class="sub">Red, yellow and blue are the primaries. Every other color starts from them.</div>'+(S.zone.color[dk]?'<div class="sub" style="color:#7dff8a">Today’s lab is paid. Practice is free.</div>':'')+'<button class="btn wide" onclick="colorStart()">🧪 Start the lab (6 rounds)</button>'; return html; }
+    if(COL.ix>=COL.rounds.length){ var r=COL.right; if(!S.zone.color[dk]&&r>=4){ S.zone.color[dk]=r; if(typeof save==='function')save(); zPay(12,'Color scientist!'); if(typeof wkMark==='function')wkMark('art'); } COL=null; return html+'<div class="speak center" style="border:1px solid #7dff8a">'+r+' of 6 right.</div><button class="btn wide" onclick="colorStart()">Mix again</button>'; }
+    var q=COL.rounds[COL.ix]; var locked=!!COL.lock;
+    if(q.t==='mix'){
+      html+='<div class="z-sw"><div class="s" style="background:'+PRIM[q.m.a]+'"></div><div class="plus">+</div><div class="s" style="background:'+PRIM[q.m.b]+'"></div><div class="plus">=</div><div class="s" style="background:'+(COL.reveal?q.m.hex:'#2a2150')+';border-style:'+(COL.reveal?'solid':'dashed')+'"></div></div>';
+      html+='<div class="speak" style="text-align:left"><b>'+(COL.ix+1)+'/6:</b> '+q.m.a+' + '+q.m.b+' makes...</div>';
+      if(locked)html+='<div class="speak center" style="border:1px solid '+(COL.ok?'#7dff8a':'#ff7a7a')+';margin:4px 0"><b style="color:'+(COL.ok?'#7dff8a':'#ff7a7a')+'">'+(COL.ok?'Correct! It makes '+q.m.r+'.':'Not quite. It makes '+q.m.r+'.')+'</b></div>';
+      html+='<div class="z-pick three">'+q.opts.map(function(o){ var st=''; if(locked){ if(o===q.m.r)st=';outline:3px solid #7dff8a;background:linear-gradient(180deg,#2f8f52,#1c5a34)'; else if(o===COL.chose)st=';outline:3px solid #ff7a7a;opacity:.85'; else st=';opacity:.45'; } return '<button class="btn"'+(locked?' disabled':'')+' style="margin:0'+st+'" onclick="colorPick(\''+o+'\')">'+o+(locked&&o===q.m.r?' ✓':'')+'</button>'; }).join('')+'</div>';
+    } else {
+      html+='<div class="z-sw"><div class="s" style="background:'+q.c.c+';width:90px;height:90px"></div></div><div class="speak" style="text-align:left"><b>'+(COL.ix+1)+'/6:</b> Is '+q.c.n+' a WARM color (fire, sun) or a COOL color (water, leaves)?</div>';
+      if(locked)html+='<div class="speak center" style="border:1px solid '+(COL.ok?'#7dff8a':'#ff7a7a')+';margin:4px 0"><b style="color:'+(COL.ok?'#7dff8a':'#ff7a7a')+'">'+(COL.ok?'Correct!':'Not quite.')+' '+q.c.n+' is '+(q.c.w?'warm':'cool')+'.</b></div>';
+      var wc=[['warm','🔥 warm'],['cool','💧 cool']]; html+='<div class="z-pick">'+wc.map(function(p){ var right=(p[0]==='warm')===q.c.w; var st=''; if(locked){ if(right)st=';outline:3px solid #7dff8a;background:linear-gradient(180deg,#2f8f52,#1c5a34)'; else if(p[0]===COL.chose)st=';outline:3px solid #ff7a7a;opacity:.85'; else st=';opacity:.45'; } return '<button class="btn"'+(locked?' disabled':'')+' style="margin:0'+st+'" onclick="colorPick(\''+p[0]+'\')">'+p[1]+'</button>'; }).join('')+'</div>';
+    }
+    return html; };
+
+  window.colorPick=colorPick=function(o){ if(!COL||COL.lock)return; var q=COL.rounds[COL.ix]; var ok=q.t==='mix'?(o===q.m.r):((o==='warm')===q.c.w);
+    COL.lock=true; COL.chose=o; COL.ok=ok;
+    if(ok){ COL.right++; if(typeof zOK==='function')zOK(); } else if(typeof zNo==='function')zNo();
+    if(q.t==='mix')COL.reveal=true;
+    if(typeof artRender==='function')artRender();
+    setTimeout(function(){ if(!COL)return; COL.ix++; COL.reveal=false; COL.lock=false; COL.chose=null; COL.ok=null; if(typeof artRender==='function')artRender(); }, ok?900:1500); };
+})();
+
+</script>
+<script>
+/* ================= v1.23 · SPLIT MUSIC + MATH INTO TWO BUILDINGS (Sep 30 2026) =================
+   Mot: tapping The Main Stage (music) and Number Racket (math) both landed on the same Garage hub. Build a full
+   MUSIC facility and a separate MATH building so each town building is its own themed room.
+     - The Main Stage (scr-music, host Boom): perform + learn music. Play a Show, Echo Beats, Band Room, Tonight's
+       Setlist, Elly's Music Class (theory), Battle of the Bands, and a "Your band" grid that jumps straight to each
+       bandmate's jam.
+     - The Number Racket (scr-math, host Combo): the math hall. A skills board (medal + level per concept), a Daily
+       Warm-up (spiral review of a due skill), and a "Skill coaches" grid where each bandmate opens their lessons +
+       math games (and where new coaches audition/recruit via the usual member card).
+   Both route into the EXISTING systems (openStation/openShow/openTour/startGig/openBattle/openTheory/setlistPlay/
+   startJam/talkTo/guestSpot) so nothing in the deep engine changes. The Garage (scr-hub) stays as the backstage
+   home base, reachable by the home button; each new building cross-links to the other and back to the City. Done
+   additively: wraps townPlan (reroute the two slots -> 'music'/'math') and townGo (handle the two new dests). */
+
+(function(){
+  if(typeof townPlan!=='function'||typeof townGo!=='function')return;
+
+  function has(f){ try{ return typeof window[f]==='function'; }catch(e){ return false; } }
+  function mnm(id){ try{ return (typeof mName==='function')?mName(id):((BY_ID[id]&&BY_ID[id].name)||id); }catch(e){ return id; } }
+  function svg(id,s){ try{ return (typeof memberSVG==='function')?memberSVG(id,s):''; }catch(e){ return ''; } }
+  function esc(s){ return String(s).replace(/'/g,"\\'"); }
+  function btn(label,call,ghost){ return '<button class="btn wide'+(ghost?' ghost':'')+'" style="margin-top:6px" onclick="'+call+'">'+label+'</button>'; }
+
+  /* ---- reroute the two Stage Street / Number Street buildings ---- */
+  var _tp=townPlan; window.townPlan=townPlan=function(){ var plan=_tp();
+    try{ (plan||[]).forEach(function(row){ ((row&&row.slots)||[]).forEach(function(s){
+      if(s&&s.nm==='The Main Stage')s.go='music';
+      if(s&&s.nm==='Number Racket')s.go='math';
+    }); }); }catch(e){}
+    return plan;
+  };
+  var _tg=townGo; window.townGo=townGo=function(dest){
+    if(dest==='music'){ if(has('sTap'))sTap(); openMusic(); return; }
+    if(dest==='math'){ if(has('sTap'))sTap(); openMath(); return; }
+    return _tg(dest);
+  };
+
+  /* ---- screen scaffolding ---- */
+  function mount(id,title,hint){ if(document.getElementById(id))return;
+    var d=document.createElement('div'); d.className='scr'; d.id=id;
+    d.innerHTML='<div class="topbar"><button class="btn ghost small" onclick="openTown()">← City</button><div class="spacer"></div><div class="chip">'+title+'</div></div><div id="'+id+'-body" style="padding:4px 2px 30px"></div>';
+    var a=document.getElementById('modal'); if(a)document.body.insertBefore(d,a); else document.body.appendChild(d);
+    if(typeof ELLY_HINTS==='object'&&hint)ELLY_HINTS[id]=hint;
+  }
+
+  /* ================= THE MAIN STAGE (music) ================= */
+  function musicShow(){ try{ if(typeof S!=='undefined'&&S.flags&&!S.flags.coach_gig&&has('startGig')){ startGig(); return; } }catch(e){} if(has('openTour'))openTour(); else if(has('startGig'))startGig(); }
+  window.musicShow=musicShow;
+
+  function musicBody(){
+    var b=document.getElementById('scr-music-body'); if(!b)return;
+    var owned=[]; try{ owned=BAND.filter(function(m){return S.band[m.id];}); }catch(e){}
+    var h='';
+    h+='<div class="center" style="margin:2px 0 8px">'+svg('boom',74)+'<h2 style="margin:4px 0 0">🎤 The Main Stage</h2><div class="sub" style="margin:2px 8px 0">Boom’s house - where the band plays. Jams, shows, and the big battles.</div></div>';
+    h+='<div class="card" style="text-align:left"><b>🎸 Play &amp; perform</b>';
+    if(has('startGig')||has('openTour')) h+=btn('🎤 Play a Show · Tour Map','musicShow()');
+    if(has('openStation')) h+=btn('🥁 Echo Beats - warm up your beat','openStation()',true);
+    if(has('openShow')) h+=btn('🎶 Band Room - hear us play','openShow()',true);
+    if(has('setlistPlay')&&has('setlistState')) h+=btn('🎵 Tonight’s Setlist','setlistPlay()',true);
+    h+='</div>';
+    h+='<div class="card" style="text-align:left"><b>🎓 Learn &amp; compete</b>';
+    if(has('openTheory')) h+=btn('🎼 Elly’s Music Class - notes, beats, time','openTheory()');
+    if(has('openBattle')) h+=btn('⚡ Battle of the Bands','openBattle()',true);
+    h+='</div>';
+    h+='<h3 style="margin:12px 2px 4px">🎸 Your band</h3><div class="sub" style="margin:0 2px 6px">Tap a bandmate to jam with them.</div>';
+    if(owned.length){
+      h+='<div class="bandgrid">';
+      owned.forEach(function(m){
+        var jam=null; try{ if(typeof HEADLINE_JAM!=='undefined'&&HEADLINE_JAM[m.id]&&typeof JAMS!=='undefined'&&JAMS[HEADLINE_JAM[m.id]])jam=HEADLINE_JAM[m.id]; }catch(e){}
+        var tt=jam?('🎵 '+((JAMS[jam].title)||'Jam')):'Say hi';
+        var call=jam?("startJam('"+esc(jam)+"')"):("talkTo('"+esc(m.id)+"')");
+        h+='<div class="mcard inband" onclick="'+call+'">'+svg(m.id,74)+'<div class="nm">'+m.emoji+' '+mnm(m.id)+'</div><div class="tt">'+tt+'</div></div>';
+      });
+      h+='</div>';
+    } else {
+      h+='<div class="sub center" style="margin:6px 0">Your stage is quiet. Recruit bandmates over at the <b>Number Racket</b> - each one brings a new sound.</div>';
+    }
+    h+='<div class="rivalteaser" onclick="openMath()" style="margin-top:14px;border-color:#ffb34788">🔢 Go to the Number Racket <span style="font-weight:700;color:#ffd158">(math)</span><div style="font-size:11px;font-weight:600;opacity:.85;margin-top:2px">every bandmate coaches a math skill</div></div>';
+    b.innerHTML=h;
+  }
+  window.openMusic=function(){ mount('scr-music','🎤 Main Stage','This is the Main Stage - all music. Play jams and shows, take on Battle of the Bands, and learn in Elly’s Music Class. Recruiting and math practice are at the Number Racket.'); musicBody(); if(has('show'))show('scr-music'); var s=document.getElementById('scr-music'); if(s)s.scrollTop=0; };
+
+  /* ================= THE NUMBER RACKET (math) ================= */
+  function mathWarmup(c){ if(has('sTap'))sTap(); if(has('guestSpot'))guestSpot(c,function(){ try{ mathBody(); }catch(e){} }); }
+  window.mathWarmup=mathWarmup;
+
+  function mathBody(){
+    var b=document.getElementById('scr-math-body'); if(!b)return;
+    var h='';
+    h+='<div class="center" style="margin:2px 0 8px">'+svg('combo',74)+'<h2 style="margin:4px 0 0">🔢 The Number Racket</h2><div class="sub" style="margin:2px 8px 0">Combo’s hall - all math. Every bandmate coaches one skill. Level them up to grow your band.</div></div>';
+    /* gather once */
+    var concepts=[]; try{ var seen={}; BAND.forEach(function(m){ if(m.concept&&typeof CONCEPT_NAMES!=='undefined'&&CONCEPT_NAMES[m.concept]&&!seen[m.concept]&&memberGames(m.id).length){ seen[m.concept]=1; concepts.push(m.concept); } }); }catch(e){}
+    var coaches=[]; try{ coaches=BAND.filter(function(m){ return memberGames(m.id).length>0 && (!m.recruit||S.band[m.id]); }); }catch(e){}
+    /* daily warm-up (spiral review) - up top, it's the quick win */
+    try{ if(has('spiralDue')&&has('guestSpot')){ var due=spiralDue()||[]; if(due.length){ var c0=due[0]; var nm0=(typeof CONCEPT_NAMES!=='undefined'&&CONCEPT_NAMES[c0])||c0;
+      h+='<div class="rivalteaser" onclick="mathWarmup(\''+esc(c0)+'\')" style="border-color:#7dff8a88">🔁 Daily Warm-up: '+nm0+'<div style="font-size:11px;font-weight:600;opacity:.85;margin-top:2px">a quick review to keep a skill sharp</div></div>'; } } }catch(e){}
+    /* skill coaches - the main action, so it comes first */
+    h+='<h3 style="margin:12px 2px 4px">🧮 Skill coaches</h3><div class="sub" style="margin:0 2px 6px">Tap a coach to practice their math games. New coaches audition here - keep playing to recruit them.</div>';
+    if(coaches.length){
+      h+='<div class="bandgrid">';
+      coaches.forEach(function(m){ var L=0,med='🥉'; try{ L=Math.floor(lvlOf(m.concept)); med=TIER_MEDAL[tierOf(L)]||med; }catch(e){}
+        var gc=0,gt=0; try{ gc=clearedCount(m.id); gt=memberGames(m.id).length; }catch(e){}
+        var inband=false,aud=false; try{ inband=!!S.band[m.id]; aud=!!S.auditioned[m.id]; }catch(e){}
+        var st=inband?(med+' Lvl '+L+' · '+gc+'/'+gt+' games'):(aud?(med+' Lvl '+L+' · audition again'):'Audition me!');
+        h+='<div class="mcard'+(inband?' inband':'')+'" onclick="talkTo(\''+esc(m.id)+'\')">'+svg(m.id,74)+'<div class="nm">'+m.emoji+' '+mnm(m.id)+'</div><div class="tt">'+((typeof CONCEPT_NAMES!=='undefined'&&CONCEPT_NAMES[m.concept])||'')+'</div><div class="st">'+st+'</div></div>';
+      });
+      h+='</div>';
+    }
+    /* skills board - a collectible overview, tucked into a collapsible card below the action */
+    if(concepts.length){
+      h+='<details class="card" style="text-align:left;margin-top:12px"><summary style="cursor:pointer;font-weight:900;list-style:none">📈 Your skills <span style="color:#b7a9ee;font-weight:700;font-size:11px">('+concepts.length+' - tap to see your medals)</span></summary><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">';
+      concepts.forEach(function(c){ var L=0,med='🥉'; try{ L=Math.floor(lvlOf(c)); med=TIER_MEDAL[tierOf(L)]||med; }catch(e){}
+        h+='<div style="background:#160f33;border:1px solid #2b2350;border-radius:10px;padding:4px 8px;font-size:11px;font-weight:700">'+med+' '+CONCEPT_NAMES[c]+' <span style="color:#b7a9ee">L'+L+'</span></div>'; });
+      h+='</div></details>';
+    }
+    h+='<div class="rivalteaser" onclick="openMusic()" style="margin-top:14px;border-color:#ff5d5d88">🎤 Go to the Main Stage <span style="font-weight:700;color:#ff9db0">(music)</span><div style="font-size:11px;font-weight:600;opacity:.85;margin-top:2px">jams, shows, and Battle of the Bands</div></div>';
+    b.innerHTML=h;
+  }
+  window.openMath=function(){ mount('scr-math','🔢 Number Racket','This is the Number Racket - all math. Every bandmate coaches a skill; tap a coach to practice, do the Daily Warm-up, and level up to grow your band. Jams and shows are at the Main Stage.'); mathBody(); if(has('show'))show('scr-math'); var s=document.getElementById('scr-math'); if(s)s.scrollTop=0; };
+
+  /* ---- what's new (once) ---- */
+  (function(){ if(typeof S==='undefined'||!S.flags||typeof renderHub!=='function')return; var _rh=renderHub;
+    window.renderHub=renderHub=function(){ _rh(); try{
+      if(S.flags&&!S.flags.seen123&&S.flags.introDone){ S.flags.seen123=true; if(has('save'))save();
+        if(has('later'))later(function(){ var mo=document.getElementById('modal'); if(mo&&mo.classList.contains('on'))return;
+          modal('<div class="center">'+((typeof ellySVG==='function')?ellySVG(56):'')+'<h2>✨ Two new buildings!</h2></div>'
+          +'<div class="card" style="text-align:left"><b>🎤 The Main Stage</b> is now all music - jams, shows, Battle of the Bands, and Elly’s Music Class.<div style="height:8px"></div><b>🔢 The Number Racket</b> is now all math - every bandmate coaches a skill you can level up.</div>'
+          +'<button class="btn wide" onclick="closeModal()">Let’s go!</button>'); },700);
+      }
+    }catch(e){} };
+  })();
+
+  if(window.BQ)Object.assign(window.BQ,{openMusic:window.openMusic,openMath:window.openMath,musicShow:musicShow,mathWarmup:mathWarmup});
+})();
+
+</script>
+<script>
+/* ================= v1.24 · TOWN IS HOME: default to town + activities return to their facility (Sep 30 2026) =====
+   Mot: (1) the home/return screen should be the CITY, not the Garage; (2) finishing an activity launched from The
+   Main Stage or The Number Racket should drop you back in THAT building, not the Garage.
+   How: a tiny nav-context tracker (MU.fac = which facility you are in). Every path that lands on the Garage goes
+   through show('scr-hub'); we intercept it:
+     - in a facility (MU.fac set) -> that facility (so a finished show/jam/game returns to the Main Stage, a finished
+       math game returns to the Number Racket);
+     - pressing the home button (goHome) with no facility -> the City;
+     - everything else (Shop close, Achievements back, a Garage-launched activity) -> the Garage, unchanged.
+   The Garage stays fully intact as the backstage (avatar, Shop, customize, Manny's wall). It is reached on purpose
+   via openGarage(): a new "GARAGE" door on the City header, and the legacy townGo('band'). Only fires past the
+   intro so first-run is untouched. Load already lands on the City (Let's Play -> openTown). */
+
+(function(){
+  if(typeof window.MU!=='object'||!window.MU)window.MU={};
+  var MU=window.MU; if(typeof MU.fac==='undefined')MU.fac=null; MU.toGarage=false; MU.homeNav=false;
+
+  /* track which facility you're in (set on open, cleared when you go to the City) */
+  if(typeof openMusic==='function'){ var _om=openMusic; window.openMusic=openMusic=function(){ MU.fac='scr-music'; return _om.apply(this,arguments); }; }
+  if(typeof openMath==='function'){ var _oa=openMath; window.openMath=openMath=function(){ MU.fac='scr-math'; return _oa.apply(this,arguments); }; }
+  if(typeof openTown==='function'){ var _ot=openTown; window.openTown=openTown=function(){ MU.fac=null; return _ot.apply(this,arguments); }; }
+
+  var _show=show;
+  /* explicit Garage (backstage): bypasses the redirect */
+  window.openGarage=function(){ MU.toGarage=true; MU.fac=null; try{ if(typeof renderHub==='function')renderHub(); _show('scr-hub'); }catch(e){} MU.toGarage=false; };
+
+  /* the redirect */
+  window.show=show=function(id){
+    try{
+      if(id==='scr-hub' && !MU.toGarage && typeof S!=='undefined' && S.flags && S.flags.introDone){
+        if(MU.fac==='scr-music' && typeof openMusic==='function'){ openMusic(); return; }
+        if(MU.fac==='scr-math' && typeof openMath==='function'){ openMath(); return; }
+        if(MU.homeNav && typeof openTown==='function'){ openTown(); return; }
+      }
+    }catch(e){}
+    return _show.apply(this,arguments);
+  };
+
+  /* home button -> City (or your facility), never the Garage */
+  if(typeof goHome==='function'){ var _gh=goHome; window.goHome=goHome=function(){ MU.homeNav=true; try{ return _gh.apply(this,arguments); } finally { MU.homeNav=false; } }; }
+
+  /* City doors: a GARAGE door, plus legacy 'band' still reaches the Garage on purpose */
+  if(typeof townGo==='function'){ var _tg=townGo; window.townGo=townGo=function(dest){
+    if(dest==='garage'||dest==='band'){ if(typeof sTap==='function')sTap(); openGarage(); return; }
+    return _tg.apply(this,arguments);
+  }; }
+
+  /* add a GARAGE chip to the City header (re-added after every renderTown) */
+  if(typeof renderTown==='function'){ var _rt=renderTown; window.renderTown=renderTown=function(){ var r=_rt.apply(this,arguments); try{
+    var top=document.querySelector('#twStage .tw-top');
+    if(top && !document.getElementById('twGarageChip')){
+      var c=document.createElement('div'); c.className='tw-grown'; c.id='twGarageChip';
+      c.style.marginLeft='6px'; c.style.borderColor='#ff8f5d';
+      c.setAttribute('onclick',"townGo('garage')");
+      c.innerHTML='🏠<b>GARAGE</b>';
+      top.appendChild(c);
+    }
+  }catch(e){} return r; }; }
+
+  if(window.BQ){ window.BQ.openGarage=window.openGarage; }
+})();
+
+</script>
+<script>
+/* ================= v1.25 · THE CITY CLOCK: real time, date, seasons + day/night sky (Sep 30 2026) ===========
+   Mot: pay attention to the system clock; the City should have day AND night versions at least; track date + seasons.
+   Engine (window.MU): now()/hour()/phase()/partOfDay()/season()/dateLabel()/timeLabel()/clockText(). phase drives
+   the sky (night/dawn/day/dusk); partOfDay is the coarse bucket citizen schedules will use in v1.26; season is from
+   the real month (Ohio / northern hemisphere).
+   Sky: twEnv2 (the City's background SVG) is overridden to pick its gradient, star density and the sun/moon by the
+   real hour, plus a few seasonal specks (snow / leaves / petals / fireflies). Everything else in the scene is
+   untouched. A clock line (icon + date + season + time) is added to the City header, and a gentle 30s ticker keeps
+   it live and re-renders when the phase flips. Builds on the existing real-clock helpers (zDay/hDays/isHalloween). */
+
+(function(){
+  var MU=window.MU||(window.MU={});
+  MU.now=function(){ return new Date(); };
+  MU.hour=function(){ var d=MU.now(); return d.getHours()+d.getMinutes()/60; };
+  MU.phase=function(){ var h=MU.hour(); if(h<5||h>=20)return 'night'; if(h<8)return 'dawn'; if(h<17)return 'day'; return 'dusk'; };
+  MU.partOfDay=function(){ var h=MU.hour(); if(h<5)return 'night'; if(h<8)return 'early'; if(h<11)return 'morning'; if(h<14)return 'midday'; if(h<17)return 'afternoon'; if(h<20)return 'evening'; return 'night'; };
+  MU.season=function(){ var m=MU.now().getMonth(); if(m===11||m<=1)return 'winter'; if(m<=4)return 'spring'; if(m<=7)return 'summer'; return 'fall'; };
+  var DAYS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'], MONS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  MU.dateLabel=function(){ var d=MU.now(); return DAYS[d.getDay()]+' · '+MONS[d.getMonth()]+' '+d.getDate(); };
+  MU.timeLabel=function(){ var d=MU.now(); var h=d.getHours(), m=d.getMinutes(); var ap=h<12?'AM':'PM'; var hh=h%12; if(hh===0)hh=12; return hh+':'+(m<10?'0':'')+m+' '+ap; };
+  MU.clockText=function(){ var pic={night:'🌙',dawn:'🌅',day:'☀️',dusk:'🌇'}[MU.phase()]||'🕐';
+    var sem={winter:'❄️ Winter',spring:'🌸 Spring',summer:'🌻 Summer',fall:'🍂 Fall'}[MU.season()];
+    return pic+' '+MU.dateLabel()+' · '+sem+' · '+MU.timeLabel(); };
+
+  /* sky palette by phase */
+  function pal(){ var ph=MU.phase();
+    if(ph==='dawn') return {s0:'#3a2c6e',s45:'#8a5a86',s100:'#ffb27a',ground:'#2a2042',star:0.30};
+    if(ph==='day')  return {s0:'#3f86d6',s45:'#6fb0e8',s100:'#cfe8ff',ground:'#38506a',star:0};
+    if(ph==='dusk') return {s0:'#2a2060',s45:'#9a4f74',s100:'#ff9e5a',ground:'#271c3a',star:0.25};
+    return {s0:'#2c2064',s45:'#1a1240',s100:'#0a0716',ground:'#14102c',star:1}; /* night */
+  }
+  function orbSvg(W){ var ph=MU.phase();
+    if(ph==='night') return '<circle cx="'+(W-75)+'" cy="80" r="34" fill="url(#twmn2)"/><circle cx="'+(W-75)+'" cy="80" r="46" fill="#ffd98f" opacity=".14"/>';
+    var cx,cy,r,body,glow,ga;
+    if(ph==='dawn'){ cx=74; cy=150; r=30; body='#ffd98f'; glow='#ff9e5a'; ga=.22; }
+    else if(ph==='dusk'){ cx=W-74; cy=150; r=30; body='#ffc06a'; glow='#ff7e4a'; ga=.22; }
+    else { cx=Math.round(W/2); cy=72; r=34; body='#fff3b0'; glow='#fff0a0'; ga=.30; }
+    return '<circle cx="'+cx+'" cy="'+cy+'" r="'+(r+18)+'" fill="'+glow+'" opacity="'+ga+'"/><circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="'+body+'"/>';
+  }
+  function seasonSpecks(W){ var s=MU.season(), out='', n=14, i, x, y;
+    for(i=0;i<n;i++){ x=(Math.random()*W).toFixed(0); y=(Math.random()*232).toFixed(0);
+      if(s==='winter') out+='<circle cx="'+x+'" cy="'+y+'" r="'+(Math.random()*1.6+1).toFixed(1)+'" fill="#eaf4ff" opacity="'+(0.4+Math.random()*0.4).toFixed(2)+'"/>';
+      else if(s==='fall'){ var c=['#e8863a','#d4562e','#e0a92e'][i%3]; out+='<path d="M'+x+' '+y+' q4 -3 8 0 q-4 3 -8 0 z" fill="'+c+'" opacity="0.7"/>'; }
+      else if(s==='spring') out+='<circle cx="'+x+'" cy="'+y+'" r="2" fill="#ffb7d8" opacity="0.7"/>';
+      else out+='<circle cx="'+x+'" cy="'+y+'" r="1.6" fill="#fff3a0" opacity="'+(0.3+Math.random()*0.5).toFixed(2)+'"/>';
+    } return out;
+  }
+
+  /* time-aware rebuild of the City background (same scene, sky driven by the real clock) */
+  if(typeof twEnv2==='function'){ window.twEnv2=twEnv2=function(plan,geo){
+    var W=geo.W,H=geo.H,PLx=geo.sq.x,PLy=geo.sq.y; var P=pal();
+    var stars=''; if(P.star>0){ for(var i=0;i<44;i++){ stars+='<circle cx="'+(Math.random()*W).toFixed(0)+'" cy="'+(Math.random()*230).toFixed(0)+'" r="'+(Math.random()*1.1+.3).toFixed(1)+'" fill="#fff" opacity="'+(( 0.15+Math.random()*0.5)*P.star).toFixed(2)+'"/>'; } }
+    var specks=seasonSpecks(W);
+    var speck=''; for(var k=0;k<110;k++){ speck+='<circle cx="'+(Math.random()*W).toFixed(0)+'" cy="'+(250+Math.random()*(H-260)).toFixed(0)+'" r="'+(Math.random()*1.1+.4).toFixed(1)+'" fill="#ffffff" opacity="0.04"/>'; }
+    var roads=''; geo.roads.forEach(function(r){ roads+=twRoad(r[0],r[1],r[2],r[3]); });
+    var stageBulbs=''; for(var a=-52;a<=52;a+=13){ stageBulbs+='<circle cx="'+a+'" cy="'+(-2-Math.round(Math.sqrt(Math.max(0,1-(a/56)*(a/56)))*38))+'" r="2.4" fill="#ffe6a0"/>'; }
+    var green=''; geo.greens.forEach(function(g){ green+=g[2]==='b'?twBush(g[0],g[1]):twTree(g[0],g[1],.9); });
+    return '<svg style="position:absolute;inset:0;width:100%;height:'+H+'px;z-index:1" viewBox="0 0 '+W+' '+H+'">'
+      +'<defs><radialGradient id="twsky2" cx="50%" cy="6%" r="70%"><stop offset="0" stop-color="'+P.s0+'"/><stop offset="45%" stop-color="'+P.s45+'"/><stop offset="100%" stop-color="'+P.s100+'"/></radialGradient>'
+      +'<radialGradient id="twplz2" cx="50%" cy="40%" r="60%"><stop offset="0" stop-color="#3a2c66"/><stop offset="100%" stop-color="#1c1440"/></radialGradient>'
+      +'<radialGradient id="twmn2" cx="42%" cy="38%" r="60%"><stop offset="0" stop-color="#fff6df"/><stop offset="100%" stop-color="#ffd27a"/></radialGradient></defs>'
+      +'<rect x="0" y="0" width="'+W+'" height="'+H+'" fill="url(#twsky2)"/>'+stars+specks
+      +orbSvg(W)
+      +(W>400?'<g transform="translate(0 0)">'+twSkyline()+'</g><g transform="translate(390 0)">'+twSkyline()+'</g><g transform="translate(780 0)">'+twSkyline()+'</g>':twSkyline())
+      +'<rect x="0" y="240" width="'+W+'" height="'+(H-240)+'" fill="'+P.ground+'"/>'+speck+roads
+      +'<ellipse cx="'+PLx+'" cy="'+PLy+'" rx="132" ry="118" fill="url(#twplz2)" stroke="#5b4a94" stroke-width="2"/>'
+      +'<ellipse cx="'+PLx+'" cy="'+PLy+'" rx="110" ry="98" fill="none" stroke="#6a5aa8" stroke-width="1" opacity=".5" stroke-dasharray="3 6"/>'
+      +'<g transform="translate('+PLx+' '+(PLy-84)+')"><path d="M-56 34 L-56 -2 A56 40 0 0 1 56 -2 L56 34 Z" fill="#241a49" stroke="#ffd158" stroke-width="2"/><path d="M-56 -2 A56 40 0 0 1 56 -2" fill="none" stroke="#ffd158" stroke-width="3"/>'+stageBulbs+'<rect x="-56" y="30" width="112" height="7" rx="2" fill="#3a2c66"/></g>'
+      +twBunt(90,PLy-90,300,PLy-90)+twBunt(70,PLy-20,120,PLy+90)+twBunt(320,PLy-20,270,PLy+90)
+      +twLamp(150,PLy-90)+twLamp(244,PLy-90)+twLamp(120,PLy+100)+twLamp(276,PLy+100)+twLamp(46,PLy-20)+twLamp(348,PLy-20)
+      +twBush(150,PLy+100)+twBush(244,PLy+100)+twBush(120,PLy-90)+twBush(276,PLy-90)+twBench(244,PLy+70)
+      +'<g transform="translate('+PLx+' '+(PLy+72)+')"><ellipse cx="0" cy="6" rx="30" ry="11" fill="#26305a" stroke="#4a5a9a" stroke-width="2"/><ellipse cx="0" cy="3" rx="20" ry="7" fill="#3a5aa0"/><rect x="-3" y="-14" width="6" height="16" rx="3" fill="#4a5a9a"/><circle cx="0" cy="-16" r="5" fill="#7fb0ff"/><path d="M0 -18 q-8 -8 -3 -16 M0 -18 q8 -8 3 -16" stroke="#bfe0ff" stroke-width="2" fill="none" opacity=".7"/></g>'
+      +green
+      +'</svg>';
+  }; }
+
+  /* clock line on the City header */
+  if(typeof renderTown==='function'){ var _rt=renderTown; window.renderTown=renderTown=function(){ var r=_rt.apply(this,arguments); try{
+    var p=document.querySelector('#twStage .tw-top p');
+    if(p && !document.getElementById('twClock')){
+      var span=document.createElement('span'); span.id='twClock';
+      span.style.cssText='display:block;margin-top:3px;color:#ffe3a6;font-weight:800;font-size:11px';
+      span.textContent=MU.clockText(); p.appendChild(span);
+    }
+  }catch(e){} return r; }; }
+
+  /* keep it live while the City is open */
+  MU._phase=MU.phase();
+  if(!MU._tick){ MU._tick=setInterval(function(){ try{
+    var town=document.getElementById('scr-town'); if(!town||!town.classList.contains('on'))return;
+    var ph=MU.phase();
+    if(ph!==MU._phase){ MU._phase=ph; if(typeof renderTown==='function'){ renderTown(); if(typeof twFit==='function')twFit(); } }
+    else { var c=document.getElementById('twClock'); if(c)c.textContent=MU.clockText(); }
+  }catch(e){} }, 30000); }
+
+  if(window.BQ)window.BQ.MU=MU;
+})();
+
+</script>
+<script>
+/* ================= v1.26 · A LIVING CITY: citizens move around by time of day (Sep 30 2026) =================
+   Mot: characters move around the City during their day; find them at different spots by job / time of day.
+   Each citizen has a HOME-BASE building from their town-job wing (music->Main Stage, math/logic/time->Number Racket,
+   social->City Hall, science->Critter Cove, ela->Library, health->Square) with host overrides for the people who
+   actually run a building. A daily routine keys off MU.partOfDay():
+     early   - hosts + a few early risers open up; most still home
+     morning - everyone at their home-base building (work)
+     midday  - about half break for lunch at the Square
+     afternoon - back at the building
+     evening - the band converges on the Main Stage (evening show); everyone else to the Square
+     night   - almost everyone home; a few night owls at the Square
+   The City map draws who is out (up to 3 per spot, tappable to their card; a +N badge opens the full roster for that
+   spot). Every citizen card now shows "Right now: at <place>" so Garrett can find anyone even when off-screen. The
+   base ambient strollers are removed so nobody is drawn twice; Halloween deco and the gate/benches are untouched. */
+
+(function(){
+  var MU=window.MU||(window.MU={});
+  if(typeof MU.partOfDay!=='function')return; /* needs the v1.25 clock */
+
+  var PLACE_LABEL={cityhall:'City Hall',museum:'the City Museum',mainstage:'the Main Stage',numbers:'the Number Racket',cove:'Critter Cove',wordhoard:'the Word Hoard',library:'the Library',post:'the Post Office',art:'the Art Studio',square:'the City Square'};
+  var PLACE_NM={cityhall:'City Hall',museum:'City Museum',mainstage:'The Main Stage',numbers:'Number Racket',cove:'Critter Cove',wordhoard:'Word Hoard',library:'Library',post:'Post Office',art:'Art Studio'};
+  var HOST={woody:'cityhall',pixel:'cityhall',miles:'cityhall',gauge:'cityhall',luna:'museum',boom:'mainstage',rumble:'mainstage',combo:'numbers',fern:'cove',sunny:'cove',maple:'cove',round:'cove',sam:'library',roscoe:'library',willow:'library',grace:'library',della:'post',lumi:'art',piper:'art',bibi:'wordhoard'};
+  function wingPlace(w){ return {music:'mainstage',math:'numbers',logic:'numbers',time:'numbers',social:'cityhall',science:'cove',ela:'library',health:'square'}[w]||'square'; }
+  function isExtra(id){ return typeof extraCitizen==='function'&&!!extraCitizen(id); }
+  function isKeeper(id){ return id.indexOf('kn_')===0; }
+  function isBand(id){ return typeof BY_ID!=='undefined'&&!!BY_ID[id]&&!isKeeper(id)&&!isExtra(id); }
+  function hash(s){ var n=0; for(var i=0;i<s.length;i++)n=(n*31+s.charCodeAt(i))>>>0; return n; }
+  function homeBase(id){ if(HOST[id])return HOST[id]; if(isKeeper(id))return 'wordhoard'; var j=(typeof citJob==='function')?citJob(id):null; return wingPlace(j?j.wing:''); }
+  function citPlace(id){ var pod=MU.partOfDay(); var base=homeBase(id); var h=hash(id);
+    if(pod==='night')    return (h%11===0)?'square':null;
+    if(pod==='early')    return (HOST[id]||h%3===0)?base:null;
+    if(pod==='morning')  return base;
+    if(pod==='midday')   return (h%2===0)?'square':base;
+    if(pod==='afternoon')return base;
+    if(pod==='evening')  return isBand(id)?'mainstage':'square';
+    return base;
+  }
+  MU.citPlace=citPlace; MU.placeLabel=function(pk){ return pk?PLACE_LABEL[pk]:null; };
+
+  function roster(){ var ids=[];
+    if(typeof BAND!=='undefined')BAND.forEach(function(m){ ids.push(m.id); });
+    if(typeof WORD_TRACKS!=='undefined')WORD_TRACKS.forEach(function(t){ ids.push('kn_'+t.id); });
+    if(typeof CITIZENS_EXTRA!=='undefined')CITIZENS_EXTRA.forEach(function(e){ ids.push(e.id); });
+    return ids.filter(function(x){ return x!=='gus'; });
+  }
+
+  /* who is at a spot right now (roster modal behind a +N badge) */
+  window.cityWhoIsHere=function(pk){ if(typeof modal!=='function')return; var here=roster().filter(function(id){ return citPlace(id)===pk; });
+    var html='<div class="center"><h2 style="margin:2px 0 0">Who is at '+(PLACE_LABEL[pk]||'this spot')+'</h2><div class="sub">right now</div></div>'
+      +'<div class="fr-grid">'+here.map(function(id){ return '<div class="fr-card met" onclick="closeModal();citizenCard(\''+id+'\')">'+citSvg(id,40)+'<div class="n">'+citName(id)+'</div></div>'; }).join('')+'</div>'
+      +'<button class="btn wide ghost" onclick="closeModal()">Close</button>'; modal(html); };
+
+  /* place the living citizens on the City map */
+  if(typeof renderTown==='function'){ var _rt=renderTown; window.renderTown=renderTown=function(){ var r=_rt.apply(this,arguments); try{
+    var st=document.getElementById('twStage'); if(!st)return r;
+    var plan=(typeof townPlan==='function')?townPlan():[]; var wide=(typeof townIsWide==='function')?townIsWide():false; var geo=(typeof townGeo==='function')?townGeo(plan,wide):null; if(!geo)return r;
+    function anchor(pk){ if(pk==='square')return {x:geo.sq.x,y:geo.sq.y}; var nm=PLACE_NM[pk]; if(!nm)return null;
+      for(var ri=0;ri<plan.length;ri++){ var sl=plan[ri].slots||[]; for(var si=0;si<sl.length;si++){ if(sl[si]&&sl[si].nm===nm && geo.pos[ri]&&geo.pos[ri].slots[si])return geo.pos[ri].slots[si]; } }
+      return null; }
+    /* remove the base ambient citizen sprites (svg .tw-tf); keep emoji deco + gate/benches */
+    Array.prototype.slice.call(st.querySelectorAll('.tw-tf')).forEach(function(e){ if(/<svg/i.test(e.innerHTML))e.remove(); });
+    /* group everyone who is out by spot */
+    var byPlace={}; roster().forEach(function(id){ var pk=citPlace(id); if(!pk)return; (byPlace[pk]=byPlace[pk]||[]).push(id); });
+    var frag=document.createDocumentFragment(); var offs=[0,-46,46];
+    Object.keys(byPlace).forEach(function(pk){ var a=anchor(pk); if(!a)return; var list=byPlace[pk];
+      list.slice(0,3).forEach(function(id,i){ var x=a.x+(offs[i]||0), y=a.y+76;
+        var el=document.createElement('div'); el.className='tw-cit';
+        el.style.cssText='position:absolute;left:'+x+'px;top:'+y+'px;transform:translate(-50%,-50%);z-index:13;filter:drop-shadow(0 5px 6px #000a);cursor:pointer';
+        el.setAttribute('onclick',"citizenCard('"+id+"')"); el.innerHTML=citSvg(id,34); frag.appendChild(el);
+      });
+      if(list.length>3){ var b=document.createElement('div'); b.className='tw-cit';
+        b.style.cssText='position:absolute;left:'+(a.x+72)+'px;top:'+(a.y+70)+'px;transform:translate(-50%,-50%);z-index:14;background:#120d28;border:1.5px solid #ffd158;border-radius:10px;padding:2px 7px;font-size:10px;font-weight:900;color:#ffd158;cursor:pointer';
+        b.setAttribute('onclick',"cityWhoIsHere('"+pk+"')"); b.textContent='+'+(list.length-3); frag.appendChild(b); }
+    });
+    st.appendChild(frag);
+  }catch(e){} return r; }; }
+
+  /* "Right now: at <place>" on every citizen card (the finder) */
+  if(typeof citizenCard==='function'){ var _cc=citizenCard; window.citizenCard=citizenCard=function(id){ _cc.apply(this,arguments); try{
+    var pk=citPlace(id); var box=document.getElementById('mbox'); if(!box)return;
+    var line=document.createElement('div'); line.className='speak'; line.style.cssText='background:#13233f;border:1px solid #2f4d7a;text-align:left;font-size:13px;margin:4px 0';
+    line.innerHTML=pk?('📍 <b>Right now:</b> at '+PLACE_LABEL[pk]):'📍 <b>Right now:</b> home (not out in the city)';
+    var center=box.querySelector('.center'); if(center&&center.parentNode)center.parentNode.insertBefore(line, center.nextSibling); else box.insertBefore(line, box.firstChild);
+  }catch(e){} }; }
+
+  /* refresh the City when the part of day rolls over */
+  MU._pod=MU.partOfDay();
+  if(!MU._podTick){ MU._podTick=setInterval(function(){ try{ var town=document.getElementById('scr-town'); if(!town||!town.classList.contains('on'))return;
+    var pod=MU.partOfDay(); if(pod!==MU._pod){ MU._pod=pod; if(typeof renderTown==='function'){ renderTown(); if(typeof twFit==='function')twFit(); } } }catch(e){} }, 60000); }
+
+  if(window.BQ){ window.BQ.cityWhoIsHere=window.cityWhoIsHere; }
+})();
+
+</script>
+<script>
+/* ================= v1.27 · HOW THE CITY WORKS: explain voting + the citizen cards (Sep 30 2026) ===============
+   Mot: Garrett is confused about the voting and about learning the characters - explain what the systems are and
+   what he is trying to gather. This adds:
+     - cityGuide(): a friendly, scannable "How the City works" modal (Elly) covering Explore, Citizen Cards (what you
+       collect + the five ways to unlock a fact), and The Vote (hear opinions -> Pixel tallies -> at 30 you call it).
+       Auto-shown ONCE when you first enter the City, and reachable from the Square and from any citizen card.
+     - Pixel's Data Desk now opens with a plain "how the vote works" box + a live "X of 59 heard" counter.
+     - Every citizen card gets a one-line "how to unlock the locked facts" tip and a "How the city works" link. */
+
+(function(){
+  if(typeof modal!=='function')return;
+
+  function cname(){ return (typeof cityName==='function'&&cityName())?cityName():'the City'; }
+  var MIN=(typeof CITY_MIN_VOTES!=='undefined')?CITY_MIN_VOTES:30;
+
+  window.cityGuide=function(){
+    var heard=0,total=0; try{ var r=opinionTally('cityname'); heard=r.heard; total=r.total; }catch(e){}
+    var elly=(typeof ellySVG==='function')?ellySVG(58):'';
+    var h='<div class="center">'+elly+'<h2 style="margin:4px 0 0">🏙️ How '+cname()+' works</h2><div class="sub">Elly shows you the ropes</div></div>';
+    h+='<div class="card" style="text-align:left"><b>🗺️ Explore</b>'
+      +'<div class="sub" style="margin:3px 0 0">Tap a <b>building</b> to go inside and play or learn there. The <b>citizens walk around</b> - where they are changes with the time of day (at work in the morning, at the Main Stage in the evening). Tap <b>anyone</b> to open their card.</div></div>';
+    h+='<div class="card" style="text-align:left"><b>📇 Citizen cards - what you collect</b>'
+      +'<div class="sub" style="margin:3px 0 4px">Everybody has a card with <b>hidden facts</b> (🔒). Fill a card in by:</div>'
+      +'<div style="font-size:13px;line-height:1.7">💬 <b>Small talk</b> - once a day, unlocks one fact<br>🧹 <b>Favors</b> - do their chore and they tell you a <b>secret</b><br>🗳️ <b>Opinions</b> - hear what they think (this also feeds the vote)<br>🗺️ <b>Cases</b> &amp; ✉️ <b>postcards</b> - more facts</div>'
+      +'<div class="sub" style="margin:4px 0 0">Collect everyone’s facts and secrets. The best stories land in the <b>City Chronicle</b>.</div></div>';
+    h+='<div class="card" style="text-align:left"><b>🗳️ The vote (Pixel’s Data Desk, in City Hall)</b>'
+      +'<div class="sub" style="margin:3px 0 0">'+cname()+' needs a name, and <b>every citizen has a favorite</b>. Go <b>talk to people</b> to hear their pick - Pixel only counts the ones you’ve actually heard. Type <b>your own idea</b> too; the undecided folks will back you. When Pixel has <b>'+MIN+'</b> opinions, press <b>Call the vote</b> - you’re the <b>Mayor</b>, so you decide the winner. <b>'+heard+' of '+total+'</b> heard so far.</div></div>';
+    h+='<button class="btn wide" onclick="closeModal()">Got it - let’s explore!</button>';
+    modal(h);
+  };
+  if(window.BQ)window.BQ.cityGuide=window.cityGuide;
+
+  /* auto-show once when first entering the City */
+  if(typeof openTown==='function'){ var _ot=openTown; window.openTown=openTown=function(){ var r=_ot.apply(this,arguments); try{
+    if(typeof S!=='undefined'&&S.flags&&!S.flags.seenGuide127&&S.flags.introDone){ S.flags.seenGuide127=true; if(typeof save==='function')save(); if(typeof later==='function')later(function(){ var m=document.getElementById('modal'); if(m&&m.classList.contains('on'))return; cityGuide(); },850); }
+  }catch(e){} return r; }; }
+
+  /* reachable from the Square */
+  if(typeof openSquare==='function'){ var _os=openSquare; window.openSquare=openSquare=function(){ _os.apply(this,arguments); try{
+    var box=document.getElementById('mbox'); if(!box)return; var btns=box.querySelectorAll('button'); var last=btns[btns.length-1];
+    if(last&&!document.getElementById('sqGuideBtn')){ var b=document.createElement('button'); b.id='sqGuideBtn'; b.className='btn wide ghost'; b.innerHTML='❓ How the city works'; b.setAttribute('onclick','closeModal();cityGuide()'); last.parentNode.insertBefore(b,last); }
+  }catch(e){} }; }
+
+  /* Pixel's Data Desk: lead with a clear explainer + live counter */
+  if(typeof cityVoteHtml==='function'){ var _cvh=cityVoteHtml; window.cityVoteHtml=cityVoteHtml=function(){
+    var heard=0,total=0; try{ var r=opinionTally('cityname'); heard=r.heard; total=r.total; }catch(e){}
+    var intro='<div class="speak" style="text-align:left;background:#13233f;border:1px solid #2f4d7a"><b>🗳️ How the vote works.</b> Every citizen has a favorite name for the city. Go <b>talk to them</b> to hear it - I only count the ones you’ve heard. When I’ve got <b>'+MIN+'</b>, the <b>Call the vote</b> button lights up and you, the Mayor, pick the winner. <b>'+heard+' of '+total+'</b> heard so far. <span onclick="cityGuide()" style="color:#9fe0ff;text-decoration:underline;cursor:pointer">More help</span></div>';
+    return intro + _cvh.apply(this,arguments);
+  }; }
+
+  /* citizen card: a one-line "how to unlock" tip + a help link */
+  if(typeof citizenCard==='function'){ var _cc=citizenCard; window.citizenCard=citizenCard=function(id){ _cc.apply(this,arguments); try{
+    var box=document.getElementById('mbox'); if(!box)return;
+    var center=box.querySelector('.center'); var sub=center&&center.querySelector('.sub');
+    if(sub&&!document.getElementById('citTip')){ var tip=document.createElement('div'); tip.id='citTip'; tip.className='sub'; tip.style.cssText='margin-top:3px;color:#9fe0ff;font-size:11px'; tip.innerHTML='💡 Unlock 🔒 facts: 💬 small talk · 🧹 favor · 🗳️ their vote'; sub.parentNode.insertBefore(tip, sub.nextSibling); }
+    var btns=box.querySelectorAll('button'); var last=btns[btns.length-1];
+    if(last&&!document.getElementById('citGuideBtn')){ var b=document.createElement('button'); b.id='citGuideBtn'; b.className='btn wide ghost small'; b.innerHTML='❓ How the city works'; b.setAttribute('onclick','closeModal();cityGuide()'); last.parentNode.insertBefore(b,last); }
+  }catch(e){} }; }
+
+  /* a more helpful City hint from Elly */
+  try{ if(typeof ELLY_HINTS==='object')ELLY_HINTS['scr-town']='Tap a building to go in, or tap a citizen walking around to meet them. People move by the time of day. Fill in their cards and collect opinions for the city vote. Tap the Square for a "How the city works" guide.'; }catch(e){}
+})();
+
+</script>
+<script>
+/* ================= v1.28 · SPREAD THE CITY OUT + every visible citizen is tappable (Oct 1 2026) =============
+   Mot: spread the citizens around (they were clumping at Critter Cove / City Hall), and every citizen visible in
+   the frame should be tappable to open their card (the same card the Friends list opens).
+   New distribution (replaces v1.26's wing->one-building clumping):
+     - The ~18 building HOSTS stand AT their building during work hours (City Hall, Cove, Library, etc.).
+     - Everyone else gets an evenly hash-spread "home district" across ALL nine buildings, and ROAMS that district
+       (scattered on the streets/green around it) rather than stacking at one door. Keepers roam near the Word Hoard.
+     - By time of day: early = hosts open up + a few roamers; morning/afternoon = hosts at the door, others roaming
+       their district; midday = half drift to the Square for lunch; evening = the band fills the Main Stage block and
+       everyone else the Square (spread around them, not stacked); night = mostly home, a few owls near the Square.
+   EVERY out citizen is drawn (no hidden "+N" overflow) as a tappable sprite (z-index 16, above the z-12 facades) whose
+   tap opens citizenCard(id) - the Friends-list card. The card's "Right now:" line now reads "at / near <place>". */
+
+(function(){
+  var MU=window.MU||(window.MU={});
+  if(typeof MU.partOfDay!=='function')return;
+
+  var PLACE_LABEL={cityhall:'City Hall',museum:'the City Museum',mainstage:'the Main Stage',numbers:'the Number Racket',cove:'Critter Cove',wordhoard:'the Word Hoard',library:'the Library',post:'the Post Office',art:'the Art Studio',square:'the City Square'};
+  var PLACE_NM={cityhall:'City Hall',museum:'City Museum',mainstage:'The Main Stage',numbers:'Number Racket',cove:'Critter Cove',wordhoard:'Word Hoard',library:'Library',post:'Post Office',art:'Art Studio'};
+  var HOST={woody:'cityhall',pixel:'cityhall',miles:'cityhall',gauge:'cityhall',luna:'museum',boom:'mainstage',rumble:'mainstage',combo:'numbers',fern:'cove',sunny:'cove',maple:'cove',round:'cove',sam:'library',roscoe:'library',willow:'library',grace:'library',della:'post',lumi:'art',piper:'art',bibi:'wordhoard'};
+  var BUILD=['cityhall','museum','mainstage','numbers','cove','wordhoard','library','post','art'];
+  function isExtra(id){ return typeof extraCitizen==='function'&&!!extraCitizen(id); }
+  function isKeeper(id){ return id.indexOf('kn_')===0; }
+  function isBand(id){ return typeof BY_ID!=='undefined'&&!!BY_ID[id]&&!isKeeper(id)&&!isExtra(id); }
+  function hash(s){ var n=0; for(var i=0;i<s.length;i++)n=(n*31+s.charCodeAt(i))>>>0; return n; }
+  function homeDistrict(id){ if(HOST[id])return HOST[id]; if(isKeeper(id))return 'wordhoard'; return BUILD[hash(id+'d')%BUILD.length]; }
+
+  /* spot = {b:key} (at a building door) | {near:key,s:n} (roaming that district) | null (home) */
+  function citSpotKind(id){ var pod=MU.partOfDay(), h=hash(id), host=!!HOST[id], hd=homeDistrict(id);
+    if(pod==='night')     return (h%7===0)? {near:'square',s:h} : null;
+    if(pod==='early')     return host? {b:hd} : (h%3===0? {near:hd,s:h} : null);
+    if(pod==='morning')   return host? {b:hd} : {near:hd,s:h};
+    if(pod==='afternoon') return host? {b:hd} : {near:hd,s:h+2};
+    if(pod==='midday')    return (h%2===0)? {near:'square',s:h} : {near:hd,s:h};
+    if(pod==='evening')   return isBand(id)? {near:'mainstage',s:h} : {near:'square',s:h};
+    return {near:hd,s:h};
+  }
+  function spotLabel(id){ var sk=citSpotKind(id); if(!sk)return null; if(sk.b)return 'at '+PLACE_LABEL[sk.b]; if(sk.near==='square')return 'around the City Square'; return 'near '+PLACE_LABEL[sk.near]; }
+  MU.citSpotKind=citSpotKind; MU.spotLabel=spotLabel;
+  /* keep a simple place accessor for anything still calling it */
+  MU.citPlace=function(id){ var sk=citSpotKind(id); return sk?(sk.b||sk.near):null; };
+
+  function roster(){ var ids=[];
+    if(typeof BAND!=='undefined')BAND.forEach(function(m){ ids.push(m.id); });
+    if(typeof WORD_TRACKS!=='undefined')WORD_TRACKS.forEach(function(t){ ids.push('kn_'+t.id); });
+    if(typeof CITIZENS_EXTRA!=='undefined')CITIZENS_EXTRA.forEach(function(e){ ids.push(e.id); });
+    return ids.filter(function(x){ return x!=='gus'; });
+  }
+
+  /* scatter offsets for roamers, mostly below/beside the building (keeps the sign clear) */
+  var NEAR=[[-86,54],[86,54],[-116,22],[116,22],[0,90],[-64,86],[64,86],[0,32]];
+
+  if(typeof renderTown==='function'){ var _rt=renderTown; window.renderTown=renderTown=function(){ var r=_rt.apply(this,arguments); try{
+    var st=document.getElementById('twStage'); if(!st)return r;
+    /* clear v1.26's citizens + any base ambient svg strollers so nobody is drawn twice */
+    Array.prototype.slice.call(st.querySelectorAll('.tw-cit, .tw-cit2')).forEach(function(e){ e.remove(); });
+    Array.prototype.slice.call(st.querySelectorAll('.tw-tf')).forEach(function(e){ if(/<svg/i.test(e.innerHTML))e.remove(); });
+    var plan=(typeof townPlan==='function')?townPlan():[]; var wide=(typeof townIsWide==='function')?townIsWide():false; var geo=(typeof townGeo==='function')?townGeo(plan,wide):null; if(!geo)return r;
+    function anchor(pk){ if(pk==='square')return {x:geo.sq.x,y:geo.sq.y}; var nm=PLACE_NM[pk]; if(!nm)return null;
+      for(var ri=0;ri<plan.length;ri++){ var sl=plan[ri].slots||[]; for(var si=0;si<sl.length;si++){ if(sl[si]&&sl[si].nm===nm&&geo.pos[ri]&&geo.pos[ri].slots[si])return geo.pos[ri].slots[si]; } }
+      return null; }
+    var doors={}, roam={};
+    roster().forEach(function(id){ var sk=citSpotKind(id); if(!sk)return; if(sk.b)(doors[sk.b]=doors[sk.b]||[]).push(id); else (roam[sk.near]=roam[sk.near]||[]).push(id); });
+    var frag=document.createDocumentFragment();
+    function sprite(id,x,y){ var el=document.createElement('div'); el.className='tw-cit2';
+      el.style.cssText='position:absolute;left:'+Math.round(x)+'px;top:'+Math.round(y)+'px;transform:translate(-50%,-50%);z-index:16;filter:drop-shadow(0 5px 6px #000a);cursor:pointer';
+      el.setAttribute('onclick',"citizenCard('"+id+"')"); el.innerHTML=citSvg(id,36); frag.appendChild(el); }
+    /* hosts at the door (short rows) */
+    Object.keys(doors).forEach(function(pk){ var a=anchor(pk); if(!a)return; doors[pk].forEach(function(id,i){ var col=i%3, row=Math.floor(i/3); sprite(id, a.x+[-46,0,46][col], a.y+72+row*42); }); });
+    /* everyone else scattered around their district */
+    Object.keys(roam).forEach(function(pk){ var a=anchor(pk); if(!a)return; roam[pk].forEach(function(id,i){ var o=NEAR[i%NEAR.length]; var ring=1+Math.floor(i/NEAR.length)*0.34; sprite(id, a.x+o[0]*ring, a.y+76+o[1]*ring); }); });
+    st.appendChild(frag);
+  }catch(e){} return r; }; }
+
+  /* update the card's "Right now:" line to the spread-aware label (reuse v1.26's line if present) */
+  if(typeof citizenCard==='function'){ var _cc=citizenCard; window.citizenCard=citizenCard=function(id){ _cc.apply(this,arguments); try{
+    var box=document.getElementById('mbox'); if(!box)return; var lbl=spotLabel(id); var txt=lbl?('📍 <b>Right now:</b> '+lbl):'📍 <b>Right now:</b> home (not out in the city)';
+    var rn=null; Array.prototype.slice.call(box.querySelectorAll('.speak')).forEach(function(el){ if(/Right now:/.test(el.textContent))rn=el; });
+    if(rn){ rn.innerHTML=txt; }
+    else { var line=document.createElement('div'); line.className='speak'; line.style.cssText='background:#13233f;border:1px solid #2f4d7a;text-align:left;font-size:13px;margin:4px 0'; line.innerHTML=txt; var center=box.querySelector('.center'); if(center&&center.parentNode)center.parentNode.insertBefore(line,center.nextSibling); }
+  }catch(e){} }; }
+
+  if(window.BQ){ window.BQ.citSpotKind=citSpotKind; }
+})();
 
 </script>
 </body>
