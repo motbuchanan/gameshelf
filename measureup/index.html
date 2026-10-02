@@ -928,14 +928,14 @@ svg .charg{will-change:transform}
 <div id="toast"></div>
 <button id="homeBtn" onclick="goHome()" aria-label="Back to Garage">🏠</button>
 <button id="ellyBtn" onclick="openEllyHelp()" aria-label="Ask Elly for help"></button>
-<div id="vbadge">v1.29 · Oct 1</div>
+<div id="vbadge">v1.34 · Oct 2</div>
 
 <script>
 'use strict';
 /* ============ UTILS ============ */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const VERSION='v1.29 · Oct 1';
+const VERSION='v1.34 · Oct 2';
 const RM=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -16987,6 +16987,536 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
     var i=Math.max(0,Math.min(s,7));
     try{ tone(SCALE[i],.14,'triangle',.3); tone(SCALE[i]*1.25,.18,'triangle',.24,.09); }catch(e){}
   };
+})();
+
+</script>
+<script>
+/* ================= v1.30 · DR. MOLAR'S TOOTH TIME: whole-mouth guide + a real beat (Oct 2 2026) ===============
+   Garrett liked brushing with Dr. Molar but it only cycled 4 vague quadrant labels ("top left"...) and ticked once
+   a second. Mot: cover ALL the teeth, and play an actual beat with the countdown.
+   This rebuilds Tooth Time:
+     - 8 zones over 2 minutes (15s each) that walk the whole mouth: top outsides (sides + front), top insides +
+       chewing tops, bottom outsides (sides + front), bottom insides + chewing + tongue. Each zone shows a clear
+       kid instruction (little circles, outsides, the flat tops you chew with, the insides you cannot see, the
+       tongue).
+     - A live MOUTH DIAGRAM that highlights exactly where to brush right now (top/bottom arch teeth + tongue).
+     - A real looping BEAT (Boom's kit: kick/snare/hat) the whole 2 minutes, with a bright cue when the zone changes.
+     - 8 progress dots. Keeps the once-a-day reward + the tooth quiz (refreshed to match: every side, the tongue,
+       floss, water).
+   Audio-safe per v1.29 (guarded drum/tone, wrapped in try/catch). The beat and countdown STOP and go silent on any
+   exit: stopAll (fired by show() on every screen change) clears them, plus a self-check if the hospital leaves the
+   Teeth tab. */
+
+(function(){
+  if(typeof toothHtml!=='function'||typeof hospRender!=='function')return;
+
+  window.TOOTH_FACTS=[
+    {q:'How long should you brush?',opts:['Two minutes','Ten seconds','Ten minutes'],a:0},
+    {q:'Which parts of your teeth get brushed?',opts:['Every side: outsides, insides, and the chewing tops','Just the front ones','Only the ones that hurt'],a:0},
+    {q:'What else should you brush besides your teeth?',opts:['Your tongue','Your nose','Your ears'],a:0},
+    {q:'What reaches between teeth where a brush cannot?',opts:['Floss','A towel','A straw'],a:0},
+    {q:'Which drink is best for your teeth?',opts:['Water','Soda','Juice'],a:0}
+  ];
+
+  var ZONES=[
+    {t:'Top teeth, cheek side (right)', s:'Little circles on the outsides', reg:'tr'},
+    {t:'Top front teeth', s:'The outsides and the edges you bite with', reg:'tf'},
+    {t:'Top teeth, cheek side (left)', s:'Little circles on the outsides', reg:'tl'},
+    {t:'Behind your top teeth + the tops', s:'The insides you cannot see, then the flat chewing tops', reg:'ti'},
+    {t:'Bottom teeth, cheek side (right)', s:'Little circles on the outsides', reg:'br'},
+    {t:'Bottom front teeth', s:'The outsides and the biting edges', reg:'bf'},
+    {t:'Bottom teeth, cheek side (left)', s:'Little circles on the outsides', reg:'bl'},
+    {t:'Behind the bottom teeth + tongue', s:'The insides, then brush your tongue to blast bad breath', reg:'tongue'}
+  ];
+  window.TOOTH_ZONES=ZONES;
+  function zoneAt(left){ return Math.min(7,Math.max(0,Math.floor((120-left)/15))); }
+
+  function mouthSvg(reg){
+    var s='<svg viewBox="0 0 300 196" width="100%" style="max-width:290px;display:block;margin:4px auto">';
+    s+='<defs><filter id="tgl" x="-60%" y="-60%" width="220%" height="220%"><feDropShadow dx="0" dy="0" stdDeviation="3.2" flood-color="#ffd158"/></filter></defs>';
+    s+='<ellipse cx="150" cy="98" rx="140" ry="86" fill="#4e1e2a"/><ellipse cx="150" cy="108" rx="104" ry="54" fill="#722c3d"/>';
+    var tongueOn=(reg==='tongue');
+    s+='<ellipse cx="150" cy="140" rx="60" ry="30" fill="'+(tongueOn?'#ff9ec4':'#cf6b84')+'"'+(tongueOn?' filter="url(#tgl)"':'')+'/>';
+    function tooth(x,y,on){ return '<rect x="'+(x-10)+'" y="'+y+'" width="20" height="24" rx="4" fill="'+(on?'#ffd158':'#ffffff')+'" stroke="#b9a25c" stroke-width="1"'+(on?' filter="url(#tgl)"':'')+'/>'; }
+    var i,fx,x,y;
+    function upOn(i){ if(reg==='ti')return true; if(reg==='tr')return i>=7; if(reg==='tf')return i>=3&&i<=6; if(reg==='tl')return i<=2; return false; }
+    function loOn(i){ if(reg==='tongue')return i<=2||i>=7; if(reg==='br')return i>=7; if(reg==='bf')return i>=3&&i<=6; if(reg==='bl')return i<=2; return false; }
+    for(i=0;i<10;i++){ fx=i/9; x=34+fx*232; y=30+Math.pow((fx-0.5)*2,2)*9; s+=tooth(x,y,upOn(i)); }
+    for(i=0;i<10;i++){ fx=i/9; x=34+fx*232; y=142-Math.pow((fx-0.5)*2,2)*9; s+=tooth(x,y,loOn(i)); }
+    if(reg==='ti')s+='<text x="150" y="102" font-size="12" text-anchor="middle" fill="#ffd158" font-weight="800">brush the insides + tops</text>';
+    s+='</svg>'; return s;
+  }
+  window.toothMouthSvg=mouthSvg;
+
+  function dots(zi){ var h='<div style="display:flex;justify-content:center;gap:6px;margin:6px 0">'; for(var i=0;i<8;i++){ h+='<span style="width:12px;height:12px;border-radius:50%;background:'+(i<zi?'#7dff8a':(i===zi?'#ffd158':'#2b2350'))+';display:inline-block"></span>'; } return h+'</div>'; }
+
+  /* ---- render ---- */
+  window.toothHtml=toothHtml=function(){
+    var html=(typeof zRoom==='function')?zRoom('molar','Dr. Molar’s Tooth Time','Two minutes, your whole mouth, to a beat.'):'';
+    if(typeof citState==='function')citState();
+    if(typeof TOOTHT==='undefined'||!TOOTHT){
+      html+='<div class="speak" style="text-align:left">Grab your real toothbrush. Dr. Molar walks you around your <b>whole mouth</b> in 8 short spots, 15 seconds each: outsides, insides, the flat tops you chew with, the front, and your tongue. A <b>beat</b> plays so you never rush.</div>';
+      html+='<div class="z-pick"><button class="btn" onclick="toothStart()">🦷 Start the 2-minute brush</button><button class="btn ghost" onclick="toothQuizStart()">❓ Tooth quiz</button></div>';
+      var n=Object.keys((S.hp&&S.hp.brush)||{}).length; if(n)html+='<div class="sub">'+n+' timed brushes logged.</div>';
+      return html;
+    }
+    if(TOOTHT.quiz){
+      if(TOOTHT.ix>=TOOTHT.qs.length){ var r=TOOTHT.right; TOOTHT=null; if(!S.hp.toothquiz&&r>=4){ S.hp.toothquiz=true; if(typeof save==='function')save(); if(typeof zPay==='function')zPay(10,'Tooth expert!'); } return html+'<div class="speak center" style="border:1px solid #7dff8a">'+r+' of 5.</div><button class="btn wide" onclick="hospRender()">Back</button>'; }
+      var q=TOOTHT.qs[TOOTHT.ix]; html+='<div class="speak" style="text-align:left"><b>'+(TOOTHT.ix+1)+'/5:</b> '+q.q+'</div><div class="z-pick three">'+q.opts.map(function(o,i){ return '<button class="btn" onclick="toothQuizPick('+i+')">'+o+'</button>'; }).join('')+'</div>';
+      return html;
+    }
+    var left=Math.max(0,TOOTHT.left), zi=zoneAt(left), z=ZONES[zi];
+    if(left<=0){
+      html+='<div class="speak center" style="border:1px solid #7dff8a"><b style="color:#7dff8a">🦷 Two minutes done! Every tooth, brushed. Rinse and smile.</b></div><button class="btn wide" onclick="TOOTHT=null;hospRender()">Done</button>';
+      return html;
+    }
+    html+=dots(zi);
+    html+=mouthSvg(z.reg);
+    html+='<div class="z-big" id="toothClock">'+left+'s</div>';
+    html+='<div class="center" style="margin:2px 0"><div style="font-size:17px;color:#ffd158;font-weight:800">'+(zi+1)+'/8 · '+z.t+'</div><div class="sub" style="font-size:14px;margin:2px 0 0">'+z.s+'</div></div>';
+    html+='<div class="sub center" style="color:#7dff8a;margin:2px 0 6px">🥁 Brush to Boom’s beat</div>';
+    html+='<button class="btn wide ghost" onclick="toothStop()">Stop</button>';
+    return html;
+  };
+
+  /* ---- beat + countdown ---- */
+  function here(){ var sc=document.getElementById('scr-hosp'); return (typeof HOSP!=='undefined'&&HOSP==='tooth'&&sc&&sc.classList.contains('on')); }
+  function clearIvs(){ try{ if(TOOTHT){ if(TOOTHT.iv)clearInterval(TOOTHT.iv); if(TOOTHT.beatIv)clearInterval(TOOTHT.beatIv); TOOTHT.iv=TOOTHT.beatIv=null; } }catch(e){} }
+  window.toothStop=function(){ clearIvs(); TOOTHT=null; hospRender(); };
+
+  window.toothStart=function(){ if(typeof sTap==='function')sTap(); if(typeof ac==='function')ac();
+    TOOTHT={left:120,quiz:false,step:0,iv:null,beatIv:null}; hospRender();
+    var ivId,beatId;
+    ivId=setInterval(function(){
+      if(typeof TOOTHT==='undefined'||!TOOTHT||TOOTHT.quiz){ clearInterval(ivId); return; }
+      if(!here()){ clearInterval(ivId); if(TOOTHT.beatIv)clearInterval(TOOTHT.beatIv); TOOTHT=null; return; }
+      var prevZi=zoneAt(TOOTHT.left); TOOTHT.left--; var zi=zoneAt(TOOTHT.left);
+      if(TOOTHT.left<=0){ clearInterval(ivId); if(TOOTHT.beatIv)clearInterval(TOOTHT.beatIv); TOOTHT.iv=TOOTHT.beatIv=null; if(!S.hp.brush)S.hp.brush={}; var dk=(typeof ctDay==='function')?ctDay():''; var first=!S.hp.brush[dk]; S.hp.brush[dk]=true; if(typeof save==='function')save(); if(first&&typeof zPay==='function')zPay(8,'Whole-mouth brush!'); hospRender(); return; }
+      var c=document.getElementById('toothClock'); if(c)c.textContent=TOOTHT.left+'s';
+      if(zi!==prevZi){ try{ if(typeof tone==='function'){ tone(660,.12,'triangle',.3); tone(880,.16,'triangle',.25,.1); } }catch(e){} hospRender(); }
+    },1000); TOOTHT.iv=ivId;
+    beatId=setInterval(function(){
+      if(typeof TOOTHT==='undefined'||!TOOTHT||TOOTHT.quiz||TOOTHT.left<=0||!here()){ clearInterval(beatId); return; }
+      var st=TOOTHT.step%8;
+      try{ if(typeof drum==='function'){ if(st===0||st===4)drum('kick'); if(st===2||st===6)drum('snare'); drum('hat'); } }catch(e){}
+      TOOTHT.step++;
+    },320); TOOTHT.beatIv=beatId;
+  };
+
+  /* belt-and-suspenders: any screen change silences the beat (show() calls stopAll) */
+  if(typeof stopAll==='function'){ var _sa=stopAll; window.stopAll=stopAll=function(){ try{ if(typeof TOOTHT!=='undefined'&&TOOTHT){ clearIvs(); if(TOOTHT.left>0)TOOTHT=null; } }catch(e){} return _sa.apply(this,arguments); }; }
+})();
+
+</script>
+<script>
+/* ================= v1.31 · TOOTH TIME polish: streak, quick brush, finish-strong beat, bigger quiz (Oct 2 2026) =
+   Mot's requested improvements on v1.30's Dr. Molar Tooth Time:
+     - Daily brush STREAK (fire counter) + today's brush count (morning + night = 2); a bonus star for both.
+     - Optional 1-MINUTE quick brush (4 condensed zones) beside the full 2-minute brush.
+     - The beat SPEEDS UP in the last 15 seconds (busier hats, extra kicks, claps) as a finish-strong cue.
+     - A larger ROTATING tooth-quiz pool (10 questions, pick 5 shuffled each time).
+     - Mouth diagram refined: pink gum bands behind the teeth so upper/lower reads correctly.
+   Re-overrides toothHtml/toothStart/toothQuizStart/TOOTH_FACTS + helpers (last definition wins). The v1.30 stopAll
+   wrap still silences the beat on any screen change (intervals stay on TOOTHT.iv / TOOTHT.beatIv). Audio-safe per
+   v1.29. */
+
+(function(){
+  if(typeof toothHtml!=='function'||typeof hospRender!=='function')return;
+
+  window.TOOTH_FACTS=[
+    {q:'How long should you brush?',opts:['Two minutes','Ten seconds','Ten minutes'],a:0},
+    {q:'Which parts of your teeth get brushed?',opts:['Every side: outsides, insides, and the chewing tops','Just the front ones','Only the ones that hurt'],a:0},
+    {q:'What else should you brush besides your teeth?',opts:['Your tongue','Your nose','Your ears'],a:0},
+    {q:'What reaches between teeth where a brush cannot?',opts:['Floss','A towel','A straw'],a:0},
+    {q:'Which drink is best for your teeth?',opts:['Water','Soda','Juice'],a:0},
+    {q:'How many times a day should you brush?',opts:['Two: morning and night','Once a week','Only after candy'],a:0},
+    {q:'What hides on teeth and causes cavities?',opts:['Plaque (a sticky film of germs)','Freckles','Glitter'],a:0},
+    {q:'How often should you get a new toothbrush?',opts:['About every 3 months','Every 10 years','Never'],a:0},
+    {q:'What makes teeth strong and helps fight cavities?',opts:['Fluoride in toothpaste','Soda','Gummy bears'],a:0},
+    {q:'When a baby tooth gets wiggly, that means...',opts:['A grown-up tooth is on the way','Something is wrong','You brushed too hard'],a:0}
+  ];
+
+  var FULL=[
+    {t:'Top teeth, cheek side (right)', s:'Little circles on the outsides', reg:'tr'},
+    {t:'Top front teeth', s:'The outsides and the edges you bite with', reg:'tf'},
+    {t:'Top teeth, cheek side (left)', s:'Little circles on the outsides', reg:'tl'},
+    {t:'Behind your top teeth + the tops', s:'The insides you cannot see, then the flat chewing tops', reg:'ti'},
+    {t:'Bottom teeth, cheek side (right)', s:'Little circles on the outsides', reg:'br'},
+    {t:'Bottom front teeth', s:'The outsides and the biting edges', reg:'bf'},
+    {t:'Bottom teeth, cheek side (left)', s:'Little circles on the outsides', reg:'bl'},
+    {t:'Behind the bottom teeth + tongue', s:'The insides, then brush your tongue to blast bad breath', reg:'bitongue'}
+  ];
+  var QUICK=[
+    {t:'All your top teeth, outsides', s:'Little circles across the whole top: right, front, left', reg:'tall'},
+    {t:'Top insides + chewing tops', s:'Behind the top teeth, then the flat tops you chew with', reg:'ti'},
+    {t:'All your bottom teeth, outsides', s:'Little circles across the whole bottom', reg:'ball'},
+    {t:'Bottom insides + tongue', s:'Behind the bottom teeth, then brush your tongue', reg:'bitongue'}
+  ];
+  window.TOOTH_ZONES=FULL;
+  function zones(){ return (TOOTHT&&TOOTHT.zones)?TOOTHT.zones:FULL; }
+  function total(){ return (TOOTHT&&TOOTHT.total)?TOOTHT.total:120; }
+  function zoneAt(left){ var z=zones(), per=total()/z.length; return Math.min(z.length-1,Math.max(0,Math.floor((total()-left)/per))); }
+
+  /* v1.34: open-mouth, top-down horseshoe view so EVERY surface shows as it is brushed -
+     outer rim = outsides, inner rim = insides, tooth tops fill = chewing surfaces, plus the tongue. */
+  function mouthSvg(reg){
+    var M={tr:{a:'U',s:['out'],c:'right'},tf:{a:'U',s:['out'],c:'front'},tl:{a:'U',s:['out'],c:'left'},ti:{a:'U',s:['in','top'],c:'all'},br:{a:'L',s:['out'],c:'right'},bf:{a:'L',s:['out'],c:'front'},bl:{a:'L',s:['out'],c:'left'},bitongue:{a:'L',s:['in'],c:'all',t:1},tall:{a:'U',s:['out'],c:'all'},ball:{a:'L',s:['out'],c:'all'},tongue:{a:'L',s:[],c:'none',t:1}}[reg]||{a:'U',s:[],c:'none'};
+    var G='#ffd158', cx=150, cyU=92, cyL=120, RxO=126, RxI=70, RyO=74, RyI=38, N=10, aS=0.13*Math.PI, aE=0.87*Math.PI, dA=(aE-aS)/(N-1);
+    function P(l,a,up){ var rx=RxI+(RxO-RxI)*l, ry=RyI+(RyO-RyI)*l, x=cx+rx*Math.cos(a), y=up?(cyU-ry*Math.sin(a)):(cyL+ry*Math.sin(a)); return x.toFixed(1)+' '+y.toFixed(1); }
+    function pxy(l,a,up){ var rx=RxI+(RxO-RxI)*l, ry=RyI+(RyO-RyI)*l; return [cx+rx*Math.cos(a), up?(cyU-ry*Math.sin(a)):(cyL+ry*Math.sin(a))]; }
+    function inC(i,c){ return c==='all'||(c==='right'&&i<=2)||(c==='front'&&i>=3&&i<=6)||(c==='left'&&i>=7); }
+    function lineSeg(A,B){ return '<line x1="'+A[0].toFixed(1)+'" y1="'+A[1].toFixed(1)+'" x2="'+B[0].toFixed(1)+'" y2="'+B[1].toFixed(1)+'" stroke="'+G+'" stroke-width="6" stroke-linecap="round" filter="url(#tgl)"/>'; }
+    function arch(up){ var act=(M.a===(up?'U':'L')), o=''; var i,a,d;
+      var g0=pxy(1.16,aS,up), g2=pxy(1.16,aE,up), gy=(up?(cyU-RyO*1.42):(cyL+RyO*1.42));
+      o+='<path d="M'+g0[0].toFixed(1)+' '+g0[1].toFixed(1)+' Q'+cx+' '+gy.toFixed(1)+' '+g2[0].toFixed(1)+' '+g2[1].toFixed(1)+'" stroke="#d46a82" stroke-width="13" fill="none" stroke-linecap="round" opacity="0.6"/>';
+      for(i=0;i<N;i++){ a=aS+dA*i; d=dA*0.42;
+        var o1=P(1,a-d,up), o2=P(1,a+d,up), i2=P(0,a+d,up), i1=P(0,a-d,up);
+        var on=act&&inC(i,M.c), topOn=on&&M.s.indexOf('top')>=0;
+        o+='<polygon points="'+o1+' '+o2+' '+i2+' '+i1+'" fill="'+(topOn?G:'#ffffff')+'" stroke="#b9a25c" stroke-width="1.1"'+(topOn?' filter="url(#tgl)"':'')+'/>';
+        if(on&&M.s.indexOf('out')>=0)o+=lineSeg(pxy(1,a-d,up),pxy(1,a+d,up));
+        if(on&&M.s.indexOf('in')>=0)o+=lineSeg(pxy(0,a-d,up),pxy(0,a+d,up));
+      } return o; }
+    var tOn=!!M.t;
+    var s='<svg viewBox="0 0 300 206" width="100%" style="max-width:290px;display:block;margin:4px auto">';
+    s+='<defs><filter id="tgl" x="-60%" y="-60%" width="220%" height="220%"><feDropShadow dx="0" dy="0" stdDeviation="3" flood-color="#ffd158"/></filter></defs>';
+    s+='<ellipse cx="150" cy="104" rx="146" ry="100" fill="#431a25"/><ellipse cx="150" cy="106" rx="104" ry="66" fill="#5e2433"/>';
+    s+='<ellipse cx="150" cy="150" rx="52" ry="30" fill="'+(tOn?'#ff9ec4':'#c9637c')+'"'+(tOn?' filter="url(#tgl)"':'')+'/>';
+    s+=arch(true)+arch(false);
+    var lbl=M.s.indexOf('top')>=0?'insides + chewing tops':(M.s.indexOf('in')>=0?(tOn?'insides + tongue':'inside surfaces'):(M.s.indexOf('out')>=0?'outside surfaces':(tOn?'brush your tongue':'')));
+    if(lbl)s+='<text x="150" y="107" font-size="11" text-anchor="middle" fill="#ffd158" font-weight="800">'+lbl+'</text>';
+    s+='</svg>'; return s;
+  }
+  window.toothMouthSvg=mouthSvg;
+
+  function dots(zi,n){ var h='<div style="display:flex;justify-content:center;gap:6px;margin:6px 0">'; for(var i=0;i<n;i++){ h+='<span style="width:12px;height:12px;border-radius:50%;background:'+(i<zi?'#7dff8a':(i===zi?'#ffd158':'#2b2350'))+';display:inline-block"></span>'; } return h+'</div>'; }
+
+  /* streak helpers */
+  function yKey(){ var d=new Date(); d.setDate(d.getDate()-1); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
+  function streakLine(){ var st=(S.hp&&S.hp.streak)||0, dk=(typeof ctDay==='function')?ctDay():'', today=(S.hp&&S.hp.brushN&&S.hp.brushN[dk])||0;
+    var h=''; if(st>0)h+='<span style="color:#ff9f43;font-weight:800">🔥 '+st+'-day streak</span>';
+    if(today>0)h+=(h?' · ':'')+'<span style="color:#7dff8a">brushed '+today+(today>=2?' times today 🌟':' time today')+'</span>';
+    return h?('<div class="sub center" style="margin:2px 0 6px">'+h+'</div>'):''; }
+  function logBrush(){ citState(); if(!S.hp.brush)S.hp.brush={}; if(!S.hp.brushN)S.hp.brushN={}; var dk=(typeof ctDay==='function')?ctDay():'';
+    var firstToday=!S.hp.brush[dk]; S.hp.brush[dk]=true; S.hp.brushN[dk]=(S.hp.brushN[dk]||0)+1;
+    if(firstToday){ S.hp.streak=(S.hp.streakDay===yKey())?((S.hp.streak||0)+1):1; S.hp.streakDay=dk; if((S.hp.streak||0)>(S.hp.streakBest||0))S.hp.streakBest=S.hp.streak; }
+    if(typeof save==='function')save();
+    return {first:firstToday, streak:S.hp.streak||1, today:S.hp.brushN[dk]||1}; }
+
+  /* ---- render ---- */
+  window.toothHtml=toothHtml=function(){
+    var html=(typeof zRoom==='function')?zRoom('molar','Dr. Molar’s Tooth Time','Brush your whole mouth to a beat.'):'';
+    if(typeof citState==='function')citState();
+    if(typeof TOOTHT==='undefined'||!TOOTHT){
+      html+=streakLine();
+      html+='<div class="speak" style="text-align:left">Grab your real toothbrush. Dr. Molar walks you around your <b>whole mouth</b>: outsides, insides, the flat tops you chew with, the front, and your tongue. A <b>beat</b> plays so you never rush, and it speeds up at the end.</div>';
+      html+='<div class="z-pick"><button class="btn" onclick="toothStart(\'full\')">🦷 Full brush (2 min)</button><button class="btn ghost" onclick="toothStart(\'quick\')">⚡ Quick brush (1 min)</button></div>';
+      html+='<button class="btn ghost wide" style="margin-top:6px" onclick="toothQuizStart()">❓ Tooth quiz</button>';
+      var n=Object.keys((S.hp&&S.hp.brush)||{}).length; if(n)html+='<div class="sub">'+n+' days brushed with Dr. Molar.</div>';
+      return html;
+    }
+    if(TOOTHT.quiz){
+      if(TOOTHT.ix>=TOOTHT.qs.length){ var r=TOOTHT.right; TOOTHT=null; if(!S.hp.toothquiz&&r>=4){ S.hp.toothquiz=true; if(typeof save==='function')save(); if(typeof zPay==='function')zPay(10,'Tooth expert!'); } return html+'<div class="speak center" style="border:1px solid #7dff8a">'+r+' of 5.</div><button class="btn wide" onclick="hospRender()">Back</button>'; }
+      var q=TOOTHT.qs[TOOTHT.ix]; html+='<div class="speak" style="text-align:left"><b>'+(TOOTHT.ix+1)+'/5:</b> '+q.q+'</div><div class="z-pick three">'+q.opts.map(function(o,i){ return '<button class="btn" onclick="toothQuizPick('+i+')">'+o+'</button>'; }).join('')+'</div>';
+      return html;
+    }
+    var left=Math.max(0,TOOTHT.left);
+    if(left<=0){ var rs=TOOTHT.result||{streak:1,today:1};
+      html+='<div class="speak center" style="border:1px solid #7dff8a"><b style="color:#7dff8a">🦷 '+(TOOTHT.total===60?'Quick brush':'Two minutes')+' done! Every tooth, brushed. Rinse and smile.</b></div>';
+      html+='<div class="sub center" style="margin:6px 0"><span style="color:#ff9f43;font-weight:800">🔥 '+rs.streak+'-day streak</span>'+(rs.today>=2?' · <span style="color:#ffd158;font-weight:800">both brushes done today! 🌟</span>':' · <span style="color:#7dff8a">brush '+rs.today+' of the day</span>')+'</div>';
+      html+='<button class="btn wide" onclick="TOOTHT=null;hospRender()">Done</button>';
+      return html;
+    }
+    var z=zones(), zi=zoneAt(left), zd=z[zi], rush=left<=15;
+    html+=dots(zi,z.length);
+    html+=mouthSvg(zd.reg);
+    html+='<div class="z-big" id="toothClock"'+(rush?' style="color:#ff5d5d"':'')+'>'+left+'s</div>';
+    html+='<div class="center" style="margin:2px 0"><div style="font-size:17px;color:#ffd158;font-weight:800">'+(zi+1)+'/'+z.length+' · '+zd.t+'</div><div class="sub" style="font-size:14px;margin:2px 0 0">'+zd.s+'</div></div>';
+    html+='<div class="sub center" style="color:'+(rush?'#ff5d5d':'#7dff8a')+';margin:2px 0 6px">'+(rush?'🥁 Finish strong! Faster beat!':'🥁 Brush to Boom’s beat')+'</div>';
+    html+='<button class="btn wide ghost" onclick="toothStop()">Stop</button>';
+    return html;
+  };
+
+  /* ---- beat + countdown ---- */
+  function here(){ var sc=document.getElementById('scr-hosp'); return (typeof HOSP!=='undefined'&&HOSP==='tooth'&&sc&&sc.classList.contains('on')); }
+  window.toothStop=function(){ try{ if(TOOTHT){ if(TOOTHT.iv)clearInterval(TOOTHT.iv); if(TOOTHT.beatIv)clearInterval(TOOTHT.beatIv); } }catch(e){} TOOTHT=null; hospRender(); };
+
+  window.toothStart=function(mode){ if(typeof sTap==='function')sTap(); if(typeof ac==='function')ac();
+    var quick=(mode==='quick'); var zs=quick?QUICK:FULL; var tot=zs.length*15;
+    TOOTHT={left:tot,total:tot,zones:zs,quiz:false,step:0,iv:null,beatIv:null,result:null}; hospRender();
+    var ivId,beatId;
+    ivId=setInterval(function(){
+      if(typeof TOOTHT==='undefined'||!TOOTHT||TOOTHT.quiz){ clearInterval(ivId); return; }
+      if(!here()){ clearInterval(ivId); if(TOOTHT.beatIv)clearInterval(TOOTHT.beatIv); TOOTHT=null; return; }
+      var prevZi=zoneAt(TOOTHT.left); TOOTHT.left--; var zi=zoneAt(TOOTHT.left);
+      if(TOOTHT.left<=0){ clearInterval(ivId); if(TOOTHT.beatIv)clearInterval(TOOTHT.beatIv); TOOTHT.iv=TOOTHT.beatIv=null; var res=logBrush(); TOOTHT.result=res; if(res.first&&typeof zPay==='function')zPay(8,'Whole-mouth brush!'); else if(res.today===2&&typeof addGold==='function'){ addGold(1); if(typeof toast==='function')toast('Both brushes today! +1 🌟'); } hospRender(); return; }
+      var c=document.getElementById('toothClock'); if(c)c.textContent=TOOTHT.left+'s';
+      if(zi!==prevZi){ try{ if(typeof tone==='function'){ tone(660,.12,'triangle',.3); tone(880,.16,'triangle',.25,.1); } }catch(e){} hospRender(); }
+    },1000); TOOTHT.iv=ivId;
+    beatId=setInterval(function(){
+      if(typeof TOOTHT==='undefined'||!TOOTHT||TOOTHT.quiz||TOOTHT.left<=0||!here()){ clearInterval(beatId); return; }
+      var st=TOOTHT.step%16, rush=TOOTHT.left<=15;
+      try{ if(typeof drum==='function'){
+        if(st===0||st===8)drum('kick');
+        if(st===4||st===12)drum('snare');
+        if(rush){ drum('hat'); if(st===6||st===14)drum('kick'); if(st===2||st===10)drum('clap'); }
+        else if(st%2===0)drum('hat');
+      } }catch(e){}
+      TOOTHT.step++;
+    },160); TOOTHT.beatIv=beatId;
+  };
+
+  window.toothQuizStart=function(){ if(typeof sTap==='function')sTap(); var pool=(typeof shuffle==='function')?shuffle(TOOTH_FACTS.slice()):TOOTH_FACTS.slice(); TOOTHT={quiz:true,qs:pool.slice(0,5),ix:0,right:0}; hospRender(); };
+})();
+
+</script>
+<script>
+/* ================= v1.32 · THE BUILDER'S YARD (Cubby) - measure, tile & build (Oct 2 2026) ==================
+   Garrett asked about the Builder's Yard. Cubby already teaches Solid Shapes in the band but had no building to
+   visit. This opens the reserved lot in THE COVE as his facility - hands-on MEASUREMENT + building, which is the
+   heart of the game's name:
+     - MEASURE IT: lay unit blocks end to end along an object to find how many blocks long it is (unit iteration).
+     - TILE IT: cover a floor with unit tiles to find its area, then see it as rows x columns (area by tiling).
+     - BUILD IT: match a blueprint block-for-block, then collect the build card (reading a plan, spatial match).
+   Mirrors the zone-facility pattern (zScr/zRoom/zPay, openCove-style open+render). The lot slot becomes a real
+   building; townGo('yard') routes here. Progress persists in S.zone.yard. Audio-safe (zPay/sTap/confetti guarded).
+   No direct tone() calls. All grids are divs (no SVG presentation-attr hex pitfalls). */
+
+(function(){
+  if(typeof zScr!=='function'||typeof townGo!=='function'||typeof zRoom!=='function')return;
+
+  /* ---- persistent progress ---- */
+  function YS(){ if(typeof S==='undefined'||!S)return {measured:0,tiled:0,built:0,bp:{}}; if(!S.zone)S.zone={}; if(!S.zone.yard)S.zone.yard={measured:0,tiled:0,built:0,bp:{}}; var y=S.zone.yard; if(typeof y.measured!=='number')y.measured=0; if(typeof y.tiled!=='number')y.tiled=0; if(typeof y.built!=='number')y.built=0; if(!y.bp||typeof y.bp!=='object')y.bp={}; return y; }
+
+  /* ---- content ---- */
+  var YOBJ=[{n:'snake',e:'🐍'},{n:'pencil',e:'✏️'},{n:'carrot',e:'🥕'},{n:'caterpillar',e:'🐛'},{n:'ribbon',e:'🎀'},{n:'crayon',e:'🖍️'},{n:'train',e:'🚂'},{n:'hot dog',e:'🌭'}];
+  var YBP=[
+    {n:'Tower',  rows:['.#.','.#.','###','###']},
+    {n:'Steps',  rows:['..#','.##','###']},
+    {n:'Arch',   rows:['###','#.#','#.#']},
+    {n:'House',  rows:['.#.','###','#.#']},
+    {n:'Bridge', rows:['#...#','#####']},
+    {n:'Pyramid',rows:['..#..','.###.','#####']}
+  ];
+  window.YARD_OBJ=YOBJ; window.YARD_BP=YBP;
+  function bpCells(bp){ var set={},w=0; for(var r=0;r<bp.rows.length;r++){ var row=bp.rows[r]; if(row.length>w)w=row.length; for(var c=0;c<row.length;c++){ if(row.charAt(c)==='#')set[r+','+c]=true; } } return {set:set,w:w,h:bp.rows.length,n:Object.keys(set).length}; }
+  function rnd(a,b){ return a+Math.floor(Math.random()*(b-a+1)); }
+  function tick(){ if(typeof sTap==='function'){ try{ sTap(); }catch(e){} } }
+
+  /* ---- CSS ---- */
+  (function(){ if(document.getElementById('yardCSS'))return; var st=document.createElement('style'); st.id='yardCSS'; st.textContent=
+     '.yd-tabs{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:6px 0 8px}'
+    +'.yd-obj{font-size:38px;text-align:center;margin:2px 0}'
+    +'.yd-track{display:flex;gap:4px;justify-content:center;margin:10px 0;flex-wrap:wrap}'
+    +'.yd-seg{width:30px;height:30px;border-radius:6px;border:2px dashed #4a3f7a;background:#160f33;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;user-select:none}'
+    +'.yd-seg.on{background:#e0a92e;border-style:solid;border-color:#b9842a}'
+    +'.yd-grid{display:inline-grid;gap:5px;margin:8px auto}'
+    +'.yd-cell{width:34px;height:34px;border-radius:7px;border:2px solid #2b2350;background:#160f33;cursor:pointer;user-select:none}'
+    +'.yd-cell.on{background:#7dff8a;border-color:#58c76a}'
+    +'.yd-cell.tgt{background:#223055;border-color:#3b5bb0}'
+    +'.yd-cell.tile{background:#e0a92e;border-color:#b9842a}'
+    +'.yd-count{font-size:24px;font-weight:900;text-align:center;color:#ffd158;margin:4px 0}'
+    +'.yd-stat{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin:8px 0;font-size:14px;color:#b7a9ee}'
+    +'.yd-bprow{text-align:center;margin:6px 0}'
+    +'.yd-bp{display:inline-flex;align-items:center;gap:4px;background:#160f33;border:1px solid #2b2350;border-radius:8px;padding:4px 9px;margin:3px;font-size:13px;color:#6f6598}'
+    +'.yd-bp.have{color:#ffd158;border-color:#ffd158}';
+    document.head.appendChild(st); })();
+
+  /* ---- puzzle starters (YARDT = active puzzle, not persisted) ---- */
+  window.YARDT=null; window.YARD='home';
+  function measureNew(){ var o=YOBJ[rnd(0,YOBJ.length-1)]; YARDT={k:'measure',obj:o,len:rnd(3,7),placed:0}; }
+  function tileNew(){ YARDT={k:'tile',r:rnd(2,4),c:rnd(3,5),fill:{}}; }
+  function buildNew(){ var y=YS(); var pool=YBP.filter(function(b){ return !y.bp[b.n]; }); if(!pool.length)pool=YBP; var bp=pool[rnd(0,pool.length-1)]; var cc=bpCells(bp); YARDT={k:'build',bp:bp,tgt:cc.set,w:cc.w,h:cc.h,need:cc.n,place:{}}; }
+
+  /* ---- open + render ---- */
+  window.openYard=function(tab){ tick(); if(typeof zoneState==='function')zoneState(); YS(); zScr('scr-yard','yardScore','yardBody','The Builder’s Yard is Cubby’s. Measure things with blocks, tile a floor to find its area, and build to a blueprint.'); YARD=tab||'home'; if(YARD==='measure'&&(!YARDT||YARDT.k!=='measure'))measureNew(); if(YARD==='tile'&&(!YARDT||YARDT.k!=='tile'))tileNew(); if(YARD==='build'&&(!YARDT||YARDT.k!=='build'))buildNew(); yardRender(); show('scr-yard'); var b=document.getElementById('scr-yard'); if(b)b.scrollTop=0; };
+
+  window.yardTab=function(t){ tick(); YARD=t; YARDT=null; if(t==='measure')measureNew(); else if(t==='tile')tileNew(); else if(t==='build')buildNew(); yardRender(); };
+
+  function tabsBar(){ var t=[['home','🏗️ Yard'],['measure','📏 Measure'],['tile','▦ Tile'],['build','📐 Build']]; return '<div class="yd-tabs">'+t.map(function(x){ return '<button class="btn ghost small'+(YARD===x[0]?' sel':'')+'" onclick="yardTab(\''+x[0]+'\')">'+x[1]+'</button>'; }).join('')+'</div>'; }
+
+  window.yardRender=function(){ var body=document.getElementById('yardBody'); if(!body)return; var y=YS();
+    var sc=document.getElementById('yardScore'); if(sc)sc.textContent='🧱 '+y.measured+' measured · ▦ '+y.tiled+' tiled · 📐 '+y.built+' built';
+    var html='';
+    if(YARD==='home'){
+      html+=zRoom('cubby','The Builder’s Yard','Cubby got his yard. Measure, tile, and build.');
+      html+='<div class="speak" style="text-align:left">“Six faces you can hold - that is solid. Now grab some blocks. We will measure how long things are, tile a floor to find how big it is, and build real things from a plan.”</div>';
+      html+=tabsBar();
+      html+='<div class="yd-stat"><span>🧱 '+y.measured+' measured</span><span>▦ '+y.tiled+' tiled</span><span>📐 '+y.built+' built</span></div>';
+      html+='<div class="sub center" style="margin-top:6px">Blueprints collected</div><div class="yd-bprow">'+YBP.map(function(b){ var have=!!y.bp[b.n]; return '<span class="yd-bp'+(have?' have':'')+'">'+(have?'📐':'▫️')+' '+b.n+'</span>'; }).join('')+'</div>';
+      body.innerHTML=html; return;
+    }
+    html+=tabsBar();
+    if(YARD==='measure') html+=measureHtml();
+    else if(YARD==='tile') html+=tileHtml();
+    else if(YARD==='build') html+=buildHtml();
+    body.innerHTML=html;
+  };
+
+  /* ---- MEASURE IT ---- */
+  function measureHtml(){ if(!YARDT||YARDT.k!=='measure')measureNew(); var t=YARDT, done=t.placed>=t.len;
+    var h=zRoom('cubby','Measure It','How many blocks long? Lay blocks under it, end to end.');
+    h+='<div class="yd-obj" style="font-size:16px;color:#b7a9ee">the '+t.obj.n+'</div>';
+    var segs=''; for(var i=0;i<t.len;i++){ var on=i<t.placed; segs+='<div class="yd-seg'+(on?' on':'')+'" onclick="yardLay()">'+(on?'🧱':'')+'</div>'; }
+    h+='<div style="text-align:center"><div style="display:inline-block">';
+    h+='<div style="display:flex;align-items:center;height:30px;background:#2a2550;border:2px solid #4a3f7a;border-radius:9px;font-size:20px;white-space:nowrap;overflow:hidden;box-sizing:border-box;width:100%;padding-left:5px">'+t.obj.e+'</div>';
+    h+='<div class="yd-track" style="margin:6px 0 0;flex-wrap:nowrap">'+segs+'</div>';
+    h+='</div></div>';
+    h+='<div class="yd-count">'+t.placed+' block'+(t.placed===1?'':'s')+'</div>';
+    if(done){ h+='<div class="speak center" style="border:1px solid #7dff8a"><b style="color:#7dff8a">The '+t.obj.n+' is '+t.len+' blocks long.</b> You counted every block as you laid it - that is measuring.</div>'; h+='<button class="btn wide" onclick="yardTab(\'measure\')">📏 Measure another</button>'; }
+    else { h+='<div class="sub center">Lay blocks all the way to the end, then count them.</div>'; h+='<button class="btn wide ghost small" onclick="measureReset()">Start this one over</button>'; }
+    return h; }
+  window.yardLay=function(){ if(!YARDT||YARDT.k!=='measure'||YARDT.placed>=YARDT.len)return; tick(); YARDT.placed++; if(YARDT.placed>=YARDT.len){ var y=YS(); y.measured++; if(typeof save==='function')save(); if(typeof zPay==='function')zPay(6,'Measured the '+YARDT.obj.n+'!'); } yardRender(); };
+  window.measureReset=function(){ tick(); if(YARDT&&YARDT.k==='measure')YARDT.placed=0; yardRender(); };
+
+  /* ---- TILE IT ---- */
+  function tileHtml(){ if(!YARDT||YARDT.k!=='tile')tileNew(); var t=YARDT, total=t.r*t.c, n=Object.keys(t.fill).length, done=n>=total;
+    var h=zRoom('cubby','Tile It','Cover the whole floor with tiles. How many does it take?');
+    var cells=''; for(var r=0;r<t.r;r++){ for(var c=0;c<t.c;c++){ var k=r+','+c, on=!!t.fill[k]; cells+='<div class="yd-cell'+(on?' tile':'')+'" onclick="tileTap('+r+','+c+')"></div>'; } }
+    h+='<div style="text-align:center"><div class="yd-grid" style="grid-template-columns:repeat('+t.c+',34px)">'+cells+'</div></div>';
+    h+='<div class="yd-count">'+n+' / '+total+' tiles</div>';
+    if(done){ h+='<div class="speak center" style="border:1px solid #7dff8a"><b style="color:#7dff8a">Floor tiled! '+t.r+' rows × '+t.c+' columns = '+total+' tiles.</b> The space it covers is its area.</div>'; h+='<button class="btn wide" onclick="yardTab(\'tile\')">▦ Tile another floor</button>'; }
+    else h+='<div class="sub center">Tap each square to lay a tile.</div>';
+    return h; }
+  window.tileTap=function(r,c){ if(!YARDT||YARDT.k!=='tile')return; tick(); var k=r+','+c; if(YARDT.fill[k])delete YARDT.fill[k]; else YARDT.fill[k]=true; var total=YARDT.r*YARDT.c, n=Object.keys(YARDT.fill).length; if(n>=total){ var y=YS(); y.tiled++; if(typeof save==='function')save(); if(typeof zPay==='function')zPay(6,'Area = '+total+'!'); } yardRender(); };
+
+  /* ---- BUILD IT ---- */
+  function buildHtml(){ if(!YARDT||YARDT.k!=='build')buildNew(); var t=YARDT, placed=Object.keys(t.place).length;
+    var h=zRoom('cubby','Build It','Match the blueprint block for block. Tap to place a block.');
+    /* blueprint (target) */
+    var bp=''; for(var r=0;r<t.h;r++){ for(var c=0;c<t.w;c++){ var tg=!!t.tgt[r+','+c]; bp+='<div class="yd-cell'+(tg?' tgt':'')+'" style="width:22px;height:22px;cursor:default"></div>'; } }
+    h+='<div class="sub center" style="margin-top:4px">Blueprint: <b style="color:#9fc0ff">'+t.bp.n+'</b> ('+t.need+' blocks)</div>';
+    h+='<div style="text-align:center"><div class="yd-grid" style="grid-template-columns:repeat('+t.w+',22px);gap:3px">'+bp+'</div></div>';
+    /* build grid */
+    h+='<div class="sub center" style="margin-top:6px">Your build</div>';
+    var g=''; for(var r2=0;r2<t.h;r2++){ for(var c2=0;c2<t.w;c2++){ var on=!!t.place[r2+','+c2]; g+='<div class="yd-cell'+(on?' on':'')+'" onclick="buildTap('+r2+','+c2+')"></div>'; } }
+    h+='<div style="text-align:center"><div class="yd-grid" style="grid-template-columns:repeat('+t.w+',34px)">'+g+'</div></div>';
+    h+='<div class="yd-count">'+placed+' / '+t.need+' blocks</div>';
+    h+='<button class="btn wide" onclick="buildCheck()">✓ Check my build</button>';
+    h+='<button class="btn wide ghost small" onclick="buildReset()">Clear</button>';
+    return h; }
+  function sameSet(a,b){ var ka=Object.keys(a),kb=Object.keys(b); if(ka.length!==kb.length)return false; for(var i=0;i<ka.length;i++)if(!b[ka[i]])return false; return true; }
+  window.buildTap=function(r,c){ if(!YARDT||YARDT.k!=='build')return; tick(); var k=r+','+c; if(YARDT.place[k])delete YARDT.place[k]; else YARDT.place[k]=true; yardRender(); };
+  window.buildReset=function(){ tick(); if(YARDT&&YARDT.k==='build')YARDT.place={}; yardRender(); };
+  window.buildCheck=function(){ if(!YARDT||YARDT.k!=='build')return; tick(); if(sameSet(YARDT.place,YARDT.tgt)){ var y=YS(); var first=!y.bp[YARDT.bp.n]; y.bp[YARDT.bp.n]=true; y.built++; if(typeof save==='function')save(); if(typeof zPay==='function')zPay(first?8:6,(first?'New blueprint: ':'Built the ')+YARDT.bp.n+(first?' collected!':' again!')); YARDT.done=true; yardDoneBuild(); } else { if(typeof zNo==='function')zNo('Not quite - match the blueprint exactly.'); else if(typeof toast==='function')toast('Not quite - match the blueprint.'); } };
+  function yardDoneBuild(){ var body=document.getElementById('yardBody'); if(!body)return; var t=YARDT; var h=tabsBar()+zRoom('cubby','Build It','');
+    h+='<div class="speak center" style="border:1px solid #7dff8a"><b style="color:#7dff8a">You built the '+t.bp.n+'!</b> '+t.need+' blocks, just like the plan.</div>';
+    h+='<button class="btn wide" onclick="yardTab(\'build\')">📐 Next blueprint</button>';
+    h+='<button class="btn wide ghost" onclick="yardTab(\'home\')">Back to the Yard</button>';
+    body.innerHTML=h; }
+
+  /* ---- wire the lot into a real building + route townGo ---- */
+  (function(){ var _tp=townPlan; window.townPlan=townPlan=function(){ var rows=_tp(); var y=YS(); for(var i=0;i<rows.length;i++){ if(rows[i].name==='THE COVE'){ var sl=rows[i].slots; for(var j=0;j<sl.length;j++){ if(sl[j].lot&&/BUILDER/i.test(sl[j].cap||'')){ sl[j]={col:'#e0a92e',tg:'BUILD',nm:'Builder’s Yard',host:'cubby',prog:(y.measured+y.tiled+y.built)+' projects',go:'yard'}; } } } } return rows; }; })();
+  (function(){ var _tg=townGo; window.townGo=townGo=function(dest){ if(dest==='yard'){ if(typeof sTap==='function'){ try{ sTap(); }catch(e){} } openYard(); return; } return _tg(dest); }; })();
+})();
+
+</script>
+<script>
+/* ================= v1.33 · THE CLINIC (Dr. Fig) - healthy eating & food groups (Oct 2 2026) ================
+   The second Health Row lot ("CLINIC - more staff") opens as Dr. Fig's Clinic, adding a new health character and a
+   topic the Hospital did not cover: nutrition. Two activities:
+     - BUILD A PLATE: fill the five food-group slots (fruit, veggies, grains, protein, dairy) to make a balanced
+       plate. Teaches the food groups and what "balanced" means.
+     - SORT THE FOOD: a food appears; tap which group it belongs to. Correct-answer safe (sCorrect guarded, v1.29).
+   Dr. Fig is registered exactly like Dr. Molar / Nurse Nell (a cfg-based extra citizen: CITIZENS_EXTRA + MEMBER_JOB
+   + grantHome + opinion), so memberSVG/citSvg render her and she gets a citizen card + a home. The Clinic lot slot
+   becomes a real building (host:'fig', go:'clinic') via a townPlan wrap; townGo('clinic') routes here. Progress
+   persists in S.hp.clinic {plates,sorted,streakBest}. Audio-safe; no direct tone(); grids are divs. */
+
+(function(){
+  if(typeof zScr!=='function'||typeof townGo!=='function'||typeof CITIZENS_EXTRA==='undefined')return;
+
+  /* ---- register Dr. Fig (nutrition coach) ---- */
+  if(!extraCitizen('fig')){
+    CITIZENS_EXTRA.push({id:'fig',name:'Dr. Fig',title:'City Dietitian',job:'Dietitian',place:'the Clinic',wing:'health',cfg:{body:'round',col:'#8fd06a',eyes:'happy',extra:'none',acc:'none',name:''},
+      bio:'Dr. Fig runs the Clinic next to the Hospital. She says every colour on your plate does a different job, and a balanced plate has a little from all five food groups.',
+      lines:['Half your plate fruits and veggies, and you are most of the way there.','Every food group is on the team. None of them is the bad guy.','Water is the drink your body cheers for.']});
+    if(typeof MEMBER_JOB==='object')MEMBER_JOB.fig={job:'Dietitian',place:'the Clinic',wing:'health'};
+    try{ if(typeof grantHome==='function')grantHome('fig','Dr. Fig','Dietitian','the Clinic',['colourful plates','crunchy veggies','cold water']); }catch(e){}
+    try{ if(typeof FAVOR_SPECIAL==='object')FAVOR_SPECIAL.fig='health'; }catch(e){}
+    try{ if(OPINION_TOPICS&&OPINION_TOPICS.cityname)OPINION_TOPICS.cityname.says.fig=['Harmony Falls','A balanced plate is all about harmony - a little of everything.']; }catch(e){}
+  }
+
+  /* ---- progress ---- */
+  function CL(){ if(typeof S==='undefined'||!S)return {plates:0,sorted:0,streakBest:0}; if(!S.hp)S.hp={}; if(!S.hp.clinic)S.hp.clinic={plates:0,sorted:0,streakBest:0}; var c=S.hp.clinic; if(typeof c.plates!=='number')c.plates=0; if(typeof c.sorted!=='number')c.sorted=0; if(typeof c.streakBest!=='number')c.streakBest=0; return c; }
+
+  /* ---- food groups ---- */
+  var GROUPS=[
+    {g:'Fruit',   col:'#ff6f91', foods:['🍎','🍌','🍓','🍊','🍇','🍉']},
+    {g:'Veggies', col:'#7dd87a', foods:['🥦','🥕','🌽','🥬','🍅']},
+    {g:'Grains',  col:'#e0a92e', foods:['🍞','🍚','🍝','🥖','🥨']},
+    {g:'Protein', col:'#ff9f43', foods:['🍗','🥚','🐟','🥜','🍳']},
+    {g:'Dairy',   col:'#7ad9ff', foods:['🥛','🧀','🍦']}
+  ];
+  window.CLINIC_GROUPS=GROUPS;
+  function rnd(a,b){ return a+Math.floor(Math.random()*(b-a+1)); }
+  function pick(arr){ return arr[rnd(0,arr.length-1)]; }
+  function tick(){ if(typeof sTap==='function'){ try{ sTap(); }catch(e){} } }
+
+  /* ---- CSS ---- */
+  (function(){ if(document.getElementById('clinicCSS'))return; var st=document.createElement('style'); st.id='clinicCSS'; st.textContent=
+     '.cl-plate{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:10px auto;max-width:340px}'
+    +'.cl-slot{width:92px;border-radius:12px;border:2px solid #2b2350;background:#160f33;padding:8px 4px;text-align:center;cursor:pointer;user-select:none}'
+    +'.cl-slot.full{border-color:#7dff8a}'
+    +'.cl-food{font-size:30px;line-height:1.1;min-height:34px}'
+    +'.cl-glab{font-size:12px;font-weight:800;margin-top:2px}'
+    +'.cl-add{font-size:26px;color:#6f6598;min-height:34px;line-height:1.1}'
+    +'.cl-big{font-size:58px;text-align:center;margin:6px 0}'
+    +'.cl-stat{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin:8px 0;font-size:14px;color:#b7a9ee}';
+    document.head.appendChild(st); })();
+
+  /* ---- active state ---- */
+  window.CLT=null; window.CLIN='home';
+  function plateNew(){ CLT={k:'plate',slots:GROUPS.map(function(){ return null; })}; }
+  function sortNew(){ var gi=rnd(0,GROUPS.length-1); var g=GROUPS[gi]; var opts=[g.g]; while(opts.length<3){ var o=GROUPS[rnd(0,GROUPS.length-1)].g; if(opts.indexOf(o)<0)opts.push(o); } if(typeof shuffle==='function')opts=shuffle(opts); CLT={k:'sort',food:pick(g.foods),grp:g.g,opts:opts,streak:(CLT&&CLT.k==='sort')?CLT.streak:0}; }
+
+  /* ---- open + render ---- */
+  window.openClinic=function(tab){ tick(); if(typeof citState==='function')citState(); CL(); zScr('scr-clinic','clinicScore','clinicBody','The Clinic is Dr. Fig’s. She teaches healthy eating - the five food groups and how to build a balanced plate.'); CLIN=tab||'home'; if(CLIN==='plate'&&(!CLT||CLT.k!=='plate'))plateNew(); if(CLIN==='sort'&&(!CLT||CLT.k!=='sort'))sortNew(); clinicRender(); show('scr-clinic'); var b=document.getElementById('scr-clinic'); if(b)b.scrollTop=0; };
+  window.clinicTab=function(t){ tick(); CLIN=t; if(t==='plate'){ CLT=null; plateNew(); } else if(t==='sort'){ CLT=null; sortNew(); } else CLT=null; clinicRender(); };
+
+  function tabsBar(){ var t=[['home','🏥 Clinic'],['plate','🍽️ Build a Plate'],['sort','🔀 Sort Food']]; return '<div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:6px 0 8px">'+t.map(function(x){ return '<button class="btn ghost small'+(CLIN===x[0]?' sel':'')+'" onclick="clinicTab(\''+x[0]+'\')">'+x[1]+'</button>'; }).join('')+'</div>'; }
+
+  window.clinicRender=function(){ var body=document.getElementById('clinicBody'); if(!body)return; var c=CL();
+    var sc=document.getElementById('clinicScore'); if(sc)sc.textContent='🍽️ '+c.plates+' plates · 🔀 '+c.sorted+' foods sorted';
+    var html='';
+    if(CLIN==='home'){
+      html+=zRoom('fig','Dr. Fig’s Clinic','Healthy eating, next door to the Hospital.');
+      html+='<div class="speak" style="text-align:left">“Welcome to the Clinic. Food is fuel, and the best plate has a little from all five groups: fruit, veggies, grains, protein, and dairy. Build me a balanced plate, and sort the foods into their groups.”</div>';
+      html+=tabsBar();
+      html+='<div class="cl-stat"><span>🍽️ '+c.plates+' plates built</span><span>🔀 '+c.sorted+' foods sorted</span>'+(c.streakBest?'<span>🔥 best run '+c.streakBest+'</span>':'')+'</div>';
+      html+='<div class="sub center" style="margin-top:4px">The five food groups</div>';
+      html+='<div style="text-align:center;margin:4px 0">'+GROUPS.map(function(g){ return '<span style="display:inline-block;background:#160f33;border:1px solid #2b2350;border-radius:8px;padding:4px 8px;margin:3px;font-size:13px"><b style="color:'+g.col+'">'+g.foods[0]+' '+g.g+'</b></span>'; }).join('')+'</div>';
+      body.innerHTML=html; return;
+    }
+    html+=tabsBar();
+    if(CLIN==='plate') html+=plateHtml();
+    else if(CLIN==='sort') html+=sortHtml();
+    body.innerHTML=html;
+  };
+
+  /* ---- BUILD A PLATE ---- */
+  function plateHtml(){ if(!CLT||CLT.k!=='plate')plateNew(); var t=CLT; var filled=t.slots.filter(function(x){return x;}).length, done=filled>=GROUPS.length;
+    var h=zRoom('fig','Build a Plate','Tap each group to add a food. Fill all five for a balanced plate.');
+    var slots=''; for(var i=0;i<GROUPS.length;i++){ var g=GROUPS[i], f=t.slots[i]; slots+='<div class="cl-slot'+(f?' full':'')+'" onclick="plateAdd('+i+')">'+(f?'<div class="cl-food">'+f+'</div>':'<div class="cl-add">+</div>')+'<div class="cl-glab" style="color:'+g.col+'">'+g.g+'</div></div>'; }
+    h+='<div class="cl-plate">'+slots+'</div>';
+    h+='<div class="yd-count" style="font-size:22px;font-weight:900;text-align:center;color:#ffd158">'+filled+' / '+GROUPS.length+' groups</div>';
+    if(done){ h+='<div class="speak center" style="border:1px solid #7dff8a"><b style="color:#7dff8a">A balanced plate!</b> Fruit, veggies, grains, protein, and dairy - a little from every group.</div><button class="btn wide" onclick="clinicTab(\'plate\')">🍽️ Build another plate</button>'; }
+    else h+='<div class="sub center">Tap a group to add a food (tap again to swap it).</div>';
+    return h; }
+  window.plateAdd=function(i){ if(!CLT||CLT.k!=='plate')return; tick(); var g=GROUPS[i]; var cur=CLT.slots[i]; var f=pick(g.foods); if(cur){ var guard=0; while(f===cur&&g.foods.length>1&&guard<8){ f=pick(g.foods); guard++; } } CLT.slots[i]=f; var filled=CLT.slots.filter(function(x){return x;}).length; if(filled>=GROUPS.length&&!CLT.paid){ CLT.paid=true; var c=CL(); c.plates++; if(typeof save==='function')save(); if(typeof zPay==='function')zPay(6,'Balanced plate!'); } clinicRender(); };
+
+  /* ---- SORT THE FOOD ---- */
+  function sortHtml(){ if(!CLT||CLT.k!=='sort')sortNew(); var t=CLT;
+    var h=zRoom('fig','Sort the Food','Which food group does this belong to?');
+    h+='<div class="cl-big">'+t.food+'</div>';
+    if(t.streak>0)h+='<div class="sub center" style="color:#ff9f43;font-weight:800;margin-bottom:4px">🔥 '+t.streak+' in a row</div>';
+    h+='<div class="z-pick three">'+t.opts.map(function(o){ return '<button class="btn" onclick="sortPick(\''+o+'\')">'+o+'</button>'; }).join('')+'</div>';
+    h+='<div class="sub center" style="margin-top:8px">'+CL().sorted+' foods sorted so far.</div>';
+    return h; }
+  window.sortPick=function(o){ if(!CLT||CLT.k!=='sort')return; tick(); if(o===CLT.grp){ var c=CL(); c.sorted++; CLT.streak=(CLT.streak||0)+1; if(CLT.streak>c.streakBest)c.streakBest=CLT.streak; if(typeof save==='function')save(); if(typeof zOK==='function')zOK(); if(typeof toast==='function')toast(CLT.food+' is a '+CLT.grp.replace(/s$/,'')+'! 🍽️'); var keep=CLT.streak; sortNew(); CLT.streak=keep; } else { if(typeof zNo==='function')zNo('Not that group - try again.'); CLT.streak=0; } clinicRender(); };
+
+  /* ---- wire the lot into a real building + route townGo ---- */
+  (function(){ var _tp=townPlan; window.townPlan=townPlan=function(){ var rows=_tp(); var c=CL(); for(var i=0;i<rows.length;i++){ if(rows[i].name==='HEALTH ROW'){ var sl=rows[i].slots; for(var j=0;j<sl.length;j++){ if(sl[j].lot&&/CLINIC/i.test(sl[j].cap||'')){ sl[j]={col:'#8fd06a',tg:'EAT WELL',nm:'The Clinic',host:'fig',prog:(c.plates+c.sorted)+' visits',go:'clinic'}; } } } } return rows; }; })();
+  (function(){ var _tg=townGo; window.townGo=townGo=function(dest){ if(dest==='clinic'){ if(typeof sTap==='function'){ try{ sTap(); }catch(e){} } openClinic(); return; } return _tg(dest); }; })();
 })();
 
 </script>
