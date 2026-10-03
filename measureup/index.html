@@ -928,14 +928,14 @@ svg .charg{will-change:transform}
 <div id="toast"></div>
 <button id="homeBtn" onclick="goHome()" aria-label="Back to Garage">🏠</button>
 <button id="ellyBtn" onclick="openEllyHelp()" aria-label="Ask Elly for help"></button>
-<div id="vbadge">v1.38 · Oct 3</div>
+<div id="vbadge">v1.39 · Oct 3</div>
 
 <script>
 'use strict';
 /* ============ UTILS ============ */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const VERSION='v1.38 · Oct 3';
+const VERSION='v1.39 · Oct 3';
 const RM=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -18031,6 +18031,153 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
       return _tf();
     };
   }
+})();
+</script>
+<script>
+/* ================= v1.39 · THE WORLD CAMERA (Oct 3 2026) =================
+   Garrett's call: the town should NOT change shape when the iPad rotates. Animal-Crossing model instead:
+     - ONE fixed plot of land (the 2-column city grid), the same in every orientation, with an open lot
+       block kept at the end so there is always room to build the next district.
+     - A CAMERA that shows a portion of it. Drag with a finger (or mouse) to pan, pinch to zoom a little.
+     - A district TAB STRIP along the bottom: tap a district and the camera flies there. The chip nearest
+       the camera lights up as you pan.
+     - A fixed UI SHELL around the viewport: Garage + Grown-ups pinned top-right, tabs bottom, Elly where
+       she always is. None of it moves with the land, and rotating only re-frames the same spot.
+     - The camera remembers where Garrett left it (S.town.cam), per device-independent world coords.
+   Additive. Replaces the tall/wide switch (townIsWide -> always the plot) and the scale-to-fit twFit with
+   the camera. Taps on buildings still work; a drag never counts as a tap. Audio-safe. */
+(function(){
+  if(typeof document==='undefined')return;
+  var WORLD_W=920;
+
+  /* ---------- one layout, always ---------- */
+  if(typeof townIsWide==='function'){ window.townIsWide=townIsWide=function(){ return true; }; }
+
+  /* ---------- keep an open lot block at the end of the plot (room to grow) ---------- */
+  if(typeof townGeo==='function'){
+    var _g=townGeo;
+    window.townGeo=townGeo=function(plan,wide){
+      var g=_g(plan,wide);
+      try{
+        if(g&&Array.isArray(g.pos)&&Array.isArray(plan)&&g.pos.length===plan.length){
+          var i=g.pos.length, col=i%2, row=Math.floor(i/2), bx=col?760:160, by=190+row*300;
+          g.pos.push({sign:{x:bx,y:by-112},slots:[{x:bx-80,y:by},{x:bx+80,y:by}]});
+          if(Array.isArray(g.roads))g.roads.push([bx-80,by+34,bx+80,by+34]);
+          g.extra=[{lot:true,cap:'NEW DISTRICT · your call',icon:'🏗️'},{lot:true,cap:'NEW DISTRICT · your call',icon:'🏗️'}];
+          var levels=Math.ceil((plan.length+1)/2); var needH=190+(levels-1)*300+250; if(!(g.H>=needH))g.H=needH;
+        }
+      }catch(e){}
+      return g;
+    };
+    if(window.BQ)try{ window.BQ.townGeo=townGeo; }catch(_){}
+  }
+
+  /* ---------- CSS ---------- */
+  (function(){ if(document.getElementById('twCamCSS'))return; var st=document.createElement('style'); st.id='twCamCSS'; st.textContent=
+     '#scr-town.on{display:block!important;padding:0!important;overflow:hidden!important;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;background:#0a0716}'
+    +'#twStage{position:absolute!important;left:0!important;top:0!important;margin:0!important;transform-origin:0 0!important;will-change:transform;max-width:none!important}'
+    +'#twStage.twAnim{transition:transform .42s cubic-bezier(.2,.8,.2,1)}'
+    +'#twStage .tw-grown{display:none!important}'
+    +'#twShellTop{position:absolute;top:calc(8px + env(safe-area-inset-top));right:10px;display:flex;gap:6px;z-index:6}'
+    +'.twPill{display:flex;align-items:center;gap:5px;background:#1d1636e6;border:1.5px solid #4a3d84;border-radius:12px;padding:7px 10px;color:#fff;font-weight:800;font-size:11px;letter-spacing:.4px;cursor:pointer;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}'
+    +'.twPill.g{border-color:#ff8f5d}'
+    +'#twTabs{position:absolute;left:8px;right:110px;bottom:calc(10px + env(safe-area-inset-bottom));display:flex;gap:6px;overflow-x:auto;padding:4px 2px;z-index:6;scrollbar-width:none;-webkit-overflow-scrolling:touch;touch-action:pan-x}'
+    +'#twTabs::-webkit-scrollbar{display:none}'
+    +'.twTab{flex:none;background:#1d1636e6;border:1.5px solid var(--c,#4a3d84);border-radius:999px;padding:7px 11px;color:#e9e2ff;font-weight:800;font-size:11px;letter-spacing:.3px;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}'
+    +'.twTab i{width:8px;height:8px;border-radius:50%;background:var(--c,#aaa);display:inline-block}'
+    +'.twTab.on{background:var(--c,#4a3d84);color:#141028}.twTab.on i{background:#141028}'
+    +'#twHint{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(60px + env(safe-area-inset-bottom));background:#0008;color:#e9e2ff;font-size:11px;font-weight:700;padding:5px 10px;border-radius:999px;z-index:6;pointer-events:none;opacity:0;transition:opacity .4s}'
+    +'#twHint.show{opacity:1}';
+    document.head.appendChild(st); })();
+
+  /* ---------- camera ---------- */
+  var CAM={x:0,y:0,z:1,W:WORLD_W,H:900,cx:460,cy:470,placed:false,plan:[],geo:null};
+  var PAD_B=62, PAD_T=0;
+  function els(){ return {sc:document.getElementById('scr-town'), st:document.getElementById('twStage')}; }
+  function view(){ var e=els(); var w=(e.sc&&e.sc.clientWidth)||window.innerWidth||390, h=(e.sc&&e.sc.clientHeight)||window.innerHeight||844; return {w:w,h:h}; }
+  function baseZoom(){ var v=view(); var z=v.w/WORLD_W; return Math.max(1,Math.min(1.4,z)); }
+  function refresh(){ try{ var e=els(); if(e.st){ CAM.W=(+e.st.dataset.w)||CAM.W; CAM.H=(+e.st.dataset.h)||CAM.H; }
+    if(typeof townPlan==='function'&&typeof townGeo==='function'){ CAM.plan=townPlan(); CAM.geo=townGeo(CAM.plan,true); if(CAM.geo){ CAM.W=CAM.geo.W||CAM.W; CAM.H=CAM.geo.H||CAM.H; } } }catch(e){} }
+  function clamp(){ var v=view(); var ww=CAM.W*CAM.z, wh=CAM.H*CAM.z; var vh=v.h-PAD_B-PAD_T;
+    if(ww<=v.w) CAM.x=(v.w-ww)/2; else CAM.x=Math.min(0,Math.max(v.w-ww,CAM.x));
+    if(wh<=vh) CAM.y=PAD_T+(vh-wh)/2; else CAM.y=Math.min(PAD_T,Math.max(PAD_T+vh-wh,CAM.y));
+    CAM.cx=(v.w/2-CAM.x)/CAM.z; CAM.cy=(PAD_T+vh/2-CAM.y)/CAM.z; }
+  function apply(anim){ var e=els(); if(!e.st)return; if(anim)e.st.classList.add('twAnim'); else e.st.classList.remove('twAnim');
+    e.st.style.transform='translate3d('+CAM.x.toFixed(1)+'px,'+CAM.y.toFixed(1)+'px,0) scale('+CAM.z.toFixed(4)+')'; markActive(); }
+  function centerOn(wx,wy,anim,z){ var v=view(); if(z)CAM.z=z; var vh=v.h-PAD_B-PAD_T; CAM.x=v.w/2-wx*CAM.z; CAM.y=PAD_T+vh/2-wy*CAM.z; clamp(); apply(anim); CAM.placed=true; persist(); }
+  var saveT=null; function persist(){ try{ if(typeof S==='undefined'||!S)return; if(!S.town||typeof S.town!=='object')S.town={}; S.town.cam={cx:Math.round(CAM.cx),cy:Math.round(CAM.cy),z:+CAM.z.toFixed(3)}; clearTimeout(saveT); saveT=setTimeout(function(){ try{ if(typeof save==='function')save(); }catch(e){} },500); }catch(e){} }
+  function blockCenter(ri){ var p=CAM.geo&&CAM.geo.pos&&CAM.geo.pos[ri]; return p?{x:p.sign.x,y:p.sign.y+90}:null; }
+  function squarePt(){ var sq=CAM.geo&&CAM.geo.sq; return sq?{x:sq.x,y:sq.y}:{x:460,y:470}; }
+  function markActive(){ try{ var tabs=document.getElementById('twTabs'); if(!tabs)return; var best=-1,bd=1e9; var sq=squarePt(); var d0=Math.hypot(sq.x-CAM.cx,sq.y-CAM.cy); if(d0<bd){bd=d0;best='sq';}
+      (CAM.plan||[]).forEach(function(r,ri){ var c=blockCenter(ri); if(!c)return; var d=Math.hypot(c.x-CAM.cx,c.y-CAM.cy); if(d<bd){bd=d;best=ri;} });
+      var prev=tabs.dataset.on; tabs.querySelectorAll('.twTab').forEach(function(t){ t.classList.toggle('on', t.dataset.k===String(best)); }); if(prev!==String(best)){ tabs.dataset.on=String(best); var ch=tabs.querySelector('.twTab.on'); if(ch){ var left=ch.offsetLeft-(tabs.clientWidth-ch.offsetWidth)/2; try{ tabs.scrollTo({left:Math.max(0,left),behavior:'smooth'}); }catch(_){ tabs.scrollLeft=Math.max(0,left); } } } }catch(e){} }
+  function shortName(n){ var m={'STAGE STREET · NUMBER STREET':'STAGE ST','DOWNTOWN · HOME':'YOUR PLACE'}; if(m[n])return m[n]; return String(n||'').replace(/\s*·.*$/,''); }
+
+  /* ---------- shell (built once, lives beside the stage) ---------- */
+  function shell(){ var e=els(); if(!e.sc)return;
+    if(!document.getElementById('twShellTop')){
+      var top=document.createElement('div'); top.id='twShellTop';
+      top.innerHTML='<div class="twPill g" data-go="garage">🏠 GARAGE</div><div class="twPill" data-go="grown">👤 GROWN-UPS</div>';
+      top.addEventListener('click',function(ev){ var p=ev.target.closest('.twPill'); if(!p)return; ev.stopPropagation(); try{ if(typeof sTap==='function')sTap(); }catch(_){} try{ townGo(p.dataset.go); }catch(_){} });
+      e.sc.appendChild(top);
+      var hint=document.createElement('div'); hint.id='twHint'; hint.textContent='drag to explore · tap a district below'; e.sc.appendChild(hint);
+    }
+    var tabs=document.getElementById('twTabs');
+    if(!tabs){ tabs=document.createElement('div'); tabs.id='twTabs'; e.sc.appendChild(tabs);
+      tabs.addEventListener('click',function(ev){ var t=ev.target.closest('.twTab'); if(!t)return; ev.stopPropagation(); try{ if(typeof sTap==='function')sTap(); }catch(_){}
+        var k=t.dataset.k; var pt=(k==='sq')?squarePt():blockCenter(+k); if(pt)centerOn(pt.x,pt.y,true); }); }
+    var html='<div class="twTab" data-k="sq" style="--c:#ffd158"><i></i>SQUARE</div>';
+    (CAM.plan||[]).forEach(function(r,ri){ html+='<div class="twTab" data-k="'+ri+'" style="--c:'+(r.color||'#4a3d84')+'"><i></i>'+shortName(r.name)+'</div>'; });
+    if(tabs.innerHTML!==html){ var sl=tabs.scrollLeft; tabs.innerHTML=html; tabs.scrollLeft=sl; }
+    try{ var p=e.st&&e.st.querySelector('.tw-top p'); if(p)p.textContent='drag to explore · tap a district below'; }catch(_){}
+  }
+
+  /* ---------- fit = place the camera (replaces scale-to-fit) ---------- */
+  function camFit(){ try{ var e=els(); if(!e.sc||!e.st)return; refresh(); shell();
+      if(!CAM.placed){ var saved=(typeof S!=='undefined'&&S&&S.town&&S.town.cam)||null; var z=baseZoom();
+        if(saved&&isFinite(saved.cx)&&isFinite(saved.cy)){ centerOn(saved.cx,saved.cy,false,Math.max(0.6,Math.min(1.6,saved.z||z))); }
+        else { var sq=squarePt(); centerOn(sq.x,sq.y,false,z); showHint(); } }
+      else { centerOn(CAM.cx,CAM.cy,false); }
+    }catch(err){ try{ window.__muErr&&window.__muErr('camFit',err); }catch(_){} } }
+  window.twFit=twFit=camFit;
+  window.twCam={cam:CAM,centerOn:centerOn,fit:camFit,refresh:refresh};
+  var hintT=null; function showHint(){ try{ var h=document.getElementById('twHint'); if(!h)return; h.classList.add('show'); clearTimeout(hintT); hintT=setTimeout(function(){ h.classList.remove('show'); },3200); }catch(e){} }
+
+  /* re-place after every render (plan may have grown) */
+  if(typeof renderTown==='function'){ var _rt=renderTown; window.renderTown=renderTown=function(){ var r=_rt.apply(this,arguments); try{ camFit(); }catch(e){} return r; }; if(window.BQ)try{ window.BQ.renderTown=renderTown; }catch(_){} }
+
+  /* ---------- pointer: drag to pan, pinch to zoom, never mis-tap ---------- */
+  (function(){
+    var sc=null; function bind(){ sc=document.getElementById('scr-town'); if(!sc||sc.dataset.cam)return; sc.dataset.cam='1';
+      var ptrs={}, start=null, pinch=null, drag=false, suppress=false;
+      function inShell(t){ return !!(t&&t.closest&&t.closest('#twTabs,#twShellTop,#ellyBtn,#modal,#vbadge,#muErr')); }
+      function count(){ return Object.keys(ptrs).length; }
+      function two(){ var k=Object.keys(ptrs); return [ptrs[k[0]],ptrs[k[1]]]; }
+      sc.addEventListener('pointerdown',function(e){ if(inShell(e.target))return; if(e.button&&e.button!==0)return;
+        ptrs[e.pointerId]={x:e.clientX,y:e.clientY};
+        suppress=false; var e2=els(); if(e2.st)e2.st.classList.remove('twAnim');
+        if(count()===1){ start={x:e.clientX,y:e.clientY,cx:CAM.x,cy:CAM.y}; drag=false; pinch=null; }
+        else if(count()===2){ var p=two(); var d=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y)||1; var mx=(p[0].x+p[1].x)/2, my=(p[0].y+p[1].y)/2;
+          pinch={d0:d,z0:CAM.z,wx:(mx-CAM.x)/CAM.z,wy:(my-CAM.y)/CAM.z}; drag=true; start=null; }
+      });
+      window.addEventListener('pointermove',function(e){ var pt=ptrs[e.pointerId]; if(!pt)return; pt.x=e.clientX; pt.y=e.clientY;
+        if(pinch&&count()>=2){ var p=two(); var d=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y)||1; var mx=(p[0].x+p[1].x)/2, my=(p[0].y+p[1].y)/2;
+          CAM.z=Math.max(0.6,Math.min(1.6,pinch.z0*(d/pinch.d0))); CAM.x=mx-pinch.wx*CAM.z; CAM.y=my-pinch.wy*CAM.z; clamp(); apply(false); return; }
+        if(start){ var dx=e.clientX-start.x, dy=e.clientY-start.y; if(!drag&&Math.hypot(dx,dy)>8)drag=true;
+          if(drag){ CAM.x=start.cx+dx; CAM.y=start.cy+dy; clamp(); apply(false); } }
+      });
+      function up(e){ if(!ptrs[e.pointerId])return; delete ptrs[e.pointerId];
+        if(drag){ suppress=true; setTimeout(function(){ suppress=false; },300); persist(); }
+        if(count()===1){ var k=Object.keys(ptrs)[0]; start={x:ptrs[k].x,y:ptrs[k].y,cx:CAM.x,cy:CAM.y}; pinch=null; drag=true; }
+        else if(count()===0){ start=null; pinch=null; }
+      }
+      window.addEventListener('pointerup',up); window.addEventListener('pointercancel',up);
+      sc.addEventListener('click',function(e){ if(suppress&&!inShell(e.target)){ e.stopPropagation(); e.preventDefault(); } },true);
+      /* mouse wheel = pan (desktop testing) */
+      sc.addEventListener('wheel',function(e){ try{ e.preventDefault(); CAM.x-=e.deltaX; CAM.y-=e.deltaY; clamp(); apply(false); persist(); }catch(_){} },{passive:false});
+    }
+    bind(); if(typeof openTown==='function'){ var _ot=openTown; window.openTown=openTown=function(){ var r=_ot.apply(this,arguments); try{ bind(); camFit(); }catch(e){} return r; }; if(window.BQ)try{ window.BQ.openTown=openTown; }catch(_){} }
+  })();
 })();
 </script>
 </body>
