@@ -928,14 +928,14 @@ svg .charg{will-change:transform}
 <div id="toast"></div>
 <button id="homeBtn" onclick="goHome()" aria-label="Back to Garage">🏠</button>
 <button id="ellyBtn" onclick="openEllyHelp()" aria-label="Ask Elly for help"></button>
-<div id="vbadge">v1.35 · Oct 3</div>
+<div id="vbadge">v1.36 · Oct 3</div>
 
 <script>
 'use strict';
 /* ============ UTILS ============ */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const VERSION='v1.35 · Oct 3';
+const VERSION='v1.36 · Oct 3';
 const RM=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -17770,35 +17770,137 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
     document.head.appendChild(st); })();
 
   /* ---------- wire the map: DOWNTOWN district + routing ---------- */
-  (function(){ var _tp=townPlan; window.townPlan=townPlan=function(){ var rows=_tp(); var base=1840; // after HEALTH ROW
-    if(!rows.some(function(r){return r.name==='DOWNTOWN';})){
+  (function(){ var _tp=townPlan; window.townPlan=townPlan=function(){ var rows=_tp(); try{ var base=1840; // after HEALTH ROW
+    if(Array.isArray(rows)&&!rows.some(function(r){return r&&r.name==='DOWNTOWN';})){
       rows.push({y:base+220,name:'DOWNTOWN',sub:'shops & money',color:'#ffcf6b',slots:[
         {col:'#ffcf6b',tg:'FURNITURE',nm:'Cozy Home',host:'lumi',prog:(Object.keys((S&&S.inv)||{}).length)+' things owned',go:'d_home'},
         {col:'#8fd0ff',tg:'GOODS',nm:'Corner Store',host:'oompa',prog:'buy & sell',go:'d_gen'} ]});
       rows.push({y:base+440,name:'DOWNTOWN · HOME',sub:'your money & your place',color:'#ff9ec4',slots:[
         {col:'#7dd87a',tg:'BANK',nm:'The Bank',host:'reg',prog:((S&&S.coins)||0)+' coins',go:'d_bank'},
         {col:'#ff9ec4',tg:'HOME',nm:'Your Apartment',host:'__you',prog:(((S&&S.home&&S.home.placed)||[]).length)+' things placed',go:'d_apt'} ]});
-    }
+    } }catch(e){}
     return rows; }; })();
   if(typeof TOWN_H!=='undefined')TOWN_H=1840+480; // grow the map for the two new rows
-  (function(){ if(typeof townGeo!=='function')return; var _g=townGeo; window.townGeo=townGeo=function(plan,wide){ var g=_g(plan,wide);
-    if(!wide){ g.H=TOWN_H; var prevY=(g.pos.length?plan[g.pos.length-1].y:700);
-      while(g.pos.length<plan.length){ var idx=g.pos.length; var r=plan[idx];
-        g.pos.push({sign:{x:195,y:r.y-112},slots:[{x:80,y:r.y},{x:312,y:r.y}]});
-        g.roads.push([195,prevY,195,r.y],[195,r.y+34,80,r.y+34],[195,r.y+34,312,r.y+34]);
-        g.greens.push([24,r.y-30],[366,r.y-30]); prevY=r.y; } }
-    else { if(g.extra)g.extra=[]; }
+  (function(){ if(typeof townGeo!=='function')return; var _g=townGeo; window.townGeo=townGeo=function(plan,wide){ var g=_g(plan,wide); try{
+    if(!wide&&g&&Array.isArray(g.pos)&&Array.isArray(plan)){ g.H=TOWN_H; var prevY=(g.pos.length?((plan[g.pos.length-1]||{}).y||700):700); var guard=0;
+      while(g.pos.length<plan.length&&guard++<40){ var idx=g.pos.length; var r=plan[idx]||{}; var ry=r.y||(prevY+220);
+        g.pos.push({sign:{x:195,y:ry-112},slots:[{x:80,y:ry},{x:312,y:ry}]});
+        g.roads.push([195,prevY,195,ry],[195,ry+34,80,ry+34],[195,ry+34,312,ry+34]);
+        g.greens.push([24,ry-30],[366,ry-30]); prevY=ry; } }
+    else if(wide){ if(g&&g.extra)g.extra=[]; } }catch(e){}
     return g; }; })();
   (function(){ var _tg=townGo; window.townGo=townGo=function(dest){ if(typeof sTap==='function'){try{sTap();}catch(e){}}
-    if(dest==='d_home'){ openStore('home'); return; } if(dest==='d_gen'){ openStore('gen'); return; }
-    if(dest==='d_bank'){ openBank(); return; } if(dest==='d_apt'){ openApartment(); return; }
+    try{
+      if(dest==='d_home'){ openStore('home'); return; } if(dest==='d_gen'){ openStore('gen'); return; }
+      if(dest==='d_bank'){ openBank(); return; } if(dest==='d_apt'){ openApartment(); return; }
+    }catch(e){ if(typeof toast==='function')try{toast('One sec...');}catch(_){} return; }
     return _tg(dest); }; })();
   /* "Your Apartment" facade shows Garrett's own creature */
   (function(){ if(typeof townFacade!=='function')return; var _tf=townFacade; window.townFacade=townFacade=function(v,x,y){
-    if(v&&v.host==='__you'){ var html=_tf(Object.assign({},v,{host:'boom'}),x,y); try{ var por=(typeof creatureSVG==='function'&&S.creature)?creatureSVG(S.creature,60):''; if(por)html=html.replace(/<div class="tw-host">[\s\S]*?<\/div>/,'<div class="tw-host">'+por+'</div>'); }catch(e){} return html; }
+    if(v&&v.host==='__you'){ var html=''; try{ html=_tf(Object.assign({},v,{host:'boom'}),x,y); }catch(e){ try{ html=_tf(Object.assign({},v,{host:'lumi'}),x,y); }catch(e2){ html=''; } }
+      try{ var por=(typeof creatureSVG==='function'&&S.creature)?creatureSVG(S.creature,60):''; if(por&&html)html=html.replace(/<div class="tw-host">[\s\S]*?<\/div>/,'<div class="tw-host">'+por+'</div>'); }catch(e){} return html; }
     return _tf(v,x,y); }; })();
 })();
 
+</script>
+<script>
+/* ================= v1.36 · START HARDENING (Oct 3 2026) =================
+   Fixes Mot's report: "Nothing happens when you tap Let's Play at the load."
+   Root-cause class: if ANYTHING in the start chain throws (a map wrap on a
+   particular save, an audio quirk, etc.), openTown() would throw BEFORE
+   show('scr-town') ran, so the tap did nothing and the player was stuck on
+   the title. Also: the full-screen splash (z-index 200) sits over the
+   Let's Play button; if its one-tap dismiss stalled, taps hit the invisible
+   splash instead of the button. This block makes BOTH bulletproof. Additive,
+   audio-safe, no new UI. */
+(function(){
+  if(typeof document==='undefined')return;
+
+  /* ---- 1. openTown can never leave you stuck on the title ----
+     Guarantee the town screen is shown even if some wrap throws. */
+  (function(){
+    if(typeof openTown!=='function')return;
+    var _ot=openTown;
+    window.openTown=openTown=function(){
+      try{ _ot(); }
+      catch(e){
+        try{ if(typeof twMount==='function')twMount(); }catch(_){}
+        try{ if(typeof renderTown==='function')renderTown(); }catch(_){}
+      }
+      try{ if(typeof show==='function')show('scr-town'); }catch(_){}
+    };
+    if(window.BQ)try{ window.BQ.openTown=openTown; }catch(_){}
+  })();
+
+  /* ---- 2. Bulletproof the Let's Play button ----
+     Rebuild the handler so each step is guarded and there is always a
+     last-resort path into the game. Cloning the node drops the old listener
+     so nothing double-fires. */
+  (function(){
+    var bs=document.getElementById('btnStart'); if(!bs)return;
+    var started=false;
+    function go(){
+      if(started)return; started=true; setTimeout(function(){started=false;},700); // debounce double taps
+      try{ if(typeof ac==='function')ac(); }catch(e){}
+      try{ if(typeof sTap==='function')sTap(); }catch(e){}
+      try{
+        if(typeof S!=='undefined' && S && S.creature){
+          try{ if(typeof renderHub==='function')renderHub(); }catch(e){}
+          if(typeof openTown==='function'){ openTown(); }
+          else if(typeof show==='function'){ show('scr-town'); }
+        } else if(typeof S!=='undefined' && S && S.flags && !S.flags.introDone && typeof startIntro==='function'){
+          startIntro();
+        } else if(typeof openCreator==='function'){
+          openCreator(false);
+        }
+      }catch(e){
+        /* last resort: get the player OFF the title no matter what */
+        try{ if(typeof S!=='undefined'&&S&&S.creature){ if(typeof show==='function')show('scr-town'); } else if(typeof openCreator==='function'){ openCreator(false); } }catch(_){}
+      }
+    }
+    var clone=bs.cloneNode(true);
+    if(bs.parentNode)bs.parentNode.replaceChild(clone,bs);
+    clone.addEventListener('click',go);
+    window.__muStart=go;
+  })();
+
+  /* ---- 3. Bulletproof the splash ----
+     One tap clears it instantly (pointer-events off + fade) so the button
+     underneath is live right away; the celebratory flourish is best-effort
+     and can never block dismissal; a watchdog force-removes it if it ever
+     lingers, so the game can NEVER be permanently stuck behind the splash. */
+  (function(){
+    var sp=document.getElementById('splash'); if(!sp)return;
+    var gone=false;
+    function kill(){ var s=document.getElementById('splash'); if(!s)return; try{s.classList.add('bye');}catch(e){} try{s.style.opacity='0';s.style.pointerEvents='none';}catch(e){} setTimeout(function(){ try{ if(s&&s.parentNode)s.parentNode.removeChild(s); }catch(e){} },320); }
+    function dismiss(){
+      if(gone)return; gone=true;
+      var s=document.getElementById('splash');
+      try{ if(s)s.style.pointerEvents='none'; }catch(e){}      // button underneath is tappable at once
+      try{ if(typeof ac==='function')ac(); }catch(e){}          // unlock audio on the user gesture
+      setTimeout(kill,280);                                     // guaranteed removal, scheduled FIRST
+      /* best-effort flourish - wrapped so a throw can't strand the splash */
+      try{
+        var t=document.getElementById('spTap'); if(t)t.textContent='🎶';
+        var bandEl=document.getElementById('spBand');
+        if(bandEl && typeof BAND!=='undefined' && typeof memberSVG==='function'){
+          bandEl.innerHTML=BAND.map(function(m,i){ return '<span class="spm" style="animation-delay:'+(i*0.09)+'s">'+memberSVG(m.id,56)+'</span>'; }).join('');
+          bandEl.classList.add('go');
+        }
+        if(typeof V!=='undefined'){ try{V.kick();}catch(e){} try{later(function(){V.snare();},280);}catch(e){} try{later(function(){V.kick();V.clap();},560);}catch(e){} }
+      }catch(e){}
+    }
+    /* drop any prior listeners by cloning, then wire the hardened dismiss to
+       every interaction type (pointer / touch / mouse) */
+    var fresh=sp.cloneNode(true);
+    if(sp.parentNode)sp.parentNode.replaceChild(fresh,sp);
+    ['pointerdown','touchstart','mousedown','click'].forEach(function(ev){ try{ fresh.addEventListener(ev,dismiss,{passive:true}); }catch(e){ fresh.addEventListener(ev,dismiss); } });
+    /* watchdog: if it is still here after 6s (broken tap handler, odd device),
+       remove it so Let's Play is reachable. Normal users tap long before. */
+    setTimeout(function(){ if(!gone && document.getElementById('splash')){ gone=true; kill(); } },6000);
+    try{ if(window.BQ)window.BQ.splashDismiss=dismiss; }catch(e){}
+  })();
+})();
 </script>
 </body>
 </html>
