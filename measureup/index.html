@@ -928,14 +928,14 @@ svg .charg{will-change:transform}
 <div id="toast"></div>
 <button id="homeBtn" onclick="goHome()" aria-label="Back to Garage">🏠</button>
 <button id="ellyBtn" onclick="openEllyHelp()" aria-label="Ask Elly for help"></button>
-<div id="vbadge">v1.36 · Oct 3</div>
+<div id="vbadge">v1.37 · Oct 3</div>
 
 <script>
 'use strict';
 /* ============ UTILS ============ */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const VERSION='v1.36 · Oct 3';
+const VERSION='v1.37 · Oct 3';
 const RM=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -17899,6 +17899,74 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
        remove it so Let's Play is reachable. Normal users tap long before. */
     setTimeout(function(){ if(!gone && document.getElementById('splash')){ gone=true; kill(); } },6000);
     try{ if(window.BQ)window.BQ.splashDismiss=dismiss; }catch(e){}
+  })();
+})();
+</script>
+<script>
+/* ================= v1.37 · RENDER CRASH-PROOFING + on-screen error (Oct 3 2026) =================
+   Mot's follow-up: after v1.36, Let's Play now transitions but lands on a BLANK/black screen, and the
+   Garage (hub) is blank too - only Elly's floating button shows. Both screens blanking at once means a
+   SHARED render primitive is throwing: renderHub() and renderTown() both call creatureSVG(S.creature,..)
+   and memberSVG(..) at the very top, and creatureSVG does c.col with no guard. One bad value in Garrett's
+   saved avatar or a band member's art throws, the render aborts, and the screen is left empty (my v1.36
+   guard then shows that empty screen instead of freezing on the title). Clean test saves never hit it.
+
+   This block:
+     1. Wraps the shared art primitives (creatureSVG / memberSVG / ellySVG / citSvg) so a single bad value
+        yields a safe placeholder blob instead of throwing - so a screen RENDERS instead of blanking.
+     2. Wraps renderHub / renderTown so any remaining throw shows a visible "Go to the Garage" fallback,
+        never a black screen.
+     3. Adds an on-screen error reporter (window.onerror + unhandledrejection + the wrappers) so the exact
+        failing function + line is shown on the device and can be copied/read back, to fix the root cause.
+   Additive, audio-safe, no gameplay change. */
+(function(){
+  if(typeof document==='undefined')return;
+
+  /* ---------- 1. on-screen error reporter ---------- */
+  window.__muErr=function(where,e){
+    try{
+      var msg=(where||'')+': '+((e&&(e.stack||e.message))||(e==null?'unknown':e));
+      var o=document.getElementById('muErr');
+      if(!o){ o=document.createElement('div'); o.id='muErr';
+        o.style.cssText='position:fixed;left:6px;right:6px;bottom:6px;z-index:2147483647;max-height:55vh;overflow:auto;background:#1b0d0d;border:2px solid #ff6b6b;border-radius:12px;padding:10px 12px;color:#ffdede;font:11px/1.45 ui-monospace,Menlo,Consolas,monospace;box-shadow:0 10px 40px #000b';
+        document.body.appendChild(o); }
+      o.innerHTML='<div style="font-weight:800;color:#ff9a9a;margin-bottom:5px">Hiccup - tap Copy and send this to Mot:</div><pre id="muErrTxt" style="white-space:pre-wrap;word-break:break-word;margin:0"></pre><div style="margin-top:8px;display:flex;gap:8px"><button id="muErrCopy" style="background:#ff6b6b;color:#2a0000;border:0;border-radius:8px;padding:7px 12px;font-weight:800">Copy</button><button id="muErrHide" style="background:#3a2a2a;color:#ffdede;border:0;border-radius:8px;padding:7px 12px;font-weight:800">Hide</button></div>';
+      var t=document.getElementById('muErrTxt'); if(t)t.textContent=msg;
+      var cp=document.getElementById('muErrCopy'); if(cp)cp.onclick=function(){ try{navigator.clipboard.writeText(msg);}catch(e){} this.textContent='Copied'; };
+      var hd=document.getElementById('muErrHide'); if(hd)hd.onclick=function(){ try{o.remove();}catch(e){} };
+    }catch(_){}
+  };
+  window.addEventListener('error',function(ev){ try{ window.__muErr('window.onerror @ '+((ev&&ev.filename)||'')+':'+((ev&&ev.lineno)||''), (ev&&ev.error)||(ev&&ev.message)||ev); }catch(_){} });
+  window.addEventListener('unhandledrejection',function(ev){ try{ window.__muErr('promise', ev&&ev.reason); }catch(_){} });
+
+  /* ---------- 2. crash-proof art primitives ---------- */
+  function ph(sz){ sz=sz||80; return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 140 140"><ellipse cx="70" cy="82" rx="50" ry="44" fill="#7dff8a"/><circle cx="55" cy="74" r="6" fill="#221a44"/><circle cx="85" cy="74" r="6" fill="#221a44"/><path d="M60 94 q10 8 20 0" stroke="#221a44" stroke-width="4" fill="none" stroke-linecap="round"/></svg>'; }
+  window.__muPlaceholder=ph;
+  function guardArt(name){
+    var f=window[name]; if(typeof f!=='function')return;
+    var _f=f;
+    window[name]=function(){ try{ return _f.apply(this,arguments); }catch(e){ try{ window.__muErr(name+'('+Array.prototype.slice.call(arguments,0,1).join(',')+')',e); }catch(_){} var sz=arguments.length>1?arguments[1]:arguments[0]; return ph(typeof sz==='number'?sz:80); } };
+  }
+  guardArt('creatureSVG'); guardArt('memberSVG'); guardArt('ellySVG'); guardArt('citSvg');
+
+  /* ---------- 3. renderHub / renderTown never leave a black screen ---------- */
+  (function(){ if(typeof renderHub!=='function')return; var _f=renderHub;
+    window.renderHub=renderHub=function(){ try{ return _f.apply(this,arguments); }catch(e){ try{ window.__muErr('renderHub',e); }catch(_){} } };
+    if(window.BQ)try{ window.BQ.renderHub=renderHub; }catch(_){}
+  })();
+  (function(){ if(typeof renderTown!=='function')return; var _f=renderTown;
+    window.renderTown=renderTown=function(){
+      try{ return _f.apply(this,arguments); }
+      catch(e){
+        try{ window.__muErr('renderTown',e); }catch(_){}
+        try{ var st=document.getElementById('twStage'); if(st){ st.style.transform='none';
+          st.innerHTML='<div style="padding:56px 18px;text-align:center;color:#fff;font-family:inherit">'
+            +'<div style="font-size:18px;font-weight:800;margin-bottom:10px">The town is taking a breather.</div>'
+            +'<div style="font-size:13px;color:#b7a9ee;margin-bottom:16px">Your stuff is safe. Head to the Garage to keep playing.</div>'
+            +'<button onclick="try{renderHub();}catch(e){};try{show(\'scr-hub\');}catch(e){}" style="background:#ffd158;color:#2a2250;border:0;border-radius:10px;padding:11px 18px;font-weight:800;font-size:15px">Go to the Garage</button></div>'; } }catch(_){}
+      }
+    };
+    if(window.BQ)try{ window.BQ.renderTown=renderTown; }catch(_){}
   })();
 })();
 </script>
