@@ -928,14 +928,14 @@ svg .charg{will-change:transform}
 <div id="toast"></div>
 <button id="homeBtn" onclick="goHome()" aria-label="Back to Garage">🏠</button>
 <button id="ellyBtn" onclick="openEllyHelp()" aria-label="Ask Elly for help"></button>
-<div id="vbadge">v1.37 · Oct 3</div>
+<div id="vbadge">v1.38 · Oct 3</div>
 
 <script>
 'use strict';
 /* ============ UTILS ============ */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const VERSION='v1.37 · Oct 3';
+const VERSION='v1.38 · Oct 3';
 const RM=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -15561,9 +15561,9 @@ renderTown=function(){
   html+='<div class="tw-gate" style="left:'+geo.gate.x+'px;top:'+geo.gate.y+'px" onclick="townGo(\'road\')"><div style="filter:drop-shadow(0 6px 8px #000a)">'+memberSVG('gus',42)+'</div><div style="background:#120d28;border:2px solid #ffd158;border-radius:9px;padding:3px 5px;box-shadow:0 0 14px -3px #ffd158;margin-top:-4px"><div style="font-size:8.5px;font-weight:900;color:#ffd158">ON THE ROAD →</div><div style="font-size:8.5px;font-weight:700;color:#b7a9ee">'+roadSeen+'/50</div></div></div>';
   html+='<div class="tw-bench" style="left:'+geo.bench.x+'px;top:'+geo.bench.y+'px" onclick="townGo(\'friends\')"><div style="filter:drop-shadow(0 6px 8px #000a)">'+creatureSVG(cr,40)+'</div><div class="b"><div class="t">🤝 FRIENDS</div><div class="c">'+met+' / '+total+' met</div></div></div>';
   /* district rows */
-  plan.forEach(function(r,ri){ var P=geo.pos[ri];
+  plan.forEach(function(r,ri){ var P=geo.pos[ri]; if(!P||!P.sign)return;
     html+='<div class="tw-dist" style="left:'+P.sign.x+'px;top:'+P.sign.y+'px;--c:'+r.color+'"><div class="p"><div class="n">'+r.name+'</div><div class="s">'+r.sub+'</div></div></div>';
-    r.slots.forEach(function(s,i){ var x=P.slots[i].x,y=P.slots[i].y; html+=s.lot?townLot(s,x,y+6):townFacade(s,x,y); });
+    r.slots.forEach(function(s,i){ var sp=P.slots&&P.slots[i]; if(!sp)return; var x=sp.x,y=sp.y; html+=s.lot?townLot(s,x,y+6):townFacade(s,x,y); });
   });
   if(geo.extra.length){ var P2=geo.pos[plan.length]; if(P2){ html+='<div class="tw-dist" style="left:'+P2.sign.x+'px;top:'+P2.sign.y+'px;--c:#6a5aa8"><div class="p"><div class="n">NEXT DISTRICT</div><div class="s">room to grow</div></div></div>'; geo.extra.forEach(function(s,i){ html+=townLot(s,P2.slots[i].x,P2.slots[i].y+6); }); } }
   /* strollers */
@@ -17968,6 +17968,69 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
     };
     if(window.BQ)try{ window.BQ.renderTown=renderTown; }catch(_){}
   })();
+})();
+</script>
+<script>
+/* ================= v1.38 · LANDSCAPE CITY FITS ALL DISTRICTS (Oct 3 2026) =================
+   The real cause of Mot's landscape black screen: the wide/landscape town is a 2-column city grid that
+   was sized for exactly 6 districts. The Downtown layer (v1.35) pushed the town to 8 district rows, so in
+   landscape rows 7-8 had no map position -> renderTown crashed on geo.pos[ri].sign. (Portrait builds one
+   position per row, so it always worked.) v1.37's guards already stop the crash; this release makes
+   landscape actually SHOW every district instead of silently dropping the overflow.
+
+   Two additive wraps:
+     1. townGeo (wide only): continue the exact 2-column block grid downward so there is a block for every
+        district row, and grow the city height to fit them. The formula matches the base blocks exactly
+        (col = i%2 -> x 160/760, y = 190 + floor(i/2)*300), so existing districts don't move.
+     2. twFit (wide only): scale the whole city (however tall it now is) to fit the screen, reading the real
+        stage size, so nothing gets cut off. Portrait fitting is untouched.
+   Audio-safe, no gameplay change. */
+(function(){
+  if(typeof document==='undefined')return;
+
+  /* 1. wide map: a block for every district row */
+  if(typeof townGeo==='function'){
+    var _g=townGeo;
+    window.townGeo=townGeo=function(plan,wide){
+      var g=_g(plan,wide);
+      try{
+        if(wide&&g&&Array.isArray(g.pos)&&Array.isArray(plan)&&g.pos.length<plan.length){
+          var guard=0;
+          while(g.pos.length<plan.length&&guard++<80){
+            var i=g.pos.length, col=i%2, row=Math.floor(i/2), bx=col?760:160, by=190+row*300;
+            g.pos.push({sign:{x:bx,y:by-112},slots:[{x:bx-80,y:by},{x:bx+80,y:by}]});
+            if(Array.isArray(g.roads))g.roads.push([bx-80,by+34,bx+80,by+34]);
+            if(Array.isArray(g.greens))g.greens.push([bx-150,by-30],[bx+150,by-30]);
+          }
+          var levels=Math.ceil(plan.length/2);
+          var needH=190+(levels-1)*300+250;
+          if(!(g.H>=needH))g.H=needH;
+          g.extra=[];
+        }
+      }catch(e){ try{ window.__muErr&&window.__muErr('townGeo(wide backfill)',e); }catch(_){} }
+      return g;
+    };
+    if(window.BQ)try{ window.BQ.townGeo=townGeo; }catch(_){}
+  }
+
+  /* 2. wide fit: scale the whole city to the screen so nothing is cut off */
+  if(typeof twFit==='function'){
+    var _tf=twFit;
+    window.twFit=twFit=function(){
+      try{
+        if(typeof TOWN_MODE!=='undefined'&&TOWN_MODE==='wide'){
+          var s=document.getElementById('scr-town'), st=document.getElementById('twStage');
+          if(s&&st){
+            var aw=s.clientWidth||window.innerWidth||1024, ah=s.clientHeight||window.innerHeight||768;
+            var sw=(+st.dataset.w)||920, sh=(+st.dataset.h)||900;
+            if(aw&&ah&&sw&&sh){ var sc=Math.min(aw/sw, ah/sh); if(!(sc>0)||!isFinite(sc))sc=1;
+              st.style.transform='scale('+sc.toFixed(4)+')'; return; }
+          }
+        }
+      }catch(e){}
+      return _tf();
+    };
+  }
 })();
 </script>
 </body>
