@@ -928,14 +928,14 @@ svg .charg{will-change:transform}
 <div id="toast"></div>
 <button id="homeBtn" onclick="goHome()" aria-label="Back to Garage">🏠</button>
 <button id="ellyBtn" onclick="openEllyHelp()" aria-label="Ask Elly for help"></button>
-<div id="vbadge">v1.39 · Oct 3</div>
+<div id="vbadge">v1.40 · Oct 4</div>
 
 <script>
 'use strict';
 /* ============ UTILS ============ */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const VERSION='v1.39 · Oct 3';
+const VERSION='v1.40 · Oct 4';
 const RM=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -18178,6 +18178,248 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
     }
     bind(); if(typeof openTown==='function'){ var _ot=openTown; window.openTown=openTown=function(){ var r=_ot.apply(this,arguments); try{ bind(); camFit(); }catch(e){} return r; }; if(window.BQ)try{ window.BQ.openTown=openTown; }catch(_){} }
   })();
+})();
+</script>
+<script>
+/* ================= v1.40 · SILLY STORIES (fill-in-the-blank) (Oct 4 2026) =================
+   Mot's ask: Mad-Libs-style games for the reading + vocabulary wings, a bunch ready right off the bat.
+   Adds a self-contained "Silly Stories" activity: pick a story, fill blanks ONE AT A TIME by part of
+   speech (each prompt teaches the part of speech with a kid definition + examples + tappable word chips,
+   and a type-your-own box), then the finished silly story is revealed with the chosen words highlighted,
+   can be read out loud, and saved to a little book. "Surprise me" instant-fills a random story. Hosted by
+   Bibi; entry cards injected into the Word Hoard and Sam's Library. Rewards notes (+coins drip) on first
+   finish of each story. Additive, audio-safe, no em dashes, literal-hex SVG. */
+(function(){
+  if(typeof document==='undefined')return;
+
+  /* ---------- state ---------- */
+  function ML(){ if(typeof S==='undefined'||!S)return {done:{},saved:[],plays:0};
+    if(!S.madlib||typeof S.madlib!=='object')S.madlib={};
+    if(!S.madlib.done||typeof S.madlib.done!=='object')S.madlib.done={};
+    if(!Array.isArray(S.madlib.saved))S.madlib.saved=[];
+    if(typeof S.madlib.plays!=='number')S.madlib.plays=0;
+    return S; }
+  (function(){ if(typeof load==='function'){ var _l=load; window.load=load=function(){ _l(); try{ML();}catch(e){} }; } })();
+  try{ ML(); }catch(e){}
+
+  /* ---------- parts of speech (kid helpers + tappable word chips) ---------- */
+  var POS={
+   noun:{label:'a NOUN',help:'a person, place, or thing',ex:'dog, school, pizza',chips:['dog','robot','banana','wizard','sock','dragon','cookie','pickle']},
+   adjective:{label:'an ADJECTIVE',help:'a describing word',ex:'silly, giant, sparkly',chips:['silly','giant','sparkly','stinky','fluffy','wiggly','grumpy','slimy']},
+   verb:{label:'a VERB',help:'an action word',ex:'jump, sing, wiggle',chips:['jump','sing','wiggle','zoom','flip','giggle','dance','wobble']},
+   verbing:{label:'a VERB ending in -ING',help:'an action word that ends in -ing',ex:'jumping, singing',chips:['jumping','singing','dancing','sneezing','bouncing','giggling','zooming','flipping']},
+   adverb:{label:'an ADVERB',help:'how you do something (usually ends in -ly)',ex:'quickly, loudly',chips:['quickly','loudly','slowly','happily','crazily','gently','suddenly','silently']},
+   pluralnoun:{label:'a PLURAL NOUN',help:'more than one thing',ex:'cookies, socks',chips:['cookies','dragons','socks','robots','bananas','bubbles','pickles','kittens']},
+   animal:{label:'an ANIMAL',help:'any animal',ex:'tiger, duck, llama',chips:['tiger','duck','llama','octopus','hamster','penguin','shark','sloth']},
+   color:{label:'a COLOR',help:'any color',ex:'purple, green, gold',chips:['purple','green','rainbow','gold','pink','blue','orange','silver']},
+   food:{label:'a FOOD',help:'something you eat',ex:'pizza, tacos',chips:['pizza','tacos','spaghetti','ice cream','broccoli','pancakes','cheese','jelly']},
+   number:{label:'a NUMBER',help:'any number',ex:'7, 100, 3',chips:['7','100','3','42','1000','12','8','2']},
+   name:{label:'a NAME',help:"a person's name",ex:'Garrett, Mom',chips:['Garrett','Mom','Dad','Grandma','Max','Lucy','the teacher','a friend']},
+   place:{label:'a PLACE',help:'anywhere at all',ex:'the moon, the park',chips:['the moon','the park','your backyard','school','the zoo','under the bed','outer space','the kitchen']},
+   bodypart:{label:'a BODY PART',help:'a part of your body',ex:'elbow, nose, toe',chips:['elbow','nose','toe','belly button','ear','knee','pinky','tongue']},
+   exclamation:{label:'an EXCLAMATION',help:'something you shout',ex:'Wow! Yikes!',chips:['Wow!','Yikes!','Oh no!','Hooray!','Whoa!','Yuck!','Cowabunga!','Uh oh!']},
+   sillyword:{label:'a SILLY WORD',help:'make one up!',ex:'bloop, zonk',chips:['bloop','zonk','wibble','kaboom','sproing','glorp','zibzab','floof']}
+  };
+
+  /* ---------- stories (original, 10 ready from the start) ---------- */
+  function B(i){ return {b:i}; }
+  var STORIES=[
+   {id:'band',title:'The Big Band Show',emoji:'\uD83C\uDFB8',blanks:['adjective','place','verb','animal','food','exclamation'],
+    body:['Tonight the band played a ',B(0),' show at ',B(1),'. The drummer started to ',B(2),' while a ',B(3),' danced on the stage. Everyone in the crowd ate ',B(4),' and yelled "',B(5),'" when the last song ended!']},
+   {id:'pet',title:'My Pet Monster',emoji:'\uD83E\uDD96',blanks:['name','color','adjective','verbing','number','pluralnoun'],
+    body:['I have a pet monster named ',B(0),'. It is ',B(1),' and very ',B(2),'. Every morning it likes ',B(3),' around the house. When it gets hungry it gobbles up ',B(4),' ',B(5),' for breakfast!']},
+   {id:'space',title:'Blast Off!',emoji:'\uD83D\uDE80',blanks:['name','adjective','exclamation','place','color','animal','bodypart'],
+    body:['Captain ',B(0),' climbed into the ',B(1),' rocket. "',B(2),'" we shouted as we blasted off to ',B(3),'. Way out in space we saw a ',B(4),' ',B(5),' floating by. It waved its ',B(6),' at us!']},
+   {id:'pizza',title:'The Greatest Pizza',emoji:'\uD83C\uDF55',blanks:['adjective','number','pluralnoun','food','noun','color','verbing'],
+    body:['I made the most ',B(0),' pizza in the whole world. First I put ',B(1),' ',B(2),' on top. Then I added some ',B(3),' and one tiny ',B(4),'. I baked it until it turned ',B(5),' and started ',B(6),'!']},
+   {id:'zoo',title:'A Day at the Zoo',emoji:'\uD83D\uDC3E',blanks:['adjective','animal','verbing','adverb','bodypart','sillyword','adverb'],
+    body:['We went to the zoo to see the ',B(0),' ',B(1),'. It was ',B(2),' ',B(3),' in its pen. All of a sudden it grabbed my ',B(4),' and said "',B(5),'"! We ran away ',B(6),'.']},
+   {id:'super',title:'Super Me!',emoji:'\uD83E\uDDB8',blanks:['adjective','verbing','color','number','pluralnoun','exclamation','place'],
+    body:['My superhero name is Captain ',B(0),'. My super power is ',B(1),' really fast. I wear a ',B(2),' cape and balance ',B(3),' ',B(4),' on my head. When trouble shows up I yell "',B(5),'" and save ',B(6),'!']},
+   {id:'wizard',title:'The Silly Spell',emoji:'\uD83E\uDDD9',blanks:['adjective','sillyword','color','animal','verbing','noun','adverb'],
+    body:['The wizard waved his ',B(0),' wand and said the magic word: "',B(1),'". POOF! A ',B(2),' ',B(3),' appeared and started ',B(4),'. The wizard dropped his ',B(5),' and ran ',B(6),' out the door.']},
+   {id:'ocean',title:'Under the Sea',emoji:'\uD83D\uDC19',blanks:['color','adjective','animal','noun','adverb','food','exclamation'],
+    body:['I put on my ',B(0),' swim goggles and dove into the ',B(1),' ocean. A friendly ',B(2),' swam up and handed me a ',B(3),'. We played ',B(4),' until a giant ',B(5),' floated past. "',B(6),'" I bubbled!']},
+   {id:'bday',title:'The Birthday Surprise',emoji:'\uD83C\uDF82',blanks:['name','number','food','verb','animal','adjective','noun','exclamation'],
+    body:["It was ",B(0),"'s birthday party. We ate ",B(1),' slices of ',B(2),' cake. Then we played a game where you ',B(3),' like a ',B(4),'. The best present of all was a ',B(5),' ',B(6),'. "',B(7),'" everyone cheered!']},
+   {id:'school',title:'The Magic School Day',emoji:'\uD83D\uDCD6',blanks:['adjective','animal','verb','adverb','food','pluralnoun','color','sillyword'],
+    body:['This morning I rode a ',B(0),' ',B(1),' all the way to school. In class we learned how to ',B(2),' ',B(3),'. For lunch we had ',B(4),' and a bowl of ',B(5),'. The teacher wore a ',B(6),' hat and shouted "',B(7),'"!']}
+  ];
+  var SBY={}; STORIES.forEach(function(s){ SBY[s.id]=s; });
+  var HLC=['#ffd158','#7dff8a','#8fd0ff','#ff9ec4','#c58dff','#ff8f5d'];
+
+  /* ---------- helpers ---------- */
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function cap(w){ w=String(w||''); return w? w.charAt(0).toUpperCase()+w.slice(1) : w; }
+  function assemble(story,words,hl){ var html='',plain='',sent=true;
+    story.body.forEach(function(seg){
+      if(typeof seg==='string'){ html+=esc(seg); plain+=seg; var tr=seg.replace(/["')\s]+$/,''); if(/[.!?]$/.test(tr))sent=true; else if(seg.trim())sent=false; }
+      else { var w=words[seg.b]||'___'; if(sent)w=cap(w); var col=HLC[seg.b%HLC.length];
+        html+= hl? ('<span class="ml-word" style="color:'+col+'">'+esc(w)+'</span>') : esc(w); plain+=w; sent=false; }
+    });
+    return {html:html,plain:plain}; }
+
+  /* ---------- runtime flow ---------- */
+  var M={step:'shelf',id:null,ix:0,words:[],from:'town',viewId:null};
+
+  function mount(){ if(document.getElementById('scr-madlib'))return;
+    var d=document.createElement('div'); d.className='scr'; d.id='scr-madlib';
+    d.innerHTML='<div class="wow-top"><button class="btn ghost small" id="mlBack">\u2190 Back</button><div class="wow-score" id="mlScore"></div></div><div id="mlBody" style="padding:4px 2px 26px"></div>';
+    var a=document.getElementById('modal'); if(a)document.body.insertBefore(d,a); else document.body.appendChild(d);
+    d.querySelector('#mlBack').addEventListener('click',function(){ try{ if(typeof sTap==='function')sTap(); }catch(e){} mlBack(); });
+    if(typeof ELLY_HINTS==='object')ELLY_HINTS['scr-madlib']='Pick a story, then fill in the words I ask for. Tap a word or type your own. Then read the silly story you made!';
+  }
+  function mlBack(){ if(M.step==='fill'||M.step==='reveal'||M.step==='book'){ M.step='shelf'; render(); return; }
+    if(M.from==='hoard'&&typeof openHoard==='function'){ openHoard(); return; }
+    if(M.from==='lib'&&typeof openLibrary==='function'){ openLibrary(); return; }
+    if(typeof openTown==='function'){ openTown(); return; } if(typeof show==='function')show('scr-hub'); }
+
+  window.openMadlib=function(from){ try{ if(typeof sTap==='function')sTap(); }catch(e){} ML(); M.from=from||'town'; M.step='shelf'; M.id=null; mount(); render(); if(typeof show==='function')show('scr-madlib'); var b=document.getElementById('scr-madlib'); if(b)b.scrollTop=0; };
+
+  function host(sz){ return (typeof memberSVG==='function')?memberSVG('bibi',sz||56):''; }
+  function scoreTxt(){ var done=Object.keys(ML().madlib.done).length; return '\u270F\uFE0F '+done+' / '+STORIES.length+' stories'; }
+
+  function render(){ var body=document.getElementById('mlBody'); if(!body)return; ML();
+    var sc=document.getElementById('mlScore'); if(sc)sc.textContent=scoreTxt();
+    if(M.step==='shelf')return shelf(body);
+    if(M.step==='fill')return fill(body);
+    if(M.step==='reveal')return reveal(body);
+    if(M.step==='book')return book(body);
+  }
+
+  function shelf(body){
+    var savedN=ML().madlib.saved.length;
+    var html='<div class="center" style="margin:2px 0 6px"><div class="row" style="justify-content:center;gap:8px;align-items:flex-end">'+host(54)+'</div>'
+      +'<h2 style="margin:4px 0 0">\u270F\uFE0F Silly Stories</h2>'
+      +'<div class="sub" style="margin:2px 0 2px">Pick funny words, then read the silly story you made!</div></div>';
+    html+='<div class="ml-row2"><button class="btn" style="flex:1" onclick="mlSurprise()">\uD83C\uDFB2 Surprise me</button>'
+      +'<button class="btn ghost" style="flex:1" onclick="mlBook()">\uD83D\uDCD6 My Book ('+savedN+')</button></div>';
+    html+='<div class="ml-grid">';
+    STORIES.forEach(function(s){ var done=!!ML().madlib.done[s.id];
+      html+='<div class="ml-card'+(done?' done':'')+'" onclick="mlPick(\''+s.id+'\')"><div class="ml-emo">'+s.emoji+'</div>'
+        +'<div class="ml-t">'+esc(s.title)+'</div>'
+        +'<div class="ml-sub">'+s.blanks.length+' words'+(done?' \u00b7 \u2713':'')+'</div></div>';
+    });
+    html+='</div>';
+    body.innerHTML=html;
+  }
+
+  window.mlPick=function(id){ try{ if(typeof sTap==='function')sTap(); }catch(e){} var s=SBY[id]; if(!s)return; M.id=id; M.ix=0; M.words=[]; M.step='fill'; render(); var b=document.getElementById('scr-madlib'); if(b)b.scrollTop=0; };
+
+  function fill(body){ var s=SBY[M.id]; if(!s){ M.step='shelf'; return render(); }
+    var pk=s.blanks[M.ix]; var p=POS[pk]||POS.noun; var n=s.blanks.length;
+    var html='<div class="center" style="margin:2px 0 4px"><div class="ml-prog">Word '+(M.ix+1)+' of '+n+' \u00b7 '+esc(s.title)+'</div>'
+      +'<div class="ml-bar"><div class="ml-barfill" style="width:'+Math.round((M.ix)/n*100)+'%"></div></div></div>';
+    html+='<div class="ml-pos"><div class="ml-poslabel">Give me '+p.label+'</div>'
+      +'<div class="ml-poshelp">'+esc(p.help)+'</div>'
+      +'<div class="ml-posex">like: '+esc(p.ex)+'</div></div>';
+    html+='<div class="ml-chips">';
+    p.chips.forEach(function(w){ html+='<button class="ml-chip" onclick="mlNext(\''+w.replace(/'/g,"\\'")+'\')">'+esc(w)+'</button>'; });
+    html+='</div>';
+    html+='<div class="ml-type"><input id="mlInput" class="ml-input" type="text" autocomplete="off" autocapitalize="off" placeholder="or type your own..." onkeydown="if(event.key===\'Enter\'){event.preventDefault();mlTypeNext();}">'
+      +'<button class="btn" onclick="mlTypeNext()">Next \u2192</button></div>';
+    if(M.ix>0)html+='<button class="btn ghost wide small" style="margin-top:8px" onclick="mlUndo()">\u2190 change my last word</button>';
+    body.innerHTML=html;
+  }
+  window.mlTypeNext=function(){ var el=document.getElementById('mlInput'); var v=el?(el.value||'').trim():''; if(!v){ if(typeof toast==='function')toast('Tap a word or type one.'); return; } mlNext(v); };
+  window.mlNext=function(w){ var s=SBY[M.id]; if(!s)return; w=String(w||'').trim().slice(0,24); if(!w)return; try{ if(typeof sTap==='function')sTap(); }catch(e){}
+    M.words[M.ix]=w; M.ix++;
+    if(M.ix>=s.blanks.length){ finish(); } else { render(); var b=document.getElementById('scr-madlib'); if(b)b.scrollTop=0; } };
+  window.mlUndo=function(){ if(M.ix>0){ M.ix--; M.words.length=M.ix; render(); } };
+
+  function finish(){ var s=SBY[M.id]; ML();
+    M.step='reveal';
+    var first=!S.madlib.done[s.id]; S.madlib.done[s.id]=true; S.madlib.plays++;
+    try{ if(typeof save==='function')save(); }catch(e){}
+    render();
+    if(first){ if(typeof zPay==='function')zPay(8,'Silly story done!'); else { if(typeof confetti==='function')confetti(); if(typeof toast==='function')toast('Silly story done!'); } }
+    else { if(typeof confetti==='function')confetti(); if(typeof toast==='function')toast('So silly!'); }
+  }
+
+  function reveal(body){ var s=SBY[M.id]; if(!s){ M.step='shelf'; return render(); }
+    var a=assemble(s,M.words,true);
+    var html='<div class="center" style="margin:2px 0 2px">'+host(50)+'<h2 style="margin:2px 0 0">'+s.emoji+' '+esc(s.title)+'</h2><div class="sub" style="margin:1px 0 6px">Here is your silly story!</div></div>';
+    html+='<div class="ml-reveal" id="mlReveal">'+a.html+'</div>';
+    html+='<div class="ml-row2"><button class="btn" style="flex:1" onclick="mlSpeak()">\uD83D\uDD0A Read it out loud</button>'
+      +'<button class="btn ghost" style="flex:1" onclick="mlSave()">\u2B50 Save to my book</button></div>';
+    html+='<button class="btn wide" onclick="mlPick(\''+s.id+'\')">\uD83D\uDD01 Do this one again</button>';
+    html+='<button class="btn wide ghost" onclick="mlShelf()">\u270F\uFE0F Pick a new story</button>';
+    body.innerHTML=html;
+  }
+  window.mlShelf=function(){ try{ if(typeof sTap==='function')sTap(); }catch(e){} mlStopSpeak(); M.step='shelf'; render(); var b=document.getElementById('scr-madlib'); if(b)b.scrollTop=0; };
+
+  window.mlSave=function(){ var s=SBY[M.id]; if(!s)return; ML(); try{ if(typeof sTap==='function')sTap(); }catch(e){}
+    var a=assemble(s,M.words,false);
+    S.madlib.saved.unshift({id:s.id,title:s.title,emoji:s.emoji,words:M.words.slice(),text:a.plain,at:Date.now()});
+    if(S.madlib.saved.length>40)S.madlib.saved.length=40;
+    try{ if(typeof save==='function')save(); }catch(e){}
+    if(typeof confetti==='function')confetti(); if(typeof toast==='function')toast('Saved to My Book!'); };
+
+  window.mlBook=function(){ try{ if(typeof sTap==='function')sTap(); }catch(e){} mlStopSpeak(); M.step='book'; render(); var b=document.getElementById('scr-madlib'); if(b)b.scrollTop=0; };
+  function book(body){ ML(); var list=S.madlib.saved;
+    var html='<div class="center" style="margin:2px 0 6px">'+host(48)+'<h2 style="margin:2px 0 0">\uD83D\uDCD6 My Silly Book</h2><div class="sub" style="margin:1px 0 4px">'+(list.length?'Tap a story to read it again.':'Nothing saved yet. Finish a story and tap Save!')+'</div></div>';
+    list.forEach(function(it,i){ var sm=assemble(SBY[it.id]||{body:[it.text]},it.words||[],true);
+      html+='<div class="ml-saved"><div class="ml-savedhead"><b>'+(it.emoji||'')+' '+esc(it.title)+'</b>'
+        +'<button class="btn ghost small" onclick="mlReadSaved('+i+')">\uD83D\uDD0A</button></div>'
+        +'<div class="ml-savedtext" id="mlSaved'+i+'">'+(SBY[it.id]?sm.html:esc(it.text))+'</div></div>';
+    });
+    html+='<button class="btn wide ghost" style="margin-top:10px" onclick="mlShelf()">\u2190 Back to stories</button>';
+    body.innerHTML=html;
+  }
+  window.mlReadSaved=function(i){ ML(); var it=S.madlib.saved[i]; if(!it)return; var txt=it.text||(SBY[it.id]?assemble(SBY[it.id],it.words||[],false).plain:''); mlSpeakText(txt); };
+
+  window.mlSurprise=function(){ try{ if(typeof sTap==='function')sTap(); }catch(e){} var s=STORIES[Math.floor(Math.random()*STORIES.length)]; M.id=s.id; M.words=s.blanks.map(function(pk){ var c=(POS[pk]||POS.noun).chips; return c[Math.floor(Math.random()*c.length)]; }); M.ix=s.blanks.length; finish(); };
+
+  /* read out loud (guarded; no-op where speechSynthesis is unavailable) */
+  function mlStopSpeak(){ try{ if(window.speechSynthesis)window.speechSynthesis.cancel(); }catch(e){} }
+  window.mlSpeakText=function(txt){ try{ if(!('speechSynthesis' in window)||!txt){ if(typeof toast==='function')toast('Read it yourself, silly!'); return; } window.speechSynthesis.cancel(); var u=new SpeechSynthesisUtterance(String(txt)); u.rate=0.95; u.pitch=1.12; window.speechSynthesis.speak(u); }catch(e){} };
+  window.mlSpeak=function(){ var s=SBY[M.id]; if(!s)return; mlSpeakText(assemble(s,M.words,false).plain); };
+
+  /* ---------- CSS ---------- */
+  (function(){ if(document.getElementById('mlCSS'))return; var st=document.createElement('style'); st.id='mlCSS'; st.textContent=
+     '.ml-row2{display:flex;gap:8px;margin:8px 0}'
+    +'.ml-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:9px;margin:8px 0}'
+    +'.ml-card{background:#160f33;border:1.5px solid #2b2350;border-radius:14px;padding:12px 8px;text-align:center;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;transition:transform .08s}'
+    +'.ml-card:active{transform:scale(.96)}'
+    +'.ml-card.done{border-color:#7dff8a66}'
+    +'.ml-emo{font-size:34px;line-height:1}'
+    +'.ml-t{font-weight:800;font-size:14px;line-height:1.1}'
+    +'.ml-sub{font-size:11px;color:#9a8fce;font-weight:700}'
+    +'.ml-prog{font-weight:800;font-size:13px;color:#e9e2ff}'
+    +'.ml-bar{height:8px;background:#241c48;border-radius:6px;overflow:hidden;max-width:300px;margin:5px auto 0}'
+    +'.ml-barfill{height:100%;background:linear-gradient(90deg,#ffd158,#ff9ec4);transition:width .25s}'
+    +'.ml-pos{background:#160f33;border:2px solid #4a3d84;border-radius:16px;padding:14px;text-align:center;margin:8px 0}'
+    +'.ml-poslabel{font-size:22px;font-weight:900;color:#ffd158;letter-spacing:.5px}'
+    +'.ml-poshelp{font-size:14px;color:#e9e2ff;margin-top:3px}'
+    +'.ml-posex{font-size:12px;color:#9a8fce;margin-top:2px;font-style:italic}'
+    +'.ml-chips{display:flex;flex-wrap:wrap;gap:7px;justify-content:center;margin:8px 0}'
+    +'.ml-chip{background:#241c48;border:1.5px solid #4a3d84;border-radius:999px;padding:9px 13px;color:#fff;font-weight:700;font-size:14px;cursor:pointer}'
+    +'.ml-chip:active{background:#ffd158;color:#241c48}'
+    +'.ml-type{display:flex;gap:7px;margin-top:6px}'
+    +'.ml-input{flex:1;min-width:0;background:#0f0b24;border:1.5px solid #4a3d84;border-radius:12px;padding:11px 12px;color:#fff;font-size:16px;font-weight:700}'
+    +'.ml-input:focus{outline:none;border-color:#ffd158}'
+    +'.ml-reveal{background:#0f0b24;border:2px solid #2b2350;border-radius:16px;padding:16px 15px;font-size:20px;line-height:1.7;color:#efe9ff;margin:6px 0}'
+    +'.ml-word{font-weight:900}'
+    +'.ml-saved{background:#160f33;border:1px solid #2b2350;border-radius:14px;padding:11px 13px;margin:8px 0}'
+    +'.ml-savedhead{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:5px}'
+    +'.ml-savedtext{font-size:15px;line-height:1.6;color:#efe9ff}';
+    document.head.appendChild(st); })();
+
+  /* ---------- entry cards in the Word Hoard + Sam's Library ---------- */
+  (function(){ if(typeof renderHoard!=='function')return; var _rh=renderHoard; window.renderHoard=renderHoard=function(){ var r=_rh.apply(this,arguments);
+    try{ var landing=(typeof HOARD_VIEW==='undefined')||!HOARD_VIEW; var body=document.getElementById('hoardBody');
+      if(landing&&body&&!document.getElementById('mlHoardCard')){ var c=document.createElement('div'); c.className='hd-wotd'; c.id='mlHoardCard'; c.style.marginTop='8px';
+        c.setAttribute('onclick',"openMadlib('hoard')");
+        c.innerHTML='<div style="font-size:26px">\u270F\uFE0F</div><div><div style="font-weight:800">Silly Stories</div><div class="sub" style="text-align:left;margin:0">pick funny words, read a silly story</div></div>';
+        body.appendChild(c); } }catch(e){} return r; }; })();
+  (function(){ if(typeof libRender!=='function')return; var _lr=libRender; window.libRender=libRender=function(){ var r=_lr.apply(this,arguments);
+    try{ var landing=(typeof LIB==='undefined')||!LIB; var body=document.getElementById('libBody');
+      if(landing&&body&&!document.getElementById('mlLibCard')){ var c=document.createElement('div'); c.className='lib-card'; c.id='mlLibCard'; c.style.borderColor='#ffd15866';
+        c.setAttribute('onclick',"openMadlib('lib')");
+        c.innerHTML=(typeof memberSVG==='function'?memberSVG('bibi',44):'')+'<div><div class="t">\u270F\uFE0F Silly Stories</div><div class="s">fill-in-the-blank \u00b7 pick funny words, read a silly story</div></div>';
+        body.insertBefore(c, body.firstChild&&body.firstChild.nextSibling?body.firstChild.nextSibling:null); } }catch(e){} return r; }; })();
+
+  if(window.BQ)try{ window.BQ.openMadlib=window.openMadlib; }catch(e){}
 })();
 </script>
 </body>
