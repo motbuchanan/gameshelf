@@ -5,7 +5,7 @@ const out=path.join(__dirname,'shots139'); fs.mkdirSync(out,{recursive:true});
 let pass=0, fail=0; function ok(n,c){ if(c){pass++;console.log('  PASS',n);} else {fail++;console.log('  FAIL',n);} }
 async function page(b,w,h){ const ctx=await b.newContext({viewport:{width:w,height:h},deviceScaleFactor:2,hasTouch:true}); const p=await ctx.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message)); p.__errs=errs;
   await p.goto(url); await p.waitForTimeout(250);
-  await p.evaluate(()=>{ const S=JSON.parse(JSON.stringify(DEF)); S.creature={body:'blob',col:'#7dff8a',eyes:'dot',extra:'none',acc:'none',name:'Garrett'}; S.flags.introDone=true; S.flags.seenTown=true; Object.keys(S.flags).forEach(k=>{if(/^seen/.test(k))S.flags[k]=true;}); S.band=S.band||{}; S.band.boom=true; localStorage.setItem('bq_save_v1',JSON.stringify(S)); });
+  await p.evaluate(()=>{ const S=JSON.parse(JSON.stringify(DEF)); S.creature={body:'blob',col:'#7dff8a',eyes:'dot',extra:'none',acc:'none',name:'Garrett'}; S.flags.introDone=true; S.flags.seenTown=true; Object.keys(S.flags).forEach(k=>{if(/^seen/.test(k))S.flags[k]=true;}); S.band=S.band||{}; S.band.boom=true; S.flags.seen142=true; localStorage.setItem('bq_save_v1',JSON.stringify(S)); });
   await p.goto(url); await p.waitForTimeout(450);
   await p.evaluate(()=>{ const sp=document.getElementById('splash'); if(sp)sp.remove(); document.getElementById('btnStart').click(); });
   await p.waitForTimeout(700); return p; }
