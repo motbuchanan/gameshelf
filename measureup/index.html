@@ -928,14 +928,14 @@ svg .charg{will-change:transform}
 <div id="toast"></div>
 <button id="homeBtn" onclick="goHome()" aria-label="Back to Garage">🏠</button>
 <button id="ellyBtn" onclick="openEllyHelp()" aria-label="Ask Elly for help"></button>
-<div id="vbadge">v1.42 · Oct 6</div>
+<div id="vbadge">v1.43 · Oct 6</div>
 
 <script>
 'use strict';
 /* ============ UTILS ============ */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const VERSION='v1.42 · Oct 6';
+const VERSION='v1.43 · Oct 6';
 const RM=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -17709,8 +17709,8 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
     for(var j=0;j<FSLOTS;j++){ var q=placedBy['floor:'+j]; s+='<div class="rslot'+(q?' full':'')+'" onclick="aptSlot(\'floor\','+j+')">'+(q?art(q.id,38):'')+'</div>'; }
     s+='</div></div>';
     return s; }
-  function themeBg(id){ // flat color for the room zones (swatch art is for the shop)
-    return {floor_wood:'#e9c49a',floor_checker:'#dff1ff',floor_grass:'#9fe08f',floor_star:'#2b2350',wall_cream:'#fff6e6',wall_blue:'#d6ecff',wall_stripe:'#ffefd6',wall_music:'#efe6ff'}[id]||'#eee'; }
+  function themeBg(id){ // flat color for the room zones (swatch art is for the shop); later blocks may add patterns
+    var TB=window.TOWN_THEME_BG; if(TB&&TB[id])return TB[id]; return {floor_wood:'#e9c49a',floor_checker:'#dff1ff',floor_grass:'#9fe08f',floor_star:'#2b2350',wall_cream:'#fff6e6',wall_blue:'#d6ecff',wall_stripe:'#ffefd6',wall_music:'#efe6ff'}[id]||'#eee'; }
   window.aptTab=function(t){ if(typeof sTap==='function')sTap(); ATAB=t; ASEL=null; aptRender(); };
   window.aptRender=function(){ var body=document.getElementById('aptBody'); if(!body)return; HS();
     var sc=document.getElementById('aptScore'); if(sc)sc.textContent='💰 '+S.coins+' · '+HS().home.placed.length+' things placed';
@@ -18528,14 +18528,15 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
     return S.nb; }
   (function(){ if(typeof load==='function'){ var _l=load; window.load=load=function(){ _l(); try{NB();}catch(e){} }; } })();
   try{ NB(); }catch(e){}
-  function styleItems(st,zone){ return ITEMS.filter(function(it){ return it.cat!=='theme'&&it.style===st&&(!zone||it.zone===zone)&&it.p&&it.p.c; }); }
+  function buyable(it){ if(typeof window.townBuyable==='function')return window.townBuyable(it); return (it.cat==='furniture'||it.cat==='decor')&&!!(it.p&&it.p.c); }
+  function styleItems(st,zone){ return ITEMS.filter(function(it){ return buyable(it)&&it.style===st&&(!zone||it.zone===zone); }); }
   function room(id){ var nb=NB(); var r=nb.rooms[id];
     if(!r||typeof r!=='object'||!Array.isArray(r.placed)){
       var t=taste(id), n=hsh(id);
       var fl=styleItems(t,'floor'), wl=styleItems(t,'wall');
       var placed=[]; if(fl.length)placed.push({id:fl[n%fl.length].id,zone:'floor',slot:7,g:false});
-      if(wl.length)placed.push({id:wl[(n>>3)%wl.length].id,zone:'wall',slot:2,g:false});
-      else if(fl.length>1)placed.push({id:fl[(n%fl.length+1+((n>>3)%(fl.length-1)))%fl.length].id,zone:'floor',slot:12,g:false});
+      if(wl.length)placed.push({id:wl[(n>>>3)%wl.length].id,zone:'wall',slot:2,g:false});
+      else if(fl.length>1)placed.push({id:fl[(n%fl.length+1+((n>>>3)%(fl.length-1)))%fl.length].id,zone:'floor',slot:12,g:false});
       r=nb.rooms[id]={placed:placed,floor:'floor_wood',wall:'wall_cream'}; }
     if(!r.floor)r.floor='floor_wood'; if(!r.wall)r.wall='wall_cream';
     return r; }
@@ -18561,6 +18562,7 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
   function tap(){ try{ if(typeof sTap==='function')sTap(); }catch(e){} }
   function tst(m){ try{ if(typeof toast==='function')toast(m); }catch(e){} }
   var THEME_BG={floor_wood:'#e9c49a',floor_checker:'#dff1ff',floor_grass:'#9fe08f',floor_star:'#2b2350',wall_cream:'#fff6e6',wall_blue:'#d6ecff',wall_stripe:'#ffefd6',wall_music:'#efe6ff'};
+  function themeBg(id){ var m=window.TOWN_THEME_BG; return (m&&m[id])||THEME_BG[id]||'#eee'; }
   function tasteChip(id,big){ var st=STYLES[taste(id)]; return '<span class="nb-taste" style="--c:'+st.col+(big?';font-size:13px':'')+'">'+st.nm+'</span>'; }
 
   /* ---------- tier check + rewards ---------- */
@@ -18611,9 +18613,9 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
   window.nbBackToBuilding=function(){ tap(); if(CUR_B)openBuilding(CUR_B); else if(typeof openTown==='function')openTown(); };
   window.nbTab=function(t){ tap(); RTAB=t; RSEL=null; nbrRender(); };
   function roomGrid(id){ var r=room(id); var by={}; r.placed.forEach(function(p){ by[p.zone+':'+p.slot]=p; });
-    var s='<div class="room"><div class="room-wall" style="background:'+(THEME_BG[r.wall]||'#eee')+'">';
+    var s='<div class="room"><div class="room-wall" style="background:'+themeBg(r.wall)+'">';
     for(var i=0;i<5;i++){ var p=by['wall:'+i]; s+='<div class="rslot wall'+(p?' full':'')+(p&&p.g?' gift':'')+'" onclick="nbSlot(\'wall\','+i+')">'+(p?art(p.id,40):'')+'</div>'; }
-    s+='</div><div class="room-floor" style="background:'+(THEME_BG[r.floor]||'#eee')+'">';
+    s+='</div><div class="room-floor" style="background:'+themeBg(r.floor)+'">';
     for(var j=0;j<15;j++){ var q=by['floor:'+j]; s+='<div class="rslot'+(q?' full':'')+(q&&q.g?' gift':'')+'" onclick="nbSlot(\'floor\','+j+')">'+(q?art(q.id,38):'')+'</div>'; }
     return s+'</div></div>'; }
   window.nbrRender=function(){ var body=document.getElementById('nbrBody'); if(!body||!CUR)return; var id=CUR; NB();
@@ -18729,7 +18731,7 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
      - WISHLISTS: every neighbor wants three specific things (mostly their taste). The list shows in their room; fill
        it (gifts or errands both count) for a big one-time reward, and their door gets a star.
      - Hooks into the existing systems: errands run through neighbors' rooms (v1.41 nbRoomTop), the Square's daily
-       quest asks for an errand on Sundays (wkMark 'errand'), and a one-time What's New card introduces it all.
+       quest asks for an errand on Sundays (wkMark 'errand'), and the What's New card lives in v1.43.
    State: S.er {day, board[], carry, allDay, done, wishDone{}, swap{day,offers[]}, deals}. Additive, audio-safe,
    no em dashes, literal hex. */
 (function(){
@@ -18760,8 +18762,9 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
   function allRes(){ var out=[]; (window.NB_BUILDINGS||[]).forEach(function(b){ out=out.concat(window.nbResidents(b.id)); }); return out; }
   function isMet(id){ try{ return !!((S.friends&&S.friends.met&&S.friends.met[id])||(S.band&&S.band[id])); }catch(e){ return false; } }
   function where(id){ var b=window.nbBuildingOf(id); if(!b)return ''; var n=window.nbResidents(b.id).indexOf(id)+101; return b.nm+', door '+n; }
-  function tasteItems(st){ return ITEMS.filter(function(it){ return it.cat!=='theme'&&it.style===st&&it.p&&it.p.c; }); }
-  function goods(){ return ITEMS.filter(function(it){ return it.cat!=='theme'; }); }
+  function buyable(it){ if(typeof window.townBuyable==='function')return window.townBuyable(it); return (it.cat==='furniture'||it.cat==='decor')&&!!(it.p&&it.p.c); }
+  function tasteItems(st){ return ITEMS.filter(function(it){ return buyable(it)&&it.style===st; }); }
+  function goods(){ return ITEMS.filter(function(it){ return (it.cat==='furniture'||it.cat==='decor')&&it.p&&(it.p.c||it.p.n||it.p.g)&&(!it.season||(window.townInSeason&&window.townInSeason(it))); }); }
 
   /* ---------- state ---------- */
   function ER(){ if(typeof S==='undefined'||!S)return {board:[],wishDone:{},swap:{offers:[]}};
@@ -18802,11 +18805,11 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
     sv(); }
 
   /* ---------- wishlists ---------- */
-  function wishOf(id){ var r=rng('wish'+id); var st=taste(id); var mine=tasteItems(st); var out=[];
+  function wishOf(id){ var e0=ER(); if(!e0.wish||typeof e0.wish!=='object')e0.wish={}; if(Array.isArray(e0.wish[id])&&e0.wish[id].length===3&&e0.wish[id].every(function(w){ return !!BYID[w]; }))return e0.wish[id]; var r=rng('wish'+id); var st=taste(id); var mine=tasteItems(st); var out=[];
     var guard=0; while(out.length<2&&mine.length&&guard++<40){ var a=mine[Math.floor(r()*mine.length)].id; if(out.indexOf(a)<0)out.push(a); }
     var other=goods().filter(function(it){ return it.style!==st; }); guard=0;
     while(out.length<3&&guard++<40){ var b=other[Math.floor(r()*other.length)].id; if(out.indexOf(b)<0)out.push(b); }
-    return out; }
+    e0.wish[id]=out; sv(); return out; }
   function wishHave(id){ var r=window.nbRoom(id); var ids=r.placed.map(function(p){ return p.id; }).concat(r.closet||[]); return wishOf(id).map(function(w){ return ids.indexOf(w)>=0; }); }
   function checkWish(id){ var e=ER(); if(e.wishDone[id])return false; if(!wishHave(id).every(Boolean))return false;
     e.wishDone[id]=true; coins(60); notes(15); gold(1); sv(); party();
@@ -18957,18 +18960,551 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
   /* ---------- the Square's daily quest: Sundays are errand day ---------- */
   (function(){ if(typeof questOfDay!=='function')return; var _q=questOfDay; window.questOfDay=questOfDay=function(id){ if(new Date().getDay()===0)return {type:'errand',t:'Finish an errand from Gus’s Errand Board.',go:function(){ openErrands(); }}; return _q(id); }; })();
 
-  /* ---------- what's new (once) ---------- */
+  if(window.BQ)try{ Object.assign(window.BQ,{openErrands:window.openErrands,openSwap:window.openSwap,erBoard:board,erWishOf:wishOf}); }catch(e){}
+})();
+</script>
+<script>
+/* ================= v1.43 · BIG CATALOG, GATHERING, CRAFTING & KEEPSAKES (Oct 6 2026) =================
+   Mot: "drastically expand what is available in the shop and what can be gathered and collected for the
+   different people, maybe even special items given as gifts for completing strings of chores or errands."
+   Adds:
+     - CATALOG x3: about 100 new things (color variants + new pieces), sorted onto SHELVES in each shop
+       (Cozy Home: Seating, Beds & Tables, Lights, Music & Toys. Corner Store: Plants, Wall Art, Little Things,
+       Floors, Walls, plus a Fall shelf that only shows Sep-Nov). 9 new floors + 9 new walls drawn as CSS patterns.
+       The shop renderer is replaced (window.storeRender) and keeps v1.35's buy/sell/pay logic.
+     - GATHERING: 14 nature finds a day appear around the town plot (acorns, leaves, pinecones, shells, feathers,
+       stones, flowers, mushrooms, driftwood; rare four-leaf clover, geode, golden acorn). Tap to collect into
+       POCKETS. First find of each kind opens a science fact; Fern's NATURE JOURNAL keeps them.
+     - CRAFTING: Piper's Craft Shed turns finds into 15 special pieces (incl. a pebble floor + leaf wall). Each craft
+       shows the subtraction (7 - 4 = 3 left).
+     - FRIENDSHIP + KEEPSAKES: each neighbor has a friendship meter and their own daily chore (bring N finds, or a
+       shop thing). Chores, errands, trades, wishlists, favors and taste-matching gifts all add friendship. At 5 / 12
+       / 20 they give one-of-a-kind keepsakes: Photo of them (wall), Plushie of them, Golden Statue of them.
+       Keepsakes can't be sold. Finds can be given as little gifts (3 a day per neighbor).
+     - NATURE & CRAFTS row on the plot; a POCKETS pill in the town shell; one combined What's New card (seen143).
+   State: S.gx {day,got[],pockets{},found{},crafted} and S.fr {pts{},ks{},req{},reqDay{},chain{},giftDay{}}.
+   Additive, audio-safe, no em dashes, literal hex in SVG presentation attributes. */
+(function(){
+  if(typeof document==='undefined')return;
+  if(!window.TOWN_ITEMS||!window.TOWN_BYID||!window.TOWN_ART||typeof zScr!=='function')return;
+  var ITEMS=window.TOWN_ITEMS, BYID=window.TOWN_BYID, ART=window.TOWN_ART;
+
+  /* ---------- helpers ---------- */
+  function hsh(s){ var n=0; s=String(s); for(var i=0;i<s.length;i++)n=(n*31+s.charCodeAt(i))>>>0; return n; }
+  function rng(seed){ var x=hsh(seed)||7; return function(){ x^=x<<13; x>>>=0; x^=x>>>17; x^=x<<5; x>>>=0; return (x>>>0)/4294967296; }; }
+  function day(){ return (typeof ctDay==='function')?ctDay():new Date().toDateString(); }
+  function nm(id){ try{ return (typeof citName==='function')?citName(id):id; }catch(e){ return id; } }
+  function csvg(id,sz){ try{ if(typeof citSvg==='function')return citSvg(id,sz); }catch(e){} return ''; }
+  function art(id,sz){ return (typeof itemArt==='function')?itemArt(id,sz):''; }
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function sv(){ try{ if(typeof save==='function')save(); }catch(e){} }
+  function tap(){ try{ if(typeof sTap==='function')sTap(); }catch(e){} }
+  function tst(m){ try{ if(typeof toast==='function')toast(m); }catch(e){} }
+  function party(){ try{ if(typeof confetti==='function')confetti(); }catch(e){} }
+  function coins(n){ try{ if(n&&typeof addCoins==='function')addCoins(n); }catch(e){} }
+  function notes(n){ try{ if(n&&typeof addNotes==='function')addNotes(n); }catch(e){} }
+  function spare(itemId){ var have=(S.inv&&S.inv[itemId])||0; var used=((S.home&&S.home.placed)||[]).filter(function(x){ return x.id===itemId; }).length; return have-used; }
+
+  /* ---------- seasons + what the shops can sell ---------- */
+  function inSeason(it){ if(!it||!it.season)return true; var m=new Date().getMonth(); if(it.season==='fall')return m>=8&&m<=10; return true; }
+  window.townInSeason=inSeason;
+  window.townBuyable=function(it){ return !!it&&(it.cat==='furniture'||it.cat==='decor')&&!!(it.p&&it.p.c)&&inSeason(it); };
+
+  /* ---------- theme backgrounds (room view) ---------- */
+  window.TOWN_THEME_BG={
+   floor_wood:'#e9c49a', floor_checker:'repeating-conic-gradient(#9fd4ff 0 25%,#ffffff 0 50%) 0 0/28px 28px',
+   floor_grass:'radial-gradient(#7fc970 22%,transparent 24%) 0 0/12px 12px,#9fe08f', floor_star:'radial-gradient(#ffd158 9%,transparent 11%) 0 0/24px 24px,#2b2350',
+   floor_tile:'repeating-linear-gradient(0deg,transparent 0 22px,#b8d8e0 22px 24px),repeating-linear-gradient(90deg,#eef7fa 0 22px,#b8d8e0 22px 24px)',
+   floor_carpet:'radial-gradient(#e7bcd9 20%,transparent 22%) 0 0/10px 10px,#d9a3c7',
+   floor_marble:'linear-gradient(135deg,#f4f1ec,#ddd8d0 50%,#f4f1ec)',
+   floor_sand:'radial-gradient(#e8cf96 15%,transparent 17%) 0 0/9px 9px,#f2dca8',
+   floor_rainbow:'linear-gradient(90deg,#ff9a9a,#ffd59a,#fff59a,#a8f0a0,#9ad4ff,#c8a8ff)',
+   floor_stage:'repeating-linear-gradient(90deg,#3a2c5e 0 30px,#2a2048 30px 32px)',
+   floor_moss:'radial-gradient(#7fb069 30%,transparent 32%) 0 0/16px 16px,#9cc58a',
+   floor_dots:'radial-gradient(#ff8ac0 25%,transparent 27%) 0 0/14px 14px,#fff0f6',
+   floor_ice:'linear-gradient(160deg,#e8f8ff,#bfe6ff 60%,#e8f8ff)',
+   floor_pebble:'radial-gradient(#a89f92 30%,transparent 33%) 0 0/12px 12px,#d8d2c8',
+   wall_cream:'#fff6e6', wall_blue:'#d6ecff', wall_stripe:'repeating-linear-gradient(90deg,#fff6e6 0 12px,#ffe0ba 12px 24px)',
+   wall_music:'radial-gradient(#c58dff 12%,transparent 14%) 0 0/20px 20px,#efe6ff',
+   wall_wood:'repeating-linear-gradient(0deg,#c98a5a 0 12px,#b5784a 12px 14px)',
+   wall_brick:'repeating-linear-gradient(0deg,#c8604a 0 10px,#e9d6c8 10px 12px)',
+   wall_gold:'radial-gradient(#f3dc8a 25%,transparent 27%) 0 0/16px 16px,#e8c55a',
+   wall_sky:'radial-gradient(ellipse at 30% 40%,#ffffff 18%,transparent 20%) 0 0/60px 40px,#bfe6ff',
+   wall_jungle:'radial-gradient(ellipse,#5fae53 30%,transparent 32%) 0 0/22px 18px,#a8e09a',
+   wall_space:'radial-gradient(#ffffff 8%,transparent 10%) 0 0/18px 18px,#1e1a48',
+   wall_plaid:'repeating-linear-gradient(0deg,#d98a7a 0 6px,transparent 6px 16px),repeating-linear-gradient(90deg,#d98a7a 0 6px,#f2d6b3 6px 16px)',
+   wall_pink:'#ffd6ea',
+   wall_records:'radial-gradient(#2b2350 35%,#e8c55a 36%,#e8c55a 40%,transparent 41%) 0 0/22px 22px,#efe6ff',
+   wall_leaves:'radial-gradient(ellipse,#e8823a 30%,transparent 32%) 0 0/18px 14px,#fde5c8'
+  };
+
+  /* ---------- art: variant generators ---------- */
+  function chairA(a,b,c){ return '<rect x="14" y="8" width="16" height="16" rx="3" fill="'+a+'"/><rect x="12" y="22" width="20" height="7" rx="2" fill="'+b+'"/><rect x="13" y="29" width="3" height="8" fill="'+c+'"/><rect x="28" y="29" width="3" height="8" fill="'+c+'"/>'; }
+  function sofaA(a,b,c){ return '<rect x="4" y="18" width="7" height="16" rx="3" fill="'+a+'"/><rect x="33" y="18" width="7" height="16" rx="3" fill="'+a+'"/><rect x="7" y="14" width="30" height="12" rx="4" fill="'+b+'"/><rect x="5" y="22" width="34" height="12" rx="4" fill="'+c+'"/><rect x="9" y="33" width="4" height="5" fill="#8a5630"/><rect x="31" y="33" width="4" height="5" fill="#8a5630"/>'; }
+  function bedA(a,b){ return '<rect x="4" y="22" width="36" height="14" rx="3" fill="'+b+'"/><rect x="4" y="18" width="36" height="8" rx="3" fill="'+a+'"/><rect x="7" y="13" width="13" height="10" rx="3" fill="#ffffff" stroke="#cfe6ef"/><rect x="4" y="30" width="4" height="8" fill="#8a5630"/><rect x="36" y="30" width="4" height="8" fill="#8a5630"/>'; }
+  function rugA(a,b){ return '<ellipse cx="22" cy="24" rx="18" ry="10" fill="'+a+'"/><ellipse cx="22" cy="24" rx="12" ry="6.5" fill="none" stroke="#ffffff" stroke-width="2"/><ellipse cx="22" cy="24" rx="5" ry="3" fill="'+b+'"/>'; }
+  function beanA(a,b){ return '<path d="M10 34 Q8 18 22 16 Q36 18 34 34 Z" fill="'+a+'"/><ellipse cx="22" cy="20" rx="10" ry="4" fill="'+b+'"/>'; }
+  function lampA(a,b){ return '<ellipse cx="22" cy="36" rx="9" ry="3" fill="#a86b3f"/><rect x="20" y="20" width="4" height="15" fill="'+b+'"/><path d="M12 20 L32 20 L28 10 L16 10 Z" fill="'+a+'"/>'; }
+  function stoolA(a){ return '<ellipse cx="22" cy="18" rx="12" ry="5" fill="'+a+'"/><rect x="12" y="18" width="3" height="16" fill="#a86b3f"/><rect x="29" y="18" width="3" height="16" fill="#a86b3f"/><rect x="20.5" y="20" width="3" height="16" fill="#a86b3f"/>'; }
+  function potA(top){ return '<path d="M15 26 L29 26 L27 37 L17 37 Z" fill="#d98a5a"/><rect x="14" y="24" width="16" height="4" rx="1" fill="#c47a4a"/>'+top; }
+  function frameA(inner,fr){ return '<rect x="8" y="8" width="28" height="26" rx="1" fill="#ffffff" stroke="'+(fr||'#c98a5a')+'" stroke-width="3"/>'+inner; }
+  function sw(bg,extra){ return '<rect width="44" height="44" fill="'+bg+'"/>'+(extra||''); }
+
+  /* ---------- the new catalog ---------- */
+  var A={
+   chair_red:chairA('#ff8a8a','#ff6b6b','#a83c3c'), chair_mint:chairA('#9fe8c8','#7dd8ae','#3f8a6a'), chair_pink:chairA('#ffc2e0','#ff9ec4','#b0507a'),
+   sofa_blue:sofaA('#3a7fa0','#8fd0ff','#5bbfe6'), sofa_green:sofaA('#4f8a45','#a8e09a','#7dd87a'), sofa_purple:sofaA('#6b3fa0','#d8b3ff','#c58dff'),
+   beanbag_orange:beanA('#ff9f43','#ffc27a'), beanbag_blue:beanA('#5d8bff','#9fbcff'),
+   stool_blue:stoolA('#7ad9ff'), stool_yellow:stoolA('#ffd158'),
+   rocker:'<path d="M8 38 Q22 44 36 38" stroke="#8a5630" stroke-width="3" fill="none"/><rect x="13" y="6" width="18" height="18" rx="3" fill="#c98a5a"/><rect x="15" y="9" width="14" height="12" rx="2" fill="#ff9f6b"/><rect x="11" y="23" width="22" height="6" rx="2" fill="#c98a5a"/><rect x="13" y="29" width="3" height="9" fill="#8a5630"/><rect x="28" y="29" width="3" height="9" fill="#8a5630"/>',
+   throne:'<path d="M12 6 L16 12 L22 4 L28 12 L32 6 L32 30 L12 30 Z" fill="#e8c55a"/><rect x="15" y="13" width="14" height="14" rx="2" fill="#a3326a"/><rect x="9" y="26" width="26" height="7" rx="2" fill="#e8c55a"/><rect x="11" y="33" width="4" height="5" fill="#c9a24c"/><rect x="29" y="33" width="4" height="5" fill="#c9a24c"/><circle cx="22" cy="8" r="2" fill="#ff6b6b"/>',
+   hammock:'<rect x="4" y="8" width="3" height="30" fill="#8a5630"/><rect x="37" y="8" width="3" height="30" fill="#8a5630"/><path d="M7 14 Q22 34 37 14 Z" fill="#7dd87a"/><path d="M7 14 Q22 30 37 14" stroke="#ffffff" stroke-width="1.5" fill="none"/>',
+   gamerchair:'<rect x="14" y="4" width="16" height="22" rx="5" fill="#2b2350"/><rect x="18" y="7" width="8" height="15" rx="3" fill="#ff5d5d"/><rect x="11" y="24" width="22" height="6" rx="2" fill="#2b2350"/><rect x="21" y="30" width="2" height="5" fill="#8a8a8a"/><path d="M12 38 L32 38 M22 35 L14 39 M22 35 L30 39" stroke="#4a3f7a" stroke-width="2"/>',
+   stump:'<ellipse cx="22" cy="18" rx="12" ry="5" fill="#e9c49a"/><ellipse cx="22" cy="18" rx="7" ry="3" fill="none" stroke="#c98a5a"/><path d="M10 18 L10 34 Q22 40 34 34 L34 18" fill="#a86b3f"/><path d="M34 26 L38 30" stroke="#5fae53" stroke-width="2"/>',
+   parkbench:'<rect x="5" y="12" width="34" height="4" rx="1" fill="#7dd87a"/><rect x="5" y="18" width="34" height="4" rx="1" fill="#7dd87a"/><rect x="4" y="24" width="36" height="4" rx="1" fill="#5fae53"/><rect x="7" y="28" width="3" height="10" fill="#2b2350"/><rect x="34" y="28" width="3" height="10" fill="#2b2350"/>',
+   desk:'<rect x="5" y="16" width="34" height="5" rx="1" fill="#5bbfe6"/><rect x="7" y="21" width="3" height="16" fill="#3a7fa0"/><rect x="26" y="21" width="11" height="16" fill="#3a7fa0"/><rect x="28" y="25" width="7" height="2" fill="#ffffff"/><rect x="28" y="31" width="7" height="2" fill="#ffffff"/><rect x="12" y="7" width="12" height="9" rx="1" fill="#2b2350"/><rect x="13.5" y="8.5" width="9" height="6" fill="#7ad9ff"/>',
+   bunkbed:'<rect x="6" y="4" width="3" height="34" fill="#ff9f43"/><rect x="35" y="4" width="3" height="34" fill="#ff9f43"/><rect x="8" y="10" width="28" height="7" rx="2" fill="#7ad9ff"/><rect x="8" y="27" width="28" height="7" rx="2" fill="#ff8ac0"/><rect x="10" y="7" width="8" height="4" rx="1" fill="#ffffff"/><rect x="10" y="24" width="8" height="4" rx="1" fill="#ffffff"/><path d="M30 17 L30 27 M33 17 L33 27" stroke="#ff9f43" stroke-width="1.5"/>',
+   canopybed:'<rect x="5" y="4" width="2.5" height="34" fill="#e8c55a"/><rect x="36.5" y="4" width="2.5" height="34" fill="#e8c55a"/><path d="M5 5 L39 5 L36 14 Q22 18 8 14 Z" fill="#d8b3ff"/><rect x="6" y="24" width="32" height="10" rx="2" fill="#a3326a"/><rect x="6" y="20" width="32" height="6" rx="2" fill="#f3e6ff"/><rect x="9" y="17" width="10" height="6" rx="2" fill="#ffffff"/>',
+   bed_pink:bedA('#ff9ec4','#c97aa0'), bed_green:bedA('#a8e09a','#6b9a5a'),
+   picnic:'<rect x="4" y="15" width="36" height="5" rx="1" fill="#ff6b6b"/><path d="M8 15 L36 15 M4 17.5 L40 17.5" stroke="#ffffff" stroke-width="1" stroke-dasharray="3 3"/><path d="M10 20 L6 38 M34 20 L38 38" stroke="#a86b3f" stroke-width="3"/><rect x="2" y="27" width="40" height="3" fill="#c98a5a"/>',
+   dresser:'<rect x="8" y="10" width="28" height="26" rx="2" fill="#c98a5a"/><rect x="10" y="13" width="24" height="6" rx="1" fill="#e9c49a"/><rect x="10" y="21" width="24" height="6" rx="1" fill="#e9c49a"/><rect x="10" y="29" width="24" height="5" rx="1" fill="#e9c49a"/><circle cx="22" cy="16" r="1.2" fill="#8a5630"/><circle cx="22" cy="24" r="1.2" fill="#8a5630"/><circle cx="22" cy="31.5" r="1.2" fill="#8a5630"/>',
+   nightstand:'<rect x="12" y="18" width="20" height="18" rx="2" fill="#c98a5a"/><rect x="14" y="21" width="16" height="6" rx="1" fill="#e9c49a"/><circle cx="22" cy="24" r="1.2" fill="#8a5630"/><rect x="15" y="12" width="6" height="6" rx="1" fill="#ffd158"/><rect x="24" y="14" width="5" height="4" fill="#5d8bff"/>',
+   fridge:'<rect x="11" y="4" width="22" height="34" rx="3" fill="#e8f4f8" stroke="#9fb8c2" stroke-width="1.5"/><path d="M11 16 L33 16" stroke="#9fb8c2" stroke-width="1.5"/><rect x="28" y="8" width="2" height="5" fill="#9fb8c2"/><rect x="28" y="19" width="2" height="7" fill="#9fb8c2"/><circle cx="17" cy="22" r="2" fill="#ff6b6b"/><circle cx="20" cy="27" r="1.6" fill="#ffd158"/>',
+   stove:'<rect x="8" y="14" width="28" height="24" rx="2" fill="#ffffff" stroke="#9fb8c2" stroke-width="1.5"/><rect x="11" y="22" width="22" height="12" rx="1" fill="#2b2350"/><circle cx="15" cy="18" r="2" fill="#2b2350"/><circle cx="22" cy="18" r="2" fill="#2b2350"/><circle cx="29" cy="18" r="2" fill="#2b2350"/><path d="M14 8 Q16 4 18 8 T22 8" stroke="#ff9f43" stroke-width="1.5" fill="none"/>',
+   bathtub:'<path d="M5 20 L39 20 L36 33 Q22 37 8 33 Z" fill="#ffffff" stroke="#9fb8c2" stroke-width="1.5"/><ellipse cx="16" cy="18" rx="4" ry="3" fill="#d6ecff"/><ellipse cx="23" cy="16" rx="5" ry="4" fill="#d6ecff"/><ellipse cx="30" cy="18" rx="4" ry="3" fill="#d6ecff"/><rect x="6" y="9" width="3" height="11" fill="#c9a24c"/><rect x="10" y="34" width="3" height="4" fill="#c9a24c"/><rect x="31" y="34" width="3" height="4" fill="#c9a24c"/>',
+   lamp_blue:lampA('#7ad9ff','#3a7fa0'), lamp_pink:lampA('#ff9ec4','#b0507a'),
+   candles:'<rect x="11" y="20" width="5" height="15" rx="1" fill="#fff6e6"/><rect x="19" y="14" width="6" height="21" rx="1" fill="#fff6e6"/><rect x="28" y="23" width="5" height="12" rx="1" fill="#fff6e6"/><path d="M13.5 19 Q12 16 13.5 13 Q15 16 13.5 19 Z" fill="#ffb347"/><path d="M22 13 Q20 9 22 6 Q24 9 22 13 Z" fill="#ffb347"/><path d="M30.5 22 Q29 19 30.5 16 Q32 19 30.5 22 Z" fill="#ffb347"/><rect x="8" y="35" width="28" height="3" rx="1" fill="#e8c55a"/>',
+   lantern:'<rect x="20" y="4" width="4" height="4" fill="#4a3f7a"/><path d="M14 10 L30 10 L28 34 L16 34 Z" fill="#4a3f7a"/><rect x="17" y="13" width="10" height="18" fill="#ffd158"/><path d="M22 18 Q19 23 22 28 Q25 23 22 18 Z" fill="#ff9f43"/><rect x="13" y="34" width="18" height="4" rx="1" fill="#4a3f7a"/>',
+   neonsign:'<rect x="5" y="9" width="34" height="26" rx="4" fill="#2b2350"/><path d="M18 28 L18 14 L30 12 L30 25" stroke="#ff7ad9" stroke-width="2.5" fill="none"/><circle cx="15.5" cy="28" r="3" fill="#ff7ad9"/><circle cx="27.5" cy="25" r="3" fill="#ff7ad9"/>',
+   stringlights:'<path d="M3 10 Q12 20 22 12 Q32 4 41 14" stroke="#2b2350" stroke-width="1.5" fill="none"/><circle cx="7" cy="14" r="3" fill="#ffd158"/><circle cx="14" cy="17" r="3" fill="#ff8ac0"/><circle cx="22" cy="12" r="3" fill="#7dff8a"/><circle cx="30" cy="9" r="3" fill="#7ad9ff"/><circle cx="37" cy="12" r="3" fill="#ff9f43"/>',
+   discoball:'<path d="M22 2 L22 10" stroke="#8a8a8a" stroke-width="1.5"/><circle cx="22" cy="22" r="12" fill="#cfd8e0"/><path d="M10 22 L34 22 M22 10 L22 34 M13 15 L31 15 M13 29 L31 29" stroke="#8a9aa8" stroke-width="1"/><rect x="15" y="16" width="5" height="5" fill="#ffffff"/><rect x="24" y="23" width="5" height="5" fill="#ffffff"/><path d="M5 6 l2 3 3 -1 -2 3 2 3 -3 -1 -2 3 0 -3 -3 -1 3 -1 z" fill="#ff7ad9"/>',
+   moonlamp:'<ellipse cx="22" cy="37" rx="8" ry="2.5" fill="#4a3f7a"/><rect x="21" y="27" width="2" height="9" fill="#8a8a8a"/><circle cx="22" cy="16" r="11" fill="#fff6df"/><circle cx="18" cy="13" r="2.5" fill="#ffe6a0"/><circle cx="26" cy="19" r="2" fill="#ffe6a0"/><circle cx="24" cy="10" r="1.3" fill="#ffe6a0"/>',
+   trumpet:'<path d="M8 22 L28 20 L38 12 L38 32 L28 24 Z" fill="#e8c55a"/><rect x="14" y="16" width="2" height="5" fill="#c9a24c"/><rect x="18" y="16" width="2" height="5" fill="#c9a24c"/><rect x="22" y="16" width="2" height="5" fill="#c9a24c"/><circle cx="7" cy="22" r="2" fill="#c9a24c"/><path d="M22 26 L22 37 M16 38 L28 38" stroke="#4a3f7a" stroke-width="2"/>',
+   violin:'<path d="M22 6 L22 16" stroke="#2b2350" stroke-width="3"/><ellipse cx="22" cy="21" rx="7" ry="6" fill="#a86b3f"/><ellipse cx="22" cy="31" rx="9" ry="7" fill="#a86b3f"/><path d="M19 25 Q18 26 19 27 M25 25 Q26 26 25 27" stroke="#2b2350" stroke-width="1.5" fill="none"/><path d="M21 14 L21 36 M23 14 L23 36" stroke="#ffffff" stroke-width=".6"/><path d="M8 38 L34 8" stroke="#8a5630" stroke-width="1.5"/>',
+   xylophone:'<rect x="5" y="14" width="5" height="22" rx="1" fill="#ff6b6b"/><rect x="11" y="16" width="5" height="18" rx="1" fill="#ff9f43"/><rect x="17" y="18" width="5" height="14" rx="1" fill="#ffd158"/><rect x="23" y="20" width="5" height="10" rx="1" fill="#7dd87a"/><rect x="29" y="22" width="5" height="6" rx="1" fill="#5d8bff"/><path d="M36 8 L30 18" stroke="#8a5630" stroke-width="1.5"/><circle cx="36" cy="8" r="2.5" fill="#c58dff"/>',
+   micstand:'<rect x="21" y="14" width="2" height="22" fill="#8a8a8a"/><path d="M14 38 L22 34 L30 38" stroke="#4a3f7a" stroke-width="2.5" fill="none"/><rect x="17" y="4" width="10" height="12" rx="5" fill="#2b2350"/><path d="M18 8 L26 8 M18 11 L26 11" stroke="#8a8a8a" stroke-width="1"/>',
+   speaker:'<rect x="10" y="4" width="24" height="34" rx="3" fill="#2b2350"/><circle cx="22" cy="13" r="5" fill="#4a3f7a"/><circle cx="22" cy="13" r="2" fill="#c58dff"/><circle cx="22" cy="28" r="7.5" fill="#4a3f7a"/><circle cx="22" cy="28" r="3" fill="#c58dff"/>',
+   harp:'<path d="M12 38 L12 8 Q26 4 34 20 L34 38 Z" fill="none" stroke="#e8c55a" stroke-width="3"/><path d="M16 10 L16 38 M20 9 L20 38 M24 10 L24 38 M28 13 L28 38 M32 17 L32 38" stroke="#fff6e6" stroke-width="1"/><rect x="8" y="36" width="30" height="3" rx="1" fill="#c9a24c"/>',
+   arcade:'<path d="M10 38 L10 8 Q10 4 14 4 L30 4 Q34 4 34 8 L34 38 Z" fill="#5d8bff"/><rect x="13" y="8" width="18" height="13" rx="1" fill="#2b2350"/><rect x="16" y="11" width="4" height="4" fill="#7dff8a"/><rect x="23" y="14" width="4" height="4" fill="#ff7ad9"/><rect x="11" y="23" width="22" height="6" fill="#4a6bd0"/><circle cx="17" cy="26" r="2" fill="#ff6b6b"/><circle cx="26" cy="26" r="1.5" fill="#ffd158"/><circle cx="30" cy="26" r="1.5" fill="#ffd158"/>',
+   robot:'<rect x="14" y="10" width="16" height="12" rx="2" fill="#9fb8c2"/><circle cx="19" cy="16" r="2" fill="#7ad9ff"/><circle cx="25" cy="16" r="2" fill="#7ad9ff"/><rect x="21" y="5" width="2" height="5" fill="#8a8a8a"/><circle cx="22" cy="5" r="1.8" fill="#ff6b6b"/><rect x="13" y="23" width="18" height="11" rx="2" fill="#5bbfe6"/><rect x="9" y="24" width="4" height="8" rx="2" fill="#9fb8c2"/><rect x="31" y="24" width="4" height="8" rx="2" fill="#9fb8c2"/><rect x="15" y="34" width="5" height="4" fill="#4a3f7a"/><rect x="24" y="34" width="5" height="4" fill="#4a3f7a"/>',
+   teddy:'<circle cx="14" cy="11" r="4" fill="#a86b3f"/><circle cx="30" cy="11" r="4" fill="#a86b3f"/><circle cx="22" cy="16" r="9" fill="#c98a5a"/><ellipse cx="22" cy="31" rx="10" ry="8" fill="#c98a5a"/><ellipse cx="22" cy="19" rx="4" ry="3" fill="#e9c49a"/><circle cx="18.5" cy="14" r="1.3" fill="#2b2350"/><circle cx="25.5" cy="14" r="1.3" fill="#2b2350"/><path d="M17 24 L22 27 L27 24" stroke="#ff6b6b" stroke-width="2" fill="none"/>',
+   blocks:'<rect x="6" y="24" width="13" height="13" rx="1" fill="#ff6b6b"/><rect x="21" y="24" width="13" height="13" rx="1" fill="#5d8bff"/><rect x="13" y="11" width="13" height="13" rx="1" fill="#ffd158"/><text x="10" y="34" font-size="9" font-weight="bold" fill="#ffffff">A</text><text x="25" y="34" font-size="9" font-weight="bold" fill="#ffffff">B</text><text x="17" y="21" font-size="9" font-weight="bold" fill="#2b2350">C</text>',
+   rockinghorse:'<path d="M6 36 Q22 42 38 36" stroke="#a86b3f" stroke-width="3" fill="none"/><ellipse cx="22" cy="24" rx="11" ry="6" fill="#ffffff" stroke="#c98a5a" stroke-width="1.5"/><path d="M30 22 L34 10 L38 12 L35 22 Z" fill="#ffffff" stroke="#c98a5a" stroke-width="1.5"/><path d="M33 10 Q30 14 31 20" stroke="#ff9f43" stroke-width="3" fill="none"/><path d="M14 29 L12 37 M30 29 L32 37" stroke="#c98a5a" stroke-width="2.5"/><circle cx="35.5" cy="13" r="1" fill="#2b2350"/>',
+   telescope:'<path d="M10 22 L34 10 L36 15 L12 27 Z" fill="#5d8bff"/><rect x="31" y="8" width="6" height="9" rx="1" transform="rotate(-27 34 12)" fill="#2b2350"/><path d="M20 22 L14 38 M22 22 L22 38 M24 22 L30 38" stroke="#8a5630" stroke-width="2"/>',
+   globe:'<circle cx="22" cy="17" r="11" fill="#5bbfe6"/><path d="M16 11 Q20 13 18 18 Q15 20 14 16 Z M24 9 Q30 12 28 18 Q25 22 26 26 Q22 24 24 18 Z" fill="#7dd87a"/><path d="M10 17 A12 12 0 0 0 34 17" stroke="#e8c55a" stroke-width="2" fill="none"/><rect x="21" y="29" width="2" height="5" fill="#e8c55a"/><rect x="14" y="34" width="16" height="4" rx="1" fill="#c9a24c"/>',
+   easel:'<path d="M14 38 L20 6 L24 6 L30 38 M22 6 L22 38" stroke="#a86b3f" stroke-width="2.5" fill="none"/><rect x="10" y="10" width="24" height="18" fill="#ffffff" stroke="#c98a5a" stroke-width="1.5"/><circle cx="16" cy="16" r="3" fill="#ffd158"/><path d="M12 26 L19 18 L24 23 L28 19 L32 26 Z" fill="#7dd87a"/>',
+   cactus:potA('<rect x="19" y="8" width="7" height="17" rx="3.5" fill="#5fae53"/><rect x="13" y="13" width="5" height="9" rx="2.5" fill="#5fae53"/><rect x="27" y="11" width="5" height="8" rx="2.5" fill="#5fae53"/><circle cx="22.5" cy="7" r="2" fill="#ff8ac0"/>'),
+   sunflower:potA('<rect x="21" y="13" width="2" height="12" fill="#5fae53"/><circle cx="22" cy="10" r="7" fill="#ffd158"/><circle cx="22" cy="10" r="3.5" fill="#8a5630"/><path d="M23 20 Q28 17 29 21 Q25 23 23 21" fill="#7dd87a"/>'),
+   bonsai:'<rect x="9" y="30" width="26" height="7" rx="2" fill="#4a6bd0"/><path d="M22 30 Q20 24 24 20 Q27 17 24 14" stroke="#8a5630" stroke-width="3" fill="none"/><ellipse cx="17" cy="16" rx="7" ry="4" fill="#5fae53"/><ellipse cx="27" cy="12" rx="8" ry="4.5" fill="#7dd87a"/><ellipse cx="30" cy="20" rx="5" ry="3" fill="#5fae53"/>',
+   windowflowers:'<rect x="5" y="10" width="34" height="20" rx="1" fill="#aee6ff" stroke="#c98a5a" stroke-width="2.5"/><path d="M22 10 L22 30" stroke="#c98a5a" stroke-width="2"/><rect x="3" y="30" width="38" height="7" rx="1" fill="#a86b3f"/><circle cx="10" cy="29" r="3" fill="#ff6b6b"/><circle cx="17" cy="28" r="3" fill="#ffd158"/><circle cx="25" cy="29" r="3" fill="#ff8ac0"/><circle cx="33" cy="28" r="3" fill="#c58dff"/>',
+   fernpot:potA('<path d="M22 25 Q12 20 8 10 M22 25 Q20 14 22 5 M22 25 Q32 20 36 10 M22 25 Q16 18 14 8 M22 25 Q28 18 30 8" stroke="#5fae53" stroke-width="3" fill="none"/>'),
+   palm:'<path d="M16 26 L28 26 L26 38 L18 38 Z" fill="#d98a5a"/><path d="M22 26 Q20 18 22 11" stroke="#a86b3f" stroke-width="3" fill="none"/><path d="M22 11 Q12 6 6 13 Q14 10 22 11 Q30 4 38 10 Q30 9 22 11 Q20 2 13 3 Q20 6 22 11 Q26 2 33 4 Q26 6 22 11" fill="#5fae53"/><circle cx="20" cy="13" r="2" fill="#8a5630"/><circle cx="24" cy="13" r="2" fill="#8a5630"/>',
+   rosevase:'<path d="M17 24 L27 24 L28 37 L16 37 Z" fill="#d6ecff" stroke="#9fb8c2"/><path d="M19 24 L17 14 M22 24 L22 10 M25 24 L28 14" stroke="#5fae53" stroke-width="1.5"/><circle cx="17" cy="12" r="3.5" fill="#ff5d5d"/><circle cx="22" cy="8" r="3.5" fill="#ff3d6b"/><circle cx="28" cy="12" r="3.5" fill="#ff5d5d"/>',
+   tulips:potA('<path d="M17 25 L16 13 M22 25 L22 10 M27 25 L28 13" stroke="#5fae53" stroke-width="1.5"/><path d="M13 13 L16 9 L19 13 Q16 17 13 13 Z" fill="#ff8ac0"/><path d="M19 10 L22 6 L25 10 Q22 14 19 10 Z" fill="#ffd158"/><path d="M25 13 L28 9 L31 13 Q28 17 25 13 Z" fill="#ff6b6b"/>'),
+   sunset:frameA('<rect x="10" y="10" width="24" height="22" fill="#ffb37a"/><circle cx="22" cy="24" r="6" fill="#ff6b6b"/><rect x="10" y="24" width="24" height="8" fill="#5d8bff"/><path d="M12 27 L18 27 M24 29 L32 29" stroke="#ffffff" stroke-width="1"/>','#e8c55a'),
+   worldmap:'<rect x="4" y="9" width="36" height="24" rx="1" fill="#aee6ff" stroke="#8a5630" stroke-width="2"/><path d="M8 14 Q12 12 14 16 Q12 22 9 20 Z M17 13 Q22 11 23 15 Q20 18 18 16 Z M19 20 Q23 20 22 28 Q19 26 19 20 Z M26 13 Q34 11 36 17 Q32 21 28 18 Z M31 24 Q35 24 34 28 Q31 28 31 24 Z" fill="#7dd87a"/>',
+   pennant:'<path d="M6 10 L38 18 L6 28 Z" fill="#5d8bff"/><path d="M6 10 L6 28" stroke="#ffffff" stroke-width="3"/><text x="11" y="22" font-size="7" font-weight="bold" fill="#ffd158">GO!</text>',
+   bandposter:frameA('<rect x="10" y="10" width="24" height="22" fill="#2b2350"/><path d="M16 26 L16 16 L28 14 L28 24" stroke="#ffd158" stroke-width="2" fill="none"/><circle cx="14" cy="26" r="2.5" fill="#ffd158"/><circle cx="26" cy="24" r="2.5" fill="#ffd158"/>','#c58dff'),
+   wallshelf:'<rect x="5" y="26" width="34" height="3" rx="1" fill="#a86b3f"/><path d="M9 29 L9 34 M35 29 L35 34" stroke="#8a5630" stroke-width="2"/><rect x="8" y="14" width="4" height="12" fill="#ff6b6b"/><rect x="13" y="16" width="4" height="10" fill="#5d8bff"/><path d="M23 26 L21 18 L29 18 L27 26 Z" fill="#d98a5a"/><circle cx="25" cy="15" r="4" fill="#7dd87a"/><rect x="32" y="20" width="5" height="6" rx="1" fill="#ffd158"/>',
+   cuckoo:'<path d="M8 16 L22 5 L36 16 Z" fill="#8a5630"/><rect x="11" y="16" width="22" height="18" fill="#c98a5a"/><circle cx="22" cy="25" r="6" fill="#fff6e6"/><path d="M22 21 L22 25 L25 25" stroke="#2b2350" stroke-width="1.5" fill="none"/><rect x="19" y="10" width="6" height="5" fill="#2b2350"/><circle cx="22" cy="12.5" r="1.6" fill="#ffd158"/><path d="M17 34 L17 40 M27 34 L27 38" stroke="#c9a24c" stroke-width="1.5"/><circle cx="17" cy="41" r="1.6" fill="#c9a24c"/><circle cx="27" cy="39" r="1.6" fill="#c9a24c"/>',
+   dartboard:'<circle cx="22" cy="22" r="15" fill="#2b2350"/><circle cx="22" cy="22" r="12" fill="#ff6b6b"/><circle cx="22" cy="22" r="8.5" fill="#fff6e6"/><circle cx="22" cy="22" r="5" fill="#7dd87a"/><circle cx="22" cy="22" r="2" fill="#ff6b6b"/><path d="M29 12 L23 21" stroke="#ffd158" stroke-width="1.5"/>',
+   starchart:'<rect x="5" y="7" width="34" height="28" rx="1" fill="#1e1a48" stroke="#5bbfe6" stroke-width="2"/><path d="M10 26 L16 16 L23 20 L30 12 L34 18" stroke="#5bbfe6" stroke-width="1" fill="none"/><circle cx="10" cy="26" r="1.6" fill="#ffffff"/><circle cx="16" cy="16" r="1.6" fill="#ffffff"/><circle cx="23" cy="20" r="1.6" fill="#ffffff"/><circle cx="30" cy="12" r="1.6" fill="#ffffff"/><circle cx="34" cy="18" r="1.6" fill="#ffffff"/>',
+   quilt:'<rect x="6" y="6" width="32" height="32" rx="2" fill="#fff6e6"/><rect x="6" y="6" width="16" height="16" fill="#ff9f6b"/><rect x="22" y="22" width="16" height="16" fill="#ff9f6b"/><rect x="22" y="6" width="16" height="16" fill="#7ad9ff"/><rect x="6" y="22" width="16" height="16" fill="#ffd158"/><path d="M6 22 L38 22 M22 6 L22 38" stroke="#ffffff" stroke-width="1.5" stroke-dasharray="2 2"/>',
+   roundmirror:'<circle cx="22" cy="22" r="14" fill="#5bbfe6"/><circle cx="22" cy="22" r="11" fill="#d9f2ff"/><path d="M15 16 L19 12" stroke="#ffffff" stroke-width="2"/>',
+   rug_blue:rugA('#7ad9ff','#ffffff'), rug_green:rugA('#7dd87a','#ffd158'),
+   rug_square:'<rect x="5" y="14" width="34" height="20" rx="2" fill="#ff9f6b"/><rect x="9" y="17" width="26" height="14" rx="1" fill="none" stroke="#fff6e6" stroke-width="2"/><path d="M5 16 L2 16 M5 20 L2 20 M5 24 L2 24 M5 28 L2 28 M5 32 L2 32 M39 16 L42 16 M39 20 L42 20 M39 24 L42 24 M39 28 L42 28 M39 32 L42 32" stroke="#ff9f6b" stroke-width="1.5"/>',
+   books:'<rect x="10" y="30" width="24" height="6" rx="1" fill="#5d8bff"/><rect x="12" y="24" width="20" height="6" rx="1" fill="#7dd87a"/><rect x="11" y="18" width="22" height="6" rx="1" fill="#ff6b6b"/><rect x="14" y="12" width="16" height="6" rx="1" fill="#ffd158"/><path d="M13 33 L31 33 M15 27 L29 27 M14 21 L30 21" stroke="#ffffff" stroke-width=".8"/>',
+   mug:'<rect x="12" y="16" width="16" height="18" rx="3" fill="#ff8ac0"/><path d="M28 20 Q35 20 34 26 Q33 30 28 30" stroke="#ff8ac0" stroke-width="3" fill="none"/><ellipse cx="20" cy="16" rx="8" ry="2" fill="#8a5630"/><path d="M16 12 Q14 8 17 5 M22 12 Q20 8 23 5" stroke="#cfd8e0" stroke-width="1.5" fill="none"/>',
+   cake:'<rect x="8" y="22" width="28" height="14" rx="2" fill="#ffc2e0"/><path d="M8 26 Q12 30 15 26 Q18 30 22 26 Q26 30 29 26 Q32 30 36 26" stroke="#ffffff" stroke-width="2" fill="none"/><rect x="15" y="13" width="2" height="9" fill="#7ad9ff"/><rect x="21" y="12" width="2" height="10" fill="#ffd158"/><rect x="27" y="13" width="2" height="9" fill="#7dd87a"/><path d="M16 12 Q15 9 16 7 Q17 9 16 12 M22 11 Q21 8 22 6 Q23 8 22 11 M28 12 Q27 9 28 7 Q29 9 28 12" fill="#ff9f43"/>',
+   snowglobe:'<rect x="12" y="32" width="20" height="6" rx="2" fill="#a3326a"/><circle cx="22" cy="20" r="13" fill="#d9f2ff" stroke="#9fb8c2"/><path d="M15 30 L22 18 L29 30 Z" fill="#5fae53"/><circle cx="16" cy="13" r="1" fill="#ffffff"/><circle cx="27" cy="11" r="1" fill="#ffffff"/><circle cx="29" cy="20" r="1" fill="#ffffff"/><circle cx="19" cy="22" r="1" fill="#ffffff"/>',
+   piggybank:'<ellipse cx="22" cy="24" rx="13" ry="10" fill="#ff9ec4"/><ellipse cx="35" cy="24" rx="3" ry="3.5" fill="#ff8ac0"/><circle cx="34" cy="23" r=".8" fill="#b0507a"/><circle cx="36" cy="25" r=".8" fill="#b0507a"/><circle cx="29" cy="20" r="1.3" fill="#2b2350"/><path d="M24 13 L27 9 L29 15 Z" fill="#ff8ac0"/><rect x="18" y="14" width="7" height="1.6" rx=".8" fill="#b0507a"/><rect x="13" y="32" width="4" height="5" fill="#ff8ac0"/><rect x="25" y="32" width="4" height="5" fill="#ff8ac0"/>',
+   dino:'<path d="M8 32 Q6 22 14 22 L26 22 Q30 12 36 12 Q40 13 38 18 Q34 18 32 22 Q34 30 28 32 Z" fill="#7dd87a"/><path d="M14 22 L16 18 L18 22 L20 18 L22 22" fill="#5fae53"/><circle cx="35" cy="15" r="1.2" fill="#2b2350"/><rect x="13" y="31" width="4" height="6" fill="#5fae53"/><rect x="24" y="31" width="4" height="6" fill="#5fae53"/>',
+   shipbottle:'<rect x="4" y="16" width="34" height="16" rx="8" fill="#d9f2ff" stroke="#9fb8c2"/><rect x="37" y="20" width="5" height="8" rx="1" fill="#a86b3f"/><path d="M10 26 L30 26 L27 30 L13 30 Z" fill="#a86b3f"/><path d="M20 26 L20 17" stroke="#8a5630" stroke-width="1"/><path d="M20 17 L28 24 L20 24 Z" fill="#ffffff"/><path d="M20 19 L13 24 L20 24 Z" fill="#fff6e6"/>',
+   pumpkin:'<ellipse cx="22" cy="26" rx="14" ry="11" fill="#ff8a1e"/><path d="M22 15 Q16 26 22 37 M22 15 Q28 26 22 37" stroke="#e06b00" stroke-width="1.5" fill="none"/><rect x="20" y="10" width="4" height="6" rx="1" fill="#5fae53"/>',
+   jacklantern:'<ellipse cx="22" cy="26" rx="14" ry="11" fill="#ff8a1e"/><rect x="20" y="10" width="4" height="6" rx="1" fill="#5fae53"/><path d="M14 22 L18 19 L19 24 Z M30 22 L26 19 L25 24 Z" fill="#ffd158"/><path d="M13 28 Q22 36 31 28 L28 29 L26 27 L24 30 L22 28 L20 30 L18 27 L16 29 Z" fill="#ffd158"/>',
+   haybale:'<rect x="5" y="16" width="34" height="20" rx="4" fill="#ecc75a"/><path d="M5 22 L39 22 M5 30 L39 30" stroke="#c9a24c" stroke-width="1.5"/><path d="M14 16 L14 36 M30 16 L30 36" stroke="#a86b3f" stroke-width="2"/><path d="M8 18 L10 14 M34 18 L37 14 M20 17 L21 13" stroke="#ecc75a" stroke-width="1.5"/>',
+   scarecrow:'<path d="M22 14 L22 40 M8 20 L36 20" stroke="#8a5630" stroke-width="3"/><path d="M14 18 L30 18 L28 30 L16 30 Z" fill="#5d8bff"/><circle cx="22" cy="12" r="6" fill="#ecc75a"/><path d="M13 8 L31 8 L27 4 L17 4 Z" fill="#8a5630"/><circle cx="20" cy="12" r="1" fill="#2b2350"/><circle cx="24" cy="12" r="1" fill="#2b2350"/><path d="M8 20 L5 23 M36 20 L39 23" stroke="#ecc75a" stroke-width="2"/>',
+   candybowl:'<path d="M7 22 L37 22 Q35 36 22 36 Q9 36 7 22 Z" fill="#ff8a1e"/><circle cx="14" cy="20" r="3" fill="#ff6b6b"/><circle cx="21" cy="18" r="3" fill="#c58dff"/><circle cx="28" cy="20" r="3" fill="#7dd87a"/><circle cx="25" cy="15" r="2.5" fill="#ffd158"/><path d="M12 27 L16 31 M20 27 L24 31 M28 27 L32 31" stroke="#2b2350" stroke-width="1.5"/>',
+   leafwreath:'<circle cx="22" cy="22" r="13" fill="none" stroke="#e8823a" stroke-width="6"/><circle cx="12" cy="16" r="3" fill="#ff5d2a"/><circle cx="30" cy="12" r="3" fill="#ffd158"/><circle cx="33" cy="28" r="3" fill="#c9502a"/><circle cx="14" cy="31" r="3" fill="#ffd158"/><path d="M18 34 L22 30 L26 34" stroke="#a3326a" stroke-width="3" fill="none"/>',
+   ghostlamp:'<path d="M12 36 L12 18 Q12 7 22 7 Q32 7 32 18 L32 36 L28 32 L25 36 L22 32 L19 36 L16 32 Z" fill="#fff6e6"/><ellipse cx="18" cy="18" rx="2" ry="3" fill="#2b2350"/><ellipse cx="26" cy="18" rx="2" ry="3" fill="#2b2350"/><ellipse cx="22" cy="26" rx="2.5" ry="2" fill="#2b2350"/>',
+   cornstalks:'<path d="M14 38 Q12 22 16 6 M22 38 L22 4 M30 38 Q32 22 28 6" stroke="#c9a24c" stroke-width="3" fill="none"/><path d="M16 20 Q8 18 6 12 M22 16 Q30 14 34 8 M29 24 Q37 24 39 18" stroke="#ecc75a" stroke-width="2.5" fill="none"/><ellipse cx="19" cy="24" rx="2" ry="5" fill="#ffd158"/><rect x="10" y="34" width="24" height="4" rx="1" fill="#a3326a"/>',
+   floor_tile:sw('#eef7fa','<path d="M0 22 L44 22 M22 0 L22 44" stroke="#b8d8e0" stroke-width="2"/>'),
+   floor_carpet:sw('#d9a3c7','<circle cx="11" cy="11" r="3" fill="#e7bcd9"/><circle cx="33" cy="33" r="3" fill="#e7bcd9"/><circle cx="33" cy="11" r="3" fill="#e7bcd9"/><circle cx="11" cy="33" r="3" fill="#e7bcd9"/>'),
+   floor_marble:sw('#f4f1ec','<path d="M0 30 Q14 20 22 26 T44 14" stroke="#cfc8be" stroke-width="1.5" fill="none"/>'),
+   floor_sand:sw('#f2dca8','<circle cx="10" cy="12" r="1.5" fill="#d8bd80"/><circle cx="30" cy="20" r="1.5" fill="#d8bd80"/><circle cx="18" cy="34" r="1.5" fill="#d8bd80"/><path d="M28 34 Q32 30 36 34" stroke="#ff9f6b" stroke-width="2" fill="none"/>'),
+   floor_rainbow:'<rect width="8" height="44" fill="#ff9a9a"/><rect x="7" width="8" height="44" fill="#ffd59a"/><rect x="15" width="8" height="44" fill="#fff59a"/><rect x="22" width="8" height="44" fill="#a8f0a0"/><rect x="29" width="8" height="44" fill="#9ad4ff"/><rect x="37" width="7" height="44" fill="#c8a8ff"/>',
+   floor_stage:sw('#3a2c5e','<path d="M15 0 L15 44 M30 0 L30 44" stroke="#2a2048" stroke-width="2"/><circle cx="22" cy="22" r="6" fill="#ffd158" opacity=".5"/>'),
+   floor_moss:sw('#9cc58a','<circle cx="10" cy="10" r="5" fill="#7fb069"/><circle cx="30" cy="26" r="6" fill="#7fb069"/><circle cx="14" cy="34" r="4" fill="#7fb069"/>'),
+   floor_dots:sw('#fff0f6','<circle cx="11" cy="11" r="4" fill="#ff8ac0"/><circle cx="33" cy="11" r="4" fill="#ff8ac0"/><circle cx="22" cy="24" r="4" fill="#ff8ac0"/><circle cx="11" cy="36" r="4" fill="#ff8ac0"/><circle cx="33" cy="36" r="4" fill="#ff8ac0"/>'),
+   floor_ice:sw('#d9f2ff','<path d="M6 30 L14 22 M24 14 L34 6 M28 36 L38 28" stroke="#ffffff" stroke-width="2"/>'),
+   wall_wood:sw('#c98a5a','<path d="M0 11 L44 11 M0 22 L44 22 M0 33 L44 33" stroke="#a86b3f" stroke-width="2"/>'),
+   wall_brick:sw('#c8604a','<path d="M0 11 L44 11 M0 22 L44 22 M0 33 L44 33 M11 0 L11 11 M33 0 L33 11 M22 11 L22 22 M11 22 L11 33 M33 22 L33 33 M22 33 L22 44" stroke="#e9d6c8" stroke-width="2"/>'),
+   wall_gold:sw('#e8c55a','<circle cx="11" cy="11" r="4" fill="#f3dc8a"/><circle cx="33" cy="11" r="4" fill="#f3dc8a"/><circle cx="22" cy="24" r="4" fill="#f3dc8a"/><circle cx="11" cy="36" r="4" fill="#f3dc8a"/><circle cx="33" cy="36" r="4" fill="#f3dc8a"/>'),
+   wall_sky:sw('#bfe6ff','<ellipse cx="14" cy="14" rx="9" ry="5" fill="#ffffff"/><ellipse cx="32" cy="30" rx="10" ry="5" fill="#ffffff"/>'),
+   wall_jungle:sw('#a8e09a','<ellipse cx="12" cy="12" rx="8" ry="4" fill="#5fae53" transform="rotate(-30 12 12)"/><ellipse cx="32" cy="28" rx="8" ry="4" fill="#5fae53" transform="rotate(25 32 28)"/><ellipse cx="14" cy="34" rx="6" ry="3" fill="#7dd87a"/>'),
+   wall_space:sw('#1e1a48','<circle cx="10" cy="10" r="1.5" fill="#ffffff"/><circle cx="30" cy="16" r="1.5" fill="#ffffff"/><circle cx="18" cy="30" r="1.5" fill="#ffffff"/><circle cx="34" cy="34" r="5" fill="#ff9f6b"/><circle cx="36" cy="32" r="1.5" fill="#ffc29a"/>'),
+   wall_plaid:sw('#f2d6b3','<path d="M0 14 L44 14 M0 30 L44 30 M14 0 L14 44 M30 0 L30 44" stroke="#d98a7a" stroke-width="5"/>'),
+   wall_pink:sw('#ffd6ea','<path d="M22 30 Q12 22 16 16 Q20 12 22 17 Q24 12 28 16 Q32 22 22 30 Z" fill="#ff9ec4"/>'),
+   wall_records:sw('#efe6ff','<circle cx="12" cy="12" r="8" fill="#2b2350"/><circle cx="12" cy="12" r="2.5" fill="#e8c55a"/><circle cx="32" cy="32" r="8" fill="#2b2350"/><circle cx="32" cy="32" r="2.5" fill="#e8c55a"/>')
+  };
+  /* id, name, cat, zone, style, price, shelf[, season, sub] */
+  var NEW=[
+   ['chair_red','Red Chair','furniture','floor','cozy',{c:22},'seat'],['chair_mint','Mint Chair','furniture','floor','natural',{c:22},'seat'],['chair_pink','Pink Chair','furniture','floor','playful',{c:22},'seat'],
+   ['sofa_blue','Blue Sofa','furniture','floor','cool',{c:65},'seat'],['sofa_green','Leafy Sofa','furniture','floor','natural',{c:65},'seat'],['sofa_purple','Purple Sofa','furniture','floor','fancy',{c:70},'seat'],
+   ['beanbag_orange','Orange Bean Bag','furniture','floor','playful',{c:40},'seat'],['beanbag_blue','Blue Bean Bag','furniture','floor','cool',{c:40},'seat'],
+   ['stool_blue','Blue Stool','furniture','floor','cool',{c:18},'seat'],['stool_yellow','Yellow Stool','furniture','floor','playful',{c:18},'seat'],
+   ['rocker','Rocking Chair','furniture','floor','cozy',{c:45},'seat'],['throne','Royal Throne','furniture','floor','fancy',{g:2},'seat'],['hammock','Hammock','furniture','floor','natural',{c:55},'seat'],
+   ['gamerchair','Gaming Chair','furniture','floor','cool',{c:70},'seat'],['stump','Stump Seat','furniture','floor','natural',{c:15},'seat'],['parkbench','Park Bench','furniture','floor','natural',{c:40},'seat'],
+   ['desk','Study Desk','furniture','floor','cool',{c:50},'table'],['bunkbed','Bunk Bed','furniture','floor','playful',{c:90},'table'],['canopybed','Canopy Bed','furniture','floor','fancy',{c:120},'table'],
+   ['bed_pink','Pink Bed','furniture','floor','playful',{c:70},'table'],['bed_green','Forest Bed','furniture','floor','natural',{c:70},'table'],['picnic','Picnic Table','furniture','floor','natural',{c:55},'table'],
+   ['dresser','Dresser','furniture','floor','cozy',{c:45},'table'],['nightstand','Nightstand','furniture','floor','cozy',{c:25},'table'],['fridge','Fridge','furniture','floor','cool',{c:70},'table'],
+   ['stove','Stove','furniture','floor','cozy',{c:60},'table'],['bathtub','Bubble Bath','furniture','floor','cozy',{c:75},'table'],
+   ['lamp_blue','Blue Lamp','furniture','floor','cool',{c:25},'light'],['lamp_pink','Pink Lamp','furniture','floor','playful',{c:25},'light'],['candles','Candle Set','decor','floor','fancy',{c:25},'light'],
+   ['lantern','Lantern','furniture','floor','natural',{c:30},'light'],['neonsign','Neon Note Sign','decor','wall','music',{c:55},'light'],['stringlights','String Lights','decor','wall','cozy',{c:30},'light'],
+   ['discoball','Disco Ball','decor','wall','playful',{c:60},'light'],['moonlamp','Moon Lamp','furniture','floor','cool',{c:45},'light'],
+   ['trumpet','Trumpet Stand','furniture','floor','music',{c:55},'fun'],['violin','Violin','furniture','floor','music',{c:65},'fun'],['xylophone','Xylophone','furniture','floor','music',{c:40},'fun'],
+   ['micstand','Mic Stand','furniture','floor','music',{c:45},'fun'],['speaker','Big Speaker','furniture','floor','music',{c:60},'fun'],['harp','Golden Harp','furniture','floor','fancy',{n:80},'fun'],
+   ['arcade','Arcade Game','furniture','floor','cool',{c:95},'fun'],['robot','Toy Robot','decor','floor','cool',{c:35},'fun'],['teddy','Teddy Bear','decor','floor','cozy',{c:30},'fun'],
+   ['blocks','Toy Blocks','decor','floor','playful',{c:20},'fun'],['rockinghorse','Rocking Horse','furniture','floor','playful',{c:50},'fun'],['telescope','Telescope','furniture','floor','cool',{c:75},'fun'],
+   ['globe','Globe','decor','floor','fancy',{c:40},'fun'],['easel','Art Easel','furniture','floor','playful',{c:45},'fun'],
+   ['cactus','Cactus','decor','floor','natural',{c:20},'plant'],['sunflower','Sunflower','decor','floor','natural',{c:25},'plant'],['bonsai','Bonsai Tree','decor','floor','fancy',{c:60},'plant'],
+   ['windowflowers','Window Box','decor','wall','natural',{c:35},'plant'],['fernpot','Fern Pot','decor','floor','natural',{c:30},'plant'],['palm','Palm Tree','decor','floor','playful',{c:55},'plant'],
+   ['rosevase','Rose Vase','decor','floor','fancy',{c:40},'plant'],['tulips','Tulips','decor','floor','playful',{c:25},'plant'],
+   ['sunset','Sunset Painting','decor','wall','fancy',{c:50},'wall'],['worldmap','World Map','decor','wall','cool',{c:40},'wall'],['pennant','Team Pennant','decor','wall','playful',{c:20},'wall'],
+   ['bandposter','Band Poster','decor','wall','music',{c:30},'wall'],['wallshelf','Wall Shelf','decor','wall','natural',{c:30},'wall'],['cuckoo','Cuckoo Clock','decor','wall','cozy',{c:45},'wall'],
+   ['dartboard','Dartboard','decor','wall','playful',{c:30},'wall'],['starchart','Star Chart','decor','wall','cool',{c:35},'wall'],['quilt','Quilt Hanging','decor','wall','cozy',{c:35},'wall'],
+   ['roundmirror','Round Mirror','decor','wall','cool',{c:30},'wall'],
+   ['rug_blue','Blue Rug','decor','floor','cool',{c:35},'small'],['rug_green','Green Rug','decor','floor','natural',{c:35},'small'],['rug_square','Square Rug','decor','floor','cozy',{c:40},'small'],
+   ['books','Book Stack','decor','floor','natural',{c:15},'small'],['mug','Cocoa Mug','decor','floor','cozy',{c:10},'small'],['cake','Party Cake','decor','floor','playful',{c:30},'small'],
+   ['snowglobe','Snow Globe','decor','floor','fancy',{c:35},'small'],['piggybank','Piggy Bank','decor','floor','playful',{c:25},'small'],['dino','Dino Toy','decor','floor','playful',{c:25},'small'],
+   ['shipbottle','Ship in a Bottle','decor','floor','fancy',{c:45},'small'],
+   ['pumpkin','Pumpkin','decor','floor','cozy',{c:15},'fall','fall'],['jacklantern','Jack-o-Lantern','decor','floor','playful',{c:25},'fall','fall'],['haybale','Hay Bale','decor','floor','natural',{c:20},'fall','fall'],
+   ['scarecrow','Scarecrow','furniture','floor','natural',{c:45},'fall','fall'],['candybowl','Candy Bowl','decor','floor','playful',{c:20},'fall','fall'],['leafwreath','Leaf Wreath','decor','wall','cozy',{c:30},'fall','fall'],
+   ['ghostlamp','Ghost Lamp','furniture','floor','playful',{c:35},'fall','fall'],['cornstalks','Corn Stalks','decor','floor','natural',{c:20},'fall','fall'],
+   ['floor_tile','Kitchen Tile','theme','theme','cool',{c:40},'floor',null,'floor'],['floor_carpet','Plush Carpet','theme','theme','cozy',{c:40},'floor',null,'floor'],['floor_marble','Marble Floor','theme','theme','fancy',{c:80},'floor',null,'floor'],
+   ['floor_sand','Beach Sand','theme','theme','playful',{c:40},'floor',null,'floor'],['floor_rainbow','Rainbow Floor','theme','theme','playful',{c:60},'floor',null,'floor'],['floor_stage','Stage Floor','theme','theme','music',{c:50},'floor',null,'floor'],
+   ['floor_moss','Mossy Floor','theme','theme','natural',{c:40},'floor',null,'floor'],['floor_dots','Polka Dots','theme','theme','playful',{c:35},'floor',null,'floor'],['floor_ice','Ice Rink','theme','theme','cool',{c:55},'floor',null,'floor'],
+   ['wall_wood','Log Cabin','theme','theme','natural',{c:40},'wallp',null,'wall'],['wall_brick','Brick Wall','theme','theme','cool',{c:40},'wallp',null,'wall'],['wall_gold','Gold Wallpaper','theme','theme','fancy',{c:80},'wallp',null,'wall'],
+   ['wall_sky','Sky & Clouds','theme','theme','playful',{c:45},'wallp',null,'wall'],['wall_jungle','Jungle Leaves','theme','theme','natural',{c:45},'wallp',null,'wall'],['wall_space','Outer Space','theme','theme','cool',{c:55},'wallp',null,'wall'],
+   ['wall_plaid','Plaid Wall','theme','theme','cozy',{c:40},'wallp',null,'wall'],['wall_pink','Pink Hearts','theme','theme','playful',{c:35},'wallp',null,'wall'],['wall_records','Record Wall','theme','theme','music',{c:50},'wallp',null,'wall']
+  ];
+  /* shelves for the original 47 (v1.35 + v1.41) */
+  var OLD_GRP={chair:'seat',sofa:'seat',stool:'seat',beanbag:'seat',velvetchair:'seat',bed:'table',table:'table',shelf:'table',toychest:'table',lamp:'light',floorlamp:'light',lavalamp:'light',
+   tv:'fun',radio:'fun',piano:'fun',drum:'fun',guitar:'fun',jukebox:'fun',fishtank:'fun',rug:'small',clock:'small',vase:'small',trophy:'small',plant:'plant',bigplant:'plant',
+   poster:'wall',window:'wall',wallclock:'wall',goldmirror:'wall',recordwall:'wall',kite:'wall',floor_checker:'floor',floor_grass:'floor',floor_star:'floor',wall_blue:'wallp',wall_stripe:'wallp',wall_music:'wallp'};
+  ITEMS.forEach(function(it){ if(!it.grp&&OLD_GRP[it.id])it.grp=OLD_GRP[it.id]; });
+  function addItem(o){ if(BYID[o.id])return; BYID[o.id]=o; var ti=-1; if(o.cat!=='theme'){ for(var i=0;i<ITEMS.length;i++){ if(ITEMS[i].cat==='theme'){ ti=i; break; } } } if(ti<0)ITEMS.push(o); else ITEMS.splice(ti,0,o); }
+  Object.keys(A).forEach(function(k){ if(!ART[k])ART[k]=A[k]; });
+  NEW.forEach(function(r){ var o={id:r[0],name:r[1],cat:r[2],zone:r[3],style:r[4],p:r[5],grp:r[6]}; if(r[7])o.season=r[7]; if(r[8])o.sub=r[8]; addItem(o); });
+
+  /* ---------- GATHERABLES ---------- */
+  var G={
+   acorn:{nm:'Acorn',pl:'Acorns',w:14,art:'<ellipse cx="22" cy="27" rx="9" ry="11" fill="#c98a5a"/><path d="M11 20 Q22 10 33 20 Q22 24 11 20 Z" fill="#8a5630"/><rect x="21" y="9" width="2" height="5" fill="#8a5630"/>',fact:'An acorn is the seed of an oak tree. One tiny acorn can grow into a tree taller than a house!'},
+   leaf:{nm:'Maple Leaf',pl:'Maple Leaves',w:14,art:'<path d="M22 38 L22 28 M22 6 L26 14 L33 11 L30 19 L37 22 L29 25 L31 31 L22 27 L13 31 L15 25 L7 22 L14 19 L11 11 L18 14 Z" fill="#e8582a" stroke="#c9402a" stroke-width="1"/>',fact:'Leaves turn red and orange in fall because the green color fades and the hidden colors show through.'},
+   pinecone:{nm:'Pinecone',pl:'Pinecones',w:12,art:'<ellipse cx="22" cy="24" rx="9" ry="13" fill="#a86b3f"/><path d="M14 18 Q22 22 30 18 M13 24 Q22 28 31 24 M14 30 Q22 34 30 30 M22 11 L22 37" stroke="#7a4a28" stroke-width="1.5" fill="none"/>',fact:'Pinecones hold the seeds of pine trees. They close up when it is wet and open when it is dry.'},
+   stone:{nm:'Smooth Stone',pl:'Smooth Stones',w:12,art:'<ellipse cx="22" cy="25" rx="14" ry="9" fill="#a8a29a"/><ellipse cx="18" cy="22" rx="5" ry="2" fill="#cfcac2"/>',fact:'River stones get smooth because moving water rubs them for years and years.'},
+   flower:{nm:'Wildflower',pl:'Wildflowers',w:10,art:'<path d="M22 38 L22 22" stroke="#5fae53" stroke-width="2"/><circle cx="22" cy="10" r="5" fill="#c58dff"/><circle cx="15" cy="16" r="5" fill="#c58dff"/><circle cx="29" cy="16" r="5" fill="#c58dff"/><circle cx="18" cy="23" r="5" fill="#c58dff"/><circle cx="26" cy="23" r="5" fill="#c58dff"/><circle cx="22" cy="17" r="4" fill="#ffd158"/>',fact:'Bees visit flowers to drink nectar, and they carry pollen from flower to flower so new seeds can grow.'},
+   feather:{nm:'Feather',pl:'Feathers',w:9,art:'<path d="M10 38 Q14 20 32 6 Q30 24 14 34 Z" fill="#7ad9ff"/><path d="M10 38 L30 9" stroke="#3a7fa0" stroke-width="1.5"/>',fact:'Feathers keep birds warm and help them fly. Birds are the only animals that have feathers.'},
+   shell:{nm:'Seashell',pl:'Seashells',w:9,art:'<path d="M22 36 L8 18 Q22 4 36 18 Z" fill="#ffc2a8"/><path d="M22 36 L13 14 M22 36 L22 9 M22 36 L31 14" stroke="#e8967a" stroke-width="1.5"/>',fact:'A seashell was once the home of a sea animal, like a snail or a clam. The animal grew the shell itself!'},
+   mushroom:{nm:'Mushroom',pl:'Mushrooms',w:8,art:'<rect x="18" y="22" width="8" height="14" rx="3" fill="#fff6e6"/><path d="M6 24 Q8 8 22 8 Q36 8 38 24 Z" fill="#ff5d5d"/><circle cx="15" cy="16" r="2.5" fill="#ffffff"/><circle cx="26" cy="13" r="2.5" fill="#ffffff"/><circle cx="31" cy="20" r="2" fill="#ffffff"/>',fact:'Mushrooms are not plants. They are fungi! We look at wild mushrooms but never eat them, because some can make you very sick.'},
+   driftwood:{nm:'Driftwood',pl:'Driftwood',w:8,art:'<path d="M5 26 Q14 18 26 22 Q34 24 39 18 L40 22 Q34 30 24 27 Q14 26 6 31 Z" fill="#c9b49a"/><path d="M12 25 Q20 23 28 25" stroke="#a8927a" stroke-width="1" fill="none"/>',fact:'Driftwood is wood that floated in the water until waves and sand made it smooth and pale.'},
+   clover:{nm:'Four-Leaf Clover',pl:'Four-Leaf Clovers',w:1.6,rare:true,art:'<path d="M22 38 Q22 30 24 24" stroke="#3f8a45" stroke-width="2" fill="none"/><circle cx="17" cy="14" r="6" fill="#5fae53"/><circle cx="27" cy="14" r="6" fill="#5fae53"/><circle cx="17" cy="24" r="6" fill="#5fae53"/><circle cx="27" cy="24" r="6" fill="#5fae53"/><circle cx="22" cy="19" r="2" fill="#3f8a45"/>',fact:'Most clovers have three leaves. Finding one with four is super rare: about 1 in every 5,000 clovers!'},
+   geode:{nm:'Geode',pl:'Geodes',w:1.4,rare:true,art:'<path d="M6 24 Q8 10 22 9 Q36 10 38 24 Q36 36 22 37 Q8 36 6 24 Z" fill="#8a7a6a"/><path d="M11 24 Q12 15 22 14 Q32 15 33 24 Q32 32 22 32 Q12 32 11 24 Z" fill="#c58dff"/><path d="M16 22 L20 17 L22 24 L26 18 L29 25 L22 29 Z" fill="#e8d4ff"/>',fact:'A geode looks like a plain rock on the outside, but inside it hides sparkly crystals that grew for thousands of years.'},
+   goldacorn:{nm:'Golden Acorn',pl:'Golden Acorns',w:0.9,rare:true,art:'<ellipse cx="22" cy="27" rx="9" ry="11" fill="#ffd158"/><path d="M11 20 Q22 10 33 20 Q22 24 11 20 Z" fill="#c9a24c"/><rect x="21" y="9" width="2" height="5" fill="#c9a24c"/><path d="M34 8 l1.5 3 3 1 -3 1 -1.5 3 -1.5 -3 -3 -1 3 -1 z" fill="#fff6c8"/>',fact:'A golden acorn! It is not real gold, but it is the rarest find in the whole town.'}
+  };
+  var GIDS=Object.keys(G);
+  window.GATHER=G;
+  function gart(k,sz){ var g=G[k]; return '<svg viewBox="0 0 44 44" width="'+(sz||36)+'" height="'+(sz||36)+'" style="display:block">'+(g?g.art:'')+'</svg>'; }
+  window.gatherArt=gart;
+
+  /* ---------- CRAFTED pieces ---------- */
+  var CA={
+   shelllamp:'<rect x="20" y="22" width="4" height="13" fill="#c9b49a"/><ellipse cx="22" cy="37" rx="9" ry="2.5" fill="#a8a29a"/><path d="M22 24 L10 10 Q22 0 34 10 Z" fill="#ffc2a8"/><path d="M22 24 L15 8 M22 24 L22 5 M22 24 L29 8" stroke="#e8967a" stroke-width="1.2"/>',
+   leafgarland:'<path d="M3 10 Q22 26 41 10" stroke="#8a5630" stroke-width="1.5" fill="none"/><path d="M8 14 l-3 6 6 -1 z M15 18 l-2 7 6 -3 z M22 20 l-2 7 5 -3 z M29 18 l-1 7 5 -4 z M36 14 l1 6 4 -5 z" fill="#e8582a"/><circle cx="12" cy="17" r="2" fill="#ffd158"/><circle cx="26" cy="20" r="2" fill="#ffd158"/>',
+   acornwreath:'<circle cx="22" cy="22" r="12" fill="none" stroke="#8a5630" stroke-width="5"/><ellipse cx="12" cy="18" rx="3" ry="4" fill="#c98a5a"/><ellipse cx="22" cy="10" rx="3" ry="4" fill="#c98a5a"/><ellipse cx="32" cy="18" rx="3" ry="4" fill="#c98a5a"/><ellipse cx="29" cy="31" rx="3" ry="4" fill="#a86b3f"/><ellipse cx="15" cy="31" rx="3" ry="4" fill="#a86b3f"/><path d="M18 36 L22 32 L26 36" stroke="#ff6b6b" stroke-width="3" fill="none"/>',
+   pineowl:'<ellipse cx="22" cy="26" rx="10" ry="12" fill="#a86b3f"/><path d="M14 22 Q22 26 30 22 M13 28 Q22 32 31 28" stroke="#7a4a28" stroke-width="1.5" fill="none"/><circle cx="18" cy="17" r="4" fill="#fff6e6"/><circle cx="26" cy="17" r="4" fill="#fff6e6"/><circle cx="18" cy="17" r="2" fill="#2b2350"/><circle cx="26" cy="17" r="2" fill="#2b2350"/><path d="M21 20 L22 23 L23 20 Z" fill="#ff9f43"/><path d="M14 12 L16 8 L19 13 M30 12 L28 8 L25 13" fill="#7ad9ff"/>',
+   dreamcatcher:'<circle cx="22" cy="16" r="10" fill="none" stroke="#c9b49a" stroke-width="2.5"/><path d="M22 6 L22 26 M12 16 L32 16 M15 9 L29 23 M29 9 L15 23" stroke="#e9c49a" stroke-width=".8"/><path d="M15 26 L14 38 M22 26 L22 40 M29 26 L30 38" stroke="#c9b49a" stroke-width="1"/><path d="M12 36 Q14 30 16 36 Q14 40 12 36 Z M20 38 Q22 32 24 38 Q22 42 20 38 Z M28 36 Q30 30 32 36 Q30 40 28 36 Z" fill="#7ad9ff"/>',
+   bouquet:'<path d="M15 24 L29 24 L26 38 L18 38 Z" fill="#fff6e6" stroke="#ffd158" stroke-width="1.5"/><circle cx="16" cy="16" r="5" fill="#c58dff"/><circle cx="28" cy="16" r="5" fill="#ff8ac0"/><circle cx="22" cy="10" r="5" fill="#ffd158"/><circle cx="22" cy="20" r="5" fill="#7ad9ff"/><circle cx="16" cy="16" r="1.6" fill="#ffd158"/><circle cx="28" cy="16" r="1.6" fill="#ffd158"/>',
+   mushlamp:'<rect x="18" y="22" width="8" height="12" rx="3" fill="#fff6e6"/><ellipse cx="22" cy="36" rx="9" ry="2.5" fill="#a8a29a"/><path d="M6 24 Q8 8 22 8 Q36 8 38 24 Z" fill="#ff5d5d"/><circle cx="15" cy="16" r="2.5" fill="#fff6c8"/><circle cx="26" cy="13" r="2.5" fill="#fff6c8"/><circle cx="31" cy="20" r="2" fill="#fff6c8"/><path d="M8 26 Q22 30 36 26" stroke="#ffd158" stroke-width="2" fill="none" opacity=".7"/>',
+   drifttable:'<path d="M4 16 Q14 12 26 15 Q34 16 40 13 L40 19 Q30 22 22 20 Q12 19 4 22 Z" fill="#c9b49a"/><path d="M9 21 L8 38 M35 19 L36 38 M22 20 L21 38" stroke="#a8927a" stroke-width="3"/>',
+   chimes:'<path d="M8 6 L36 6" stroke="#c9b49a" stroke-width="3"/><path d="M12 6 L12 22 M19 6 L19 28 M25 6 L25 24 M32 6 L32 30" stroke="#8a8a8a" stroke-width="1"/><path d="M12 22 L8 30 L16 30 Z" fill="#ffc2a8"/><path d="M19 28 L15 36 L23 36 Z" fill="#ffe0cf"/><path d="M25 24 L21 32 L29 32 Z" fill="#ffc2a8"/><path d="M32 30 L28 38 L36 38 Z" fill="#ffe0cf"/>',
+   stonestack:'<ellipse cx="22" cy="35" rx="14" ry="4" fill="#8a8580"/><ellipse cx="22" cy="28" rx="11" ry="4" fill="#a8a29a"/><ellipse cx="22" cy="21" rx="8" ry="3.5" fill="#bdb7af"/><ellipse cx="22" cy="15" rx="6" ry="3" fill="#cfcac2"/><ellipse cx="22" cy="10" rx="4" ry="2.5" fill="#a8a29a"/>',
+   crystallamp:'<ellipse cx="22" cy="36" rx="10" ry="3" fill="#4a3f7a"/><path d="M14 34 L16 18 L22 6 L28 18 L30 34 Z" fill="#c58dff"/><path d="M16 18 L22 22 L28 18 M22 22 L22 34" stroke="#e8d4ff" stroke-width="1.5" fill="none"/><path d="M22 6 L19 16 L22 22" fill="#e8d4ff"/>',
+   cloverframe:'<rect x="8" y="8" width="28" height="28" rx="2" fill="#fff6e6" stroke="#c9b49a" stroke-width="3"/><circle cx="19" cy="18" r="4" fill="#5fae53"/><circle cx="25" cy="18" r="4" fill="#5fae53"/><circle cx="19" cy="24" r="4" fill="#5fae53"/><circle cx="25" cy="24" r="4" fill="#5fae53"/><path d="M22 28 L24 33" stroke="#3f8a45" stroke-width="1.5"/>',
+   goldtrophy:'<rect x="12" y="32" width="20" height="6" rx="1" fill="#8a5630"/><rect x="18" y="26" width="8" height="6" fill="#c9a24c"/><ellipse cx="22" cy="17" rx="9" ry="11" fill="#ffd158"/><path d="M13 12 Q22 3 31 12 Q22 15 13 12 Z" fill="#c9a24c"/><path d="M34 6 l1.5 3 3 1 -3 1 -1.5 3 -1.5 -3 -3 -1 3 -1 z" fill="#fff6c8"/>',
+   floor_pebble:'<rect width="44" height="44" fill="#d8d2c8"/><ellipse cx="10" cy="10" rx="5" ry="3.5" fill="#a89f92"/><ellipse cx="30" cy="14" rx="6" ry="4" fill="#bdb5a8"/><ellipse cx="16" cy="30" rx="6" ry="4" fill="#bdb5a8"/><ellipse cx="34" cy="34" rx="5" ry="3.5" fill="#a89f92"/>',
+   wall_leaves:'<rect width="44" height="44" fill="#fde5c8"/><path d="M12 6 l3 6 6 -1 -4 5 2 6 -6 -3 -6 3 2 -6 -4 -5 6 1 z" fill="#e8823a"/><path d="M32 24 l3 6 6 -1 -4 5 2 6 -6 -3 -6 3 2 -6 -4 -5 6 1 z" fill="#e8582a"/>'
+  };
+  var RECIPES=[
+   {id:'shelllamp',name:'Shell Lamp',cat:'crafted',zone:'floor',style:'fancy',need:{shell:4,stone:1},val:70},
+   {id:'leafgarland',name:'Leaf Garland',cat:'crafted',zone:'wall',style:'cozy',need:{leaf:5},val:45},
+   {id:'acornwreath',name:'Acorn Wreath',cat:'crafted',zone:'wall',style:'cozy',need:{acorn:4,pinecone:2},val:60},
+   {id:'pineowl',name:'Pinecone Owl',cat:'crafted',zone:'floor',style:'natural',need:{pinecone:3,feather:1},val:50},
+   {id:'dreamcatcher',name:'Dreamcatcher',cat:'crafted',zone:'wall',style:'playful',need:{feather:3,driftwood:1},val:55},
+   {id:'bouquet',name:'Wildflower Bouquet',cat:'crafted',zone:'floor',style:'natural',need:{flower:5},val:45},
+   {id:'mushlamp',name:'Mushroom Lamp',cat:'crafted',zone:'floor',style:'playful',need:{mushroom:3,stone:1},val:55},
+   {id:'drifttable',name:'Driftwood Table',cat:'crafted',zone:'floor',style:'natural',need:{driftwood:4},val:60},
+   {id:'chimes',name:'Shell Wind Chime',cat:'crafted',zone:'wall',style:'music',need:{shell:3,driftwood:1},val:55},
+   {id:'stonestack',name:'Stone Stack',cat:'crafted',zone:'floor',style:'cool',need:{stone:5},val:45},
+   {id:'crystallamp',name:'Crystal Lamp',cat:'crafted',zone:'floor',style:'cool',need:{geode:1,stone:2},val:120},
+   {id:'cloverframe',name:'Lucky Clover Frame',cat:'crafted',zone:'wall',style:'fancy',need:{clover:1,driftwood:1},val:120},
+   {id:'goldtrophy',name:'Golden Acorn Trophy',cat:'crafted',zone:'floor',style:'fancy',need:{goldacorn:1,acorn:3},val:150},
+   {id:'floor_pebble',name:'Pebble Floor',cat:'theme',zone:'theme',sub:'floor',style:'natural',need:{stone:8},val:60},
+   {id:'wall_leaves',name:'Autumn Leaf Wall',cat:'theme',zone:'theme',sub:'wall',style:'cozy',need:{leaf:8},val:60}
+  ];
+  Object.keys(CA).forEach(function(k){ if(!ART[k])ART[k]=CA[k]; });
+  RECIPES.forEach(function(r){ var o={id:r.id,name:r.name,cat:r.cat,zone:r.zone,style:r.style,p:{c:r.val},grp:'craft',crafted:true}; if(r.sub)o.sub=r.sub; addItem(o); });
+
+  /* ---------- KEEPSAKES (3 per neighbor, art drawn on demand) ---------- */
+  var GOLD_F='<defs><filter id="ksGold"><feColorMatrix type="matrix" values="0.45 0.45 0.15 0 0.28  0.36 0.36 0.12 0 0.2  0.08 0.08 0.04 0 0.03  0 0 0 1 0"/></filter></defs>';
+  var KS=[
+   {k:'photo', name:'Photo of ',zone:'wall', style:'cozy',   at:5, draw:function(id){ return '<rect x="6" y="5" width="32" height="34" rx="2" fill="#fff6e6" stroke="#c98a5a" stroke-width="3"/><rect x="10" y="9" width="24" height="22" fill="#bfe6ff"/><g transform="translate(9 8)">'+csvg(id,26)+'</g><rect x="13" y="32" width="18" height="4" rx="1" fill="#e9c49a"/>'; }},
+   {k:'plush', name:'Plushie of ',zone:'floor',style:'playful',at:12,draw:function(id){ return '<ellipse cx="22" cy="36" rx="15" ry="5" fill="#ff9ec4"/><path d="M8 36 Q22 30 36 36" stroke="#ffffff" stroke-width="1.5" stroke-dasharray="2 2" fill="none"/><g transform="translate(7 4)">'+csvg(id,30)+'</g><circle cx="35" cy="10" r="4" fill="#ff8ac0"/><path d="M33 10 L37 10 M35 8 L35 12" stroke="#ffffff" stroke-width="1"/>'; }},
+   {k:'statue',name:'Golden Statue of ',zone:'floor',style:'fancy',at:20,draw:function(id){ return GOLD_F+'<rect x="10" y="32" width="24" height="7" rx="1" fill="#8a5630"/><rect x="12" y="29" width="20" height="4" fill="#c9a24c"/><g filter="url(#ksGold)"><g transform="translate(8 2)">'+csvg(id,28)+'</g></g><path d="M36 6 l1.5 3 3 1 -3 1 -1.5 3 -1.5 -3 -3 -1 3 -1 z" fill="#fff6c8"/>'; }}
+  ];
+  window.KEEPSAKES=KS;
+  function ksId(k,id){ return 'ks_'+k+'_'+id; }
+  function people(){ var out=[]; try{ out=Object.keys(MEMBER_HOME); }catch(e){} return out; }
+  people().forEach(function(pid){ KS.forEach(function(t){ var iid=ksId(t.k,pid); if(BYID[iid])return;
+    addItem({id:iid,name:t.name+nm(pid),cat:'keepsake',zone:t.zone,style:t.style,p:{},grp:'keepsake',keepsake:true,who:pid});
+    try{ Object.defineProperty(ART,iid,{configurable:true,enumerable:false,get:function(){ var v=''; try{ v=t.draw(pid); }catch(e){} Object.defineProperty(ART,iid,{value:v,configurable:true,writable:true}); return v; }}); }catch(e){} }); });
+
+  /* ---------- state ---------- */
+  function GX(){ if(typeof S==='undefined'||!S)return {got:[],pockets:{},found:{},crafted:0};
+    if(!S.gx||typeof S.gx!=='object')S.gx={}; var g=S.gx;
+    if(typeof g.day!=='string')g.day=''; if(!Array.isArray(g.got))g.got=[]; if(!g.pockets||typeof g.pockets!=='object')g.pockets={};
+    if(!g.found||typeof g.found!=='object')g.found={}; if(typeof g.crafted!=='number')g.crafted=0;
+    if(g.day!==day()){ g.day=day(); g.got=[]; }
+    return g; }
+  function FR(){ if(typeof S==='undefined'||!S)return {pts:{},ks:{},req:{},reqDay:{},chain:{},giftDay:{}};
+    if(!S.fr||typeof S.fr!=='object')S.fr={}; var f=S.fr;
+    ['pts','ks','req','reqDay','chain','giftDay'].forEach(function(k){ if(!f[k]||typeof f[k]!=='object')f[k]={}; });
+    return f; }
+  (function(){ if(typeof load==='function'){ var _l=load; window.load=load=function(){ _l(); try{GX();FR();}catch(e){} }; } })();
+  try{ GX(); FR(); }catch(e){}
+  function pocket(k){ return GX().pockets[k]||0; }
+  function addFind(k,n){ var g=GX(); g.pockets[k]=(g.pockets[k]||0)+(n||1); var first=!g.found[k]; g.found[k]=true; sv(); return first; }
+
+  /* ---------- the SHOP renderer (shelves) ---------- */
+  var SHELVES={
+   home:{nm:'Cozy Home',host:'lumi',hint:'Lumi’s furniture shop. Tap a shelf to see more.',sell:true,g:[['seat','🛋️ Seating'],['table','🛏️ Beds & Tables'],['light','💡 Lights'],['fun','🎸 Music & Toys']]},
+   gen:{nm:'Corner Store',host:'oompa',hint:'Oompa’s Corner Store: plants, art, little things, floors and walls.',sell:true,g:[['fall','🍂 Fall Shelf'],['plant','🌿 Plants'],['wall','🖼️ Wall Art'],['small','🧸 Little Things'],['floor','🟫 Floors'],['wallp','🧱 Walls']]}
+  };
+  var SHOP='home', STAB='buy', SG=null;
+  (function(){ var _os=window.openStore; window.openStore=function(which){ SHOP=SHELVES[which]?which:'home'; STAB='buy'; SG=null; return _os.apply(this,arguments); }; })();
+  (function(){ var _st=window.storeTab; window.storeTab=function(t){ STAB=t; return _st.apply(this,arguments); }; })();
+  window.storeShelf=function(g){ tap(); SG=g; storeRender(); var b=document.getElementById('scr-store'); if(b)b.scrollTop=0; };
+  (function(){ var _ss=window.storeSell; window.storeSell=function(id){ var it=BYID[id]; if(it&&it.cat==='keepsake'){ tst('That is too special to sell!'); return; } return _ss.apply(this,arguments); }; })();
+  function canAfford(p){ if(p.c)return (S.coins||0)>=p.c; if(p.n)return (S.notes||0)>=p.n; if(p.g)return (S.gold||0)>=p.g; return true; }
+  function priceLabel(p){ if(p.c)return '💰 '+p.c; if(p.n)return '🎵 '+p.n; if(p.g)return '📀 '+p.g; return ''; }
+  function sellValue(it){ var base=it.p.c||((it.p.n||0)*2)||((it.p.g||0)*30)||20; return Math.max(5,Math.round(base*0.4)); }
+  function shelfItems(g){ return ITEMS.filter(function(it){ return it.grp===g&&inSeason(it)&&(it.cat==='furniture'||it.cat==='decor'||(it.cat==='theme'&&!it.crafted)); }); }
+  window.shopShelfItems=shelfItems;
+  window.storeRender=function(){ var body=document.getElementById('storeBody'); if(!body)return; var sh=SHELVES[SHOP]||SHELVES.home;
+    var wl=document.getElementById('storeWallet'); if(wl)wl.textContent='💰 '+(S.coins||0)+'  ·  🎵 '+(S.notes||0)+'  ·  📀 '+(S.gold||0);
+    var html=(typeof zRoom==='function')?zRoom(sh.host,sh.nm,sh.hint):'';
+    html+='<div class="st-tabs"><button class="btn ghost small'+(STAB==='buy'?' sel':'')+'" onclick="storeTab(\'buy\')">🛍️ Buy</button><button class="btn ghost small'+(STAB==='sell'?' sel':'')+'" onclick="storeTab(\'sell\')">💰 Sell</button></div>';
+    if(STAB==='sell'){
+      var own=ITEMS.filter(function(it){ return it.cat!=='theme'&&it.cat!=='keepsake'&&(S.inv[it.id]||0)>0; });
+      html+='<div class="sub center" style="margin:4px 0">Tap a thing to sell it. Things placed in your apartment stay put. Keepsakes are too special to sell.</div>';
+      if(!own.length)html+='<div class="speak center">Nothing to sell yet.</div>';
+      html+='<div class="st-grid">'+own.map(function(it){ return '<div class="st-card" onclick="storeSell(\''+it.id+'\')"><div class="st-art">'+art(it.id,46)+'</div><div class="st-nm">'+esc(it.name)+'</div><div class="st-pz" style="color:#7dff8a">sell 💰 '+sellValue(it)+'</div><div class="sub">have '+(S.inv[it.id]||0)+' · spare '+spare(it.id)+'</div></div>'; }).join('')+'</div>';
+      body.innerHTML=html; return; }
+    var gs=sh.g.filter(function(x){ return shelfItems(x[0]).length>0; });
+    if(!SG||!gs.some(function(x){ return x[0]===SG; }))SG=gs.length?gs[0][0]:null;
+    html+='<div class="st-shelves">'+gs.map(function(x){ return '<button class="st-shelf'+(SG===x[0]?' on':'')+'" onclick="storeShelf(\''+x[0]+'\')">'+x[1]+' <i>'+shelfItems(x[0]).length+'</i></button>'; }).join('')+'</div>';
+    var list=SG?shelfItems(SG):[];
+    if(SG==='fall')html+='<div class="sub center" style="margin:2px 0">Only here in the fall. Grab them before winter!</div>';
+    html+='<div class="st-grid">'+list.map(function(it){ var owned=it.cat==='theme'&&((S.home&&S.home.themes)||[]).indexOf(it.id)>=0; var have=it.cat!=='theme'?(S.inv[it.id]||0):0;
+      var btn=owned?'<div class="st-own">✓ Owned</div>':'<button class="btn small'+(canAfford(it.p)?'':' ghost')+'" onclick="storeBuy(\''+it.id+'\')">'+priceLabel(it.p)+'</button>';
+      return '<div class="st-card"><div class="st-art">'+art(it.id,46)+'</div><div class="st-nm">'+esc(it.name)+'</div>'+(have?'<div class="sub">you have '+have+'</div>':'<div class="sub">'+esc(it.style)+'</div>')+btn+'</div>'; }).join('')+'</div>';
+    body.innerHTML=html; };
+
+  /* ---------- GATHERING on the plot ---------- */
+  var SPOTS_PER_DAY=14;
+  var CAND=[[-135,118],[135,118],[-40,150],[40,150],[0,-150],[-110,160],[110,160],[-75,100],[75,100]];
+  function spotsFor(geo){ var r=rng('gx'+day()); var out=[]; if(!geo||!geo.pos||!geo.pos.length)return out; var used={};
+    var tot=0; GIDS.forEach(function(k){ tot+=G[k].w; });
+    var guard=0; while(out.length<SPOTS_PER_DAY&&guard++<400){ var bi=Math.floor(r()*geo.pos.length), ci=Math.floor(r()*CAND.length); var key=bi+':'+ci; if(used[key])continue; used[key]=1;
+      var p=geo.pos[bi]; var bx=p.sign.x, by=p.sign.y+112; var x=bx+CAND[ci][0]+Math.round((r()-.5)*16), y=by+CAND[ci][1]+Math.round((r()-.5)*12);
+      var sq=geo.sq||{x:460,y:470}; if(Math.hypot(x-sq.x,y-sq.y)<240||x<30||x>(geo.W||920)-30||y>(geo.H||900)-30)continue;
+      var pick=r()*tot, k=GIDS[0]; for(var j=0;j<GIDS.length;j++){ pick-=G[GIDS[j]].w; if(pick<=0){ k=GIDS[j]; break; } }
+      out.push({i:out.length,k:k,x:x,y:y}); }
+    return out; }
+  function geoNow(){ try{ return townGeo(townPlan(),true); }catch(e){ return null; } }
+  window.gxSpots=function(){ return spotsFor(geoNow()); };
+  function drawSpots(){ var st=document.getElementById('twStage'); if(!st)return; [].slice.call(st.querySelectorAll('.tw-gath')).forEach(function(e){ e.remove(); });
+    var g=GX(); var sp=spotsFor(geoNow()); var frag=document.createElement('div'); var html='';
+    sp.forEach(function(s){ if(g.got.indexOf(s.i)>=0)return; html+='<div class="tw-gath'+(G[s.k].rare?' rare':'')+'" data-i="'+s.i+'" style="left:'+s.x+'px;top:'+s.y+'px;animation-delay:-'+((s.i*0.37)%2).toFixed(2)+'s" onclick="gxTap('+s.i+')">'+gart(s.k,30)+'</div>'; });
+    frag.innerHTML=html; while(frag.firstChild)st.appendChild(frag.firstChild); }
+  window.gxTap=function(i){ var g=GX(); if(g.got.indexOf(i)>=0)return; var s=spotsFor(geoNow())[i]; if(!s)return;
+    g.got.push(i); var first=addFind(s.k,1); tap(); try{ if(typeof sCorrect==='function'&&G[s.k].rare)sCorrect(); }catch(e){}
+    var el=document.querySelector('#twStage .tw-gath[data-i="'+i+'"]'); if(el){ el.classList.add('got'); setTimeout(function(){ try{ el.remove(); }catch(e){} },380); }
+    var left=SPOTS_PER_DAY-g.got.length;
+    if(first){ party(); try{ modal('<div class="center">'+gart(s.k,84).replace('display:block','display:block;margin:0 auto')+'<h2 style="margin:4px 0 0">New find: '+esc(G[s.k].nm)+'!</h2><div class="sub">Added to Fern’s Nature Journal</div></div><div class="speak" style="text-align:left">🔎 '+esc(G[s.k].fact)+'</div><div class="sub center">'+left+' more finds hiding around town today.</div><button class="btn wide" onclick="closeModal()">Cool!</button><button class="btn wide ghost small" onclick="closeModal();openPockets()">🎒 Open my Pockets</button>'); }catch(e){} }
+    else tst('+1 '+G[s.k].nm+(G[s.k].rare?' (rare!)':'')+' · '+left+' left today');
+    sv(); };
+  function pocketPill(){ var top=document.getElementById('twShellTop'); if(!top||top.querySelector('[data-go="pockets"]'))return; var d=document.createElement('div'); d.className='twPill'; d.setAttribute('data-go','pockets'); d.style.borderColor='#7dd87a'; d.innerHTML='🎒 POCKETS'; top.insertBefore(d,top.firstChild); }
+  (function(){ if(typeof renderTown!=='function')return; var _rt=renderTown; window.renderTown=renderTown=function(){ var r=_rt.apply(this,arguments); try{ drawSpots(); pocketPill(); }catch(e){ try{ window.__muErr&&window.__muErr('renderTown(gather)',e); }catch(_){} } return r; }; if(window.BQ)try{ window.BQ.renderTown=renderTown; }catch(_){} })();
+
+  /* ---------- POCKETS + NATURE JOURNAL ---------- */
+  var PTAB='pockets';
+  window.openPockets=function(tab){ tap(); GX(); PTAB=tab||'pockets'; zScr('scr-pockets','pkScore','pkBody','Finds pop up around town every day. Tap them on the map to collect them. Use them for crafting, chores and little gifts.'); pkRender(); if(typeof show==='function')show('scr-pockets'); var s=document.getElementById('scr-pockets'); if(s)s.scrollTop=0; };
+  window.pkTab=function(t){ tap(); PTAB=t; pkRender(); };
+  window.pkRender=function(){ var body=document.getElementById('pkBody'); if(!body)return; var g=GX(); var foundN=GIDS.filter(function(k){ return g.found[k]; }).length;
+    var sc=document.getElementById('pkScore'); if(sc)sc.textContent='🎒 '+g.got.length+'/'+SPOTS_PER_DAY+' found today · 📔 '+foundN+'/'+GIDS.length;
+    var html=(typeof zRoom==='function')?zRoom('fern',PTAB==='journal'?'Fern’s Nature Journal':'My Pockets',PTAB==='journal'?'Every kind of find you discover gets a page.':'Everything you have gathered.'):'';
+    html+='<div class="ap-tabs"><button class="btn ghost small'+(PTAB==='pockets'?' sel':'')+'" onclick="pkTab(\'pockets\')">🎒 Pockets</button><button class="btn ghost small'+(PTAB==='journal'?' sel':'')+'" onclick="pkTab(\'journal\')">📔 Journal</button><button class="btn ghost small" onclick="openCraft()">🔨 Craft Shed</button></div>';
+    if(PTAB==='journal'){ html+=GIDS.map(function(k){ var f=!!g.found[k]; return '<div class="pk-page'+(f?'':' no')+'">'+(f?gart(k,52):'<div class="pk-q">?</div>')+'<div><div class="pk-t">'+(f?esc(G[k].nm):'??? '+(G[k].rare?'(rare)':''))+'</div><div class="pk-f">'+(f?esc(G[k].fact):'Keep exploring the town to find this one.')+'</div></div></div>'; }).join(''); }
+    else { html+='<div class="pk-grid">'+GIDS.map(function(k){ var n=g.pockets[k]||0, f=!!g.found[k]; return '<div class="pk-cell'+(f?'':' no')+'">'+(f?gart(k,40):'<div class="pk-q" style="width:40px;height:40px;font-size:20px">?</div>')+'<div class="n">'+(f?esc(G[k].nm):'???')+'</div><div class="c">x'+n+'</div></div>'; }).join('')+'</div>';
+      html+='<div class="sub center" style="margin-top:6px">Tip: finds sparkle on the town map. New ones every day.</div>'; }
+    body.innerHTML=html; };
+
+  /* ---------- CRAFT SHED (Piper) ---------- */
+  window.openCraft=function(){ tap(); GX(); zScr('scr-craft','crScore','crBody','Turn your finds into special things. Check you have enough of each, then craft!'); crRender(); if(typeof show==='function')show('scr-craft'); var s=document.getElementById('scr-craft'); if(s)s.scrollTop=0; };
+  function canCraft(r){ return Object.keys(r.need).every(function(k){ return pocket(k)>=r.need[k]; }); }
+  function craftedOwned(r){ return r.cat==='theme'?(((S.home&&S.home.themes)||[]).indexOf(r.id)>=0):false; }
+  window.crRender=function(){ var body=document.getElementById('crBody'); if(!body)return; var g=GX();
+    var sc=document.getElementById('crScore'); if(sc)sc.textContent='🔨 '+g.crafted+' crafted';
+    var html=(typeof zRoom==='function')?zRoom('piper','Piper’s Craft Shed','Piper builds big things from little pieces. So can you!'):'';
+    html+='<button class="btn wide ghost small" onclick="openPockets()">🎒 My Pockets</button>';
+    html+=RECIPES.map(function(r){ var ok=canCraft(r), own=craftedOwned(r);
+      var parts=Object.keys(r.need).map(function(k){ var h=pocket(k), n=r.need[k]; return '<span class="cr-need'+(h>=n?' ok':'')+'">'+gart(k,22)+' '+h+'/'+n+'</span>'; }).join('');
+      return '<div class="er-card"><div class="er-row"><div class="st-art">'+art(r.id,46)+'</div><div style="flex:1"><div class="er-t">'+esc(r.name)+'</div><div class="sub" style="text-align:left;margin:1px 0 4px">'+(r.cat==='theme'?(r.sub==='floor'?'floor':'wallpaper'):r.zone+' thing')+' · '+esc(r.style)+'</div><div class="cr-needs">'+parts+'</div></div></div>'
+        +(own?'<div class="st-own center">✓ You have it</div>':'<button class="btn wide'+(ok?'':' ghost')+'" onclick="crMake(\''+r.id+'\')">'+(ok?'🔨 Craft it!':'Need more finds')+'</button>')+'</div>'; }).join('');
+    body.innerHTML=html; };
+  window.crMake=function(id){ var r=RECIPES.filter(function(x){ return x.id===id; })[0]; if(!r)return; if(craftedOwned(r)){ tst('You already have that.'); return; }
+    if(!canCraft(r)){ var miss=Object.keys(r.need).filter(function(k){ return pocket(k)<r.need[k]; }).map(function(k){ return (r.need[k]-pocket(k))+' more '+(r.need[k]-pocket(k)===1?G[k].nm:G[k].pl); }); tst('You need '+miss.join(' and ')+'.'); return; }
+    tap(); var g=GX(); var math=Object.keys(r.need).map(function(k){ var h=g.pockets[k], n=r.need[k]; g.pockets[k]=h-n; return '<div class="cr-math">'+gart(k,24)+' <b>'+h+' - '+n+' = '+(h-n)+'</b> '+esc(h-n===1?G[k].nm:G[k].pl)+' left</div>'; }).join('');
+    if(r.cat==='theme'){ if(!S.home)S.home={placed:[],themes:['floor_wood','wall_cream']}; if(!Array.isArray(S.home.themes))S.home.themes=['floor_wood','wall_cream']; S.home.themes.push(r.id); }
+    else { S.inv[r.id]=(S.inv[r.id]||0)+1; }
+    g.crafted++; sv(); party(); notes(5);
+    try{ modal('<div class="center"><div class="st-art" style="margin:0 auto;width:90px;height:90px">'+art(r.id,80)+'</div><h2 style="margin:6px 0 0">You made a '+esc(r.name)+'!</h2></div><div class="speak" style="text-align:left">'+math+'</div><div class="sub center">'+(r.cat==='theme'?'Use it from Floor &amp; Wall in your apartment, or paint a neighbor’s place.':'It is in your Stuff. Place it at home or give it to a neighbor.')+' +5 🎵</div><button class="btn wide" onclick="closeModal()">Awesome!</button>'); }catch(e){}
+    crRender(); };
+
+  /* ---------- FRIENDSHIP, CHORES + KEEPSAKES ---------- */
+  var FAV={natural:['leaf','pinecone','acorn','mushroom','flower'],cozy:['acorn','pinecone','leaf'],cool:['stone','geode','feather'],fancy:['shell','feather','flower'],playful:['flower','feather','mushroom'],music:['shell','driftwood','feather']};
+  function tasteOf(id){ try{ return window.nbTaste(id); }catch(e){ return 'cozy'; } }
+  function favFind(id){ var l=FAV[tasteOf(id)]||FAV.cozy; return l[hsh(id)%l.length]; }
+  function pts(id){ return FR().pts[id]||0; }
+  function ksLevel(id){ return FR().ks[id]||0; }
+  function nextKs(id){ var lv=ksLevel(id); return KS[lv]||null; }
+  function addFriend(id,n,why){ if(!id||!n)return; var f=FR(); f.pts[id]=(f.pts[id]||0)+n; sv();
+    var lv=f.ks[id]||0, got=[];
+    while(KS[lv]&&f.pts[id]>=KS[lv].at){ var t=KS[lv]; var iid=ksId(t.k,id); S.inv[iid]=(S.inv[iid]||0)+1; got.push(BYID[iid]); lv++; }
+    if(got.length){ f.ks[id]=lv; sv(); party();
+      setTimeout(function(){ try{ var it=got[got.length-1]; modal('<div class="center">'+csvg(id,72)+'<h2 style="margin:4px 0 0">🎀 A keepsake from '+esc(nm(id))+'!</h2></div><div class="center"><div class="st-art" style="margin:6px auto;width:96px;height:96px">'+art(it.id,88)+'</div><b>'+esc(it.name)+'</b></div><div class="speak center"><b>'+esc(nm(id))+':</b> '+(lv>=3?'You are my best friend in the whole town. I want you to have this.':(lv===2?'You keep helping me out. Here, I made this just for you!':'Thanks for being such a good neighbor. This is for you!'))+'</div><div class="sub center">One of a kind. It is in your Stuff.</div><button class="btn wide" onclick="closeModal()">Thank you!</button>'); }catch(e){} },650); }
+    return got.length; }
+  window.frAdd=addFriend; window.frPts=pts;
+  /* one personal chore a day per neighbor */
+  function chore(id){ var f=FR(); var d=day(); var c=f.req[id];
+    if(!c||c.day!==d){ if(f.reqDay[id]===d)return null; var r=rng('ch'+id+d); var useFind=r()<0.6;
+      if(useFind){ var k=r()<0.65?favFind(id):GIDS.filter(function(x){ return !G[x].rare; })[Math.floor(r()*9)]; c={day:d,t:'find',k:k,n:2+Math.floor(r()*3)}; }
+      else { var pool=ITEMS.filter(function(it){ return window.townBuyable(it)&&it.style===tasteOf(id)&&it.p.c<=60; }); if(!pool.length)pool=ITEMS.filter(function(it){ return window.townBuyable(it)&&it.p.c<=40; }); c={day:d,t:'item',item:pool[Math.floor(r()*pool.length)].id}; }
+      f.req[id]=c; sv(); }
+    return c; }
+  window.frChore=chore;
+  window.frDoChore=function(id){ var c=chore(id); if(!c)return; var f=FR();
+    if(c.t==='find'){ if(pocket(c.k)<c.n){ tst('You need '+(c.n-pocket(c.k))+' more '+G[c.k].pl+'.'); return; } GX().pockets[c.k]-=c.n; }
+    else { if(spare(c.item)<=0){ tst('You need a '+BYID[c.item].name+' first.'); return; } S.inv[c.item]--; if(S.inv[c.item]<=0)delete S.inv[c.item];
+      try{ var rm=window.nbRoom(id); var it=BYID[c.item]; var used={}; rm.placed.forEach(function(p){ if(p.zone===it.zone)used[p.slot]=1; }); for(var s=0;s<(it.zone==='wall'?5:15);s++){ if(!used[s]){ rm.placed.push({id:c.item,zone:it.zone,slot:s,g:false}); break; } } }catch(e){} }
+    tap(); f.reqDay[id]=day(); delete f.req[id]; f.chain[id]=(f.chain[id]||0)+1; coins(15); sv();
+    tst(nm(id)+': Thank you! That is chore #'+f.chain[id]+' you have done for me. +💰 15');
+    addFriend(id,3,'chore'); try{ window.nbCheckTier&&window.nbCheckTier(id,true); window.erCheckWish&&window.erCheckWish(id); }catch(e){} try{ nbrRender(); }catch(e){} };
+  window.frGiveFind=function(id,k){ var f=FR(); var key=day(); var gd=f.giftDay[id]; if(!gd||gd.d!==key)gd=f.giftDay[id]={d:key,n:0};
+    if(gd.n>=3){ tst(nm(id)+' has enough little gifts for today.'); return; } if(pocket(k)<1)return;
+    tap(); GX().pockets[k]--; gd.n++; sv(); var fav=favFind(id)===k;
+    tst(nm(id)+': '+(fav?'A '+G[k].nm+'! My favorite kind of find!':'Ooh, a '+G[k].nm+'. Thank you!'));
+    addFriend(id,fav?2:1,'find'); try{ nbrRender(); }catch(e){} };
+  function bar(id){ var p=pts(id), nx=nextKs(id), prev=ksLevel(id)?KS[ksLevel(id)-1].at:0; var pct=nx?Math.round((p-prev)/(nx.at-prev)*100):100; return Math.max(0,Math.min(100,pct)); }
+  (function(){ var _top=window.nbRoomTop; window.nbRoomTop=function(id){ var html=''; try{ html=_top(id)||''; }catch(e){}
+    try{ var f=FR(); var nx=nextKs(id); var lv=ksLevel(id);
+      html+='<div class="fr-box"><div class="er-bt" style="color:#ff9ec4">💛 Friendship with '+esc(nm(id))+' · '+pts(id)+' pts</div>'
+        +'<div class="nb-meter"><div class="nb-mfill" style="width:'+bar(id)+'%;background:#ff9ec4"></div></div>'
+        +'<div class="fr-ks">'+KS.map(function(t,i){ var got=i<lv; return '<div class="fr-k'+(got?' got':'')+'">'+(got?art(ksId(t.k,id),36):'<div class="pk-q" style="width:36px;height:36px">🎁</div>')+'<div class="n">'+(got?esc(t.name.trim()):t.at+' pts')+'</div></div>'; }).join('')+'</div>'
+        +(nx?'<div class="sub" style="text-align:left;margin:2px 0 0">'+(nx.at-pts(id))+' more points for a special keepsake. Chores, errands, wishlists and gifts they love all count.</div>':'<div class="sub" style="text-align:left;margin:2px 0 0;color:#7dff8a">Best friends! You have every keepsake.</div>');
+      var c=chore(id);
+      if(c){ if(c.t==='find'){ var h=pocket(c.k), enough=h>=c.n; html+='<div class="fr-chore"><div class="er-row">'+gart(c.k,34)+'<div><b>Chore:</b> Could you bring me <b>'+c.n+' '+esc(c.n===1?G[c.k].nm:G[c.k].pl)+'</b>? <span class="sub" style="display:inline">(you have '+h+')</span></div></div>'+(enough?'<button class="btn wide" onclick="frDoChore(\''+id+'\')">🎁 Give '+c.n+' '+esc(G[c.k].pl)+'</button>':'<div class="sub" style="text-align:left;margin:2px 0 0">Look for them sparkling around town.</div>')+'</div>'; }
+        else { var it=BYID[c.item], has=spare(c.item)>0; html+='<div class="fr-chore"><div class="er-row"><div class="st-art" style="width:40px;height:40px">'+art(c.item,34)+'</div><div><b>Chore:</b> I could really use a <b>'+esc(it.name)+'</b>.'+(has?'':' <span class="sub" style="display:inline">('+priceLabel(it.p)+' at '+(it.cat==='furniture'?'Cozy Home':'the Corner Store')+')</span>')+'</div></div>'+(has?'<button class="btn wide" onclick="frDoChore(\''+id+'\')">🎁 Give the '+esc(it.name)+'</button>':'')+'</div>'; } }
+      else html+='<div class="fr-chore dim">✓ Chore done today. '+esc(nm(id))+' will have a new one tomorrow. ('+(f.chain[id]||0)+' done so far)</div>';
+      var mine=GIDS.filter(function(k){ return pocket(k)>0; });
+      if(mine.length){ var gd=f.giftDay[id]; var used=(gd&&gd.d===day())?gd.n:0;
+        html+='<div class="sub" style="text-align:left;margin:6px 0 2px">🎒 Little gifts from your pockets ('+(3-used)+' left today). Favorite: '+esc(G[favFind(id)].nm)+'</div><div class="fr-finds">'+mine.map(function(k){ return '<button class="fr-find'+(k===favFind(id)?' fav':'')+'" onclick="frGiveFind(\''+id+'\',\''+k+'\')">'+gart(k,26)+'<span>'+pocket(k)+'</span></button>'; }).join('')+'</div>'; }
+      html+='</div>';
+    }catch(e){ try{ window.__muErr&&window.__muErr('nbRoomTop(friend)',e); }catch(_){} }
+    return html; }; })();
+  (function(){ var _p=window.nbOnPlace; window.nbOnPlace=function(id,itemId){ try{ _p(id,itemId); }catch(e){} try{ var it=BYID[itemId]; var f=FR(); if(it&&it.style===tasteOf(id)){ var gd=f.giftDay['t_'+id]; if(!gd||gd.d!==day())gd=f.giftDay['t_'+id]={d:day(),n:0}; if(gd.n<3){ gd.n++; addFriend(id,1,'gift'); } } }catch(e){} }; })();
+  (function(){ var _b=window.nbDoorBadge; window.nbDoorBadge=function(id){ var s=''; try{ s=_b(id)||''; }catch(e){} try{ var lv=ksLevel(id); if(lv)s+='<div class="fr-door">'+'🎀'.repeat(lv)+'</div>'; }catch(e){} return s; }; })();
+  /* errands, trades, wishlists and favors all count */
+  (function(){ if(typeof window.erGiveFetch==='function'){ var _f=window.erGiveFetch; window.erGiveFetch=function(i){ var q=null; try{ q=JSON.parse(JSON.stringify(window.erBoard()[i])); }catch(e){} var r=_f.apply(this,arguments);
+      try{ var after=window.erBoard()[i]; if(q&&!q.done&&after&&after.done){ addFriend(q.who,3,'errand'); var k=GIDS.filter(function(x){ return !G[x].rare; })[Math.floor(Math.random()*9)]; addFind(k,1); setTimeout(function(){ tst(nm(q.who)+' also gave you a '+G[k].nm+'!'); },2200); } }catch(e){} return r; }; }
+    if(typeof window.erTradeStep==='function'){ var _t=window.erTradeStep; window.erTradeStep=function(i){ var q=null; try{ q=JSON.parse(JSON.stringify(window.erBoard()[i])); }catch(e){} var r=_t.apply(this,arguments);
+      try{ var after=window.erBoard()[i]; if(q&&!q.done&&after&&after.done){ addFriend(q.a,2,'trade'); addFriend(q.b,2,'trade'); } }catch(e){} return r; }; }
+    if(typeof window.erCheckWish==='function'){ var _w=window.erCheckWish; window.erCheckWish=function(id){ var r=_w.apply(this,arguments); if(r)try{ addFriend(id,4,'wish'); }catch(e){} return r; }; }
+    if(typeof favorClaim==='function'){ var _fc=favorClaim; window.favorClaim=favorClaim=function(id){ var before=null; try{ before=favorState(id).status; }catch(e){} var r=_fc.apply(this,arguments); try{ if(before==='ready'&&S.cit.favor[id]&&S.cit.favor[id].done&&MEMBER_HOME[id])addFriend(id,3,'favor'); }catch(e){} return r; }; }
+  })();
+
+  /* ---------- CSS ---------- */
+  (function(){ if(document.getElementById('gxCSS'))return; var st=document.createElement('style'); st.id='gxCSS'; st.textContent=
+     '.st-shelves{display:flex;gap:6px;overflow-x:auto;padding:4px 2px 6px;margin:2px 0 4px;scrollbar-width:none;-webkit-overflow-scrolling:touch}'
+    +'.st-shelves::-webkit-scrollbar{display:none}'
+    +'.st-shelf{flex:none;background:#160f33;border:1.5px solid #4a3d84;border-radius:999px;padding:8px 12px;color:#e9e2ff;font-weight:800;font-size:13px;white-space:nowrap;cursor:pointer}'
+    +'.st-shelf i{font-style:normal;font-size:10px;color:#9a8fce;margin-left:3px}'
+    +'.st-shelf.on{background:#ffd158;color:#241c48;border-color:#ffd158}.st-shelf.on i{color:#5a4a10}'
+    +'.tw-gath{position:absolute;transform:translate(-50%,-50%);z-index:13;width:44px;height:44px;border-radius:50%;background:radial-gradient(circle,#fff6e6 0,#fff6e6 42%,#fff6e655 56%,#fff6e600 72%);display:flex;align-items:center;justify-content:center;cursor:pointer;animation:gxBob 2s ease-in-out infinite}'
+    +'.tw-gath:after{content:"";position:absolute;top:2px;right:4px;width:7px;height:7px;background:#fff6c8;transform:rotate(45deg);border-radius:1px;animation:gxTw 1.4s ease-in-out infinite}'
+    +'.tw-gath.rare{background:radial-gradient(circle,#fff3c0 0,#fff3c0 42%,#ffd15888 56%,#ffd15800 74%)}'
+    +'.tw-gath.got{animation:gxGot .35s ease-in forwards}'
+    +'@keyframes gxBob{0%,100%{margin-top:0}50%{margin-top:-5px}}'
+    +'@keyframes gxTw{0%,100%{opacity:.2;transform:rotate(45deg) scale(.6)}50%{opacity:1;transform:rotate(45deg) scale(1)}}'
+    +'@keyframes gxGot{to{opacity:0;margin-top:-34px;transform:translate(-50%,-50%) scale(1.5)}}'
+    +'.pk-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px;margin:8px 0}'
+    +'.pk-cell{background:#160f33;border:1.5px solid #4a3d84;border-radius:12px;padding:8px 4px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:2px}'
+    +'.pk-cell svg{background:#fff6e6;border-radius:10px}'
+    +'.pk-cell.no{opacity:.6;border-style:dashed}.pk-cell .n{font-size:12px;font-weight:800;line-height:1.1}.pk-cell .c{font-size:15px;font-weight:900;color:#ffd158}'
+    +'.pk-q{display:flex;align-items:center;justify-content:center;background:#241c48;border-radius:10px;color:#9a8fce;font-weight:900;width:52px;height:52px;font-size:24px;flex:none}'
+    +'.pk-page{display:flex;gap:10px;align-items:flex-start;background:#160f33;border:1.5px solid #4a3d84;border-radius:12px;padding:10px;margin:7px 0;text-align:left}'
+    +'.pk-page svg{background:#fff6e6;border-radius:10px;flex:none}.pk-page.no{opacity:.65;border-style:dashed}'
+    +'.pk-t{font-weight:900;font-size:15px;color:#ffd158}.pk-f{font-size:13px;line-height:1.4;color:#e9e2ff}'
+    +'.cr-needs{display:flex;flex-wrap:wrap;gap:5px}'
+    +'.cr-need{display:inline-flex;align-items:center;gap:3px;background:#241c48;border:1.5px solid #ff9a9a66;border-radius:999px;padding:2px 8px 2px 3px;font-weight:800;font-size:12px;color:#ffb3b3}'
+    +'.cr-need svg{background:#fff6e6;border-radius:50%}.cr-need.ok{border-color:#7dff8a88;color:#7dff8a}'
+    +'.cr-math{display:flex;align-items:center;gap:8px;font-size:15px;padding:3px 0}.cr-math svg{background:#fff6e6;border-radius:6px}'
+    +'.fr-box{background:#2a1530;border:2px solid #ff9ec4;border-radius:14px;padding:9px 11px;margin:6px 0;text-align:left}'
+    +'.fr-ks{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:4px 0}'
+    +'.fr-k{background:#160f33;border:1.5px dashed #6a4a7a;border-radius:10px;padding:5px 3px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:2px}'
+    +'.fr-k.got{border:1.5px solid #ff9ec4}.fr-k.got svg{background:#fff6e6;border-radius:8px}.fr-k .n{font-size:10px;font-weight:800;line-height:1.1;color:#e9e2ff}'
+    +'.fr-chore{background:#160f33;border:1.5px solid #ffd158;border-radius:12px;padding:8px 10px;margin:6px 0 2px;font-size:14px}'
+    +'.fr-chore svg{background:#fff6e6;border-radius:8px}.fr-chore.dim{border-style:dashed;border-color:#8a7a3a;color:#cfc4ef}'
+    +'.fr-finds{display:flex;flex-wrap:wrap;gap:6px}'
+    +'.fr-find{display:inline-flex;align-items:center;gap:4px;background:#fff6e6;border:2px solid #c9b49a;border-radius:10px;padding:3px 7px 3px 3px;font-weight:900;color:#241c48;cursor:pointer}'
+    +'.fr-find.fav{border-color:#ff8ac0;box-shadow:0 0 0 2px #ff8ac055}'
+    +'.fr-door{position:absolute;top:2px;left:4px;font-size:11px}';
+    document.head.appendChild(st); })();
+
+  /* ---------- map: NATURE & CRAFTS row + routing ---------- */
+  (function(){ var _tp=townPlan; window.townPlan=townPlan=function(){ var rows=_tp();
+    try{ if(!rows.some(function(r){ return r.name==='NATURE & CRAFTS'; })){ var g=GX(); var fn=GIDS.filter(function(k){ return g.found[k]; }).length;
+      var row={y:2350,name:'NATURE & CRAFTS',sub:'gather finds · make things',color:'#7dd87a',slots:[
+        {col:'#7dd87a',tg:'NATURE',nm:'Nature Journal',host:'fern',prog:g.got.length+'/'+SPOTS_PER_DAY+' finds today',go:'pockets'},
+        {col:'#c98a5a',tg:'CRAFT',nm:'Craft Shed',host:'piper',prog:g.crafted+' crafted · '+fn+'/'+GIDS.length+' kinds',go:'craft'} ]};
+      var at=-1; rows.forEach(function(r,i){ if(r.name==='ERRANDS & SWAPS')at=i; }); if(at<0)rows.forEach(function(r,i){ if(r.name==='DOWNTOWN · HOME')at=i; });
+      if(at>=0)rows.splice(at+1,0,row); else rows.push(row); } }catch(e){ try{ window.__muErr&&window.__muErr('townPlan(nature)',e); }catch(_){} }
+    return rows; }; })();
+  (function(){ var _tg=townGo; window.townGo=townGo=function(dest){ if(dest==='pockets'){ openPockets(); return; } if(dest==='craft'){ openCraft(); return; } return _tg.apply(this,arguments); }; })();
+
+  /* ---------- What's New (one card for v1.41-v1.43) ---------- */
   (function(){ if(typeof openTown!=='function')return; var _ot=openTown; window.openTown=openTown=function(){ var r=_ot.apply(this,arguments);
-    try{ if(S.flags&&S.flags.introDone&&!S.flags.seen142){ S.flags.seen142=true; sv();
+    try{ if(S.flags&&S.flags.introDone&&!S.flags.seen143){ S.flags.seen143=true; sv();
       setTimeout(function(){ try{ var m=document.getElementById('modal'); if(m&&m.classList.contains('on'))return;
-        modal('<div class="center"><div class="row" style="justify-content:center;gap:6px">'+svg('gus',52)+svg('fern',52)+svg('flip',52)+'</div><h2>✨ The neighbors moved in!</h2></div>'
-          +'<div class="card" style="text-align:left"><b>🏠 Apartment buildings.</b> <span class="sub" style="display:inline;margin:0">Knock on any door to visit a neighbor at home. Give them gifts and paint their walls. Things that match their TASTE make them happiest.</span></div>'
-          +'<div class="card" style="text-align:left"><b>📋 Gus’s Errand Board.</b> <span class="sub" style="display:inline;margin:0">Fetch things for neighbors and carry trades between them, three a day.</span></div>'
-          +'<div class="card" style="text-align:left"><b>🤝 Flip’s Swap Meet + ⭐ wishlists.</b> <span class="sub" style="display:inline;margin:0">Is it a good deal? Compare the numbers. And fill a neighbor’s wishlist for a big reward.</span></div>'
+        modal('<div class="center"><div class="row" style="justify-content:center;gap:6px">'+csvg('fern',50)+csvg('gus',50)+csvg('piper',50)+'</div><h2>✨ The neighbors moved in!</h2></div>'
+          +'<div class="card" style="text-align:left"><b>🏠 Visit anyone at home.</b> <span class="sub" style="display:inline;margin:0">Knock on doors in the apartment buildings. Give gifts that match their TASTE, do their daily chore, and earn keepsakes: a photo, a plushie, a golden statue.</span></div>'
+          +'<div class="card" style="text-align:left"><b>✨ Finds around town.</b> <span class="sub" style="display:inline;margin:0">Acorns, leaves, shells and rare treasures sparkle on the map every day. Tap to collect. Craft them into special things at Piper’s Craft Shed.</span></div>'
+          +'<div class="card" style="text-align:left"><b>📋 Errands, swaps + way more to buy.</b> <span class="sub" style="display:inline;margin:0">Gus’s Errand Board, Flip’s Swap Meet, and the shops now have whole shelves of new stuff.</span></div>'
           +'<button class="btn wide" onclick="closeModal()">Let’s go</button>'); }catch(e){} },700); } }catch(e){}
     return r; }; if(window.BQ)try{ window.BQ.openTown=openTown; }catch(_){} })();
 
-  if(window.BQ)try{ Object.assign(window.BQ,{openErrands:window.openErrands,openSwap:window.openSwap,erBoard:board,erWishOf:wishOf}); }catch(e){}
+  if(window.BQ)try{ Object.assign(window.BQ,{openPockets:window.openPockets,openCraft:window.openCraft,gxTap:window.gxTap,frAdd:addFriend,GATHER:G,RECIPES:RECIPES}); }catch(e){}
 })();
 </script>
 </body>
