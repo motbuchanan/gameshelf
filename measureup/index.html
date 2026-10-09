@@ -928,14 +928,14 @@ svg .charg{will-change:transform}
 <div id="toast"></div>
 <button id="homeBtn" onclick="goHome()" aria-label="Back to Garage">🏠</button>
 <button id="ellyBtn" onclick="openEllyHelp()" aria-label="Ask Elly for help"></button>
-<div id="vbadge">v1.43 · Oct 6</div>
+<div id="vbadge">v1.44 · Oct 9</div>
 
 <script>
 'use strict';
 /* ============ UTILS ============ */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const VERSION='v1.43 · Oct 6';
+const VERSION='v1.44 · Oct 9';
 const RM=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -19505,6 +19505,283 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
     return r; }; if(window.BQ)try{ window.BQ.openTown=openTown; }catch(_){} })();
 
   if(window.BQ)try{ Object.assign(window.BQ,{openPockets:window.openPockets,openCraft:window.openCraft,gxTap:window.gxTap,frAdd:addFriend,GATHER:G,RECIPES:RECIPES}); }catch(e){}
+})();
+</script>
+<script>
+/* ================= v1.44 · SOUNDCHECK 2.0, WEEKLY CHECKUP & GROWN-UPS CORNER (Oct 9 2026) =================
+   Mot: "initially Measure Up was designed to have an intake to figure out where Garrett was on the various math
+   concepts. We've added many more concepts and never updated the intake. We need to determine where a new user is
+   on each concept, and there should be regular ways to gauge progress in all areas."
+   Before: Soundcheck covered the 14 original bandmates (3 Qs each, once). 41 newer concepts started at Lvl 1.
+   Adds:
+     - SOUNDCHECK 2.0: adaptive placement on every math concept (up to 3 Qs each: right jumps up, wrong steps down,
+       stops when bracketed). Split into SITTINGS of PER_SIT concepts (about 5 min), one offered per day, resumable.
+       Existing saves: concepts that already moved off Lvl 1 (or were auditioned) count as placed; only the rest run.
+       Elly hosts, so unrecruited bandmates are not spoiled.
+     - WEEKLY CHECKUP: once placement is done, every CK_DAYS days Elly asks CK_N quick questions on the concepts
+       practiced least recently. Right nudges up, wrong nudges down and flags RUSTY. Each checkup (and the end of
+       placement) stores a snapshot of all levels in S.pl.snaps.
+     - GROWN-UPS CORNER: the town-shell pill works. Simple grown-up gate, then every concept by strand with level,
+       tier, stars, last practiced, trend since the last snapshot, rusty / not-placed tags; buttons to run a sitting,
+       run a checkup, re-place one concept, jam with its bandmate; copy-to-clipboard text report.
+     - adjust() wrap records last-practiced day + answer count per concept; a correct answer clears RUSTY.
+     - What's New card (seen144).
+   State: S.pl {placed{c:day|'prior'}, last{c:day}, cnt{c:n}, rusty{c:day}, sitDay, offerDay, ckLast, snaps[{d,lv{}}]}
+   Additive, audio-safe, no em dashes. Tunables: PER_SIT, MAX_Q, CK_DAYS, CK_N, STRANDS[].base. */
+(function(){
+  if(typeof document==='undefined')return;
+  if(typeof QG==='undefined'||typeof BAND==='undefined'||typeof CONCEPT_NAMES==='undefined')return;
+
+  var PER_SIT=11, MAX_Q=3, CK_DAYS=7, CK_N=12, SNAP_MAX=30;
+  try{ DEF.flags.seen144=false; }catch(e){}
+
+  var STRANDS=[
+    {id:'num',  n:'Numbers & Counting', e:'🔢', base:3, c:['skip','odd','double','compare','place','expanded','round','estimate','numline','bonds','ordinal','tally','factfam','neg']},
+    {id:'as',   n:'Adding & Subtracting', e:'➕', base:3, c:['add','sub','column','msub','missnum','equal','story']},
+    {id:'md',   n:'Multiplying & Dividing', e:'✖️', base:2, c:['mul','div','array','factor','pemdas','funcm','patterns']},
+    {id:'fr',   n:'Fractions & Decimals', e:'🍕', base:2, c:['frac','eqfrac','cmpfrac','strip','decimal','ratio','prob']},
+    {id:'ms',   n:'Measuring, Time & Money', e:'📏', base:3, c:['meas','clock','cal','elapsed','money','temp','volume','perim','area']},
+    {id:'sh',   n:'Shapes & Space', e:'🔷', base:2, c:['shape','solid','compose','xform','coord','compass','angle']},
+    {id:'da',   n:'Data & Graphs', e:'📊', base:2, c:['graph','lineplot','stats']},
+    {id:'mu',   n:'Music', e:'🎵', base:2, c:['conduct']}
+  ];
+  /* any concept registered later lands in a catch-all strand */
+  function allConcepts(){ var seen={}, out=[]; STRANDS.forEach(function(s){ s.c.forEach(function(c){ if(QG[c]&&!seen[c]){ seen[c]=1; out.push(c); } }); });
+    Object.keys(CONCEPT_NAMES).forEach(function(c){ if(QG[c]&&!seen[c]){ seen[c]=1; out.push(c); STRANDS[STRANDS.length-1].c.push(c); } }); return out; }
+  function strandOf(c){ for(var i=0;i<STRANDS.length;i++)if(STRANDS[i].c.indexOf(c)>=0)return STRANDS[i]; return STRANDS[STRANDS.length-1]; }
+  function memberOf(c){ for(var i=0;i<BAND.length;i++)if(BAND[i].concept===c)return BAND[i]; return null; }
+  function cname(c){ return CONCEPT_NAMES[c]||c; }
+
+  /* ---------- helpers ---------- */
+  function dk(d){ d=d||new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
+  function dAgo(key){ if(!key||key==='prior')return null; var p=String(key).split('-'); if(p.length<3)return null; var a=new Date(+p[0],+p[1]-1,+p[2]); var b=new Date(); b.setHours(0,0,0,0); return Math.round((b-a)/86400000); }
+  function agoTxt(key){ var n=dAgo(key); if(n===null)return 'never'; if(n<=0)return 'today'; if(n===1)return 'yesterday'; return n+' days ago'; }
+  function sv(){ try{ if(typeof save==='function')save(); }catch(e){} }
+  function tap(){ try{ if(typeof sTap==='function')sTap(); }catch(e){} }
+  function tst(m){ try{ if(typeof toast==='function')toast(m); }catch(e){} }
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function lv(c){ try{ return Math.max(1,Math.min(12,S.skills[c]||1)); }catch(e){ return 1; } }
+  function fl(c){ return Math.floor(lv(c)); }
+  function tierName(L){ var t=(typeof tierOf==='function')?tierOf(L):0; return ['Bronze','Silver','Gold','Platinum'][t]; }
+  function medal(L){ try{ return TIER_MEDAL[tierOf(L)]; }catch(e){ return ''; } }
+  function stars(L){ try{ return starStr(L); }catch(e){ return ''; } }
+  function elly(sz){ try{ return ellySVG(sz); }catch(e){ return ''; } }
+  function modalOn(){ var m=document.getElementById('modal'); return !!(m&&m.classList.contains('on')); }
+  function rnd(n){ return Math.floor(Math.random()*n); }
+
+  /* ---------- fix: generators whose answer is a string but choices are numbers (Axel's "Tap the EVEN one"
+     could never be answered right in auditions or proofs). Coerce choices to strings when that happens. ---------- */
+  Object.keys(QG).forEach(function(c){ var g=QG[c]; if(typeof g!=='function')return; QG[c]=function(L){ var it=g.apply(this,arguments);
+    try{ if(it&&it.choices&&it.choices.indexOf(it.a)<0){ var sc=it.choices.map(String); if(sc.indexOf(String(it.a))>=0){ it.choices=sc; it.a=String(it.a); } } }catch(e){} return it; }; });
+
+  /* ---------- state ---------- */
+  function PL(){ if(!S.pl||typeof S.pl!=='object')S.pl={}; var p=S.pl;
+    p.placed=p.placed||{}; p.last=p.last||{}; p.cnt=p.cnt||{}; p.rusty=p.rusty||{}; p.snaps=p.snaps||[];
+    if(!p.init){ p.init=true;
+      /* existing saves: any level that already moved off 1 counts as placed before this version */
+      allConcepts().forEach(function(c){ if((S.skills[c]||1)>1.3)p.placed[c]='prior'; }); }
+    return p; }
+  (function(){ if(typeof load==='function'){ var _ld=load; window.load=load=function(){ var r=_ld.apply(this,arguments); try{ PL(); }catch(e){} return r; }; } try{ if(window.S)PL(); }catch(e){} })();
+
+  function pending(){ var p=PL(); return allConcepts().filter(function(c){ return !p.placed[c]; }); }
+  function sittingsLeft(){ return Math.ceil(pending().length/PER_SIT); }
+  function sittingsTotal(){ var p=PL(); return Math.max(1,Math.ceil((pending().length+Object.keys(p.placed).filter(function(c){ return p.placed[c]!=='prior'; }).length)/PER_SIT)); }
+
+  /* practice tracking: every graded answer anywhere in the game goes through adjust() */
+  (function(){ if(typeof adjust!=='function')return; var _adj=adjust; window.adjust=adjust=function(concept,correct){ var r=_adj.apply(this,arguments);
+    try{ var p=PL(); p.last[concept]=dk(); p.cnt[concept]=(p.cnt[concept]||0)+1; if(correct&&p.rusty[concept])delete p.rusty[concept]; }catch(e){} return r; }; })();
+
+  function snapshot(tag){ var p=PL(); var o={d:dk(),tag:tag||'',lv:{}}; allConcepts().forEach(function(c){ o.lv[c]=Math.round(lv(c)*10)/10; });
+    if(p.snaps.length&&p.snaps[p.snaps.length-1].d===o.d)p.snaps[p.snaps.length-1]=o; else p.snaps.push(o);
+    while(p.snaps.length>SNAP_MAX)p.snaps.shift(); sv(); }
+  /* the snapshot to compare against: newest one at least 6 days old, else the oldest */
+  function baseSnap(){ var p=PL(); if(!p.snaps.length)return null; for(var i=p.snaps.length-1;i>=0;i--){ var n=dAgo(p.snaps[i].d); if(n!==null&&n>=6)return p.snaps[i]; } return p.snaps[0]; }
+
+  /* ---------- the question runner (shares the quiz screen, Elly hosts) ---------- */
+  var RUN=null;
+  function runStart(cfg){ /* cfg: title, items[{c}], onItem(c,L,ok), next() -> {c,L} or null, onDone() */
+    try{ closeModal(); }catch(e){}
+    RUN=cfg; RUN.on=true; RUN.asked=0; RUN.seen={};
+    try{ QZ={mode:'place',taps:0,idx:0,count:1,seen:new Set()}; }catch(e){}
+    var who=document.getElementById('quizWho'); if(who)who.innerHTML='<div class="row" style="justify-content:center">'+elly(70)+'<div style="text-align:left"><b>Elly</b><div class="plvl" id="quizModeLabel">'+esc(cfg.title)+'</div></div></div>';
+    var bw=document.getElementById('quizBarWrap'); if(bw)bw.classList.remove('resp');
+    var st=document.getElementById('quizStreak'); if(st)st.textContent=cfg.chip||'🎤';
+    try{ show('scr-quiz'); }catch(e){}
+    runNext();
+  }
+  function runNext(){ if(!RUN||!RUN.on)return;
+    var nx=RUN.next(); if(!nx){ runEnd(); return; }
+    var item=null; try{ item=QG[nx.c](nx.L); for(var t=0;t<10&&item&&RUN.seen[item.q];t++)item=QG[nx.c](nx.L); }catch(e){ item=null; }
+    if(!item||!item.choices){ RUN.onItem(nx.c,nx.L,null); runNext(); return; }
+    RUN.seen[item.q]=1; RUN.cur={c:nx.c,L:nx.L,item:item}; try{ if(QZ){ QZ.item=item; QZ.taps=0; } }catch(e){}
+    var lbl=document.getElementById('quizModeLabel'); if(lbl)lbl.textContent=RUN.title+' · '+cname(nx.c);
+    var qt=document.getElementById('quizText'); if(qt)qt.textContent=item.q;
+    var qv=document.getElementById('quizVis'); if(qv)qv.innerHTML=item.vis||'';
+    var qf=document.getElementById('quizFeed'); if(qf)qf.textContent='';
+    try{ animateVis(); }catch(e){}
+    var wrap=document.getElementById('quizChoices'); if(!wrap)return; wrap.innerHTML='';
+    item.choices.forEach(function(ch){ var b=document.createElement('button'); b.className='choice'; b.textContent=ch; b.addEventListener('click',function(ev){ runAnswer(ch,b,ev); }); wrap.appendChild(b); });
+    var sk=document.createElement('button'); sk.className='btn wide ghost'; sk.style.marginTop='10px'; sk.style.gridColumn='1 / -1'; sk.style.width='100%'; sk.textContent='Not sure yet, skip this one'; sk.addEventListener('click',function(){ tap(); runAnswer(null,null,null); }); wrap.appendChild(sk);
+    var bar=document.getElementById('quizBar'); if(bar)bar.style.width=Math.round((RUN.progress?RUN.progress():0)*100)+'%';
+    RUN.busy=false;
+  }
+  function runAnswer(val,btn,ev){ if(!RUN||!RUN.on||RUN.busy)return; RUN.busy=true;
+    var it=RUN.cur.item, ok=(val!==null&&val===it.a);
+    try{ S.stats.answers++; if(ok)S.stats.correct++; }catch(e){}
+    var cs=document.querySelectorAll('#quizChoices .choice'); for(var i=0;i<cs.length;i++){ if(cs[i].textContent===it.a)cs[i].classList.add('good'); else if(cs[i]===btn&&!ok)cs[i].classList.add('badc'); }
+    var qf=document.getElementById('quizFeed');
+    if(ok){ try{ sCorrect(1); }catch(e){} try{ addNotes(2,ev); }catch(e){} if(qf)qf.textContent=['Nice!','You got it!','Clean hit!','That is the groove!'][rnd(4)]; }
+    else { try{ sWrong(); }catch(e){} try{ addNotes(1,ev); }catch(e){} if(qf)qf.textContent=(val===null?'No worries. ':'It was '+it.a+'. ')+'Just finding your groove, not grading.'; }
+    RUN.asked++;
+    try{ RUN.onItem(RUN.cur.c,RUN.cur.L,ok); }catch(e){}
+    sv();
+    setTimeout(runNext, ok?700:1400);
+  }
+  function runEnd(){ if(!RUN)return; var r=RUN; RUN=null; try{ QZ=null; }catch(e){} try{ r.onDone(); }catch(e){} }
+  (function(){ var b=document.getElementById('btnQuizExit'); if(b)b.addEventListener('click',function(){ if(RUN){ var r=RUN; RUN=null; try{ QZ=null; }catch(e){} try{ if(r.onQuit)r.onQuit(); }catch(e){} } },true); })();
+
+  /* ---------- adaptive placement of one concept ---------- */
+  function seedFor(c){ var cur=S.skills[c]||1; if(cur>1.3)return Math.floor(cur); var s=strandOf(c), p=PL(), sum=0, n=0;
+    s.c.forEach(function(x){ if(x!==c&&p.placed[x]&&p.placed[x]!=='prior'){ sum+=fl(x); n++; } });
+    var seed=n?Math.round(sum/n):s.base; return Math.max(1,Math.min(10,seed)); }
+  function ladder(c){ return {c:c,L:seedFor(c),lo:0,hi:13,n:0,done:false}; }
+  function ladderStep(ld,ok){ ld.n++; if(ok)ld.lo=Math.max(ld.lo,ld.L); else ld.hi=Math.min(ld.hi,ld.L);
+    if(ld.hi-ld.lo<=1||ld.n>=MAX_Q){ ld.done=true; return; }
+    var next; if(ok) next=(ld.hi<13)?Math.floor((ld.lo+ld.hi)/2):Math.min(12,ld.L+(ld.n===1?3:2)); else next=(ld.lo>0)?Math.floor((ld.lo+ld.hi)/2):Math.max(1,ld.L-2);
+    if(next===ld.L){ ld.done=true; return; } ld.L=next; }
+  function ladderResult(ld){ if(ld.lo>0)return ld.lo; return Math.max(1,Math.min(12,ld.hi-1)); }
+
+  /* ---------- Soundcheck sitting ---------- */
+  function sittingStart(only){ var p=PL(); var list=only?[only]:pending().slice(0,PER_SIT); if(!list.length){ tst('Everything is already placed.'); return; }
+    var lads=list.map(ladder), ix=0, results=[]; var dayN=sittingsTotal()-sittingsLeft()+1;
+    runStart({ title:only?'Re-check':'Soundcheck · Day '+dayN, chip:'🎤 '+list.length,
+      progress:function(){ return ix/lads.length; },
+      next:function(){ while(ix<lads.length&&lads[ix].done)ix++; if(ix>=lads.length)return null; return {c:lads[ix].c,L:lads[ix].L}; },
+      onItem:function(c,L,ok){ var ld=lads[ix]; if(ok===null){ ld.done=true; ld.skipQG=true; } else ladderStep(ld,ok);
+        if(ld.done){ var r=ld.skipQG?fl(c):ladderResult(ld); S.skills[c]=r; p.placed[c]=dk(); p.last[c]=dk(); results.push({c:c,L:r}); ix++; } },
+      onDone:function(){ p.sitDay=dk(); sv(); sittingEnd(results,!!only); },
+      onQuit:function(){ p.sitDay=dk(); sv(); tst('Saved. Elly will ask again tomorrow.'); }
+    }); }
+  function sittingEnd(results,single){ var left=sittingsLeft(); if(!left)snapshot('placed');
+    var rows=results.map(function(r){ var m=memberOf(r.c); return '<div class="row" style="justify-content:space-between;margin:5px 0"><span>'+(m?m.emoji+' ':'')+esc(cname(r.c))+'</span><b>Lvl '+r.L+' '+stars(r.L)+'</b></div>'; }).join('');
+    try{ renderHub(); show('scr-hub'); }catch(e){}
+    modal('<div class="center">'+elly(80)+'<h2>'+(single?'Re-check done!':(left?'Soundcheck Day done!':'🎶 Soundcheck complete!'))+'</h2></div>'
+      +'<div class="card" style="margin:8px 0;max-height:46vh;overflow:auto">'+rows+'</div>'
+      +'<div class="speak"><b>Elly:</b> “'+(single?'Got it. That is where you are today.':(left?'That is enough for today! '+left+' more day'+(left>1?'s':'')+' and the whole band will know your groove.':'The whole band knows your groove now. Jam with anyone to level up!'))+'”</div>'
+      +'<button class="btn wide" onclick="closeModal()">Let’s go!</button>'
+      +(left&&!single?'<button class="btn wide ghost" onclick="closeModal();plSitting()">Keep going (another '+Math.min(PER_SIT,pending().length)+')</button>':''));
+    try{ sFanfare(); confetti(20); }catch(e){} }
+  window.plSitting=function(c){ tap(); sittingStart(c||null); };
+
+  function offerSitting(){ var p=PL(); var n=pending().length; if(!n)return false; if(p.offerDay===dk()||p.sitDay===dk())return false; if(modalOn())return false;
+    p.offerDay=dk(); sv(); var dayN=sittingsTotal()-sittingsLeft()+1, tot=sittingsTotal();
+    modal('<div class="center">'+elly(80)+'<h2>🎤 Soundcheck '+(tot>1?'Day '+dayN+' of '+tot:'')+'</h2></div>'
+      +'<div class="speak"><b>Elly:</b> “Quick jam! A few questions on '+Math.min(PER_SIT,n)+' things so the band can match YOUR level. No grades, about 5 minutes. Skip anything you have not learned yet.”</div>'
+      +'<button class="btn wide" onclick="closeModal();plSitting()">Let’s jam!</button>'
+      +'<button class="btn wide ghost" onclick="closeModal()">Not today</button>'); return true; }
+
+  /* legacy first-run hooks now go through the new Soundcheck */
+  try{ window.offerSoundcheck=offerSoundcheck=function(){ try{ S.flags.soundcheckOffered=true; }catch(e){} offerSitting(); }; }catch(e){}
+  try{ window.startSoundcheck=startSoundcheck=function(){ sittingStart(null); }; }catch(e){}
+
+  /* ---------- Weekly Checkup ---------- */
+  function checkupDue(){ var p=PL(); if(pending().length)return false; if(p.ckDay===dk())return false; if(!p.ckLast)return true; var n=dAgo(p.ckLast); return n!==null&&n>=CK_DAYS; }
+  function checkupPick(){ var p=PL(); var all=allConcepts().map(function(c){ var k=p.last[c]||(p.placed[c]!=='prior'?p.placed[c]:null); var n=dAgo(k); return {c:c,age:(n===null?9999:n),r:Math.random()}; });
+    all.sort(function(a,b){ return b.age-a.age||a.r-b.r; }); return all.slice(0,CK_N).map(function(x){ return x.c; }); }
+  function checkupStart(){ var p=PL(); var list=checkupPick(), ix=0, res=[];
+    runStart({ title:'Weekly Checkup', chip:'🔍 '+list.length, progress:function(){ return ix/list.length; },
+      next:function(){ if(ix>=list.length)return null; return {c:list[ix],L:fl(list[ix])}; },
+      onItem:function(c,L,ok){ ix++; if(ok===null)return; var v=lv(c)+(ok?0.5:-0.4); S.skills[c]=Math.max(1,Math.min(12,v)); p.last[c]=dk(); p.cnt[c]=(p.cnt[c]||0)+1;
+        if(ok){ if(p.rusty[c])delete p.rusty[c]; } else p.rusty[c]=dk(); res.push({c:c,ok:ok}); },
+      onDone:function(){ p.ckLast=dk(); p.ckDay=dk(); snapshot('checkup'); checkupEnd(res); },
+      onQuit:function(){ p.ckDay=dk(); sv(); tst('Checkup paused. Elly will ask again tomorrow.'); }
+    }); }
+  function checkupEnd(res){ var good=res.filter(function(r){ return r.ok; }), bad=res.filter(function(r){ return !r.ok; });
+    try{ renderHub(); show('scr-hub'); }catch(e){}
+    var badRows=bad.map(function(r){ var m=memberOf(r.c); return '<div class="row" style="justify-content:space-between;margin:4px 0"><span>'+esc(cname(r.c))+'</span>'+(m&&S.band[m.id]?'<button class="btn small" onclick="closeModal();startAudition(\''+m.id+'\')">Jam with '+esc(mName(m.id))+'</button>':'<span class="sub" style="margin:0">Lvl '+fl(r.c)+'</span>')+'</div>'; }).join('');
+    modal('<div class="center">'+elly(80)+'<h2>🔍 Checkup done!</h2></div>'
+      +'<div class="card" style="margin:8px 0"><b>Still solid: '+good.length+' of '+res.length+'</b>'+(good.length?'<div class="sub" style="margin:4px 0 0">'+esc(good.map(function(r){ return cname(r.c); }).join(', '))+'</div>':'')+'</div>'
+      +(bad.length?'<div class="card" style="margin:8px 0"><b>A little rusty:</b>'+badRows+'</div>':'')
+      +'<div class="speak"><b>Elly:</b> “'+(bad.length?'Rusty is normal. A quick jam shines it right back up.':'Not one rusty spot. Your band is tight!')+'”</div>'
+      +'<button class="btn wide" onclick="closeModal()">Thanks, Elly</button>');
+    try{ sFanfare(); if(!bad.length)confetti(24); }catch(e){} }
+  window.plCheckup=function(){ tap(); checkupStart(); };
+  function offerCheckup(){ var p=PL(); if(!checkupDue())return false; if(p.ckOffer===dk())return false; if(modalOn())return false; p.ckOffer=dk(); sv();
+    modal('<div class="center">'+elly(80)+'<h2>🔍 Weekly Checkup</h2></div>'
+      +'<div class="speak"><b>Elly:</b> “Time for our weekly checkup! '+CK_N+' quick questions on the things we have not played in a while. Two minutes, tops.”</div>'
+      +'<button class="btn wide" onclick="closeModal();plCheckup()">Let’s do it</button>'
+      +'<button class="btn wide ghost" onclick="closeModal()">Not today</button>'); return true; }
+
+  /* offers: when the player lands in town or the Band Room */
+  function maybeOffer(){ try{ if(!S.flags||!S.flags.introDone)return; if(!S.flags.seen144)return; var on=document.querySelector('.scr.on'); if(!on||(on.id!=='scr-hub'&&on.id!=='scr-town'))return; if(offerSitting())return; offerCheckup(); }catch(e){} }
+  (function(){ if(typeof openTown==='function'){ var _ot=openTown; window.openTown=openTown=function(){ var r=_ot.apply(this,arguments); setTimeout(maybeOffer,900); return r; }; if(window.BQ)try{ window.BQ.openTown=openTown; }catch(_){} }
+    if(typeof renderHub==='function'){ var _rh=renderHub; window.renderHub=renderHub=function(){ var r=_rh.apply(this,arguments); setTimeout(maybeOffer,900); return r; }; } })();
+
+  /* ---------- Grown-Ups corner ---------- */
+  var GATES=[['6 × 7','42',['42','36','48','41']],['9 × 8','72',['72','64','81','74']],['7 × 8','56',['56','54','49','58']],['12 × 12','144',['144','124','142','146']]];
+  function grownGate(){ var g=GATES[rnd(GATES.length)], opts=g[2].slice().sort(function(){ return Math.random()-0.5; });
+    modal('<div class="center"><h2>👤 Grown-ups’ corner</h2><p class="sub">For a grown-up. What is '+g[0]+'?</p></div>'
+      +'<div class="row" style="justify-content:center;flex-wrap:wrap;gap:8px">'+opts.map(function(o){ return '<button class="btn" onclick="closeModal();'+(o===g[1]?'openGrown()':'toast(\'Ask a grown-up to open this.\')')+'">'+o+'</button>'; }).join('')+'</div>'
+      +'<button class="btn wide ghost" style="margin-top:10px" onclick="closeModal()">Back</button>'); }
+  window.openGrown=function(){ tap(); PL(); try{ zScr('scr-grown','gwScore','gwBody','This is the grown-ups’ corner: every math concept, where the player is, what is rusty, and buttons to run a Soundcheck sitting or a checkup.'); }catch(e){ return; } grownRender(); try{ show('scr-grown'); }catch(e){} var s=document.getElementById('scr-grown'); if(s)s.scrollTop=0; };
+
+  function trend(c){ var b=baseSnap(); if(!b||b.lv[c]==null)return null; return Math.round((lv(c)-b.lv[c])*10)/10; }
+  function trendHTML(c){ var t=trend(c); if(t===null)return '<span class="sub" style="margin:0;opacity:.6">new</span>'; if(Math.abs(t)<0.5)return '<span style="opacity:.6">▬</span>'; return t>0?'<span style="color:#7dff8a">▲ +'+t+'</span>':'<span style="color:#ff9a7a">▼ '+t+'</span>'; }
+  function grownRender(){ var p=PL(), all=allConcepts(), pend=pending(), body=document.getElementById('gwBody'), score=document.getElementById('gwScore'); if(!body)return;
+    var placedN=all.length-pend.length, sum=0; all.forEach(function(c){ sum+=lv(c); }); var avg=Math.round(sum/all.length*10)/10;
+    var acc=(S.stats&&S.stats.answers)?Math.round(100*S.stats.correct/S.stats.answers):0;
+    var rustyN=Object.keys(p.rusty).length, bs=baseSnap();
+    if(score)score.textContent=placedN+' / '+all.length+' placed';
+    var h='<div class="card" style="text-align:left"><b>👤 Grown-ups’ corner</b><div class="sub" style="margin:4px 0 0">Levels run 1 to 12. Bronze 1-3, Silver 4-6, Gold 7-9, Platinum 10+. Every answer in any game nudges the level. Trend compares with the snapshot from '+(bs?agoTxt(bs.d):'(none yet)')+'.</div></div>';
+    h+='<div class="row" style="gap:6px;flex-wrap:wrap;margin:8px 0">'
+      +tile('Placed',placedN+' of '+all.length)+tile('Average level',avg)+tile('Answers',(S.stats&&S.stats.answers)||0)+tile('Accuracy',acc+'%')
+      +tile('Rusty',rustyN)+tile('Last checkup',p.ckLast?agoTxt(p.ckLast):'never')+'</div>';
+    h+='<div class="row" style="gap:6px;flex-wrap:wrap;margin:6px 0 10px">'
+      +(pend.length?'<button class="btn" onclick="plSitting()">🎤 Soundcheck sitting ('+Math.min(PER_SIT,pend.length)+' of '+pend.length+' left)</button>':'')
+      +'<button class="btn" onclick="plCheckup()">🔍 Run a checkup now</button>'
+      +'<button class="btn ghost" onclick="plCopy()">📋 Copy report</button></div>';
+    STRANDS.forEach(function(s){ var cs=s.c.filter(function(c){ return QG[c]; }); if(!cs.length)return;
+      h+='<div class="card" style="text-align:left;margin:8px 0"><b>'+s.e+' '+esc(s.n)+'</b>';
+      cs.forEach(function(c){ var L=fl(c), m=memberOf(c), tags='';
+        if(!p.placed[c])tags+=pill('not placed','#5a4a1a','#ffd158');
+        if(p.rusty[c])tags+=pill('rusty','#6a2a2a','#ffb0a0');
+        h+='<div class="gwRow" data-c="'+c+'" style="display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid rgba(255,255,255,.08)">'
+          +'<div style="flex:1;min-width:0"><div style="font-weight:800">'+esc(cname(c))+(m?' <span class="sub" style="display:inline;margin:0">· '+esc(mName(m.id))+(S.band[m.id]?'':' (not recruited yet)')+'</span>':'')+'</div>'
+          +'<div class="sub" style="margin:2px 0 0;text-align:left">'+tags+'last practiced '+agoTxt(p.last[c])+(p.cnt[c]?' · '+p.cnt[c]+' answers':'')+'</div></div>'
+          +'<div style="text-align:right;white-space:nowrap"><div><b>Lvl '+L+'</b> '+medal(L)+'</div><div class="sub" style="margin:0">'+stars(L)+' '+trendHTML(c)+'</div></div></div>'; });
+      h+='</div>'; });
+    body.innerHTML=h;
+    var rows=body.querySelectorAll('.gwRow'); for(var i=0;i<rows.length;i++)rows[i].addEventListener('click',function(){ rowMenu(this.getAttribute('data-c')); }); }
+  function pill(t,bg,fg){ return '<span style="display:inline-block;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:800;background:'+bg+';color:'+fg+';margin-right:6px;vertical-align:middle">'+t+'</span>'; }
+  function tile(k,v){ return '<div class="card" style="flex:1 1 100px;padding:8px 10px;text-align:center;margin:0"><div class="sub" style="margin:0">'+k+'</div><b style="font-size:18px">'+v+'</b></div>'; }
+  function rowMenu(c){ tap(); var m=memberOf(c), L=fl(c), p=PL(); var hist=p.snaps.filter(function(s){ return s.lv[c]!=null; }).slice(-6).map(function(s){ return pill(esc(s.d.slice(5))+': Lvl '+Math.floor(s.lv[c]),'#2d2850','#f4f0ff'); }).join('');
+    modal('<div class="center"><h2>'+esc(cname(c))+'</h2><p class="sub">Lvl '+L+' of 12 · '+tierName(L)+' '+medal(L)+'<br>last practiced '+agoTxt(p.last[c])+' · '+(p.cnt[c]||0)+' answers'+(p.rusty[c]?' · <b>rusty</b>':'')+'</p></div>'
+      +(hist?'<div class="card" style="text-align:left"><div class="sub" style="margin:0 0 4px">Level at each snapshot</div>'+hist+'</div>':'')
+      +'<button class="btn wide" onclick="closeModal();plSitting(\''+c+'\')">🎤 Re-check this one (up to '+MAX_Q+' questions)</button>'
+      +(m&&S.band[m.id]?'<button class="btn wide" onclick="closeModal();startAudition(\''+m.id+'\')">🎸 Jam with '+esc(mName(m.id))+'</button>':(m?'<p class="sub center">'+esc(mName(m.id))+' teaches this once recruited.</p>':''))
+      +'<button class="btn wide ghost" onclick="closeModal()">Back</button>'); }
+  function reportText(){ var p=PL(), out=[]; out.push('MEASURE UP · progress report · '+new Date().toDateString()); var who=(S.creature&&S.creature.name)||'Player'; out.push('Player: '+who+' · answers '+((S.stats&&S.stats.answers)||0)+' · placed '+(allConcepts().length-pending().length)+' of '+allConcepts().length+' · last checkup '+(p.ckLast?agoTxt(p.ckLast):'never'));
+    STRANDS.forEach(function(s){ var cs=s.c.filter(function(c){ return QG[c]; }); if(!cs.length)return; out.push(''); out.push(s.n.toUpperCase());
+      cs.forEach(function(c){ var L=fl(c), t=trend(c); out.push('  '+cname(c)+': Lvl '+L+' '+tierName(L)+(t===null?'':(t>0?' (up '+t+')':t<0?' (down '+Math.abs(t)+')':' (steady)'))+' · last '+agoTxt(p.last[c])+(p.rusty[c]?' · RUSTY':'')+(p.placed[c]?'':' · NOT PLACED')); }); });
+    return out.join('\n'); }
+  window.plCopy=function(){ tap(); var t=reportText(); var done=function(){ tst('Report copied'); }; var fail=function(){ modal('<h2 class="center">Report</h2><textarea style="width:100%;height:50vh;font:12px/1.4 monospace;background:#1b1830;color:#eee;border-radius:10px;padding:8px">'+esc(t)+'</textarea><button class="btn wide" onclick="closeModal()">Close</button>'); };
+    try{ if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(done,fail); else fail(); }catch(e){ fail(); } };
+
+  (function(){ var _tg=townGo; window.townGo=townGo=function(dest){ if(dest==='grown'){ grownGate(); return; } return _tg.apply(this,arguments); }; })();
+
+  /* ---------- What's New (v1.44) ---------- */
+  (function(){ if(typeof openTown!=='function')return; var _ot=openTown; window.openTown=openTown=function(){ var r=_ot.apply(this,arguments);
+    try{ if(S.flags&&S.flags.introDone&&!S.flags.seen144){ S.flags.seen144=true; sv(); if(!(S.stats&&S.stats.answers>0))return r;
+      setTimeout(function(){ try{ if(modalOn())return;
+        modal('<div class="center">'+elly(80)+'<h2>🎤 Elly’s Soundcheck is back!</h2></div>'
+          +'<div class="card" style="text-align:left"><b>🎤 Soundcheck.</b> <span class="sub" style="display:inline;margin:0">A few quick questions on everything the band teaches, a little each day, so every bandmate starts at YOUR level. No grades. Skip anything new to you.</span></div>'
+          +'<div class="card" style="text-align:left"><b>🔍 Weekly Checkup.</b> <span class="sub" style="display:inline;margin:0">Once a week Elly asks about the things you have not played in a while, so nothing gets rusty.</span></div>'
+          +'<div class="card" style="text-align:left"><b>👤 Grown-ups’ corner.</b> <span class="sub" style="display:inline;margin:0">The pill at the top of the city now opens the progress page for grown-ups.</span></div>'
+          +'<button class="btn wide" onclick="closeModal()">Let’s go</button>'); }catch(e){} },700); } }catch(e){}
+    return r; }; if(window.BQ)try{ window.BQ.openTown=openTown; }catch(_){} })();
+
+  if(window.BQ)try{ Object.assign(window.BQ,{plSitting:window.plSitting,plCheckup:window.plCheckup,openGrown:window.openGrown,plPending:pending,plSnapshot:snapshot,plStrands:STRANDS,plReport:reportText}); }catch(e){}
+  window.__pl={pending:pending,PL:PL,ladder:ladder,ladderStep:ladderStep,ladderResult:ladderResult,seedFor:seedFor,checkupDue:checkupDue,checkupPick:checkupPick,snapshot:snapshot,baseSnap:baseSnap,all:allConcepts,run:function(){return RUN;}};
 })();
 </script>
 </body>
