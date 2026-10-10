@@ -729,6 +729,8 @@
     <div class="diagbox"><div class="diaglab">B &middot; Reverb OFF</div><div class="diagval sm" id="diag-slotB">not captured</div></div>
     <div class="diaghint" id="diag-verdict" style="min-height:16px;"></div>
     <button class="act" id="diag-fx" style="width:100%;margin-bottom:10px;">Reverb + delay: ON</button>
+    <button class="act" id="diag-draw" style="width:100%;margin-bottom:8px;">Visuals: ON</button>
+    <div class="diaghint" style="margin-bottom:10px;">Second test: with a loop playing, watch Dropped frames above, then tap Visuals off. If it falls near 0, the drawing is the cost, not the audio.</div>
     <div style="display:flex;gap:8px;margin-bottom:10px;">
       <button class="act" id="diag-copy" style="flex:1;margin:0;">Copy report</button>
       <button class="act" id="diag-reset" style="flex:1;margin:0;">Reset A/B</button>
@@ -841,7 +843,7 @@ const FAM = {
   Lead:'#f0a830', Arp:'#46c98b', Keys:'#f4894f', Synth:'#38d6e0',
   Vox:'#c084fc', FX:'#4cf0e0', Sample:'#94a3b8'
 };
-const BUILD='v11.1 · Oct 8';
+const BUILD='v11.2 · Oct 10';
 const CATS = ['Beat','Bass','Chord','Pad','Lead','Arp','Keys','Synth','Vox','FX','Sample'];
 const CATICON = {Beat:'beat',Bass:'bass',Chord:'chord',Pad:'pad',Lead:'lead',Arp:'arp',
   Keys:'keys',Synth:'synth',Vox:'vox',FX:'fx',Sample:'sample'};
@@ -1293,7 +1295,7 @@ const KITS = {
 
 // ---------- State ----------
 let pads=[], curKit='SynthWave', padsPaused=false;
-let diagOpen=false, diagFxBypassed=false, diagFpsRAF=null; // diagnostics sheet (hold build badge)
+let diagOpen=false, diagFxBypassed=false, diagNoDraw=false, diagFpsRAF=null; // diagnostics sheet (hold build badge)
 let userTouched=false; // becomes true on first real interaction; gates autosave
 let syncOffset=0; // seconds: manual headphone/Bluetooth calibration on top of auto outputLatency
 try{ const _v=parseFloat(localStorage.getItem('bf_sync')); if(!isNaN(_v))syncOffset=_v; }catch(e){}
@@ -1320,9 +1322,11 @@ function sched(){ const sd=stepDur();
 function drawLoop(){
   if(A.ctx){ const now=A.ctx.currentTime-(A.ctx.outputLatency||0)-syncOffset; // delay visuals to match what you HEAR (matters most on Bluetooth)
     while(S.q.length && S.q[0].t<now){ const it=S.q.shift(), cur=it.step;
+      if(!diagNoDraw){
       if(!padsPaused) pads.forEach(p=>{ if(p.on&&p.barEl){ const pos=cur%p.len; p.barEl.style.width=(pos/(p.len-1)*100)+'%';
         if(pos===0&&p.el&&p.el.animate){ try{ p.el.animate([{filter:'brightness(1.45)'},{filter:'brightness(1)'}],{duration:150}); }catch(e){} } }});
-      r8Playhead(cur); compPlayhead((it.bar||0)*16+cur); }
+      r8Playhead(cur); compPlayhead((it.bar||0)*16+cur);
+      } }
   }
   requestAnimationFrame(drawLoop);
 }
@@ -1593,6 +1597,8 @@ function diagRefresh(){
   if(se) se.innerHTML='<b>'+n+'</b> sound'+(n===1?'':'s')+' · <b>~'+mb.toFixed(1)+' MB</b> in RAM';
   const fxb=document.getElementById('diag-fx');
   if(fxb){ fxb.textContent='Reverb + delay: '+(diagFxBypassed?'BYPASSED':'ON'); fxb.className='act'+(diagFxBypassed?' danger':''); }
+  const dwb=document.getElementById('diag-draw');
+  if(dwb){ dwb.textContent='Visuals: '+(diagNoDraw?'OFF':'ON'); dwb.className='act'+(diagNoDraw?' danger':''); }
   const cap=document.getElementById('diag-cap');
   if(cap) cap.textContent = _cap ? 'Capturing...' : ('Capture 6s (Reverb '+(diagFxBypassed?'OFF':'ON')+')');
   const sa=document.getElementById('diag-slotA'); if(sa) sa.innerHTML=_capA?('<b>'+_dshort(_capA)+'</b>'+(_capA.playing?'':' · idle')):'not captured';
@@ -1633,13 +1639,14 @@ function diagResetAB(){ _capA=null; _capB=null; _cap=null; diagRefresh(); toast(
 function openDiag(){ diagOpen=true; _diagLast=0; _frbuf=[];
   document.getElementById('diagscrim').classList.add('show'); diagRefresh();
   diagFpsRAF=requestAnimationFrame(diagFpsTick); }
-function closeDiag(){ diagOpen=false; if(diagFpsRAF){ cancelAnimationFrame(diagFpsRAF); diagFpsRAF=null; }
+function closeDiag(){ diagOpen=false; diagNoDraw=false; if(diagFpsRAF){ cancelAnimationFrame(diagFpsRAF); diagFpsRAF=null; }
   document.getElementById('diagscrim').classList.remove('show'); }
 function diagToggleFx(){ if(!A.ctx){ toast('Start audio first, play a pad'); return; }
   diagFxBypassed=!diagFxBypassed;
   try{ if(diagFxBypassed){ A.RV.disconnect(A.master); A.DL.disconnect(A.master); }
        else { A.RV.connect(A.master); A.DL.connect(A.master); } }catch(e){}
   diagRefresh(); toast(diagFxBypassed?'Reverb + delay bypassed (A/B)':'Reverb + delay back on'); }
+function diagToggleDraw(){ diagNoDraw=!diagNoDraw; diagRefresh(); toast(diagNoDraw?'Visuals paused (A/B), audio keeps playing':'Visuals back on'); }
 function diagFreeSamples(){ if(!samples.some(s=>s.buffer)){ toast('No saved sounds loaded'); return; }
   for(const s of samples){ s.buffer=null; }
   if(A.ctx) loadKit(curKit);
@@ -2776,6 +2783,7 @@ function boot(){
     const dcap=document.getElementById('diag-cap'); if(dcap)dcap.addEventListener('click',diagCapture);
     const dcp=document.getElementById('diag-copy'); if(dcp)dcp.addEventListener('click',diagReport);
     const drs=document.getElementById('diag-reset'); if(drs)drs.addEventListener('click',diagResetAB);
+    const ddw=document.getElementById('diag-draw'); if(ddw)ddw.addEventListener('click',diagToggleDraw);
     const ds=document.getElementById('diagscrim'); if(ds)ds.addEventListener('click',e=>{ if(e.target.id==='diagscrim')closeDiag(); }); }
   document.getElementById('nav-mix').innerHTML=SVG.mix+'<span>Mix</span>';
   document.getElementById('nav-fx').innerHTML=SVG.wave+'<span>FX</span>';
