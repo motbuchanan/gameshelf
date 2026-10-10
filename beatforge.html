@@ -701,20 +701,40 @@
 <div class="scrim" id="diagscrim">
   <div class="sheet">
     <h2>Diagnostics</h2>
-    <p>A quick health check to find what's making playback chug. Numbers update live, and nothing here is saved — close to go back to normal.</p>
+    <p>A deeper check for the playback chug. The numbers update live. Nothing here is saved. Follow the A/B steps, then send Mot the verdict.</p>
+    <div class="diaghdr">Live now</div>
     <div class="diagbox">
-      <div class="diaglab">Frame rate <small>visual smoothness — on a stressed device, audio chugging tracks this closely</small></div>
-      <div class="diagval" id="diag-fps">– fps</div>
+      <div class="diaglab">Worst frame <small>longest stall in the last second. Under 20ms is smooth, over 33ms is a hitch you can see and hear.</small></div>
+      <div class="diagval" id="diag-worst">0 ms</div>
     </div>
+    <div class="diagbox">
+      <div class="diaglab">Dropped frames <small>frames each second that missed the 60Hz deadline. This is the chug.</small></div>
+      <div class="diagval" id="diag-drops">0/s</div>
+    </div>
+    <div class="diaghint" id="diag-live2">avg 0 fps · idle</div>
     <div class="diagbox">
       <div class="diaglab">Saved-sound memory <small>every saved sound is decoded and held in RAM the whole time the app runs</small></div>
-      <div class="diagval sm" id="diag-samples">–</div>
+      <div class="diagval sm" id="diag-samples">0 sounds</div>
     </div>
     <div class="diaghint" id="diag-ctx">audio engine not started yet</div>
-    <p class="diaghdr">A/B tests — flip one, watch the frame rate</p>
+    <p class="diaghdr">A/B test: reverb on vs off</p>
+    <ol style="margin:0 0 12px;padding-left:20px;font-size:12.5px;line-height:1.55;color:var(--dim);">
+      <li>Close this, start a 2-pad loop so it plays and you can hear any chug, then hold the badge to reopen here.</li>
+      <li>Leave reverb ON. Tap <b style="color:var(--txt)">Capture</b> and wait 6 seconds without touching anything.</li>
+      <li>Tap <b style="color:var(--txt)">Bypass reverb</b>, then tap <b style="color:var(--txt)">Capture</b> again and wait 6 more seconds.</li>
+      <li>Read the verdict, then tap <b style="color:var(--txt)">Copy report</b> and paste it to Mot, or send a screenshot.</li>
+    </ol>
+    <button class="act primary" id="diag-cap" style="width:100%;margin-bottom:10px;">Capture 6s (Reverb ON)</button>
+    <div class="diagbox"><div class="diaglab">A &middot; Reverb ON</div><div class="diagval sm" id="diag-slotA">not captured</div></div>
+    <div class="diagbox"><div class="diaglab">B &middot; Reverb OFF</div><div class="diagval sm" id="diag-slotB">not captured</div></div>
+    <div class="diaghint" id="diag-verdict" style="min-height:16px;"></div>
     <button class="act" id="diag-fx" style="width:100%;margin-bottom:10px;">Reverb + delay: ON</button>
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
+      <button class="act" id="diag-copy" style="flex:1;margin:0;">Copy report</button>
+      <button class="act" id="diag-reset" style="flex:1;margin:0;">Reset A/B</button>
+    </div>
     <button class="act danger" id="diag-free" style="width:100%;margin-bottom:6px;">Unload saved sounds (this session)</button>
-    <div class="diaghint">If frame rate jumps when you bypass FX, the reverb is the cost. If it jumps when you unload sounds, memory is the cost. Reload the app to restore either.</div>
+    <div class="diaghint">If dropped frames and worst frame fall a lot with reverb off, reverb is the cost. If they barely change, reverb is not the cause. Reload the app to restore everything.</div>
     <button class="skip" id="diag-close">Close</button>
   </div>
 </div>
@@ -821,7 +841,7 @@ const FAM = {
   Lead:'#f0a830', Arp:'#46c98b', Keys:'#f4894f', Synth:'#38d6e0',
   Vox:'#c084fc', FX:'#4cf0e0', Sample:'#94a3b8'
 };
-const BUILD='v11.0 · Oct 8';
+const BUILD='v11.1 · Oct 8';
 const CATS = ['Beat','Bass','Chord','Pad','Lead','Arp','Keys','Synth','Vox','FX','Sample'];
 const CATICON = {Beat:'beat',Bass:'bass',Chord:'chord',Pad:'pad',Lead:'lead',Arp:'arp',
   Keys:'keys',Synth:'synth',Vox:'vox',FX:'fx',Sample:'sample'};
@@ -1548,29 +1568,74 @@ function saveSample(rec){ if(!DB)return;
 
 // ---------- Diagnostics (hold the build badge to open) ----------
 function diagSampleBytes(){ let b=0; for(const s of samples){ if(s.buffer) b+=s.buffer.length*s.buffer.numberOfChannels*4; } return b; }
+let _diagLast=0, _frbuf=[], _cap=null, _capA=null, _capB=null;
+function _dstat(deltas,dur){
+  const frames=deltas.length, secs=(dur/1000)||1;
+  let worst=0,sum=0,dropped=0,severe=0;
+  for(const d of deltas){ if(d>worst)worst=d; sum+=d; if(d>20)dropped++; if(d>33)severe++; }
+  const sorted=deltas.slice().sort((a,b)=>a-b);
+  const p95=sorted.length?sorted[Math.min(sorted.length-1,Math.floor(sorted.length*0.95))]:0;
+  return {frames,dur,fps:frames/secs,worst,p95,dropped,severe,dropsPerSec:dropped/secs,sevPerSec:severe/secs};
+}
+function _dfmt(r){ return 'worst '+Math.round(r.worst)+'ms · '+r.dropsPerSec.toFixed(1)+' drops/s · '+r.fps.toFixed(0)+' fps'; }
+function _dshort(r){ return 'worst '+Math.round(r.worst)+'ms · '+r.dropsPerSec.toFixed(1)+' drops/s'; }
+function _dverdict(){
+  if(!_capA||!_capB) return '';
+  if(!_capA.playing||!_capB.playing) return 'Both captures need a loop PLAYING to count. Start a 2-pad loop and redo both.';
+  const dd=_capA.dropsPerSec-_capB.dropsPerSec, dw=_capA.worst-_capB.worst;
+  if(dd>=1.5||dw>=8) return 'VERDICT: reverb IS a real cost. Drops '+_capA.dropsPerSec.toFixed(1)+'/s to '+_capB.dropsPerSec.toFixed(1)+'/s, worst '+Math.round(_capA.worst)+'ms to '+Math.round(_capB.worst)+'ms when bypassed.';
+  if(Math.abs(dd)<1&&Math.abs(dw)<5) return 'VERDICT: reverb is NOT the cause. On vs off is about the same ('+_capA.dropsPerSec.toFixed(1)+' vs '+_capB.dropsPerSec.toFixed(1)+' drops/s).';
+  return 'VERDICT: small or mixed effect. On '+_capA.dropsPerSec.toFixed(1)+'/s, off '+_capB.dropsPerSec.toFixed(1)+'/s. Capture both again to confirm.';
+}
 function diagRefresh(){
   const n=samples.filter(s=>s.buffer).length, mb=diagSampleBytes()/1048576;
   const se=document.getElementById('diag-samples');
   if(se) se.innerHTML='<b>'+n+'</b> sound'+(n===1?'':'s')+' · <b>~'+mb.toFixed(1)+' MB</b> in RAM';
   const fxb=document.getElementById('diag-fx');
   if(fxb){ fxb.textContent='Reverb + delay: '+(diagFxBypassed?'BYPASSED':'ON'); fxb.className='act'+(diagFxBypassed?' danger':''); }
+  const cap=document.getElementById('diag-cap');
+  if(cap) cap.textContent = _cap ? 'Capturing...' : ('Capture 6s (Reverb '+(diagFxBypassed?'OFF':'ON')+')');
+  const sa=document.getElementById('diag-slotA'); if(sa) sa.innerHTML=_capA?('<b>'+_dshort(_capA)+'</b>'+(_capA.playing?'':' · idle')):'not captured';
+  const sb=document.getElementById('diag-slotB'); if(sb) sb.innerHTML=_capB?('<b>'+_dshort(_capB)+'</b>'+(_capB.playing?'':' · idle')):'not captured';
+  const vd=document.getElementById('diag-verdict'); if(vd){ const v=_dverdict(); vd.textContent=v; vd.style.color=/IS a real cost/.test(v)?'var(--accent)':/NOT the cause/.test(v)?'#e7c14a':'var(--dim)'; }
   const ce=document.getElementById('diag-ctx');
-  if(ce) ce.textContent = A.ctx ? ('audio engine running · '+Math.round(A.ctx.sampleRate/1000)+' kHz · '+(A.ctx.state||'')) : 'audio engine not started yet — play a pad first';
+  if(ce) ce.textContent = A.ctx ? ('audio engine running · '+Math.round(A.ctx.sampleRate/1000)+' kHz · '+(A.ctx.state||'')) : 'audio engine not started yet, play a pad first';
 }
-let _diagLast=0, _diagFps=60;
 function diagFpsTick(ts){ if(!diagOpen)return;
-  if(_diagLast){ _diagFps=_diagFps*0.9+(1000/(ts-_diagLast))*0.1; } _diagLast=ts;
-  const el=document.getElementById('diag-fps');
-  if(el){ const v=Math.round(_diagFps); el.textContent=v+' fps';
-    el.style.color = v>=50?'var(--accent)':v>=30?'#e7c14a':'#ff7a7a'; }
+  if(_diagLast){ const dt=ts-_diagLast; _frbuf.push({t:ts,dt});
+    while(_frbuf.length && ts-_frbuf[0].t>1000) _frbuf.shift();
+    if(_cap){ _cap.deltas.push(dt); if(ts-_cap.t0>=_cap.dur) _dfinish(ts); } }
+  _diagLast=ts;
+  const d=_frbuf.map(x=>x.dt); let worst=0,sum=0,drops=0;
+  for(const x of d){ if(x>worst)worst=x; sum+=x; if(x>20)drops++; }
+  const we=document.getElementById('diag-worst'); if(we){ we.textContent=Math.round(worst)+' ms'; we.style.color=worst<=20?'var(--accent)':worst<=33?'#e7c14a':'#ff7a7a'; }
+  const de=document.getElementById('diag-drops'); if(de){ de.textContent=drops+'/s'; de.style.color=drops===0?'var(--accent)':drops<=2?'#e7c14a':'#ff7a7a'; }
+  const l2=document.getElementById('diag-live2'); if(l2){ const avg=d.length?1000/(sum/d.length):0; l2.textContent='avg '+avg.toFixed(0)+' fps · '+(anyPlaying()?'playing':'idle')+(_cap?(' · capturing '+Math.max(0,Math.ceil((_cap.dur-(ts-_cap.t0))/1000))+'s'):''); }
   diagFpsRAF=requestAnimationFrame(diagFpsTick);
 }
-function openDiag(){ diagOpen=true; _diagLast=0; _diagFps=60;
+function _dfinish(ts){
+  const r=_dstat(_cap.deltas, ts-_cap.t0); r.playing=_cap.playing;
+  if(diagFxBypassed) _capB=r; else _capA=r; _cap=null; diagRefresh();
+  toast('Captured reverb '+(r.playing?'':'(nothing playing) ')+': '+_dfmt(r)); }
+function diagCapture(){ if(!A.ctx){ toast('Start audio first, play a pad'); return; }
+  if(_cap){ toast('Already capturing, wait for it to finish'); return; }
+  _cap={deltas:[], t0:performance.now(), dur:6000, playing:anyPlaying()}; diagRefresh();
+  toast(anyPlaying()?'Capturing 6s, keep the loop playing and do not touch':'Nothing is playing, start a loop for a real reading'); }
+function diagReport(){
+  const lines=['Noodle '+BUILD+' diagnostics',
+    'live: '+((document.getElementById('diag-live2')||{}).textContent||''),
+    'A reverb ON: '+(_capA?(_dfmt(_capA)+(_capA.playing?'':' [nothing playing]')):'not captured'),
+    'B reverb OFF: '+(_capB?(_dfmt(_capB)+(_capB.playing?'':' [nothing playing]')):'not captured'),
+    _dverdict()].filter(Boolean).join('\n');
+  if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(lines).then(()=>toast('Report copied, paste it to Mot')).catch(()=>toast('Copy blocked, send a screenshot instead')); }
+  else toast('Copy not available, send a screenshot instead'); }
+function diagResetAB(){ _capA=null; _capB=null; _cap=null; diagRefresh(); toast('A/B cleared'); }
+function openDiag(){ diagOpen=true; _diagLast=0; _frbuf=[];
   document.getElementById('diagscrim').classList.add('show'); diagRefresh();
   diagFpsRAF=requestAnimationFrame(diagFpsTick); }
 function closeDiag(){ diagOpen=false; if(diagFpsRAF){ cancelAnimationFrame(diagFpsRAF); diagFpsRAF=null; }
   document.getElementById('diagscrim').classList.remove('show'); }
-function diagToggleFx(){ if(!A.ctx){ toast('Start audio first — play a pad'); return; }
+function diagToggleFx(){ if(!A.ctx){ toast('Start audio first, play a pad'); return; }
   diagFxBypassed=!diagFxBypassed;
   try{ if(diagFxBypassed){ A.RV.disconnect(A.master); A.DL.disconnect(A.master); }
        else { A.RV.connect(A.master); A.DL.connect(A.master); } }catch(e){}
@@ -1578,7 +1643,7 @@ function diagToggleFx(){ if(!A.ctx){ toast('Start audio first — play a pad'); 
 function diagFreeSamples(){ if(!samples.some(s=>s.buffer)){ toast('No saved sounds loaded'); return; }
   for(const s of samples){ s.buffer=null; }
   if(A.ctx) loadKit(curKit);
-  diagRefresh(); toast('Sounds unloaded for this session — reload the app to bring them back'); }
+  diagRefresh(); toast('Sounds unloaded for this session, reload the app to bring them back'); }
 
 function guessCat(name){ const n=name.toLowerCase();
   if(/kick|drum|beat|perc|clap|snare|hat|hi-?hat/.test(n))return 'Beat';
@@ -2708,6 +2773,9 @@ function boot(){
   { const dc=document.getElementById('diag-close'); if(dc)dc.addEventListener('click',closeDiag);
     const dfx=document.getElementById('diag-fx'); if(dfx)dfx.addEventListener('click',diagToggleFx);
     const dfr=document.getElementById('diag-free'); if(dfr)dfr.addEventListener('click',diagFreeSamples);
+    const dcap=document.getElementById('diag-cap'); if(dcap)dcap.addEventListener('click',diagCapture);
+    const dcp=document.getElementById('diag-copy'); if(dcp)dcp.addEventListener('click',diagReport);
+    const drs=document.getElementById('diag-reset'); if(drs)drs.addEventListener('click',diagResetAB);
     const ds=document.getElementById('diagscrim'); if(ds)ds.addEventListener('click',e=>{ if(e.target.id==='diagscrim')closeDiag(); }); }
   document.getElementById('nav-mix').innerHTML=SVG.mix+'<span>Mix</span>';
   document.getElementById('nav-fx').innerHTML=SVG.wave+'<span>FX</span>';
