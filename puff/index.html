@@ -174,7 +174,7 @@ body{font-family:var(--font);color:var(--ink);-webkit-user-select:none;user-sele
         <button type="button" class="tiny" id="mapBtn">Map</button>
         <button type="button" class="tiny" id="bookBtn">Book</button>
         <button type="button" class="tiny" id="pauseBtn">Pause</button>
-        <button type="button" class="tiny" id="verBtn">v1.2 &middot; Oct 14</button>
+        <button type="button" class="tiny" id="verBtn">v1.2.1 &middot; Oct 14</button>
       </div>
     </div>
     <div class="ab">
@@ -241,7 +241,7 @@ body{font-family:var(--font);color:var(--ink);-webkit-user-select:none;user-sele
 <script>
 (function(){
 "use strict";
-var VERSION="v1.2", STAMP="Oct 14 2026";
+var VERSION="v1.2.1", STAMP="Oct 14 2026";
 /* Game Shelf hook: when gamenight.js is loaded (shelf build), boss wins go to the family ledger under puff_games. Standalone build: GN is undefined and every call is skipped. */
 var SHELF_KEY="puff_games", shelfPicked=false, shelfStart=Date.now();
 function shelfRecord(e){ try{ if(!window.GN||!GN.recordGame) return; var now=Date.now(); GN.recordGame(SHELF_KEY,{start:shelfStart,end:now,durationMs:now-shelfStart,stars:settings.stars||0,boss:e.name||e.kind,solo:true,winner:null,draw:true}); shelfStart=now; }catch(err){} }
@@ -931,6 +931,15 @@ function beamPts(x,y,face,k){
 /* ---------- enemies ---------- */
 function addSpawn(kind,x,y){ var s={kind:kind,x:x,y:y,timer:0,ent:null}; spawns.push(s); spawnEnemy(s,true); }
 var SIZE={walker:[12,12],beamer:[12,12],swooper:[12,11],hothead:[12,13],chilly:[13,14],sparky:[14,11],knight:[12,13],rock:[14,13],dummy:[14,24],bloon:[13,14],noddy:[12,12]};
+/* keep a freshly-spawned enemy from starting embedded in a tile (floor bumps, ceiling stubs):
+   rocks hang just below the ceiling, everyone else rises onto the surface. */
+function unstick(e){
+  function hit(){ var b=box(e); for(var c=Math.floor((b.x0+1)/T);c<=Math.floor((b.x1-1)/T);c++) for(var r=Math.floor(b.y0/T);r<=Math.floor((b.y1-1)/T);r++) if(tile(c,r)===1) return true; return false; }
+  if(!hit()) return;
+  var dir=(e.kind==="rock")?1:-1, tries=0;
+  while(tries++<7 && hit()) e.y+=dir*T;
+  if(typeof e.baseY==="number") e.baseY=e.y;
+}
 function spawnEnemy(s,quiet){
   var sz=SIZE[s.kind]||[12,12];
   var e={kind:s.kind,x:s.x,y:s.y,w:sz[0],h:sz[1],vx:0,vy:0,face:-1,onGround:false,state:"walk",t:0,spawn:s,pulled:false,stun:0,
@@ -939,7 +948,7 @@ function spawnEnemy(s,quiet){
   if(s.kind==="dummy") e.state="stand";
   if(s.kind==="swooper"){ e.state="fly"; e.vx=-.6; }
   if(s.kind==="bloon"){ e.state="fly"; e.vx=-.4; }
-  s.ent=e; enemies.push(e);
+  unstick(e); s.ent=e; enemies.push(e);
   if(!quiet) burst(e.x,e.y-6,6,"#FFFFFF",1.2,"cloud");
 }
 function near(e,rx,ry){ return Math.abs(P.x-e.x)<rx&&Math.abs((P.y-6)-(e.y-e.h/2))<ry&&P.mode!=="dead"; }
@@ -1493,8 +1502,8 @@ function camera(snap){
 
 /* ---------- canvas ---------- */
 var cv=document.getElementById("cv"), ctx=cv.getContext("2d");
-var DPR=1, CW=1, CH=1, SC=1, VW=256, VH=176;
-function resize(){ var r=cv.getBoundingClientRect(); CW=Math.max(1,r.width); CH=Math.max(1,r.height); DPR=Math.min(window.devicePixelRatio||1,2); cv.width=Math.round(CW*DPR); cv.height=Math.round(CH*DPR); fitScale(); camera(true); }
+var DPR=1, CW=1, CH=1, SC=1, VW=256, VH=176, lastCW=0, lastCH=0;
+function resize(){ var r=cv.getBoundingClientRect(); CW=Math.max(1,r.width); CH=Math.max(1,r.height); DPR=Math.min(window.devicePixelRatio||1,2); cv.width=Math.round(CW*DPR); cv.height=Math.round(CH*DPR); fitScale(); camera(true); lastCW=cv.clientWidth; lastCH=cv.clientHeight; }
 function fitScale(){ if(room&&room.boss){ SC=Math.min(CW/RW,CH/RH); } else { SC=Math.min(CW/256,CH/176); if(CH/SC>224) SC=Math.max(SC,Math.min(CH/224,CW/200)); } VW=CW/SC; VH=CH/SC; }
 window.addEventListener("resize",resize); window.addEventListener("orientationchange",function(){ setTimeout(resize,120); });
 
@@ -2337,6 +2346,9 @@ paintShake();
 var last=0, acc=0, STEP=1000/60;
 function frame(t){
   requestAnimationFrame(frame);
+  /* self-heal the canvas size: some iOS standalone-PWA launches never fire resize/orientationchange,
+     which would leave the view zoomed into a corner. Cheap integer compare each frame. */
+  if(cv.clientWidth>0&&(cv.clientWidth!==lastCW||cv.clientHeight!==lastCH)) resize();
   if(!last) last=t; var dt=Math.min(100,t-last); last=t;
   if(!G.paused){ acc+=dt; var n=0; while(acc>=STEP&&n<5){ step(); acc-=STEP; n++; } if(n>=5) acc=0; }
   render();
@@ -2344,11 +2356,15 @@ function frame(t){
 resize(); loadRoom("practice","start"); resize();
 if(settings.seen){ help.hidden=true; G.paused=false; } else openHelp();
 requestAnimationFrame(frame);
+/* belt-and-suspenders for the PWA launch: re-measure once layout settles, and on viewport changes iOS reports via visualViewport */
+setTimeout(resize,100); setTimeout(resize,400); setTimeout(resize,1200);
+window.addEventListener("load",resize);
+if(window.visualViewport){ window.visualViewport.addEventListener("resize",resize); window.visualViewport.addEventListener("scroll",resize); }
 
 /* test hook */
 window.__puff={G:G,get P(){return P;},get enemies(){return enemies;},get items(){return items;},get projs(){return projs;},get eprojs(){return eprojs;},get spawns(){return spawns;},get movers(){return movers;},get room(){return roomName;},
   step:step,setKey:function(k,v){ if(v&&!kbHeld[k]) queue(k); kbHeld[k]=!!v; },tap:function(k){ queue(k); },get pressed(){return pressed;},
-  reset:function(){ P=makePlayer(); loadRoom("practice","start"); },load:function(n,pt){ loadRoom(n,pt); },tile:tile,C:C,get RW(){return RW;},get RH(){return RH;},get settings(){return settings;},foundCount:foundCount,get lastPt(){return lastPt;},openMap:openMap,closeMap:closeMap,buildMap:buildMap,WORLDS:WORLDS,levelOpen:levelOpen,worldOpen:worldOpen,markDone:markDone,openBook:openBook,closeBook:closeBook,buildBook:buildBook,award:award,markDex:markDex,CARDS:CARDS,BOSSCARDS:BOSSCARDS,BADGES:BADGES,dexCount:dexCount,dexTotal:dexTotal,openHelp:openHelp,closeHelp:closeHelp,openPause:openPause,closePause:closePause,buildPause:buildPause,gGo:gGo,get gIdx(){return gIdx;},GPAGES:GPAGES};
+  reset:function(){ P=makePlayer(); loadRoom("practice","start"); },load:function(n,pt){ loadRoom(n,pt); },tile:tile,C:C,get RW(){return RW;},get RH(){return RH;},get settings(){return settings;},foundCount:foundCount,get lastPt(){return lastPt;},openMap:openMap,closeMap:closeMap,buildMap:buildMap,WORLDS:WORLDS,levelOpen:levelOpen,worldOpen:worldOpen,markDone:markDone,openBook:openBook,closeBook:closeBook,buildBook:buildBook,award:award,markDex:markDex,CARDS:CARDS,BOSSCARDS:BOSSCARDS,BADGES:BADGES,dexCount:dexCount,dexTotal:dexTotal,unstick:unstick,resize:resize,openHelp:openHelp,closeHelp:closeHelp,openPause:openPause,closePause:closePause,buildPause:buildPause,gGo:gGo,get gIdx(){return gIdx;},GPAGES:GPAGES};
 })();
 </script>
 
