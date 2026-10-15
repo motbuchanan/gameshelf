@@ -1,1 +1,780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#171a20">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="STICK">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%23171a20'/><circle cx='32' cy='36' r='18' fill='%23e9edf2'/><circle cx='32' cy='36' r='18' fill='none' stroke='%23aab1bb' stroke-width='3'/><line x1='12' y1='12' x2='30' y2='34' stroke='%23c9955a' stroke-width='4' stroke-linecap='round'/><line x1='52' y1='12' x2='34' y2='34' stroke='%23c9955a' stroke-width='4' stroke-linecap='round'/><circle cx='32' cy='36' r='4' fill='%23ffda73'/></svg>">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="manifest" href="manifest.json">
+<title>STICK</title>
+<style>
+  :root{
+    --bg:#171a20; --panel:#21262f; --panel2:#2a313c; --line:#3a4250;
+    --text:#e9edf2; --muted:#9aa6b4; --gold:#ffda73; --wrong:#ff5a52; --good:#5fd67a; --early:#6cc4ff; --late:#ffa552;
+    --hat:#8fd16a; --snare:#f2d34c; --kick:#e95f3b; --tom:#f0923a; --tom2:#6fb7e6; --ftom:#b48ad8; --crash:#e2483d; --ride:#5b84c7;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent; -webkit-user-select:none; user-select:none;}
+  html,body{margin:0; background:var(--bg); color:var(--text); font-family:'Trebuchet MS',-apple-system,system-ui,sans-serif; overscroll-behavior:none;}
+  body{padding:12px 12px 60px; max-width:1000px; margin:0 auto;}
+  h1{font-family:Georgia,'Times New Roman',serif; font-size:25px; font-weight:600; margin:0; letter-spacing:.5px;}
+  .sub{color:var(--muted); font-size:12px; margin:0 0 10px;}
+  .head{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
+  .head .grow{flex:1}
+  #shelfBtn{background:rgba(0,0,0,.35); color:inherit; font:600 12px/1 system-ui,sans-serif; text-decoration:none; padding:10px 13px; border-radius:999px; border:1px solid rgba(255,255,255,.28); white-space:nowrap;}
+  #verBadge{background:#3b2f14; color:var(--gold); border:1px solid #7a5f2a; border-radius:999px; font:bold 11px/1 system-ui,sans-serif; padding:7px 10px; cursor:pointer;}
+  .bar{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:10px;}
+  .seg{display:inline-flex; background:var(--panel); border:1px solid var(--line); border-radius:10px; overflow:hidden; flex-wrap:wrap;}
+  .seg button{background:transparent; color:var(--muted); border:0; padding:9px 12px; font-size:13px; font-weight:bold; cursor:pointer; min-height:40px;}
+  .seg button.active{background:var(--panel2); color:var(--gold);}
+  button.btn{background:var(--panel2); color:var(--text); border:1px solid var(--line); border-radius:10px; padding:9px 13px; font-size:13px; font-weight:bold; cursor:pointer; min-height:40px;}
+  button.btn.gold{background:#3b2f14; color:var(--gold); border-color:#7a5f2a;}
+  button.btn.red{background:#3b1a17; color:#ff8a80; border-color:#7a2d27;}
+  button.btn:active{transform:scale(.96)}
+  button.btn:disabled{opacity:.4}
+  label.field{display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--muted);}
+  select,input[type=number]{background:var(--panel); color:var(--text); border:1px solid var(--line); border-radius:8px; padding:7px 9px; font-size:13px;}
+  input[type=range]{width:120px}
+  .panel{display:none; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:12px; margin-bottom:10px;}
+  .panel.show{display:block}
+  .muted{color:var(--muted)} .small{font-size:12px}
+  .lead{margin:0 0 10px; font-size:14px; line-height:1.45}
+  .row{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:6px 0;}
+  .card{background:var(--panel2); border:1px solid var(--line); border-radius:12px; padding:10px; margin:8px 0;}
+  .card.sel{border-color:var(--gold)}
+  .toast{position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:#000c; color:#fff; padding:10px 16px; border-radius:999px; font-size:13px; opacity:0; transition:opacity .2s; pointer-events:none; z-index:50;}
+  .toast.on{opacity:1}
 
+  /* KIT */
+  .kitwrap{position:relative; width:100%; aspect-ratio:2/1; background:radial-gradient(ellipse at 50% 70%, #2b2f37 0%, #1b1e24 70%); border:1px solid var(--line); border-radius:16px; overflow:hidden; touch-action:none;}
+  @media (orientation:portrait){ .kitwrap{aspect-ratio:1/1} }
+  .pad{position:absolute; transform:translate(-50%,-50%); border-radius:50%; display:flex; align-items:center; justify-content:center; text-align:center; font-weight:bold; font-size:12px; color:#1b1b1b; box-shadow:0 8px 18px rgba(0,0,0,.5), inset 0 -4px 10px rgba(0,0,0,.25); cursor:pointer; transition:transform .08s;}
+  .pad .lbl{pointer-events:none; text-shadow:0 1px 0 rgba(255,255,255,.35); line-height:1.1}
+  .pad .lbl small{display:block; font-weight:normal; font-size:10px; opacity:.8}
+  .pad.drum{background:radial-gradient(circle at 40% 35%, #fbfbf6 0%, #dcdcd3 55%, #9c9c93 100%); border:5px solid #c9ccd2; outline:3px solid #6d737c;}
+  .pad.kick{background:radial-gradient(circle at 45% 40%, #3a3f49 0%, #1d2026 70%); border:6px solid #8a8f98; color:#e9edf2;}
+  .pad.cym{background:repeating-radial-gradient(circle, #e7c27a 0px, #d4a94f 3px, #f1d48d 6px); border:2px solid #a9843a;}
+  .pad.hat{background:repeating-radial-gradient(circle, #e7d08a 0px, #cfb45c 3px, #f0dc9a 6px); border:2px solid #a9843a;}
+  .pad.hit{transform:translate(-50%,-50%) scale(.9); filter:brightness(1.5);}
+  .pad.lit{box-shadow:0 0 0 6px var(--gold), 0 8px 18px rgba(0,0,0,.5);}
+  .pad.sel{box-shadow:0 0 0 4px var(--early), 0 8px 18px rgba(0,0,0,.5);}
+  .pad .tag{position:absolute; top:-8px; right:-8px; background:var(--gold); color:#000; font-size:11px; border-radius:999px; padding:2px 7px;}
+  .ring{position:absolute; border:3px solid #fff; border-radius:50%; transform:translate(-50%,-50%); pointer-events:none; animation:ring .35s ease-out forwards;}
+  @keyframes ring{from{opacity:.8; scale:1} to{opacity:0; scale:1.6}}
+  .kitwrap.edit .pad{outline:2px dashed var(--early); outline-offset:4px}
+  .editbox{display:none}
+  .editbox.show{display:block}
+  .editbox .row label{min-width:70px}
+
+  /* COUNT + LANE */
+  .count{display:flex; gap:4px; justify-content:center; margin:6px 0;}
+  .count span{flex:1; text-align:center; font-size:20px; font-weight:bold; color:var(--muted); padding:6px 0; border-radius:8px; background:var(--panel2);}
+  .count span.num{font-size:24px; color:var(--text)}
+  .count span.on{background:var(--gold); color:#000;}
+  .lane{position:relative; width:100%; height:150px; background:#121418; border:1px solid var(--line); border-radius:12px; overflow:hidden;}
+  .lane canvas{display:block; width:100%; height:100%;}
+  .big{font-size:34px; font-weight:bold; text-align:center; margin:4px 0; min-height:42px;}
+  .fb{font-size:13px; text-align:center; min-height:20px;}
+  .fb.good{color:var(--good)} .fb.early{color:var(--early)} .fb.late{color:var(--late)} .fb.miss{color:var(--wrong)}
+  .stars{text-align:center; font-size:22px; letter-spacing:4px; color:var(--gold);}
+
+  .sheet{width:100%;max-width:760px;background:#f8f6ef;border-radius:10px;padding:6px;display:block;margin:6px auto}
+  .sheet.hide,.staff.hide{display:none}
+  /* STAFF */
+  .staff{width:100%; max-width:720px; background:#f6f1e2; border-radius:10px; padding:6px; display:block; margin:6px auto;}
+  .grid{display:grid; gap:3px; margin:8px 0; max-width:620px;}
+  .grid .lname{font-size:11px; color:var(--muted); display:flex; align-items:center; padding-right:4px; white-space:nowrap;}
+  .grid .cell{aspect-ratio:1/1; max-height:44px; border-radius:5px; background:#2a313c; border:1px solid #3a4250;}
+  .grid .cell.beat{border-color:#5a657a}
+  .grid .cell.on{background:var(--gold)} .grid .cell.on.acc{background:#fff}
+  .grid .cell.now{outline:2px solid #fff}
+  .grid .cnt{font-size:11px; text-align:center; color:var(--muted); padding-top:2px}
+  .grid .cnt.num{color:var(--text); font-weight:bold;}
+
+  /* LESSON */
+  .lesson-list .card{display:flex; justify-content:space-between; align-items:center; gap:8px;}
+  .lesson-list .card b{font-size:15px}
+  .lesson-list .done{color:var(--good)}
+  .step{font-size:15px; line-height:1.5}
+  .step h3{margin:4px 0 6px; color:var(--gold); font-size:17px}
+  .pic{display:block; max-width:420px; width:100%; margin:8px auto; background:#20242b; border-radius:12px;}
+  .biglist{display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:8px}
+  .meter{height:10px; background:#111; border-radius:5px; overflow:hidden; margin:6px 0}
+  .meter i{display:block; height:100%; background:var(--good); width:0}
+  .prog{display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:6px; margin-top:8px}
+  .prog .card{margin:0; font-size:12px}
+  .hint{font-size:12px; color:var(--muted); margin-top:4px}
+</style>
+</head>
+<body>
+<div class="head">
+  <a href="../index.html" id="shelfBtn" aria-label="Back to the Game Shelf">⌂ Shelf</a>
+  <div class="grow">
+    <h1>ST<span style="color:var(--gold)">I</span>CK</h1>
+    <p class="sub" style="margin:0">see · tap · internalize · count · keep time</p>
+  </div>
+  <span id="verBadge">v0.3 · Oct 15</span>
+</div>
+<div class="bar" style="margin-top:8px">
+  <div class="seg" id="modeSeg">
+    <button data-mode="today" class="active">☀️ Today</button><button data-mode="kit">🥁 Kit</button>
+    <button data-mode="lessons">🎓 Lessons</button>
+    <button data-mode="patterns">Patterns</button>
+    <button data-mode="play">🎵 Play-Along</button>
+    <button data-mode="trainer">🎤 Trainer</button>
+  </div>
+  <label class="field">Tempo <input type="number" id="bpm" min="40" max="200" value="80" style="width:64px"></label>
+  <button class="btn" id="metroBtn">⏱ Click</button>
+  <button class="btn red" id="stopAll">■ Stop</button>
+</div>
+
+<!-- TODAY -->
+<div id="p-today" class="panel show">
+  <div class="row"><b style="font-size:17px">Today's 5 minutes</b><span class="grow"></span><span id="streak" class="small muted"></span></div>
+  <p class="lead">Three things. Warm up, one beat from the book, then play it with a song. Tap a card to go there. Green check when it is done.</p>
+  <div class="biglist" id="todayCards"></div>
+  <div class="row" style="margin-top:10px"><button class="btn" id="grownBtn">👪 Grown-ups</button><span class="hint">Progress, minutes practiced, export and import.</span></div>
+  <div id="grownBox" class="card" style="display:none">
+    <div id="grownStats"></div>
+    <div class="row"><button class="btn" id="expBtn">Copy progress</button><button class="btn" id="impBtn">Paste progress</button></div>
+    <textarea id="progTxt" style="width:100%;height:70px;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:6px;font-size:11px;display:none"></textarea>
+  </div>
+  <div id="todayKitSlot" style="margin-top:8px"></div>
+</div>
+<!-- KIT -->
+<div id="p-kit" class="panel">
+  <div class="kitwrap" id="kit"></div>
+  <div class="row" style="margin-top:8px">
+    <label class="field">Layout <select id="layoutSel"><option value="full">Full kit</option><option value="pad7">Roll-up pad (7)</option><option value="custom">My custom kit</option></select></label>
+    <button class="btn" id="editKit">✏️ Edit kit</button>
+    
+    <span class="hint">Tap pads to play. Multi-touch works. Turn the click on and play along.</span>
+  </div>
+  <div class="editbox card" id="editbox">
+    <div class="row"><b id="editTitle">Tap a pad to select it</b><span class="grow"></span><button class="btn" id="addPad">＋ Add pad</button><button class="btn" id="resetKit">↺ Reset layout</button><button class="btn gold" id="doneEdit">Done</button></div>
+    <div id="editFields" style="display:none">
+      <div class="row"><label>Name</label><input id="eName" style="background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:7px;width:150px"></div>
+      <div class="row"><label>Sound</label><select id="eVoice"><option value="kick">Kick</option><option value="snare">Snare</option><option value="hatc">Hi-hat closed</option><option value="hato">Hi-hat open</option><option value="tom">Tom</option><option value="crash">Crash</option><option value="ride">Ride</option><option value="rim">Rim / cross-stick</option><option value="cowbell">Cowbell</option><option value="clap">Clap</option></select></div>
+      <div class="row"><label>Pitch</label><input type="range" id="ePitch" min="0.5" max="2" step="0.01"><span id="ePitchV" class="small muted"></span></div>
+      <div class="row"><label>Decay</label><input type="range" id="eDecay" min="0.3" max="2.5" step="0.01"><span id="eDecayV" class="small muted"></span></div>
+      <div class="row"><label>Size</label><input type="range" id="eSize" min="8" max="40" step="1"></div>
+      <div class="row"><label>Volume</label><input type="range" id="eVol" min="0" max="1.5" step="0.01"></div>
+      <div class="row"><span class="hint">Drag the pad to move it.</span><span class="grow"></span><button class="btn red" id="delPad">🗑 Remove pad</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- LESSONS -->
+<div id="p-lessons" class="panel">
+  <div id="lessonHome">
+    <p class="lead">Start at the top. Each lesson is short: read a little, hear it, then try it. Nothing is locked. Tap any lesson to open it.</p>
+    <div class="lesson-list" id="lessonList"></div>
+  </div>
+  <div id="lessonView" style="display:none">
+    <div class="row"><button class="btn" id="lessonBack">← Lessons</button><b id="lessonName" style="font-size:16px"></b><span class="grow"></span><span class="small muted" id="lessonStep"></span></div>
+    <div class="step" id="stepBody"></div>
+    <div class="row" style="margin-top:10px"><button class="btn" id="stepPrev">◀ Back</button><span class="grow"></span><button class="btn gold" id="stepNext">Next ▶</button></div>
+    <div id="lessonKitSlot" style="margin-top:8px"></div>
+  </div>
+</div>
+
+<!-- PATTERNS -->
+<div id="p-patterns" class="panel">
+  <div class="row">
+    <div class="seg" id="patGroupSeg"><button data-g="sheet" class="active">📖 The Book</button><button data-g="beats">Beats</button><button data-g="hands">Hands</button><button data-g="fills">Fills</button><button data-g="mine">My patterns</button></div>
+    <div class="seg" id="viewSeg"><button data-v="sheet" class="active">Pictures</button><button data-v="staff">Staff</button></div>
+    <div class="seg" id="lpSeg"><button data-lp="learn" class="active">🌱 Learn</button><button data-lp="prove">🏆 Prove</button></div>
+  </div>
+  <div class="biglist" id="patList"></div>
+  <div id="patView" style="display:none">
+    <div class="row"><b id="patName" style="font-size:17px"></b><span class="grow"></span><span class="small muted" id="patInfo"></span></div>
+    <p class="lead" id="patTip"></p>
+    <div id="patSheet"></div><svg class="staff" id="patStaff"></svg>
+    <div id="patGrid"></div>
+    <div class="row">
+      <button class="btn" id="patHear">🔊 Hear it</button>
+      <button class="btn gold" id="patPlay">👆 Play along</button>
+      <button class="btn" id="patSlow">🐢 Half speed</button>
+      <label class="field">Loops <select id="patLoops"><option>2</option><option selected>4</option><option>8</option><option value="0">∞</option></select></label>
+      <button class="btn" id="patEdit">✏️ Copy &amp; edit</button>
+    </div>
+    <div class="count" id="patCount"></div>
+    <div class="big" id="patBig"></div>
+    <div class="fb" id="patFb"></div>
+    <div class="stars" id="patStars"></div>
+    <div class="hint" id="patHint">Learn mode lights the pad before each hit. Prove mode scores your timing.</div>
+  </div>
+  <div id="patKitSlot" style="margin-top:8px"></div>
+  <div id="patEditor" style="display:none" class="card">
+    <div class="row"><input id="peName" placeholder="Pattern name" style="background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px;width:180px"><label class="field">Beats <select id="peBeats"><option>4</option><option>3</option></select></label><span class="grow"></span><button class="btn" id="peCancel">Cancel</button><button class="btn gold" id="peSave">Save</button></div>
+    <p class="hint">Tap squares to add hits. Tap again for an accent (white). Columns are 16th notes; the bold columns are the beats.</p>
+    <div id="peGrid"></div>
+  </div>
+</div>
+
+<!-- PLAY ALONG -->
+<div id="p-play" class="panel">
+  <p class="lead">A song plays. You drum. The lane shows what is coming: hits slide toward the line. Hit the pad when a dot reaches the line.</p>
+  <div class="row">
+    <label class="field">Song <select id="songSel"></select></label>
+    <label class="field">Beat <select id="songPat"></select></label>
+    <label class="field">Bars <select id="songBars"><option>8</option><option selected>16</option><option>32</option></select></label>
+    <button class="btn gold" id="songGo">▶ Play</button>
+    <label class="toggle small muted"><input type="checkbox" id="songGuide" checked> drum part plays too</label>
+  </div>
+  <div class="count" id="songCount"></div>
+  <div class="lane" id="songLane"><canvas id="songCv"></canvas></div>
+  <div class="fb" id="songFb"></div>
+  <div class="stars" id="songStars"></div>
+  <div id="playKitSlot" style="margin-top:8px"></div>
+</div>
+
+<!-- TRAINER -->
+<div id="p-trainer" class="panel">
+  <p class="lead">Put the tablet in front of the practice pad. Hit <b>Listen</b> once so the mic can hear the pad. Then pick a pattern: the app counts in, you play on the real pad, and it scores your timing.</p>
+  <div class="row">
+    <button class="btn gold" id="micBtn">🎤 Listen</button>
+    <span id="micState" class="small muted">mic off</span>
+    <label class="field">Sensitivity <input type="range" id="micSens" min="1" max="10" step="1" value="5"></label>
+    <div class="meter" style="width:140px"><i id="micMeter"></i></div>
+  </div>
+  <div class="row">
+    <label class="field">Drill <select id="trSel"></select></label>
+    <label class="field">Loops <select id="trLoops"><option>4</option><option selected>8</option><option>16</option></select></label>
+    <label class="field">Count-in <select id="trCountIn"><option value="1">1 bar</option><option value="2" selected>2 bars</option></select></label>
+    <button class="btn gold" id="trGo">▶ Start drill</button>
+    <label class="toggle small muted"><input type="checkbox" id="trVoice" checked> voice count-in</label>
+  </div>
+  <div id="trSheet"></div><svg class="staff" id="trStaff"></svg>
+  <div class="count" id="trCount"></div>
+  <div class="lane" id="trLane"><canvas id="trCv"></canvas></div>
+  <div class="big" id="trBig"></div>
+  <div class="fb" id="trFb"></div>
+  <div class="stars" id="trStars"></div>
+  <p class="hint">The mic only hears <i>that a hit happened</i>, not which pad, so the Trainer scores timing. Use the screen Kit or Patterns to practice which drum goes where. Mic needs the https Game Shelf address, not a downloaded file. You can also tap the kit below instead of the mic.</p>
+  <div class="prog" id="trProg"></div>
+  <div id="trKitSlot" style="margin-top:8px"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+const VER='v0.3 · Oct 15';
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+let toastT; function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),1600);}
+$('#verBadge').onclick=()=>toast('STICK '+VER);
+
+/* ---------- storage ---------- */
+const STORE='stickProg_v1'; let mem={};
+function load(){try{return JSON.parse(localStorage.getItem(STORE)||'{}')}catch(e){return mem}}
+function save(p){mem=p;try{localStorage.setItem(STORE,JSON.stringify(p))}catch(e){}}
+let P=load(); P.lessons=P.lessons||{}; P.scores=P.scores||{}; P.mine=P.mine||[]; P.custom=P.custom||null;
+
+/* ---------- audio ---------- */
+let AC=null, master=null, comp=null;
+function ac(){ if(!AC){ AC=new (window.AudioContext||window.webkitAudioContext)(); comp=AC.createDynamicsCompressor(); comp.threshold.value=-12; comp.ratio.value=4; master=AC.createGain(); master.gain.value=.9; master.connect(comp); comp.connect(AC.destination);} if(AC.state==='suspended')AC.resume(); return AC; }
+let noiseBuf=null; function noise(){ if(!noiseBuf){const a=ac();noiseBuf=a.createBuffer(1,a.sampleRate*2,a.sampleRate);const d=noiseBuf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;} const s=ac().createBufferSource(); s.buffer=noiseBuf; return s; }
+function env(g,t,peak,dec){g.gain.setValueAtTime(0.0001,t);g.gain.linearRampToValueAtTime(peak,t+0.003);g.gain.exponentialRampToValueAtTime(0.0001,t+dec);}
+const live=new Set();
+function track(n,t,dec){live.add(n);n.stop(t+dec+.05);n.onended=()=>live.delete(n);}
+// voice: {type,pitch,decay,vol}
+function play(v,when,vel){
+  const a=ac(); const t=when||a.currentTime; vel=vel==null?1:vel; const vol=(v.vol==null?1:v.vol)*vel; const pi=v.pitch||1, de=v.decay||1;
+  const out=a.createGain(); out.gain.value=vol; out.connect(master);
+  const osc=(type,f0,f1,dec,gain)=>{const o=a.createOscillator();o.type=type;o.frequency.setValueAtTime(f0,t);if(f1)o.frequency.exponentialRampToValueAtTime(f1,t+dec*.6);const g=a.createGain();env(g,t,gain,dec);o.connect(g);g.connect(out);o.start(t);track(o,t,dec);};
+  const nz=(filt,f,q,dec,gain,ftype)=>{const n=noise();const bf=a.createBiquadFilter();bf.type=ftype||filt;bf.frequency.value=f;bf.Q.value=q;const g=a.createGain();env(g,t,gain,dec);n.connect(bf);bf.connect(g);g.connect(out);n.start(t);track(n,t,dec);};
+  switch(v.type){
+    case 'kick': osc('sine',160*pi,45*pi,.45*de,1.2); nz('lowpass',600,1,.03,.5); break;
+    case 'snare': osc('triangle',200*pi,160*pi,.18*de,.5); nz('bandpass',2200*pi,.8,.22*de,.9); nz('highpass',4000,1,.12*de,.4); break;
+    case 'rim': osc('square',900*pi,700*pi,.05*de,.4); nz('bandpass',3000,3,.05*de,.5); break;
+    case 'hatc': nz('highpass',7000*pi,1,.06*de,.6); nz('bandpass',10000*pi,2,.04*de,.4); break;
+    case 'hato': nz('highpass',6500*pi,1,.35*de,.6); nz('bandpass',9000*pi,2,.3*de,.4); break;
+    case 'tom': osc('sine',220*pi,150*pi,.4*de,1); osc('triangle',330*pi,160*pi,.2*de,.3); nz('lowpass',900,1,.03,.3); break;
+    case 'crash': nz('highpass',5000*pi,.7,1.4*de,.7); nz('bandpass',8000*pi,1.5,1.0*de,.5); [1,1.37,1.9].forEach(r=>osc('square',3200*pi*r,null,.5*de,.06)); break;
+    case 'ride': nz('highpass',6000*pi,.7,.9*de,.35); [1,1.49,2.1].forEach(r=>osc('square',2800*pi*r,null,.7*de,.08)); osc('sine',900*pi,null,.3*de,.15); break;
+    case 'cowbell': [562,845].forEach(f=>osc('square',f*pi,null,.3*de,.25)); break;
+    case 'clap': for(let i=0;i<3;i++){const n=noise();const bf=a.createBiquadFilter();bf.type='bandpass';bf.frequency.value=1500*pi;bf.Q.value=1;const g=a.createGain();const tt=t+i*.012;env(g,tt,.6,.1);n.connect(bf);bf.connect(g);g.connect(out);n.start(tt);track(n,tt,.15);} nz('bandpass',1800*pi,1,.25*de,.4); break;
+  }
+}
+function click(when,accent){const a=ac();const o=a.createOscillator();o.type='square';o.frequency.value=accent?1800:1200;const g=a.createGain();env(g,when,accent?.35:.2,.03);o.connect(g);g.connect(master);o.start(when);track(o,when,.03);}
+function stopAllAudio(){ live.forEach(n=>{try{n.stop()}catch(e){}}); live.clear(); }
+
+/* ---------- kit definitions ---------- */
+const INST={ // canonical instrument ids -> default voice + staff position
+  kick:  {name:'Bass drum', sub:'kick', cls:'kick', voice:{type:'kick'}, staff:'kick', color:'var(--kick)'},
+  snare: {name:'Snare', sub:'', cls:'drum', voice:{type:'snare'}, staff:'snare', color:'var(--snare)'},
+  hat:   {name:'Hi-hat', sub:'closed', cls:'hat', voice:{type:'hatc'}, staff:'hat', color:'var(--hat)'},
+  hato:  {name:'Hi-hat', sub:'open', cls:'hat', voice:{type:'hato'}, staff:'hato', color:'var(--hat)'},
+  tom1:  {name:'Hi tom', sub:'', cls:'drum', voice:{type:'tom',pitch:1.3}, staff:'tom1', color:'var(--tom)'},
+  tom2:  {name:'Mid tom', sub:'', cls:'drum', voice:{type:'tom',pitch:1}, staff:'tom2', color:'var(--tom2)'},
+  ftom:  {name:'Floor tom', sub:'', cls:'drum', voice:{type:'tom',pitch:.68,decay:1.3}, staff:'ftom', color:'var(--ftom)'},
+  crash: {name:'Crash', sub:'', cls:'cym', voice:{type:'crash'}, staff:'crash', color:'var(--crash)'},
+  ride:  {name:'Ride', sub:'', cls:'cym', voice:{type:'ride'}, staff:'ride', color:'var(--ride)'},
+};
+const LAYOUTS={
+  full:[ {id:'hat',x:12,y:50,s:13},{id:'crash',x:27,y:22,s:15},{id:'ride',x:86,y:24,s:17},{id:'snare',x:30,y:70,s:15},{id:'tom1',x:46,y:28,s:12},{id:'tom2',x:61,y:28,s:13},{id:'ftom',x:82,y:68,s:17},{id:'kick',x:55,y:70,s:19} ],
+  pad7:[ {id:'crash',x:18,y:30,s:22,tint:'#e2483d'},{id:'snare',x:50,y:30,s:22,tint:'#f2d34c'},{id:'ride',x:82,y:30,s:22,tint:'#5b84c7'},{id:'hat',x:12,y:75,s:22,tint:'#8fd16a'},{id:'tom1',x:38,y:75,s:22,tint:'#f0923a'},{id:'tom2',x:62,y:75,s:22,tint:'#6fb7e6'},{id:'ftom',x:88,y:75,s:22,tint:'#b48ad8'},{id:'kick',x:50,y:55,s:12,tint:'#333'} ],
+};
+let layoutName=P.layout||'full'; $('#layoutSel').value=layoutName;
+function kitPads(){ if(layoutName==='custom') return P.custom||JSON.parse(JSON.stringify(LAYOUTS.full)); return JSON.parse(JSON.stringify(LAYOUTS[layoutName])); }
+let pads=kitPads(), padEls={}, editing=false, selPad=null, showRL=false;
+function padVoice(p){ const base=INST[p.id]?INST[p.id].voice:{type:'tom'}; return Object.assign({},base,p.voice||{}); }
+function padName(p){ return p.name||(INST[p.id]?INST[p.id].name:'Pad'); }
+function renderKit(){
+  const k=$('#kit'); k.innerHTML=''; padEls={};
+  pads.forEach((p,i)=>{
+    const d=document.createElement('div'); const inst=INST[p.id]||{cls:'drum',sub:''};
+    d.className='pad '+inst.cls; d.style.left=p.x+'%'; d.style.top=p.y+'%'; d.style.width=p.s+'%'; d.style.aspectRatio='1/1';
+    if(p.tint){ d.style.background=`radial-gradient(circle at 45% 40%, ${p.tint} 0%, ${p.tint} 38%, #222 40%, #222 100%)`; d.style.border='4px solid '+p.tint; d.style.outline='none'; d.style.color='#fff'; }
+    d.innerHTML=`<div class="lbl">${padName(p)}${inst.sub&&!p.name?`<small>${inst.sub}</small>`:''}</div>`;
+    d.dataset.i=i; padEls[p.uid=p.uid||(p.id+'_'+i)]=d;
+    d.addEventListener('pointerdown',e=>{ e.preventDefault(); if(editing){selectPad(i); dragStart(e,i); return;} hitPad(i); });
+    k.appendChild(d);
+  });
+  k.classList.toggle('edit',editing);
+}
+function hitPad(i,vel){ const p=pads[i]; play(padVoice(p),null,vel); flash(padEls[p.uid]); onUserHit(p.id); }
+function flash(el){ if(!el)return; el.classList.add('hit'); setTimeout(()=>el.classList.remove('hit'),80); const k=$('#kit'); const r=document.createElement('div'); r.className='ring'; r.style.left=el.style.left; r.style.top=el.style.top; r.style.width=el.style.width; r.style.aspectRatio='1/1'; k.appendChild(r); setTimeout(()=>r.remove(),400); }
+function light(id,on){ pads.forEach(p=>{ if(p.id===id||(id==='hato'&&p.id==='hat')) padEls[p.uid]&&padEls[p.uid].classList.toggle('lit',on); }); }
+function playInst(id,when,vel){ const p=pads.find(p=>p.id===id)||pads.find(p=>id==='hato'&&p.id==='hat'); const v=p?padVoice(p):(INST[id]||INST.snare).voice; if(id==='hato'&&p&&p.id==='hat') play(Object.assign({},v,{type:'hato'}),when,vel); else play(v,when,vel); return p; }
+// edit
+function selectPad(i){ selPad=i; $$('.pad').forEach(e=>e.classList.remove('sel')); padEls[pads[i].uid].classList.add('sel'); const p=pads[i], v=padVoice(p); $('#editFields').style.display='block'; $('#editTitle').textContent=padName(p); $('#eName').value=padName(p); $('#eVoice').value=v.type; $('#ePitch').value=v.pitch||1; $('#eDecay').value=v.decay||1; $('#eSize').value=p.s; $('#eVol').value=v.vol==null?1:v.vol; $('#ePitchV').textContent=(v.pitch||1).toFixed(2); $('#eDecayV').textContent=(v.decay||1).toFixed(2); }
+function applyEdit(){ if(selPad==null)return; const p=pads[selPad]; p.name=$('#eName').value.trim()||undefined; p.voice={type:$('#eVoice').value,pitch:+$('#ePitch').value,decay:+$('#eDecay').value,vol:+$('#eVol').value}; p.s=+$('#eSize').value; $('#ePitchV').textContent=(+$('#ePitch').value).toFixed(2); $('#eDecayV').textContent=(+$('#eDecay').value).toFixed(2); const el=padEls[p.uid]; el.style.width=p.s+'%'; el.querySelector('.lbl').innerHTML=padName(p); $('#editTitle').textContent=padName(p); saveCustom(); }
+['eName','eVoice','ePitch','eDecay','eSize','eVol'].forEach(id=>$('#'+id).addEventListener('input',applyEdit));
+$('#eVoice').addEventListener('change',()=>{ if(selPad!=null) play(padVoice(pads[selPad])); });
+['ePitch','eDecay'].forEach(id=>$('#'+id).addEventListener('change',()=>{ if(selPad!=null) play(padVoice(pads[selPad])); }));
+function saveCustom(){ layoutName='custom'; $('#layoutSel').value='custom'; P.custom=pads; P.layout='custom'; save(P); }
+let drag=null;
+function dragStart(e,i){ const k=$('#kit').getBoundingClientRect(); drag={i,k}; $('#kit').setPointerCapture&&$('#kit').setPointerCapture(e.pointerId); }
+$('#kit').addEventListener('pointermove',e=>{ if(!drag)return; const p=pads[drag.i]; p.x=Math.max(5,Math.min(95,(e.clientX-drag.k.left)/drag.k.width*100)); p.y=Math.max(6,Math.min(94,(e.clientY-drag.k.top)/drag.k.height*100)); const el=padEls[p.uid]; el.style.left=p.x+'%'; el.style.top=p.y+'%'; });
+$('#kit').addEventListener('pointerup',()=>{ if(drag){drag=null; saveCustom();} });
+$('#editKit').onclick=()=>{ editing=true; $('#editbox').classList.add('show'); $('#kit').classList.add('edit'); if(layoutName!=='custom'){ pads=kitPads(); saveCustom(); renderKit(); } toast('Tap a pad to edit it, drag to move'); };
+$('#doneEdit').onclick=()=>{ editing=false; selPad=null; $('#editbox').classList.remove('show'); $('#kit').classList.remove('edit'); $('#editFields').style.display='none'; $$('.pad').forEach(e=>e.classList.remove('sel')); };
+$('#addPad').onclick=()=>{ pads.push({id:'tom2',x:50,y:50,s:16,name:'New pad',voice:{type:'tom',pitch:1,decay:1,vol:1}}); saveCustom(); renderKit(); selectPad(pads.length-1); };
+$('#delPad').onclick=()=>{ if(selPad==null)return; pads.splice(selPad,1); selPad=null; $('#editFields').style.display='none'; saveCustom(); renderKit(); };
+$('#resetKit').onclick=()=>{ pads=JSON.parse(JSON.stringify(LAYOUTS.full)); saveCustom(); renderKit(); selPad=null; $('#editFields').style.display='none'; };
+$('#layoutSel').onchange=e=>{ layoutName=e.target.value; P.layout=layoutName; save(P); pads=kitPads(); renderKit(); };
+
+renderKit();
+
+/* ---------- sequencer ---------- */
+const COUNT16=['1','e','&','a','2','e','&','a','3','e','&','a','4','e','&','a'];
+let bpm=80; $('#bpm').oninput=e=>{bpm=Math.max(40,Math.min(200,+e.target.value||80));};
+let metroOn=false, metroTimer=null, metroNext=0, metroBeat=0;
+function metroTick(){ const a=ac(); while(metroNext<a.currentTime+.12){ click(metroNext,metroBeat%4===0); metroBeat++; metroNext+=60/bpm; } }
+$('#metroBtn').onclick=()=>{ metroOn=!metroOn; $('#metroBtn').classList.toggle('gold',metroOn); if(metroOn){ metroNext=ac().currentTime+.05; metroBeat=0; metroTimer=setInterval(metroTick,40);} else {clearInterval(metroTimer);} };
+function stopMetro(){ metroOn=false; $('#metroBtn').classList.remove('gold'); clearInterval(metroTimer); }
+
+// A pattern: {name, beats(4|3), res(8|16), lanes:{inst:[16 ints 0/1/2]}, sticking:[...]}
+let seq=null; // running session
+function stopSeq(){ if(seq){ clearInterval(seq.timer); cancelAnimationFrame(seq.raf); seq.onStop&&seq.onStop(); seq=null; } $$('.pad').forEach(e=>e.classList.remove('lit')); }
+function stopEverything(){ stopSeq(); stopMetro(); stopAllAudio(); trainerStop(); }
+$('#stopAll').onclick=()=>{ stopEverything(); toast('Stopped'); };
+
+// expected hits list builder: returns [{t(sec from start), inst, step, bar, acc}]
+function expectedHits(pat,loops,bpmv,countIn){ const steps=pat.beats*4; const sp=60/bpmv/4; const out=[]; const off=countIn*pat.beats*4*sp; for(let b=0;b<loops;b++) for(let s=0;s<steps;s++){ for(const inst in pat.lanes){ const v=pat.lanes[inst][s]; if(v) out.push({t:off+(b*steps+s)*sp, inst, step:s, bar:b, acc:v===2}); } } return out; }
+
+// generic runner: schedules audio ahead, animates count display, calls hooks
+function runPattern(pat,opts){
+  stopSeq(); const a=ac(); const bv=opts.bpm||bpm; const sp=60/bv/4; const steps=pat.beats*4; const loops=opts.loops===0?9999:(opts.loops||4); const countIn=opts.countIn==null?1:opts.countIn;
+  const start=a.currentTime+.15; const total=countIn*steps*sp + loops*steps*sp;
+  const hits=expectedHits(pat,loops,bv,countIn);
+  seq={pat,start,sp,steps,loops,countIn,bv,hits,total,nextStep:0,scored:[],hitsIdx:0,onStop:opts.onStop,opts,timer:null,raf:null,done:false};
+  const totalSteps=(countIn+loops)*steps;
+  // scheduler
+  seq.timer=setInterval(()=>{ if(!seq)return; while(seq.nextStep<totalSteps && start+seq.nextStep*sp < a.currentTime+.2){ const n=seq.nextStep; const t=start+n*sp; const s=n%steps; const inCount=n<countIn*steps;
+      if(s%4===0 && (opts.click!==false)) click(t,s===0);
+      if(inCount){ if(s%4===0 && opts.voice) sayNumber(1+s/4,t-a.currentTime); }
+      else if(opts.sound!==false){ for(const inst in pat.lanes){ const v=pat.lanes[inst][s]; if(v) playInst(inst,t,v===2?1:.75); } }
+      if(opts.onStep) opts.onStep(n,s,t,inCount);
+      seq.nextStep++; }
+    if(seq.nextStep>=totalSteps && a.currentTime>start+totalSteps*sp+.3 && !seq.done){ seq.done=true; const s=seq; stopSeq(); logMinutes(s.total); opts.onDone&&opts.onDone(s); }
+  },30);
+  // animation
+  const anim=()=>{ if(!seq)return; const el=a.currentTime-start; const n=Math.floor(el/sp); const s=((n%steps)+steps)%steps; if(opts.onFrame) opts.onFrame(el,n,s); seq.raf=requestAnimationFrame(anim); }; seq.raf=requestAnimationFrame(anim);
+  return seq;
+}
+function sayNumber(n,delay){ if(!('speechSynthesis' in window))return; setTimeout(()=>{ const u=new SpeechSynthesisUtterance(String(n)); u.rate=1.3; u.pitch=1.1; speechSynthesis.speak(u); },Math.max(0,delay*1000-80)); }
+
+// count strip
+function buildCount(el,beats,res){ el.innerHTML=''; const n=beats*(res===16?4:2); for(let i=0;i<n;i++){ const s=document.createElement('span'); const lab=res===16?COUNT16[i]:(i%2?'&':String(1+i/2)); s.textContent=lab; if(/\d/.test(lab))s.classList.add('num'); el.appendChild(s);} }
+function setCount(el,step,res){ const idx=res===16?step:Math.floor(step/2); [...el.children].forEach((c,i)=>c.classList.toggle('on',i===idx)); }
+
+/* ---------- scoring ---------- */
+const WIN=.12; // sec window
+let userHitHook=null;
+function onUserHit(inst){ if(userHitHook) userHitHook(inst,ac().currentTime); }
+function judge(dt){ const a=Math.abs(dt); if(a<=.04)return 'perfect'; if(a<=WIN) return dt<0?'early':'late'; return 'miss'; }
+function fbText(j){ return {perfect:'PERFECT',early:'early',late:'late',miss:'miss',extra:'extra hit'}[j]||j; }
+function stars(score){ return score>=.9?'★★★':score>=.7?'★★☆':score>=.45?'★☆☆':'☆☆☆'; }
+// scoring session: match user hit times against expected hits (timing-only when instAgnostic)
+const MATCH=.2; // widest window we will pair a hit to (sec); judged after subtracting the player's steady offset
+function makeScorer(s,fbEl,bigEl,instAgnostic){
+  const exp=s.hits.map(h=>({...h,hit:false})); let extras=0; let offs=[]; let off=0;
+  return { hit(inst,tAbs){ const t=tAbs-s.start; let best=null,bd=1; exp.forEach(h=>{ if(h.hit)return; if(!instAgnostic && h.inst!==inst && !(h.inst==='hato'&&inst==='hat'))return; const d=t-h.t-off; if(Math.abs(d)<=MATCH && Math.abs(d)<bd){bd=Math.abs(d);best=h;best.d=t-h.t;} });
+      if(best){best.hit=true; offs.push(best.d); if(offs.length>=4){ const sorted=offs.slice().sort((a,b)=>a-b); off=sorted[Math.floor(sorted.length/2)]; } const j=judge(best.d-off); best.j=j; fbEl.className='fb '+(j==='perfect'?'good':j); fbEl.textContent=fbText(j); } else { extras++; fbEl.className='fb miss'; fbEl.textContent=instAgnostic?'off the beat':'wrong pad or off the beat'; } },
+    result(){ const n=exp.length; const matched=exp.filter(h=>h.hit); const sorted=matched.map(h=>h.d).sort((a,b)=>a-b); const med=sorted.length?sorted[Math.floor(sorted.length/2)]:0; let got=0; matched.forEach(h=>{ const j=judge(h.d-med); h.j=j; if(j!=='miss') got++; }); const score=n?Math.max(0,(got-extras*.5)/n):0; return {n,got,extras,score,offset:med}; },
+    offsetNote(r){ const ms=Math.round(r.offset*1000); if(Math.abs(ms)<30||r.got<3) return ''; return ` You were steady but ${Math.abs(ms)} ms ${ms>0?'late':'early'} overall, which is usually the pad or mic delay, not you.`; } };
+}
+/* ---------- staff notation ---------- */
+// vertical positions (half-steps from top line F5, staff lines at 0,2,4,6,8)
+const STAFFPOS={crash:-2,hat:-1,hato:-1,ride:0,tom1:1,tom2:2,snare:3,ftom:5,kick:7};
+const XHEAD={crash:1,hat:1,hato:1,ride:1};
+function drawStaff(svg,pat,opts){
+  opts=opts||{}; const steps=pat.beats*4; const L=12, left=60, right=24, W=Math.max(300,steps*32+left+right), H=170, top=50; const unit=L/2;
+  const y=p=>top+p*unit; const xs=s=>left+s*((W-left-right)/steps)+10;
+  let o=`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto">`;
+  for(let i=0;i<5;i++) o+=`<line x1="${left-30}" y1="${y(i*2)}" x2="${W-6}" y2="${y(i*2)}" stroke="#333" stroke-width="1.2"/>`;
+  o+=`<rect x="${left-24}" y="${y(2)}" width="4" height="${L*2}" fill="#333"/><rect x="${left-16}" y="${y(2)}" width="4" height="${L*2}" fill="#333"/>`;
+  o+=`<text x="${left-4}" y="${y(4)-1}" font-size="15" font-weight="bold" font-family="Georgia,serif" fill="#333" text-anchor="middle">${pat.beats}</text><text x="${left-4}" y="${y(8)-1}" font-size="15" font-weight="bold" font-family="Georgia,serif" fill="#333" text-anchor="middle">4</text>`;
+  o+=`<line x1="${W-6}" y1="${y(0)}" x2="${W-6}" y2="${y(8)}" stroke="#333" stroke-width="2"/>`;
+  const hands=[],feet=[];
+  const noteAt=(inst,s)=>pat.lanes[inst]&&pat.lanes[inst][s];
+  for(let s=0;s<steps;s++){ for(const inst in pat.lanes){ if(!noteAt(inst,s))continue; const pos=STAFFPOS[inst]==null?3:STAFFPOS[inst]; const x=xs(s), yy=y(pos); const acc=pat.lanes[inst][s]===2; const col=opts.hl===s?'#c9780f':'#222';
+      if(pos<=-2) o+=`<line x1="${x-9}" y1="${y(-2)}" x2="${x+9}" y2="${y(-2)}" stroke="#333" stroke-width="1.2"/>`;
+      if(XHEAD[inst]) o+=`<path d="M${x-4.5} ${yy-4.5} L${x+4.5} ${yy+4.5} M${x-4.5} ${yy+4.5} L${x+4.5} ${yy-4.5}" stroke="${col}" stroke-width="2"/>${inst==='hato'?`<circle cx="${x}" cy="${yy-11}" r="3" fill="none" stroke="${col}" stroke-width="1.5"/>`:''}`;
+      else o+=`<ellipse cx="${x}" cy="${yy}" rx="5.2" ry="3.8" transform="rotate(-20 ${x} ${yy})" fill="${col}"/>`;
+      if(acc) o+=`<path d="M${x-5} ${y(-5)} L${x+5} ${y(-4)} L${x-5} ${y(-3)}" fill="none" stroke="${col}" stroke-width="1.5"/>`;
+      (inst==='kick'?feet:hands).push({s,x,yy,pos}); } }
+  // stems + beams per beat
+  const draw=(notes,up)=>{ for(let b=0;b<pat.beats;b++){ const grp=notes.filter(n=>Math.floor(n.s/4)===b); const byStep={}; grp.forEach(n=>{ (byStep[n.s]=byStep[n.s]||[]).push(n); }); const ss=Object.keys(byStep).map(Number).sort((a,c)=>a-c); if(!ss.length){ if(up){ const x=xs(b*4); o+=`<path d="M${x-3} ${y(1)} l6 6 l-6 6 q8 2 6 10 q-10 -3 -4 -10 l-5 -6 z" fill="#555"/>`;} continue; }
+      const stemY=up?y(-4):y(11); ss.forEach(s=>{ const ns=byStep[s]; const x=ns[0].x+(up?5:-5); const ends=ns.map(n=>n.yy); const from=up?Math.max(...ends):Math.min(...ends); o+=`<line x1="${x}" y1="${from}" x2="${x}" y2="${stemY}" stroke="#222" stroke-width="1.6"/>`; });
+      if(ss.length>=2){ const x1=byStep[ss[0]][0].x+(up?5:-5), x2=byStep[ss[ss.length-1]][0].x+(up?5:-5); const by=stemY; o+=`<line x1="${x1}" y1="${by}" x2="${x2}" y2="${by}" stroke="#222" stroke-width="4"/>`;
+        for(let i=0;i<ss.length-1;i++){ if(ss[i+1]-ss[i]===1 || ss[i]%2===1 || ss[i+1]%2===1){ const xa=byStep[ss[i]][0].x+(up?5:-5), xb=byStep[ss[i+1]][0].x+(up?5:-5); const yb=up?by+6:by-6; o+=`<line x1="${xa}" y1="${yb}" x2="${xb}" y2="${yb}" stroke="#222" stroke-width="3.5"/>`; } } }
+      else if(ss[0]%4!==0){ const n=byStep[ss[0]][0]; const x=n.x+(up?5:-5); o+=`<path d="M${x} ${stemY} q10 ${up?8:-8} 4 ${up?20:-20}" fill="none" stroke="#222" stroke-width="2"/>`; } } };
+  draw(hands,true); draw(feet,false);
+  // counts
+  const res=pat.res||8; for(let s=0;s<steps;s++){ const lab=COUNT16[s%16]; if(res===8 && (s%2===1))continue; if(res===4 && s%4!==0) continue; o+=`<text x="${xs(s)}" y="${H-10}" font-size="${/\d/.test(lab)?15:12}" font-weight="${/\d/.test(lab)?'bold':'normal'}" font-family="Trebuchet MS,sans-serif" fill="${opts.hl===s?'#c9780f':'#444'}" text-anchor="middle">${lab}</text>`; }
+  // sticking
+  if(pat.sticking) pat.sticking.forEach((r,s)=>{ if(r) o+=`<text x="${xs(s)}" y="${y(-7)}" font-size="12" font-weight="bold" font-family="Trebuchet MS,sans-serif" fill="#8a2d0f" text-anchor="middle">${r}</text>`; });
+  o+='</svg>'; svg.outerHTML=o.replace('<svg ','<svg class="staff" id="'+svg.id+'" ');
+}
+const LANE_ORDER=['crash','ride','hato','hat','tom1','tom2','snare','ftom','kick'];
+// picture-grid renderer matching the lesson book: counts on top, one row per drum, icons where it hits, stems joining simultaneous hits
+const ICON={
+  cym:(x,y,c)=>`<g transform="translate(${x} ${y})"><line x1="0" y1="-2" x2="0" y2="16" stroke="${c}" stroke-width="2.2"/><ellipse cx="0" cy="0" rx="17" ry="6" fill="#f3f3ef" stroke="${c}" stroke-width="2.2"/><path d="M-9 -1 q9 -3 18 0" fill="none" stroke="${c}" stroke-width="1.2"/></g>`,
+  snare:(x,y,c)=>`<g transform="translate(${x} ${y})"><ellipse cx="0" cy="-6" rx="17" ry="5" fill="#fff" stroke="${c}" stroke-width="2.2"/><path d="M-17 -6 v12 a17 5 0 0 0 34 0 v-12" fill="#fff" stroke="${c}" stroke-width="2.2"/><g stroke="${c}" stroke-width="1.4"><line x1="-11" y1="-3" x2="-11" y2="7"/><line x1="0" y1="-1" x2="0" y2="10"/><line x1="11" y1="-3" x2="11" y2="7"/></g></g>`,
+  tom:(x,y,c)=>`<g transform="translate(${x} ${y})"><ellipse cx="0" cy="-7" rx="14" ry="4.5" fill="#fff" stroke="${c}" stroke-width="2.2"/><path d="M-14 -7 v14 a14 4.5 0 0 0 28 0 v-14" fill="#fff" stroke="${c}" stroke-width="2.2"/></g>`,
+  kick:(x,y,c)=>`<g transform="translate(${x} ${y})"><ellipse cx="6" cy="-2" rx="13" ry="14" fill="#fff" stroke="${c}" stroke-width="2.2"/><ellipse cx="-2" cy="0" rx="13" ry="14" fill="#fff" stroke="${c}" stroke-width="2.2"/><circle cx="-2" cy="0" r="2.5" fill="none" stroke="${c}" stroke-width="1.5"/><line x1="-2" y1="2" x2="-6" y2="15" stroke="${c}" stroke-width="2"/><rect x="-11" y="13" width="9" height="4" rx="1" fill="${c}"/></g>`,
+};
+const ICONFAM={hat:'cym',hato:'cym',ride:'cym',crash:'cym',snare:'snare',tom1:'tom',tom2:'tom',ftom:'tom',kick:'kick'};
+function drawSheet(el,pat,opts){
+  opts=opts||{}; const res=pat.res||8; const div=res===16?1:res===8?2:4; const steps=pat.beats*4; const cols=steps/div;
+  const insts=LANE_ORDER.filter(i=>pat.lanes[i]&&pat.lanes[i].some(v=>v)); if(!insts.length) insts.push('snare');
+  const left=120,colW=66,W=left+cols*colW+16,rowH=56,top=34,H=top+insts.length*rowH+14;
+  let o=`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto">`;
+  const xs=c=>left+c*colW+colW/2, ys=r=>top+r*rowH+rowH/2;
+  for(let c=0;c<cols;c++){ const lab=COUNT16[(c*div)%16]; const num=/\d/.test(lab); o+=`<text x="${xs(c)}" y="18" font-size="${num?17:14}" font-weight="${num?'bold':'normal'}" font-family="Trebuchet MS,sans-serif" fill="${opts.hl===c*div?'#c9780f':'#333'}" text-anchor="middle">${lab}</text>`; }
+  // box around drum rows (cymbal row sits above the box like the book)
+  const boxTop=insts[0]&&ICONFAM[insts[0]]==='cym'?top+rowH-6:top-2; o+=`<rect x="${left-30}" y="${boxTop}" width="${W-left+14}" height="${H-boxTop-8}" fill="none" stroke="#333" stroke-width="1.5"/>`;
+  for(let r=1;r<insts.length;r++){ const yy=top+r*rowH-6; if(yy>boxTop) o+=`<line x1="${left-30}" y1="${yy}" x2="${W-16}" y2="${yy}" stroke="#333" stroke-width="1"/>`; }
+  insts.forEach((inst,r)=>{ const nm=inst==='hato'?'Hi-hat (open)':INST[inst].name; o+=`<text x="${left-36}" y="${ys(r)+4}" font-size="12" font-family="Trebuchet MS,sans-serif" fill="#333" text-anchor="end">${nm.toUpperCase()}</text>`; });
+  for(let c=0;c<cols;c++){ const s=c*div; const hitRows=insts.map((inst,r)=>pat.lanes[inst][s]?r:-1).filter(r=>r>=0); if(!hitRows.length)continue; const col=opts.hl===s?'#c9780f':'#222';
+    if(hitRows.length>1||ICONFAM[insts[hitRows[0]]]==='cym'){ const y1=ys(hitRows[0]), y2=hitRows.length>1?ys(hitRows[hitRows.length-1]):y1+16; o+=`<line x1="${xs(c)}" y1="${y1}" x2="${xs(c)}" y2="${y2}" stroke="${col}" stroke-width="2.4"/>`; }
+    hitRows.forEach(r=>{ const inst=insts[r]; o+=ICON[ICONFAM[inst]](xs(c),ys(r),col); if(pat.lanes[inst][s]===2) o+=`<text x="${xs(c)+22}" y="${ys(r)-10}" font-size="13" font-weight="bold" fill="${col}">></text>`; });
+    if(pat.sticking&&pat.sticking[s]) o+=`<text x="${xs(c)}" y="${H-2}" font-size="12" font-weight="bold" font-family="Trebuchet MS,sans-serif" fill="#8a2d0f" text-anchor="middle">${pat.sticking[s]}</text>`; }
+  o+='</svg>'; el.innerHTML=o; el.className='sheet';
+}
+let sheetView=true;
+function drawBoth(sheetEl,staffEl,pat,opts){ if(sheetEl){ drawSheet(sheetEl,pat,opts); sheetEl.classList.toggle('hide',!sheetView); } const st=document.getElementById(staffEl.id); drawStaff(st,pat,opts); document.getElementById(staffEl.id).classList.toggle('hide',sheetView); }
+const MAP_ORDER=['kick','ftom','snare','tom2','tom1','ride','hat','hato','crash'];
+function drawStaffMap(svg){ const L=12,top=50,W=720,H=150,left=60; const y=p=>top+p*L/2; const xs=i=>left+30+i*72; let o=`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto">`;
+  for(let i=0;i<5;i++) o+=`<line x1="${left-30}" y1="${y(i*2)}" x2="${W-6}" y2="${y(i*2)}" stroke="#333" stroke-width="1.2"/>`;
+  o+=`<rect x="${left-24}" y="${y(2)}" width="4" height="${L*2}" fill="#333"/><rect x="${left-16}" y="${y(2)}" width="4" height="${L*2}" fill="#333"/>`;
+  MAP_ORDER.forEach((inst,i)=>{ const x=xs(i), yy=y(STAFFPOS[inst]); if(STAFFPOS[inst]<=-2) o+=`<line x1="${x-9}" y1="${y(-2)}" x2="${x+9}" y2="${y(-2)}" stroke="#333" stroke-width="1.2"/>`;
+    if(XHEAD[inst]) o+=`<path d="M${x-5} ${yy-5} L${x+5} ${yy+5} M${x-5} ${yy+5} L${x+5} ${yy-5}" stroke="#222" stroke-width="2.2"/>${inst==='hato'?`<circle cx="${x}" cy="${yy-11}" r="3" fill="none" stroke="#222" stroke-width="1.5"/>`:''}`; else o+=`<ellipse cx="${x}" cy="${yy}" rx="5.5" ry="4" transform="rotate(-20 ${x} ${yy})" fill="#222"/>`;
+    o+=`<text x="${x}" y="${H-14}" font-size="11" font-family="Trebuchet MS,sans-serif" fill="#444" text-anchor="middle">${INST[inst].name}${inst==='hato'?' open':inst==='hat'?' closed':''}</text>`; });
+  o+='</svg>'; svg.outerHTML=o.replace('<svg ','<svg class="staff" id="'+svg.id+'" '); }
+function drawGrid(el,pat,editable,onToggle){
+  const div=(!editable&&(pat.res||8)!==16)?((pat.res||8)===8?2:4):1; const steps=pat.beats*4/div; const insts=editable?LANE_ORDER:LANE_ORDER.filter(i=>pat.lanes[i]&&pat.lanes[i].some(v=>v));
+  el.innerHTML=''; el.className='grid'; el.style.gridTemplateColumns=`72px repeat(${steps},1fr)`;
+  insts.forEach(inst=>{ const n=document.createElement('div'); n.className='lname'; n.textContent=INST[inst]?INST[inst].name+(INST[inst].sub?' '+INST[inst].sub:''):inst; el.appendChild(n); for(let s=0;s<steps;s++){ const c=document.createElement('div'); c.className='cell'+((s*div)%4===0?' beat':''); const v=pat.lanes[inst]?pat.lanes[inst][s*div]:0; if(v)c.classList.add('on'); if(v===2)c.classList.add('acc'); c.dataset.inst=inst; c.dataset.s=s*div; if(editable) c.onclick=()=>onToggle(inst,s); el.appendChild(c);} });
+  const sp=document.createElement('div'); el.appendChild(sp); for(let s=0;s<steps;s++){ const c=document.createElement('div'); c.className='cnt'+(/\d/.test(COUNT16[s*div])?' num':''); c.textContent=COUNT16[s*div]; el.appendChild(c);}
+}
+function gridNow(el,s){ el.querySelectorAll('.cell').forEach(c=>c.classList.toggle('now',+c.dataset.s===s)); }
+
+/* ---------- pattern library ---------- */
+const L=(str)=>{ const a=[]; for(const ch of str.replace(/\s/g,'')) a.push(ch==='X'?2:ch==='x'||ch==='o'?1:0); return a; }; // 16 chars per bar (4/4) or 12 (3/4)
+const BEATS=[
+ {id:'t1',name:'Hi-hat only',track:1,g:'sheet',beats:4,res:8,tip:'Right hand on the hi-hat. Count 1 & 2 & 3 & 4 & out loud. One hit on every word.',lanes:{hat:L('x.x.x.x.x.x.x.x.')}},
+ {id:'t2',name:'Snare drum only',track:2,g:'sheet',beats:4,res:8,tip:'Left hand on the snare, same count. Every word gets a hit.',lanes:{snare:L('x.x.x.x.x.x.x.x.')}},
+ {id:'t3',name:'Bass drum only',track:3,g:'sheet',beats:4,res:8,tip:'Right foot on the pedal. Heel can rest down. Every word.',lanes:{kick:L('x.x.x.x.x.x.x.x.')}},
+ {id:'t4',name:'Hi-hat and snare drum',track:4,g:'sheet',beats:4,res:8,tip:'Both hands together on every word. The line between the pictures means they hit at the same time.',lanes:{hat:L('x.x.x.x.x.x.x.x.'),snare:L('x.x.x.x.x.x.x.x.')}},
+ {id:'t5',name:'Hi-hat and bass drum',track:5,g:'sheet',beats:4,res:8,tip:'Right hand and right foot together on every word.',lanes:{hat:L('x.x.x.x.x.x.x.x.'),kick:L('x.x.x.x.x.x.x.x.')}},
+ {id:'t6',name:'Hi-hat, snare, and bass drum',track:6,g:'sheet',beats:4,res:8,tip:'All three at once on every word. Slow is fine. Everything lands together.',lanes:{hat:L('x.x.x.x.x.x.x.x.'),snare:L('x.x.x.x.x.x.x.x.'),kick:L('x.x.x.x.x.x.x.x.')}},
+ {id:'t7',name:'Drum Beat 1',track:7,g:'sheet',beats:4,res:8,tip:'Hi-hat on every word. Snare on 2 and 4. Bass drum on 1 and 3. RH hats, LH snare, RF bass.',lanes:{hat:L('x.x.x.x.x.x.x.x.'),snare:L('....x.......x...'),kick:L('x.......x.......')}},
+ {id:'t8',name:'Drum Beat 2',track:8,g:'sheet',beats:4,res:8,tip:'Same as Beat 1, plus one more bass drum on the & after 3. Say "3 &" and your foot hits both.',lanes:{hat:L('x.x.x.x.x.x.x.x.'),snare:L('....x.......x...'),kick:L('x.......x.x.....')}},
+ {id:'t9',name:'Drum Beat 3',track:9,g:'sheet',beats:4,res:8,tip:'Bass drum on 1, the & after 1, and 3. Two quick kicks at the start of the bar.',lanes:{hat:L('x.x.x.x.x.x.x.x.'),snare:L('....x.......x...'),kick:L('x.x.....x.......')}},
+ {id:'t10',name:'Drum Beat 4',track:10,g:'sheet',beats:4,res:8,tip:'Two kicks on "1 &" and two kicks on "3 &". Snare still on 2 and 4.',lanes:{hat:L('x.x.x.x.x.x.x.x.'),snare:L('....x.......x...'),kick:L('x.x.....x.x.....')}},
+ {id:'t11',name:'Drum Beat 5',track:11,g:'sheet',beats:4,res:8,tip:'Bass drum on 1, then "3 &", then the & after 4. That last kick leads you back to 1.',lanes:{hat:L('x.x.x.x.x.x.x.x.'),snare:L('....x.......x...'),kick:L('x.......x.x...x.')}},
+ {id:'t12',name:'Drum Beat 6',track:12,g:'sheet',beats:4,res:8,tip:'The busiest one: kicks on "1 &", "3 &", and the & after 4. Snare on 2 and 4. Count it slow first.',lanes:{hat:L('x.x.x.x.x.x.x.x.'),snare:L('....x.......x...'),kick:L('x.x.....x.x...x.')}},
+ {id:'hats8',name:'Steady Hats',g:'beats',beats:4,res:8,tip:'Right hand on the hi-hat. Count out loud: 1 & 2 & 3 & 4 &. One hit on every word.',lanes:{hat:L('x.x.x.x.x.x.x.x.')}},
+ {id:'hatsnare',name:'Hats + Backbeat',g:'beats',beats:4,res:8,tip:'Keep the hats going. Left hand hits the snare on 2 and 4. That snare on 2 and 4 is called the backbeat.',lanes:{hat:L('x.x.x.x.x.x.x.x.'),snare:L('....x.......x...')}},
+ {id:'hatkick',name:'Hats + Kick',g:'beats',beats:4,res:8,tip:'Hats stay. Now the foot: kick on 1 and 3. Say "1" and "3" louder when you count.',lanes:{hat:L('x.x.x.x.x.x.x.x.'),kick:L('x.......x.......')}},
+ {id:'money',name:'The Money Beat',g:'beats',beats:4,res:8,tip:'Kick on 1 and 3, snare on 2 and 4, hats on every &. This beat is in thousands of songs. Own it.',lanes:{hat:L('x.x.x.x.x.x.x.x.'),snare:L('....x.......x...'),kick:L('x.......x.......')}},
+ {id:'four',name:'Four on the Floor',g:'beats',beats:4,res:8,tip:'Kick on every number: 1 2 3 4. Snare still on 2 and 4, so kick and snare land together on 2 and 4.',lanes:{hat:L('x.x.x.x.x.x.x.x.'),snare:L('....x.......x...'),kick:L('x...x...x...x...')}},
+ {id:'rock2',name:'Rock Beat 2',g:'beats',beats:4,res:8,tip:'The kick adds the & of 3. Count "3 &" and hit kick on both. The & is the tricky one: it lands between hat hits? No, right ON a hat hit. Feel it.',lanes:{hat:L('x.x.x.x.x.x.x.x.'),snare:L('....x.......x...'),kick:L('x.......x.x.....')}},
+ {id:'rock3',name:'Rock Beat 3',g:'beats',beats:4,res:8,tip:'Kick on 1, the & of 2, and 3. Say "1 ... 2 & 3" and your foot follows.',lanes:{hat:L('x.x.x.x.x.x.x.x.'),snare:L('....x.......x...'),kick:L('x.....x.x.......')}},
+ {id:'disco',name:'Disco (open hat)',g:'beats',beats:4,res:8,tip:'Four on the floor, and the hi-hat OPENS on every &. The little o over the x means open.',lanes:{hat:L('x...x...x...x...'),hato:L('..x...x...x...x.'),snare:L('....x.......x...'),kick:L('x...x...x...x...')}},
+ {id:'half',name:'Half Time',g:'beats',beats:4,res:8,tip:'Same hats, but the snare only hits once, on 3. It feels slow and heavy even at the same tempo.',lanes:{hat:L('x.x.x.x.x.x.x.x.'),snare:L('........x.......'),kick:L('x.........x.....')}},
+ {id:'quarterhats',name:'Quarter Hats',g:'beats',beats:4,res:4,tip:'Hats only on the numbers, no &. Kick 1 and 3, snare 2 and 4. Slower hands, same beat.',lanes:{hat:L('x...x...x...x...'),snare:L('....x.......x...'),kick:L('x.......x.......')}},
+ {id:'ride1',name:'Ride Beat',g:'beats',beats:4,res:8,tip:'Same as the Money Beat but your right hand moves to the ride cymbal. Pinging sound, bigger feel.',lanes:{ride:L('x.x.x.x.x.x.x.x.'),snare:L('....x.......x...'),kick:L('x.......x.......')}},
+ {id:'waltz',name:'Waltz (3/4)',g:'beats',beats:3,res:4,tip:'Only three beats in a bar: 1 2 3. Kick on 1, snare on 2 and 3. Count "ONE two three".',lanes:{hat:L('x...x...x...'),snare:L('....x...x...'),kick:L('x...........')}},
+ {id:'sixteen',name:'16th Hats',g:'beats',beats:4,res:16,tip:'Now the hats play every 16th: "1 e & a". Alternate hands R L R L on the hi-hat. The snare lands with a RIGHT hand... so move it: right hand goes to the snare on 2 and 4 while the left keeps the hats. Advanced.',lanes:{hat:L('xxxxxxxxxxxxxxxx'),snare:L('....x.......x...'),kick:L('x.......x.......')}},
+ // hands
+ {id:'single',name:'Single Strokes',g:'hands',beats:4,res:8,tip:'R L R L on the snare. Even spacing, same volume from both hands. This is rudiment #1.',lanes:{snare:L('x.x.x.x.x.x.x.x.')},sticking:['R','','L','','R','','L','','R','','L','','R','','L','']},
+ {id:'single16',name:'Single Strokes (16ths)',g:'hands',beats:4,res:16,tip:'Same thing, twice as fast: 1 e & a. Stay relaxed. If it tightens up, slow the tempo.',lanes:{snare:L('xxxxxxxxxxxxxxxx')},sticking:'RLRLRLRLRLRLRLRL'.split('')},
+ {id:'double',name:'Double Strokes',g:'hands',beats:4,res:16,tip:'R R L L. Two bounces per hand. Let the stick bounce for the second hit instead of forcing it.',lanes:{snare:L('xxxxxxxxxxxxxxxx')},sticking:'RRLLRRLLRRLLRRLL'.split('')},
+ {id:'paradiddle',name:'Paradiddle',g:'hands',beats:4,res:16,tip:'R L R R  L R L L. Say "pa-ra-did-dle". The hand that starts each group switches every time.',lanes:{snare:L('XxxxXxxxXxxxXxxx')},sticking:'RLRRLRLLRLRRLRLL'.split('')},
+ {id:'accent',name:'Accents on 1',g:'hands',beats:4,res:8,tip:'Every number is LOUD, every & is soft. Big stroke, then little strokes. Loud and soft is called dynamics.',lanes:{snare:L('X.x.X.x.X.x.X.x.')},sticking:['R','','L','','R','','L','','R','','L','','R','','L','']},
+ {id:'flam',name:'Flam Feel',g:'hands',beats:4,res:8,tip:'Not a real flam yet (that needs two hands almost together). Here: one hand on the numbers, the other on the &. Trade hands each bar when you can.',lanes:{snare:L('x.x.x.x.x.x.x.x.')},sticking:['R','','L','','R','','L','','R','','L','','R','','L','']},
+ // fills
+ {id:'fill1',name:'Fill: Snare 8ths',g:'fills',beats:4,res:8,tip:'Play the Money Beat for 3 beats, then on beat 4 hit the snare twice: "4 &". That is a fill. Crash on the next 1.',lanes:{hat:L('x.x.x.x.x.x.....'),snare:L('....x.......x.x.'),kick:L('x.......x.......')}},
+ {id:'fill2',name:'Fill: Snare 16ths',g:'fills',beats:4,res:16,tip:'Beat 4 gets four snare hits: "4 e & a". R L R L.',lanes:{hat:L('x.x.x.x.x.x.....'),snare:L('....x.......xxxx'),kick:L('x.......x.......')},sticking:['','','','','','','','','','','','','R','L','R','L']},
+ {id:'fill3',name:'Fill: Down the Toms',g:'fills',beats:4,res:16,tip:'Beat 4: snare, hi tom, mid tom, floor tom. Walk down the kit. Right hand leads.',lanes:{hat:L('x.x.x.x.x.x.....'),snare:L('....x.......x...'),tom1:L('.............x..'),tom2:L('..............x.'),ftom:L('...............x'),kick:L('x.......x.......')}},
+ {id:'fill4',name:'Fill: Whole Bar',g:'fills',beats:4,res:16,tip:'A full bar of fill: four on the snare, four on hi tom, four on mid tom, four on the floor tom. Then crash on 1.',lanes:{snare:L('xxxx............'),tom1:L('....xxxx........'),tom2:L('........xxxx....'),ftom:L('............xxxx')},sticking:'RLRLRLRLRLRLRLRL'.split('')},
+ {id:'fill5',name:'Fill: Kick & Snare',g:'fills',beats:4,res:16,tip:'Beat 4: snare, kick, snare, snare. Hands and foot taking turns.',lanes:{hat:L('x.x.x.x.x.x.....'),snare:L('....x.......x.xx'),kick:L('x.......x....x..')}},
+];
+function patById(id){ return BEATS.find(p=>p.id===id)||P.mine.find(p=>p.id===id); }
+
+/* ---------- patterns panel ---------- */
+let patGroup='sheet', lp='learn', curPat=null, patHalf=false;
+$('#viewSeg').onclick=e=>{ const b=e.target.closest('button'); if(!b)return; sheetView=b.dataset.v==='sheet'; $$('#viewSeg button').forEach(x=>x.classList.toggle('active',x===b)); P.sheetView=sheetView; save(P); if(curPat) drawBoth($('#patSheet'),$('#patStaff'),curPat); };
+if(P.sheetView===false){ sheetView=false; $$('#viewSeg button').forEach(x=>x.classList.toggle('active',x.dataset.v==='staff')); }
+$('#patGroupSeg').onclick=e=>{ const b=e.target.closest('button'); if(!b)return; patGroup=b.dataset.g; $$('#patGroupSeg button').forEach(x=>x.classList.toggle('active',x===b)); listPatterns(); };
+$('#lpSeg').onclick=e=>{ const b=e.target.closest('button'); if(!b)return; lp=b.dataset.lp; $$('#lpSeg button').forEach(x=>x.classList.toggle('active',x===b)); $('#patHint').textContent=lp==='learn'?'Learn mode lights the pad before each hit and plays the pattern with you.':'Prove mode: the pattern is silent after the count-in. You play it. Timing is scored per hit.'; };
+function listPatterns(){ const el=$('#patList'); el.innerHTML=''; $('#patView').style.display='none'; $('#patEditor').style.display='none'; el.style.display='grid'; const list=patGroup==='mine'?P.mine:BEATS.filter(p=>p.g===patGroup); if(!list.length){ el.innerHTML='<p class="muted">No patterns here yet. Open any pattern and tap "Copy & edit" to make your own.</p>'; } list.forEach(p=>{ const c=document.createElement('div'); c.className='card'; const sc=P.scores[p.id]; c.innerHTML=`<b>${p.name}</b><div class="small muted">${p.track?'Track '+p.track+' · ':''}${p.beats}/4 · ${p.res===16?'16ths':p.res===8?'8ths':'quarters'}</div><div class="stars" style="text-align:left;font-size:16px">${sc?stars(sc.best):'☆☆☆'}</div>`; c.onclick=()=>openPat(p); el.appendChild(c); }); }
+function openPat(p){ curPat=p; stopSeq(); $('#patList').style.display='none'; $('#patEditor').style.display='none'; $('#patView').style.display='block'; $('#patName').textContent=p.name; $('#patInfo').textContent=(p.track?'Track '+p.track+' · ':'')+`${p.beats}/4`; $('#patTip').textContent=p.tip||''; drawBoth($('#patSheet'),$('#patStaff'),p); drawGrid($('#patGrid'),p,false); buildCount($('#patCount'),p.beats,p.res===16?16:8); $('#patBig').textContent=''; $('#patFb').textContent=''; const sc=P.scores[p.id]; $('#patStars').textContent=sc?stars(sc.best)+'  best '+Math.round(sc.best*100)+'%':''; }
+$('#patHear').onclick=()=>{ if(!curPat)return; runPattern(curPat,{loops:2,countIn:0,bpm:patHalf?bpm/2:bpm,onStep:(n,s,t,inC)=>{ setTimeout(()=>{ setCount($('#patCount'),s,curPat.res===16?16:8); gridNow($('#patGrid'),s); drawBoth($('#patSheet'),$('#patStaff'),curPat,{hl:s}); for(const inst in curPat.lanes){ if(curPat.lanes[inst][s]){ light(inst,true); setTimeout(()=>light(inst,false),120); } } },Math.max(0,(t-ac().currentTime)*1000)); }, onStop:()=>{ drawBoth($('#patSheet'),$('#patStaff'),curPat); gridNow($('#patGrid'),-1); }}); };
+$('#patSlow').onclick=()=>{ patHalf=!patHalf; $('#patSlow').classList.toggle('gold',patHalf); };
+$('#patPlay').onclick=()=>{ if(!curPat)return; const loops=+$('#patLoops').value; const res=curPat.res===16?16:8; const learn=lp==='learn'; let scorer=null;
+  const s=runPattern(curPat,{loops,countIn:1,bpm:patHalf?bpm/2:bpm,sound:learn,voice:true,
+    onStep:(n,st,t,inC)=>{ const d=Math.max(0,(t-ac().currentTime)*1000); setTimeout(()=>{ setCount($('#patCount'),st,res); gridNow($('#patGrid'),st); drawBoth($('#patSheet'),$('#patStaff'),curPat,{hl:st}); if(inC){ $('#patBig').textContent=st%4===0?String(1+st/4):''; } else { $('#patBig').textContent=''; } },d);
+      if(learn && !inC){ for(const inst in curPat.lanes){ if(curPat.lanes[inst][st]){ setTimeout(()=>light(inst,true),Math.max(0,d-150)); setTimeout(()=>light(inst,false),d+100); } } } },
+    onDone:(ss)=>{ const r=scorer.result(); $('#patBig').textContent=Math.round(r.score*100)+'%'; $('#patStars').textContent=stars(r.score); $('#patFb').className='fb'; $('#patFb').textContent=`${r.got} of ${r.n} hits on time${r.extras?', '+r.extras+' extra':''}.`+scorer.offsetNote(r); if(!learn){ const prev=P.scores[curPat.id]||{best:0,runs:0}; prev.runs++; prev.best=Math.max(prev.best,r.score); prev.last=Date.now(); P.scores[curPat.id]=prev; save(P); } userHitHook=null; drawBoth($('#patSheet'),$('#patStaff'),curPat); gridNow($('#patGrid'),-1); todayDone('beat',curPat.id,r.score); },
+    onStop:()=>{ userHitHook=null; }});
+  scorer=makeScorer(s,$('#patFb'),$('#patBig'),false); userHitHook=(inst,t)=>scorer.hit(inst,t); toast(learn?'Count-in, then play along':'Count-in, then you play. Scored.'); };
+// editor
+let pe=null;
+function peToggle(inst,s){ pe.lanes[inst][s]=(pe.lanes[inst][s]+1)%3; drawGrid($('#peGrid'),pe,true,peToggle); if(pe.lanes[inst][s]) playInst(inst,null,pe.lanes[inst][s]===2?1:.7); }
+$('#patEdit').onclick=()=>{ if(!curPat)return; pe={id:'mine_'+Date.now(),name:curPat.name+' (mine)',g:'mine',beats:curPat.beats,res:16,tip:'Your pattern.',lanes:JSON.parse(JSON.stringify(curPat.lanes))}; LANE_ORDER.forEach(i=>{ if(!pe.lanes[i]) pe.lanes[i]=new Array(16).fill(0); else while(pe.lanes[i].length<16) pe.lanes[i].push(0); }); $('#peName').value=pe.name; $('#peBeats').value=pe.beats; $('#patView').style.display='none'; $('#patEditor').style.display='block'; drawGrid($('#peGrid'),pe,true,peToggle); };
+$('#peBeats').onchange=()=>{ if(pe){ pe.beats=+$('#peBeats').value; drawGrid($('#peGrid'),pe,true,peToggle); } };
+$('#peCancel').onclick=()=>{ pe=null; openPat(curPat); };
+$('#peSave').onclick=()=>{ if(!pe)return; pe.name=$('#peName').value.trim()||'My pattern'; for(const i in pe.lanes) if(!pe.lanes[i].some(v=>v)) delete pe.lanes[i]; P.mine.push(pe); save(P); patGroup='mine'; $$('#patGroupSeg button').forEach(x=>x.classList.toggle('active',x.dataset.g==='mine')); listPatterns(); openPat(pe); fillSongPats(); fillTrainerSel(); toast('Saved to My patterns'); };
+listPatterns();
+
+/* ---------- play-along songs ---------- */
+// songs: chord progression (semitone roots) + bass style; synth-only
+const SONGS=[
+ {id:'garage',name:'Garage Rock',bpm:96,prog:[0,0,5,7],bass:'eighths',chord:'power'},
+ {id:'funk',name:'Funky Street',bpm:100,prog:[0,0,3,5],bass:'funk',chord:'stab'},
+ {id:'pop',name:'Sunny Pop',bpm:108,prog:[0,7,9,5],bass:'quarters',chord:'pad'},
+ {id:'slow',name:'Slow Jam',bpm:70,prog:[0,5,7,5],bass:'quarters',chord:'pad'},
+ {id:'waltz',name:'Carousel Waltz',bpm:120,prog:[0,5,7,0],bass:'waltz',chord:'pad',beats:3},
+];
+function fillSongPats(){ const sel=$('#songPat'); sel.innerHTML=''; BEATS.filter(p=>p.g==='beats').concat(P.mine).forEach(p=>{ const o=document.createElement('option'); o.value=p.id; o.textContent=p.name; sel.appendChild(o); }); sel.value='money'; }
+$('#songSel').innerHTML=SONGS.map(s=>`<option value="${s.id}">${s.name} · ${s.bpm} bpm</option>`).join(''); fillSongPats();
+function synthNote(freq,t,dur,type,gain,lp){ const a=ac(); const o=a.createOscillator(); o.type=type; o.frequency.value=freq; const f=a.createBiquadFilter(); f.type='lowpass'; f.frequency.value=lp||1200; const g=a.createGain(); g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(gain,t+.01); g.gain.setValueAtTime(gain,t+dur*.7); g.gain.exponentialRampToValueAtTime(0.0001,t+dur); o.connect(f); f.connect(g); g.connect(master); o.start(t); track(o,t,dur); }
+const F=n=>55*Math.pow(2,n/12);
+function songStep(song,n,s,t,sp){ const beats=song.beats||4; const steps=beats*4; const bar=Math.floor(n/steps); const root=song.prog[bar%song.prog.length]; const beat=Math.floor(s/4);
+  if(song.bass==='eighths'){ if(s%2===0) synthNote(F(root+12),t,sp*1.8,'sawtooth',.35,700); }
+  else if(song.bass==='quarters'){ if(s%4===0) synthNote(F(root+12),t,sp*3.5,'triangle',.5,900); }
+  else if(song.bass==='funk'){ if([0,3,6,8,10,14].includes(s)) synthNote(F(root+12+(s===6?7:s===10?10:0)),t,sp*1.2,'sawtooth',.35,900); }
+  else if(song.bass==='waltz'){ if(s===0) synthNote(F(root+12),t,sp*3.5,'triangle',.5,900); }
+  const chordNotes=[root+24,root+24+(song.chord==='power'?7:4),root+24+7,root+24+12];
+  if(song.chord==='power'){ if(s%4===0) chordNotes.slice(0,3).forEach(x=>synthNote(F(x),t,sp*3.6,'square',.07,1500)); }
+  else if(song.chord==='stab'){ if([2,6,10,14].includes(s)) chordNotes.forEach(x=>synthNote(F(x),t,sp*1.2,'sawtooth',.06,2000)); }
+  else { if(s===0) chordNotes.forEach(x=>synthNote(F(x),t,sp*steps,'triangle',.08,1200)); }
+}
+// lane renderer: draws upcoming hits scrolling toward a line
+function laneDraw(cv,s,el,opts){ const ctx=cv.getContext('2d'); const W=cv.width=cv.clientWidth*devicePixelRatio, H=cv.height=cv.clientHeight*devicePixelRatio; ctx.clearRect(0,0,W,H); const lineX=W*.22; const span=2.4; // seconds visible ahead
+  const lanes=LANE_ORDER.filter(i=>s.pat.lanes[i]); const lh=H/(lanes.length+1);
+  ctx.font=`${12*devicePixelRatio}px 'Trebuchet MS',sans-serif`; lanes.forEach((inst,i)=>{ ctx.fillStyle='#39414f'; ctx.fillRect(0,lh*(i+1),W,1); ctx.fillStyle='#9aa6b4'; ctx.fillText(INST[inst].name+(inst==='hato'?' open':''),6*devicePixelRatio,lh*(i+1)-4); });
+  // beat lines
+  const firstBeatT=Math.floor(el/(s.sp*4))*(s.sp*4); for(let b=-1;b<span/(s.sp*4)+2;b++){ const t=firstBeatT+b*s.sp*4; const x=lineX+(t-el)/span*(W-lineX); const stepN=Math.round(t/s.sp); const bar=Math.floor(stepN/s.steps); ctx.fillStyle=(stepN%s.steps===0)?'#5a657a':'#2a313c'; ctx.fillRect(x,0,(stepN%s.steps===0)?3:1,H); }
+  const col={kick:'#e95f3b',snare:'#f2d34c',hat:'#8fd16a',hato:'#8fd16a',tom1:'#f0923a',tom2:'#6fb7e6',ftom:'#b48ad8',crash:'#e2483d',ride:'#5b84c7'};
+  s.hits.forEach(h=>{ const dt=h.t-el; if(dt<-.3||dt>span)return; const x=lineX+dt/span*(W-lineX); const li=lanes.indexOf(h.inst); const y=lh*(li+1)-lh*.45; const r=(h.acc?9:7)*devicePixelRatio; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fillStyle=h.hitJ?(h.hitJ==='miss'?'#ff5a52':h.hitJ==='perfect'?'#5fd67a':'#ffda73'):col[h.inst]; ctx.globalAlpha=dt<0&&!h.hitJ?.35:1; ctx.fill(); ctx.globalAlpha=1; });
+  ctx.fillStyle='#ffda73'; ctx.fillRect(lineX-1.5*devicePixelRatio,0,3*devicePixelRatio,H);
+  if(opts&&opts.countText){ ctx.fillStyle='#fff'; ctx.font=`bold ${40*devicePixelRatio}px 'Trebuchet MS',sans-serif`; ctx.textAlign='center'; ctx.fillText(opts.countText,W/2,H/2+14*devicePixelRatio); ctx.textAlign='left'; }
+}
+$('#songGo').onclick=()=>{ const song=SONGS.find(s=>s.id===$('#songSel').value); let pat=patById($('#songPat').value); if(song.beats===3 && pat.beats!==3){ pat=patById('waltz'); } if(pat.beats!==(song.beats||4)){ toast('That beat is '+pat.beats+'/4; pick a '+(song.beats||4)+'/4 song'); return; }
+  const bars=+$('#songBars').value; const guide=$('#songGuide').checked; const res=pat.res===16?16:8; buildCount($('#songCount'),pat.beats,res); let countTxt=''; let scorer;
+  const s=runPattern(pat,{loops:bars,countIn:1,bpm:song.bpm,sound:guide,voice:true,click:false,
+    onStep:(n,st,t,inC)=>{ if(!inC) songStep(song,n-s.countIn*s.steps,st,t,s.sp); else if(st%4===0) click(t,st===0); const d=Math.max(0,(t-ac().currentTime)*1000); setTimeout(()=>{ setCount($('#songCount'),st,res); countTxt=inC&&st%4===0?String(1+st/4):''; },d); },
+    onFrame:(el)=>laneDraw($('#songCv'),s,el,{countText:countTxt}),
+    onDone:(ss)=>{ const r=scorer.result(); $('#songStars').textContent=stars(r.score)+'  '+Math.round(r.score*100)+'%'; $('#songFb').className='fb'; $('#songFb').textContent=`${r.got} of ${r.n} hits on time`; userHitHook=null; const key='song_'+song.id; const prev=P.scores[key]||{best:0,runs:0}; prev.runs++; prev.best=Math.max(prev.best,r.score); P.scores[key]=prev; save(P); todayDone('song',song.id,r.score); },
+    onStop:()=>{ userHitHook=null; }});
+  scorer=makeScorer(s,$('#songFb'),null,false); userHitHook=(inst,t)=>{ scorer.hit(inst,t); const tt=t-s.start; s.hits.forEach(h=>{ if(!h.hitJ && Math.abs(h.t-tt)<=WIN && (h.inst===inst||(h.inst==='hato'&&inst==='hat'))) h.hitJ=judge(tt-h.t); }); };
+  $('#songStars').textContent=''; toast('Count-in: 1 2 3 4'); };
+
+/* ---------- trainer (mic) ---------- */
+let mic=null, micAn=null, micBuf=null, micRaf=null, micOn=false, micLast=0, micAvg=0.01, micHook=null;
+function fillTrainerSel(){ const sel=$('#trSel'); sel.innerHTML=''; BEATS.concat(P.mine).forEach(p=>{ const o=document.createElement('option'); o.value=p.id; o.textContent=p.name; sel.appendChild(o); }); sel.value='t1'; }
+fillTrainerSel(); drawBoth($('#trSheet'),$('#trStaff'),patById('t1'));
+$('#trSel').onchange=()=>drawBoth($('#trSheet'),$('#trStaff'),patById($('#trSel').value));
+async function micStart(){ try{ const a=ac(); const st=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}}); mic=a.createMediaStreamSource(st); micAn=a.createAnalyser(); micAn.fftSize=1024; micBuf=new Float32Array(micAn.fftSize); mic.connect(micAn); micOn=true; micStream=st; $('#micState').textContent='listening'; $('#micBtn').textContent='🎤 Mic on'; micLoop(); }catch(e){ $('#micState').textContent='mic blocked ('+(e.name||'error')+')'; toast('Mic needs permission and the https address'); } }
+let micStream=null;
+function micStop(){ if(micStream){ micStream.getTracks().forEach(t=>t.stop()); micStream=null; } micOn=false; cancelAnimationFrame(micRaf); $('#micState').textContent='mic off'; $('#micBtn').textContent='🎤 Listen'; $('#micMeter').style.width='0'; }
+function micLoop(){ if(!micOn)return; micAn.getFloatTimeDomainData(micBuf); let sum=0; for(let i=0;i<micBuf.length;i++) sum+=micBuf[i]*micBuf[i]; const rms=Math.sqrt(sum/micBuf.length); const sens=+$('#micSens').value; const thr=0.02+(10-sens)*0.012; const now=ac().currentTime; $('#micMeter').style.width=Math.min(100,rms*600)+'%'; if(rms>thr && rms>micAvg*2.2 && now-micLast>.04){ micLast=now; if(micHook) micHook(now); } micAvg=micAvg*.92+rms*.08; micRaf=requestAnimationFrame(micLoop); }
+$('#micBtn').onclick=()=>micOn?micStop():micStart();
+function trainerStop(){ micHook=null; }
+$('#trGo').onclick=()=>{ const pat=patById($('#trSel').value); const loops=+$('#trLoops').value; const cin=+$('#trCountIn').value; const res=pat.res===16?16:8; buildCount($('#trCount'),pat.beats,res); let countTxt='', scorer;
+  const s=runPattern(pat,{loops,countIn:cin,bpm,sound:false,voice:$('#trVoice').checked,
+    onStep:(n,st,t,inC)=>{ const d=Math.max(0,(t-ac().currentTime)*1000); setTimeout(()=>{ setCount($('#trCount'),st,res); drawBoth($('#trSheet'),$('#trStaff'),pat,{hl:st}); countTxt=inC&&st%4===0?String(1+st/4):''; $('#trBig').textContent=inC?countTxt:''; },d); },
+    onFrame:(el)=>laneDraw($('#trCv'),s,el,{countText:countTxt}),
+    onDone:(ss)=>{ const r=scorer.result(); $('#trBig').textContent=Math.round(r.score*100)+'%'; $('#trStars').textContent=stars(r.score); $('#trFb').className='fb'; $('#trFb').textContent=`${r.got} of ${r.n} on time${r.extras?', '+r.extras+' extra':''}.`+scorer.offsetNote(r); micHook=null; userHitHook=null; const key='tr_'+pat.id; const prev=P.scores[key]||{best:0,runs:0,hist:[]}; prev.runs++; prev.best=Math.max(prev.best,r.score); prev.hist=(prev.hist||[]).concat([Math.round(r.score*100)]).slice(-10); prev.last=Date.now(); P.scores[key]=prev; save(P); drawBoth($('#trSheet'),$('#trStaff'),pat); renderTrProg(); todayDone('warm',pat.id,r.score); },
+    onStop:()=>{ micHook=null; userHitHook=null; }});
+  scorer=makeScorer(s,$('#trFb'),$('#trBig'),true);
+  const onHit=(tAbs)=>{ scorer.hit(null,tAbs); const tt=tAbs-s.start; let best=null,bd=1; s.hits.forEach(h=>{ if(!h.hitJ && Math.abs(h.t-tt)<=WIN && Math.abs(h.t-tt)<bd){bd=Math.abs(h.t-tt);best=h;} }); if(best) best.hitJ=judge(tt-best.t); };
+  micHook=onHit; userHitHook=(inst,t)=>onHit(t); $('#trStars').textContent=''; toast(micOn?'Count-in, then play the pad':'Mic is off: tap the screen, or hit Listen first'); };
+function renderTrProg(){ const el=$('#trProg'); el.innerHTML=''; Object.keys(P.scores).filter(k=>k.startsWith('tr_')).forEach(k=>{ const p=patById(k.slice(3)); if(!p)return; const sc=P.scores[k]; const c=document.createElement('div'); c.className='card'; c.innerHTML=`<b>${p.name}</b><br><span class="stars" style="font-size:14px">${stars(sc.best)}</span> ${Math.round(sc.best*100)}% · ${sc.runs} runs<br><span class="muted">${(sc.hist||[]).join(' → ')}</span>`; el.appendChild(c); }); }
+renderTrProg();
+// tapping anywhere on the trainer lane counts as a hit too
+$('#trLane').addEventListener('pointerdown',()=>{ if(micHook) micHook(ac().currentTime); play(INST.snare.voice); });
+
+/* ---------- lessons ---------- */
+const PIC_GRIP=`<svg class="pic" viewBox="0 0 420 200"><rect width="420" height="200" rx="12" fill="#20242b"/><g stroke="#c9955a" stroke-width="9" stroke-linecap="round"><line x1="60" y1="150" x2="330" y2="60"/></g><ellipse cx="335" cy="58" rx="9" ry="7" fill="#e8d7b0"/><g fill="#f0c9a0" stroke="#b58a5c" stroke-width="2"><ellipse cx="150" cy="125" rx="52" ry="34"/><rect x="110" y="88" width="22" height="48" rx="11" transform="rotate(-20 121 112)"/><rect x="140" y="80" width="20" height="56" rx="10" transform="rotate(-20 150 108)"/><rect x="170" y="92" width="18" height="50" rx="9" transform="rotate(-20 179 117)"/><rect x="120" y="140" width="40" height="22" rx="11" transform="rotate(-40 140 151)"/></g><circle cx="133" cy="118" r="7" fill="none" stroke="#ffda73" stroke-width="3"/><text x="40" y="188" fill="#9aa6b4" font-size="13" font-family="Trebuchet MS">Pinch point: thumb and first finger, about a third of the way up</text></svg>`;
+const PIC_SIT=`<svg class="pic" viewBox="0 0 420 200"><rect width="420" height="200" rx="12" fill="#20242b"/><circle cx="210" cy="40" r="18" fill="#f0c9a0"/><line x1="210" y1="58" x2="210" y2="120" stroke="#6fb7e6" stroke-width="16" stroke-linecap="round"/><line x1="210" y1="120" x2="165" y2="165" stroke="#6fb7e6" stroke-width="14" stroke-linecap="round"/><line x1="210" y1="120" x2="255" y2="165" stroke="#6fb7e6" stroke-width="14" stroke-linecap="round"/><line x1="210" y1="80" x2="150" y2="110" stroke="#f0c9a0" stroke-width="10" stroke-linecap="round"/><line x1="210" y1="80" x2="270" y2="110" stroke="#f0c9a0" stroke-width="10" stroke-linecap="round"/><rect x="185" y="118" width="50" height="10" rx="5" fill="#444"/><path d="M60 170 Q210 150 360 170" fill="none" stroke="#ffda73" stroke-width="2" stroke-dasharray="4 4"/><text x="60" y="190" fill="#9aa6b4" font-size="13" font-family="Trebuchet MS">Back tall, knees about level with hips, feet flat</text></svg>`;
+const LESSONS=[
+ {id:'meet',name:'Meet the Kit',sub:'the parts and what they do',steps:[
+   {h:'Welcome to the kit',t:'A drum kit is a few drums and a few cymbals, all played by one person. Drums are hit with sticks. The kick is played with your foot on a pedal. Let us meet them one at a time.',do:'tap'},
+   {h:'Snare',t:'The snare sits right in front of you. It has wires under the bottom head that rattle, so it goes CRACK. Most of the time the snare plays on 2 and 4.',inst:'snare'},
+   {h:'Kick (bass drum)',t:'The big drum on the floor. Your right foot pushes a pedal that swings a beater into it. BOOM. It usually plays on 1 and 3.',inst:'kick'},
+   {h:'Hi-hat',t:'Two cymbals stacked face to face on a stand. Your left foot controls the stand: foot down = closed = "tick". Foot up = open = "tsss". Your right hand plays it. It keeps the time.',inst:'hat'},
+   {h:'Toms',t:'The toms are drums without snare wires. High tom, mid tom, floor tom: each one is bigger and lower. They are mostly for fills.',inst:'tom1'},
+   {h:'Crash and ride',t:'The crash is the loud cymbal you hit on the 1 of a new section. The ride is bigger and you tap it to keep time with a "ping".',inst:'crash'},
+   {h:'Quiz',t:'Which one plays on 2 and 4 most of the time? Tap it.',quiz:'snare'},
+   {h:'Quiz',t:'Which one does your foot play? Tap it.',quiz:'kick'},
+   {h:'Quiz',t:'Which one keeps the time with your right hand and has a foot pedal too? Tap it.',quiz:'hat'},
+ ]},
+ {id:'grip',name:'Sticks and Sitting',sub:'hold, posture, relax',steps:[
+   {h:'Holding the stick',t:'Pinch the stick between your thumb and the side of your first finger, about a third of the way up from the bottom. That pinch is the fulcrum, the hinge the stick swings on. The other fingers wrap gently. Not a fist.',pic:'grip'},
+   {h:'Both hands the same',t:'This is matched grip: both hands hold the stick the same way, palms facing mostly down. Hands relaxed. If your knuckles go white, you are squeezing.',pic:'grip'},
+   {h:'Sitting',t:'Sit tall on the throne. Knees about level with your hips. Feet flat: right foot on the kick pedal, left foot on the hi-hat pedal. Snare between your knees.',pic:'sit'},
+   {h:'The stroke',t:'Lift the tip of the stick, let it drop, let it bounce back up. The drum does the work on the way back. Big movement from the wrist, not the arm. Try ten slow strokes on the snare now.',inst:'snare'},
+ ]},
+ {id:'count',name:'Counting: 1 & 2 & 3 & 4 &',sub:'the words under every beat',steps:[
+   {h:'Beats',t:'Music is cut into even beats, like a clock ticking. Four beats make a bar. We count them 1, 2, 3, 4, and then start over at 1.',count:4},
+   {h:'The "and"',t:'Between the beats there is an "and" (we write it &). Count 1 & 2 & 3 & 4 &. The numbers and the &s are evenly spaced. Tap the snare on every word with the click.',pat:'single',res:8},
+   {h:'Numbers only',t:'Now tap only on the numbers: 1, 2, 3, 4. Keep saying the &s in your head but do not hit on them.',pat:'quarterhats_snare',res:8},
+   {h:'& only',t:'Hard one: tap only on the &s. Say the numbers, hit the ands.',pat:'ands',res:8},
+   {h:'e and a',t:'Later, each beat splits into four: 1 e & a 2 e & a. You will see those in the fills. Not today, but now you know what "e" and "a" are.',pat:'single16',res:16,hearOnly:true},
+ ]},
+ {id:'hands',name:'Right Hand, Left Hand',sub:'single strokes and taking turns',steps:[
+   {h:'R L R L',t:'The most basic sticking: hands take turns. R L R L. Every hit the same volume. Watch the R and L letters above the notes.',pat:'single',res:8},
+   {h:'Start with the left',t:'Same thing, start with the left hand. L R L R. Lefties, this one is your home.',pat:'single_L',res:8},
+   {h:'Two per hand',t:'R R L L. Let the second hit bounce. Slow it down with Half speed if it gets messy.',pat:'double',res:16},
+   {h:'Paradiddle',t:'R L R R, L R L L. Say "pa ra did dle". It feels strange because the starting hand flips every time.',pat:'paradiddle',res:16},
+ ]},
+ {id:'read',name:'Reading Drum Music',sub:'where each drum lives on the staff',steps:[
+   {h:'The staff',t:'Drum music is written on five lines. The two thick bars at the start mean "this is percussion" (no do re mi here). Each drum has its own spot: low drums sit low, cymbals sit high.',staffAll:true},
+   {h:'Noteheads',t:'Drums get a round black notehead. Cymbals get an X. An open hi-hat gets a little o above the X. Tap each note on the staff to hear and name it.',staffAll:true,tap:true},
+   {h:'Note lengths',t:'A note with a plain stem is a quarter note: one beat. Two notes joined by a beam are eighth notes: half a beat each, "1 &". A double beam means sixteenths: "1 e & a".',pat:'money'},
+   {h:'Stems',t:'Hands get stems pointing UP. The kick gets a stem pointing DOWN. That is how you can see at a glance what the foot plays.',pat:'four'},
+   {h:'Rests',t:'A squiggle where a note could be is a rest: do not play. Silence is part of the music too.',pat:'half'},
+   {h:'Read this one',t:'Read it before you hear it. What hits on beat 2? What does the foot do? Then tap Hear it and check.',pat:'rock2'},
+ ]},
+ {id:'book1',name:'Beginning Exercises',sub:'the first page of the book, tracks 1 to 6',steps:[
+   {h:'Same as class',t:'These are the six exercises from the first sheet. Every word of the count gets a hit. The pictures are laid out exactly like the sheet: hi-hat on top, snare in the middle, bass drum on the bottom.',pat:'t1',res:8},
+   {h:'Track 2: snare only',t:'Left hand. Every word.',pat:'t2',res:8},
+   {h:'Track 3: bass drum only',t:'Right foot. Every word. Tap the Bass drum pad with a finger here; at class it is the pedal.',pat:'t3',res:8},
+   {h:'Track 4: hi-hat and snare',t:'Both hands land together. The line joining the pictures means "at the same time".',pat:'t4',res:8},
+   {h:'Track 5: hi-hat and bass drum',t:'Hand and foot together.',pat:'t5',res:8},
+   {h:'Track 6: all three',t:'Hands and foot together on every word. Go slow enough that they really land together.',pat:'t6',res:8},
+ ]},
+ {id:'book2',name:'Drum Beats 1 to 6',sub:'the second sheet, tracks 7 to 12',steps:[
+   {h:'Beat 1',t:'Hi-hat every word, snare on 2 and 4, bass drum on 1 and 3. Your sheet has RH, LH, RF written next to the rows: right hand, left hand, right foot.',pat:'t7',res:8},
+   {h:'Beat 2',t:'Beat 1 plus a bass drum on the & after 3.',pat:'t8',res:8},
+   {h:'Beat 3',t:'Bass drum on 1, & after 1, and 3.',pat:'t9',res:8},
+   {h:'Beat 4',t:'Double kicks on "1 &" and on "3 &".',pat:'t10',res:8},
+   {h:'Beat 5',t:'Bass on 1, "3 &", and the & after 4.',pat:'t11',res:8},
+   {h:'Beat 6',t:'The whole set: "1 &", "3 &", and the & after 4. If it falls apart, go back to Beat 4 and build up.',pat:'t12',res:8},
+   {h:'Prove it',t:'Open Patterns, The Book group, Prove mode, and play Beat 1 four times. Two stars and you are ready to take it to the real kit.',goto:'t7'},
+ ]},
+ {id:'fills',name:'Fills',sub:'what they are and when they go',steps:[
+   {h:'What a fill is',t:'A fill is a short break from the beat, usually on the last beat of a bar, that leads into the next part of the song. Beat, beat, beat, FILL, crash.',pat:'fill1',res:8},
+   {h:'Two hits',t:'The simplest fill: on beat 4, hit the snare on 4 and on &. Then back to the beat.',pat:'fill1',res:8},
+   {h:'Four hits',t:'Beat 4 gets 4 e & a on the snare, R L R L.',pat:'fill2',res:16},
+   {h:'Around the kit',t:'Snare, hi tom, mid tom, floor tom. One hit each on beat 4. Walk it down.',pat:'fill3',res:16},
+   {h:'Crash on 1',t:'After a fill, hit the crash on the 1 of the next bar, together with the kick. That crash is the "we are here" sign.',pat:'fill4',res:16},
+ ]},
+ {id:'music',name:'Playing With Music',sub:'keeping a beat under a song',steps:[
+   {h:'Your job',t:'With a band, the drummer is the clock. Everyone else listens to you. Keep the beat steady, do not speed up when it gets exciting.',count:4},
+   {h:'Follow the lane',t:'In Play-Along, dots slide toward the gold line. Hit the pad when the dot reaches the line. Start with "drum part plays too" on, so you can hear where the hits go.',goto:'play'},
+   {h:'Then alone',t:'Turn "drum part plays too" off and play Garage Rock with the Money Beat for 16 bars. The score tells you how steady you were.',goto:'play'},
+   {h:'At your lesson',t:'Take the drills to the real kit. Count out loud. Play slow. If it falls apart, slow down until it does not. That is practice.',count:4},
+ ]},
+];
+// small helper patterns used only in lessons
+const LESSON_PATS={
+ quarterhats_snare:{id:'quarterhats_snare',name:'Numbers only',beats:4,res:8,lanes:{snare:L('x...x...x...x...')}},
+ ands:{id:'ands',name:'Ands only',beats:4,res:8,lanes:{snare:L('..x...x...x...x.')}},
+ single_L:{id:'single_L',name:'L R L R',beats:4,res:8,lanes:{snare:L('x.x.x.x.x.x.x.x.')},sticking:['L','','R','','L','','R','','L','','R','','L','','R','']},
+};
+function lessonPat(id){ return LESSON_PATS[id]||patById(id); }
+let curL=null, curStep=0;
+function listLessons(){ const el=$('#lessonList'); el.innerHTML=''; LESSONS.forEach((l,i)=>{ const d=P.lessons[l.id]; const c=document.createElement('div'); c.className='card'; c.innerHTML=`<div><b>${i+1}. ${l.name}</b><div class="small muted">${l.sub} · ${l.steps.length} steps</div></div><div class="${d?'done':'muted'}">${d?'✓ done':'▶'}</div>`; c.onclick=()=>openLesson(l); el.appendChild(c); }); }
+function openLesson(l){ curL=l; curStep=0; $('#lessonHome').style.display='none'; $('#lessonView').style.display='block'; $('#lessonName').textContent=l.name; showStep(); }
+$('#lessonBack').onclick=()=>{ stopSeq(); $('#lessonView').style.display='none'; $('#lessonHome').style.display='block'; listLessons(); };
+$('#stepPrev').onclick=()=>{ if(curStep>0){curStep--; showStep();} };
+$('#stepNext').onclick=()=>{ if(curStep<curL.steps.length-1){curStep++; showStep();} else { P.lessons[curL.id]=Date.now(); save(P); toast('Lesson done'); $('#lessonBack').onclick(); } };
+let quizTarget=null;
+function showStep(){ stopSeq(); const st=curL.steps[curStep]; $('#lessonStep').textContent=`step ${curStep+1} of ${curL.steps.length}`; $('#stepNext').textContent=curStep===curL.steps.length-1?'Finish ✓':'Next ▶'; quizTarget=null;
+  let h=`<h3>${st.h}</h3><p>${st.t}</p>`;
+  if(st.pic) h+=st.pic==='grip'?PIC_GRIP:PIC_SIT;
+  if(st.inst) h+=`<div class="row"><button class="btn gold" id="sHear">🔊 Hear the ${INST[st.inst].name}</button><button class="btn" id="sShow">👆 Show me on the kit</button></div>`;
+  if(st.do==='tap') h+=`<div class="row"><button class="btn gold" id="sKit">🥁 Go tap the kit</button></div>`;
+  if(st.quiz) h+=`<div class="row"><span class="muted small">Tap your answer on the kit below.</span></div><div class="kitwrap" id="qkit" style="margin-top:6px"></div><div class="fb" id="qfb"></div>`;
+  if(st.count) h+=`<div class="count" id="sCount"></div><div class="row"><button class="btn gold" id="sCountGo">▶ Count 2 bars with me</button></div>`;
+  if(st.pat){ const p=lessonPat(st.pat); h+=`<div id="sSheet"></div><svg class="staff" id="sStaff"></svg><div class="count" id="sCount"></div><div class="row"><button class="btn" id="sHearP">🔊 Hear it</button>${st.hearOnly?'':'<button class="btn gold" id="sTry">👆 My turn (with the click)</button><button class="btn" id="sHalf">🐢 Half speed</button>'}</div><div class="big" id="sBig"></div><div class="fb" id="sFb"></div>`; }
+  if(st.staffAll) h+=`<svg class="staff" id="sStaff"></svg><div class="fb" id="sFb">${st.tap?'Tap a note.':''}</div>`;
+  if(st.goto) h+=`<div class="row"><button class="btn gold" id="sGoto">Open it ▶</button></div>`;
+  $('#stepBody').innerHTML=h;
+  if(st.inst){ $('#sHear').onclick=()=>playInst(st.inst); $('#sShow').onclick=()=>{ setMode('kit'); light(st.inst,true); setTimeout(()=>light(st.inst,false),1500); playInst(st.inst); setTimeout(()=>setMode('lessons'),1800); }; }
+  if(st.do==='tap') $('#sKit').onclick=()=>setMode('kit');
+  if(st.quiz){ quizTarget=st.quiz; const q=$('#qkit'); JSON.parse(JSON.stringify(LAYOUTS.full)).forEach(p=>{ const d=document.createElement('div'); d.className='pad '+INST[p.id].cls; d.style.left=p.x+'%'; d.style.top=p.y+'%'; d.style.width=p.s+'%'; d.style.aspectRatio='1/1'; d.innerHTML=`<div class="lbl">${INST[p.id].name}</div>`; d.onpointerdown=()=>{ playInst(p.id); const ok=p.id===quizTarget; $('#qfb').className='fb '+(ok?'good':'miss'); $('#qfb').textContent=ok?'Yes! '+INST[p.id].name+'.':'Not that one. Try again.'; if(ok){ d.classList.add('lit'); } }; q.appendChild(d); }); }
+  if(st.count){ buildCount($('#sCount'),4,8); $('#sCountGo').onclick=()=>{ const p={beats:4,res:8,lanes:{}}; runPattern(p,{loops:2,countIn:0,voice:true,onStep:(n,s,t)=>{ setTimeout(()=>setCount($('#sCount'),s,8),Math.max(0,(t-ac().currentTime)*1000)); if(s%4===0) sayNumber(1+s/4,t-ac().currentTime); }}); }; }
+  if(st.pat){ const p=lessonPat(st.pat); const res=p.res===16?16:8; drawBoth($('#sSheet'),$('#sStaff'),p); buildCount($('#sCount'),p.beats,res); let half=false;
+    $('#sHearP').onclick=()=>runPattern(p,{loops:2,countIn:0,bpm:half?bpm/2:bpm,onStep:(n,s,t)=>setTimeout(()=>{setCount($('#sCount'),s,res); drawBoth($('#sSheet'),$('#sStaff'),p,{hl:s}); for(const i in p.lanes) if(p.lanes[i][s]){light(i,true);setTimeout(()=>light(i,false),120);} },Math.max(0,(t-ac().currentTime)*1000)),onStop:()=>drawBoth($('#sSheet'),$('#sStaff'),p)});
+    if(!st.hearOnly){ $('#sHalf').onclick=()=>{half=!half; $('#sHalf').classList.toggle('gold',half);}; $('#sTry').onclick=()=>{ let scorer; const s=runPattern(p,{loops:4,countIn:1,bpm:half?bpm/2:bpm,sound:false,voice:true,onStep:(n,st2,t,inC)=>setTimeout(()=>{ setCount($('#sCount'),st2,res); drawBoth($('#sSheet'),$('#sStaff'),p,{hl:st2}); $('#sBig').textContent=inC&&st2%4===0?String(1+st2/4):''; },Math.max(0,(t-ac().currentTime)*1000)),onDone:()=>{ const r=scorer.result(); $('#sBig').textContent=Math.round(r.score*100)+'%'; $('#sFb').className='fb'; $('#sFb').textContent=`${r.got} of ${r.n} on time. `+(r.score>=.7?'Ready for the next step.':'Try it again, slower.'); userHitHook=null; drawBoth($('#sSheet'),$('#sStaff'),p); todayDone('warm',p.id,r.score); },onStop:()=>{userHitHook=null;}}); scorer=makeScorer(s,$('#sFb'),$('#sBig'),true); userHitHook=(inst,t)=>scorer.hit(inst,t); toast('Count-in, then play it on the kit below'); }; }
+  }
+  if(st.staffAll){ drawStaffMap($('#sStaff')); if(st.tap){ const svg=$('#sStaff'); svg.addEventListener('pointerdown',e=>{ const r=svg.getBoundingClientRect(); const x=(e.clientX-r.left)/r.width*720; const i=Math.max(0,Math.min(8,Math.round((x-90)/72))); const inst=MAP_ORDER[i]; playInst(inst); $('#sFb').className='fb good'; $('#sFb').textContent=INST[inst].name+(inst==='hato'?' (open)':'')+(XHEAD[inst]?' : cymbal, X head':' : drum, round head'); }); } }
+  if(st.goto){ $('#sGoto').onclick=()=>{ if(st.goto==='play') setMode('play'); else { setMode('patterns'); openPat(patById(st.goto)); } }; }
+}
+listLessons();
+
+/* ---------- today + grown-ups ---------- */
+function dayKey(d){ d=d||new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function logMinutes(sec){ P.min=P.min||{}; const k=dayKey(); P.min[k]=(P.min[k]||0)+sec; save(P); }
+function bestOf(id){ const sc=P.scores[id]; return sc?sc.best:0; }
+function pickToday(){ P.today=P.today||{}; const t=P.today; if(t.date!==dayKey()){ const warmups=['t1','t2','t3','t4','t5','t6','single','double']; const beats=BEATS.filter(p=>p.g==='sheet'&&p.track>=7).map(p=>p.id); const need=beats.find(id=>bestOf(id)<.7)||beats[Math.floor(Math.random()*beats.length)]; const warm=warmups.find(id=>bestOf(id)<.7&&bestOf('tr_'+id)<.7)||warmups[Math.floor(Math.random()*warmups.length)]; const songs=SONGS.filter(x=>!x.beats).map(x=>x.id); P.today={date:dayKey(),warm,beat:need,song:songs[Math.floor(Math.random()*songs.length)],done:{}}; save(P); } return P.today; }
+function todayDone(kind,id,score){ const t=pickToday(); if(score<.45)return; if(kind==='song'){ if(id!==t.song)return; t.done.song=true; } else { let hit=false; if(id===t.warm){t.done.warm=true;hit=true;} if(id===t.beat){t.done.beat=true;hit=true;} if(!hit)return; } if(t.done.warm&&t.done.beat&&t.done.song&&!t.complete){ t.complete=true; P.streak=P.streak||{n:0,last:''}; const y=dayKey(new Date(Date.now()-864e5)); P.streak.n=(P.streak.last===y||P.streak.last===dayKey())?P.streak.n+1:1; if(P.streak.last===dayKey()) P.streak.n--; P.streak.last=dayKey(); toast('All three done today!'); } save(P); renderToday(); }
+function renderToday(){ const t=pickToday(); const el=$('#todayCards'); el.innerHTML=''; const warm=patById(t.warm), beat=patById(t.beat), song=SONGS.find(x=>x.id===t.song);
+  [['warm','1. Warm up',warm.name,'Patterns or Trainer, 4 loops'],['beat','2. Beat from the book',beat.name+(beat.track?' (Track '+beat.track+')':''),'Patterns, Prove mode'],['song','3. Play it with a song',song.name+' + '+beat.name,'Play-Along, 8 bars']].forEach(([k,h,n,sub])=>{ const c=document.createElement('div'); c.className='card'+(t.done[k]?' sel':''); c.innerHTML=`<b>${h}</b><div style="font-size:15px;margin:4px 0">${n}</div><div class="small muted">${sub}</div><div class="${t.done[k]?'done':'muted'}" style="margin-top:4px">${t.done[k]?'✓ done':'▶ go'}</div>`; c.onclick=()=>{ if(k==='song'){ setMode('play'); $('#songSel').value=song.id; $('#songPat').value=beat.id; $('#songBars').value='8'; } else if(k==='warm'){ setMode('patterns'); patGroup=warm.g; $$('#patGroupSeg button').forEach(x=>x.classList.toggle('active',x.dataset.g===warm.g)); listPatterns(); openPat(warm); } else { setMode('patterns'); patGroup='sheet'; $$('#patGroupSeg button').forEach(x=>x.classList.toggle('active',x.dataset.g==='sheet')); lp='prove'; $$('#lpSeg button').forEach(x=>x.classList.toggle('active',x.dataset.lp==='prove')); listPatterns(); openPat(beat); } }; el.appendChild(c); });
+  const st=P.streak||{n:0}; $('#streak').textContent=st.n?`🔥 ${st.n} day streak`:''; }
+function renderGrown(){ const el=$('#grownStats'); const week=[]; let tot=0; for(let i=6;i>=0;i--){ const k=dayKey(new Date(Date.now()-i*864e5)); const m=((P.min||{})[k]||0)/60; tot+=m; week.push(`<span class="card" style="padding:4px 8px;margin:2px;display:inline-block">${k.slice(5)}: ${m.toFixed(1)} min</span>`); }
+  let rows=''; BEATS.concat(P.mine).forEach(p=>{ const a=P.scores[p.id], b=P.scores['tr_'+p.id]; if(!a&&!b)return; const best=Math.max(a?a.best:0,b?b.best:0); const runs=(a?a.runs:0)+(b?b.runs:0); const last=Math.max(a?a.last||0:0,b?b.last||0:0); rows+=`<div class="card" style="margin:3px 0;padding:6px 10px;display:flex;gap:8px;align-items:center"><span style="min-width:140px">${p.name}</span><span class="stars" style="font-size:14px">${stars(best)}</span><span class="small muted">${Math.round(best*100)}% · ${runs} runs${last?' · '+new Date(last).toLocaleDateString():''}</span></div>`; });
+  const ld=Object.keys(P.lessons).length; el.innerHTML=`<b>This week: ${tot.toFixed(0)} minutes of timed practice</b><div style="margin:6px 0">${week.join('')}</div><b>Lessons finished: ${ld} of ${LESSONS.length}</b><div style="margin-top:6px"><b>Patterns</b></div>${rows||'<p class="muted small">No scored runs yet.</p>'}`; }
+$('#grownBtn').onclick=()=>{ const b=$('#grownBox'); b.style.display=b.style.display==='none'?'block':'none'; if(b.style.display==='block') renderGrown(); };
+$('#expBtn').onclick=async()=>{ const txt=JSON.stringify(P); const ta=$('#progTxt'); ta.style.display='block'; ta.value=txt; try{ await navigator.clipboard.writeText(txt); toast('Progress copied'); }catch(e){ ta.select(); toast('Select all and copy'); } };
+$('#impBtn').onclick=()=>{ const ta=$('#progTxt'); if(ta.style.display==='none'){ ta.style.display='block'; ta.value=''; ta.placeholder='Paste progress here, then tap Paste progress again'; ta.focus(); return; } try{ const o=JSON.parse(ta.value); if(!o||typeof o!=='object'||!o.scores) throw 0; P=o; P.lessons=P.lessons||{}; P.scores=P.scores||{}; P.mine=P.mine||[]; save(P); toast('Progress loaded'); renderToday(); renderGrown(); listLessons(); listPatterns(); renderTrProg(); }catch(e){ toast('That did not look like STICK progress'); } };
+renderToday();
+
+/* ---------- modes ---------- */
+const kitHome=$('#kit').parentNode;
+function setMode(m){ $$('#modeSeg button').forEach(b=>b.classList.toggle('active',b.dataset.mode===m)); $$('.panel').forEach(p=>p.classList.remove('show')); $('#p-'+m).classList.add('show'); const k=$('#kit'); const slot={patterns:'#patKitSlot',lessons:'#lessonKitSlot',play:'#playKitSlot',trainer:'#trKitSlot',today:'#todayKitSlot'}[m]; if(m==='today') renderToday(); if(slot) $(slot).appendChild(k); else kitHome.insertBefore(k,kitHome.firstChild); if(m!=='kit'){ editing=false; $('#editbox').classList.remove('show'); k.classList.remove('edit'); } }
+$('#modeSeg').onclick=e=>{ const b=e.target.closest('button'); if(b) setMode(b.dataset.mode); };
+// keyboard support for desktop testing
+const KEYS={a:'hat',s:'snare',d:'kick',f:'tom1',g:'tom2',h:'ftom',j:'crash',k:'ride'};
+document.addEventListener('keydown',e=>{ if(e.repeat)return; const id=KEYS[e.key]; if(!id)return; const i=pads.findIndex(p=>p.id===id); if(i>=0) hitPad(i); else { playInst(id); onUserHit(id); } });
+document.addEventListener('visibilitychange',()=>{ if(document.hidden) stopEverything(); });
+setMode('today');
+if('serviceWorker' in navigator && location.protocol==='https:'){ navigator.serviceWorker.register('./sw.js').catch(()=>{}); }
+</script>
+</body>
+</html>
