@@ -33,8 +33,8 @@ ships or a decision changes. Keep entries short. Status tags:
 ## Apps
 
 ### Bloodstream — body-exploring trail game  **LIVE**
-Path: `bloodstream.html` · Current: **v0.2** (2026-10-18) · shelf **v71**
-Oregon Trail / FTL-style single-file game built for Garrett from his own Body Trail
+Path: `bloodstream.html` · Current: **v0.2** (2026-10-18) · shelf **v72**
+Oregon Trail / FTL-style single-file game (Old Video Games box, ARCADE_H) built for Garrett from his own Body Trail
 Builder answers (ride: Bubble Pod; crew: Oxinator, Fighty, Patchlet; boss: Sugar Monster;
 Blood Red palette). Heart hub + node map (Stomach, Bones, Cell Lab open; Lungs unlock on
 boss win; Brain locked). Event cards, snack-heal (feeds the boss), math-gated shop that
