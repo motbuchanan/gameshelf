@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="build" content="v0.2 · Oct 18, 2026">
+<title>Bloodstream</title>
+<style>
+:root{
+  --bg:#3a0d14; --bg2:#5a1420; --panel:#7a1f2b; --panel2:#8e2736; --line:#b13a4b;
+  --ink:#f4f1ea; --dim:#e8b9bf; --red:#ff5a5a; --gold:#ffcc4d; --teal:#4fe3d2; --blue:#6fb6ff; --green:#8ee86a; --white:#ffffff;
+  --tap:64px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:"Trebuchet MS","Segoe UI",system-ui,sans-serif;overflow:hidden}
+body{background:radial-gradient(ellipse at 30% 20%,#6a1826 0%,var(--bg) 60%,#2a080e 100%)}
+#veins{position:fixed;inset:0;pointer-events:none;opacity:.35}
+#app{position:relative;height:100%;display:flex;flex-direction:column}
+header{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;gap:10px;flex:0 0 auto}
+header h1{font-size:20px;margin:0;letter-spacing:1px}
+#badge{font-size:12px;color:var(--dim);background:rgba(0,0,0,.25);padding:6px 10px;border-radius:999px;border:1px solid var(--line)}
+#hud{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.meter{display:flex;align-items:center;gap:6px;background:rgba(0,0,0,.25);border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-size:15px;font-weight:700}
+.meter .bar{width:60px;height:8px;background:rgba(0,0,0,.4);border-radius:4px;overflow:hidden}
+.meter .bar i{display:block;height:100%;width:0;transition:width .4s cubic-bezier(.2,.9,.3,1.2)}
+#m-o2 i{background:var(--blue)}#m-glu i{background:var(--gold)}#m-h2o i{background:var(--teal)}
+.coin{color:var(--gold)}
+main{flex:1;position:relative;overflow:hidden}
+.scr{position:absolute;inset:0;overflow:auto;padding:10px 14px 16px;opacity:0;transform:scale(.98);pointer-events:none;transition:opacity .25s,transform .25s}
+.scr.on{opacity:1;transform:scale(1);pointer-events:auto}
+.wrap{max-width:1100px;margin:0 auto}
+h2{font-size:26px;margin:4px 0 6px}
+p{line-height:1.4;font-size:18px;margin:6px 0}
+.sub{color:var(--dim);font-size:16px}
+.btn{min-height:var(--tap);font-size:20px;font-weight:700;border-radius:16px;border:0;cursor:pointer;color:#2a080e;background:var(--gold);padding:10px 18px;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:transform .08s;box-shadow:0 4px 0 #b8902a}
+.btn:active{transform:scale(.94) translateY(2px);box-shadow:0 2px 0 #b8902a}
+.btn.ghost{background:rgba(0,0,0,.25);color:var(--ink);border:2px solid var(--line);box-shadow:none}
+.btn.teal{background:var(--teal);box-shadow:0 4px 0 #2a9a8c}.btn.teal:active{box-shadow:0 2px 0 #2a9a8c}
+.btn.red{background:var(--red);box-shadow:0 4px 0 #b13a4b;color:#fff}.btn.red:active{box-shadow:0 2px 0 #b13a4b}
+.btn:disabled{opacity:.4;transform:none}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+.row .btn{flex:1}
+.card{background:linear-gradient(180deg,var(--panel2),var(--panel));border:2px solid var(--line);border-radius:18px;padding:14px 16px;margin-top:10px}
+.split{display:grid;grid-template-columns:1.4fr 1fr;gap:14px}
+@media (max-width:700px){.split{grid-template-columns:1fr}}
+/* crew */
+.crew{display:flex;gap:10px;flex-wrap:wrap}
+.cell{flex:1;min-width:140px;background:rgba(0,0,0,.25);border:2px solid var(--line);border-radius:16px;padding:10px;display:flex;gap:10px;align-items:center}
+.cell svg{width:52px;height:52px;flex:0 0 52px;animation:bob 2.4s ease-in-out infinite}
+.cell:nth-child(2) svg{animation-delay:-.8s}.cell:nth-child(3) svg{animation-delay:-1.6s}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+.cell b{display:block;font-size:17px}
+.cell .hp{font-size:15px;letter-spacing:2px}
+.cell.tired{opacity:.6}
+/* map */
+#map{width:100%;height:auto;max-height:62vh;display:block}
+.node{cursor:pointer}
+.node.locked{opacity:.4;cursor:default}
+.node:active circle.base{transform:scale(.95)}
+.node text{fill:#f4f1ea;font-weight:700;font-size:15px;text-anchor:middle;pointer-events:none}
+.node .ic{font-size:26px;text-anchor:middle;pointer-events:none}
+.node.here circle.ring{stroke:#ffcc4d;stroke-width:4;animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{stroke-opacity:1}50%{stroke-opacity:.3}}
+.pod{pointer-events:none}
+/* event */
+.choice{display:block;width:100%;text-align:left;margin-top:10px;font-size:18px}
+.fact{background:rgba(0,0,0,.3);border-left:4px solid var(--teal);padding:10px 12px;border-radius:10px;margin-top:12px;font-size:17px}
+/* shop */
+.shop{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
+.shop .btn{flex-direction:column;min-height:90px}
+.shop small{font-size:14px;font-weight:400}
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:320px;margin:10px auto 0}
+.pad .btn{min-height:58px;background:rgba(0,0,0,.3);color:var(--ink);border:2px solid var(--line);box-shadow:none;font-size:24px}
+.ans{font-size:34px;text-align:center;min-height:48px;letter-spacing:2px;margin-top:6px}
+.prob{font-size:24px;text-align:center;margin-top:8px}
+/* minigame */
+#gameWrap{position:relative;width:100%;background:#2a080e;border:3px solid var(--line);border-radius:18px;overflow:hidden;touch-action:none}
+#game{display:block;width:100%;height:auto}
+#gameHud{position:absolute;top:8px;left:10px;right:10px;display:flex;justify-content:space-between;font-weight:700;font-size:18px;pointer-events:none;text-shadow:0 2px 4px #000}
+#gameMsg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;background:rgba(42,8,14,.75);text-align:center;padding:16px}
+#gameMsg.hide{display:none}
+#gameMsg h3{font-size:30px;margin:0}
+/* journal */
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.tab{padding:10px 14px;border-radius:999px;border:2px solid var(--line);background:rgba(0,0,0,.25);font-weight:700;cursor:pointer;font-size:16px}
+.tab.on{background:var(--gold);color:#2a080e;border-color:var(--gold)}
+.jgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+.jcard{background:rgba(0,0,0,.25);border:2px solid var(--line);border-radius:14px;padding:10px;min-height:120px}
+.jcard.locked{opacity:.35;filter:grayscale(1)}
+.jcard .ic{font-size:34px}
+.jcard b{display:block;font-size:16px;margin:4px 0}
+.jcard p{font-size:14px;margin:0;color:var(--dim)}
+/* fx */
+#flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:50}
+#toast{position:fixed;top:60px;left:50%;transform:translateX(-50%) translateY(-10px);background:var(--teal);color:#2a080e;padding:10px 18px;border-radius:999px;font-weight:700;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;z-index:60;font-size:17px}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.shake{animation:shake .3s}
+@keyframes shake{0%,100%{transform:translate(0px,0px)}25%{transform:translate(-4px,2px)}50%{transform:translate(4px,-2px)}75%{transform:translate(-2px,-2px)}}
+.punch{animation:punch .35s cubic-bezier(.2,1.5,.4,1)}
+@keyframes punch{0%{transform:scale(1.3)}100%{transform:scale(1)}}
+.title{text-align:center;padding-top:4vh}
+.title h2{font-size:52px;margin:6px 0;letter-spacing:3px;text-shadow:0 4px 0 #2a080e}
+.title .pod{width:160px;height:160px;animation:bob 2.4s ease-in-out infinite}
+.stars{color:var(--gold);font-size:20px}
+.big{font-size:40px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<svg id="veins" viewBox="0 0 1000 600" preserveAspectRatio="xMidYMid slice"><path d="M-20 300 C 150 200, 250 450, 420 320 S 700 150, 820 330 S 980 420, 1040 280" fill="none" stroke="#b13a4b" stroke-width="18" stroke-linecap="round" opacity=".5"/><path d="M-20 120 C 200 60, 300 260, 520 150 S 800 40, 1040 160" fill="none" stroke="#b13a4b" stroke-width="10" stroke-linecap="round" opacity=".4"/><path d="M-20 500 C 180 560, 320 420, 560 520 S 820 600, 1040 470" fill="none" stroke="#b13a4b" stroke-width="12" stroke-linecap="round" opacity=".4"/></svg>
+<div id="app">
+  <header>
+    <h1>❤️ BLOODSTREAM</h1>
+    <div id="hud">
+      <div class="meter" id="m-o2">💨<div class="bar"><i></i></div><span>0</span></div>
+      <div class="meter" id="m-glu">🍪<div class="bar"><i></i></div><span>0</span></div>
+      <div class="meter" id="m-h2o">💧<div class="bar"><i></i></div><span>0</span></div>
+      <div class="meter coin">⭐ <span id="m-coin">0</span></div>
+      <button class="btn ghost" id="btnJournal" style="min-height:40px;padding:4px 12px;font-size:15px">📖 Journal</button>
+    </div>
+    <div id="badge">v0.2 · Oct 18, 2026</div>
+  </header>
+  <main>
+    <div class="scr" id="s-title"></div>
+    <div class="scr" id="s-hub"></div>
+    <div class="scr" id="s-event"></div>
+    <div class="scr" id="s-organ"></div>
+    <div class="scr" id="s-shop"></div>
+    <div class="scr" id="s-game"></div>
+    <div class="scr" id="s-journal"></div>
+    <div class="scr" id="s-end"></div>
+  </main>
+</div>
+<div id="flash"></div>
+<div id="toast"></div>
+<script>
+/* BLOODSTREAM - v0.2 - Oct 18 2026 - Phase 1 - built for Garrett */
+var VERSION=document.querySelector('meta[name=build]').getAttribute('content');
+var KEY='bloodstream_v1';
+
+/* ---------- storage (guarded) ---------- */
+var mem={};
+function load(){try{var s=localStorage.getItem(KEY);if(s)return JSON.parse(s);}catch(e){}return mem[KEY]||null;}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(P));}catch(e){mem[KEY]=P;}}
+
+/* ---------- persistent profile (across runs) ---------- */
+var P=load()||{runs:0,wins:0,bestStars:0,unlocked:['heart','stomach','bones','lab'],journal:{},mathLevel:0,sound:true,shake:true};
+if(!P.journal)P.journal={};
+
+/* ---------- run state ---------- */
+var R=null;
+var PLAYKEY='bloodstream_games';
+function recordPlay(){try{var a=JSON.parse(localStorage.getItem(PLAYKEY))||[];if(!Array.isArray(a))a=[];a.push({start:R.started||Date.now(),end:Date.now(),stars:R.stars,won:true});localStorage.setItem(PLAYKEY,JSON.stringify(a));}catch(e){}}
+function newRun(){
+  R={started:Date.now(),o2:6,glu:6,h2o:6,coin:4,stars:0,at:'heart',sugar:0,steps:0,
+     crew:{patchlet:3,oxinator:3,fighty:3},
+     done:{pizza:false,race:false,knee:false,boss:false},
+     visited:{heart:true},routes:[],eventsSeen:[]};
+}
+
+/* ---------- content ---------- */
+var CREW={
+  oxinator:{nm:'Oxinator',kind:'Red Cell',color:'#ff5a5a',ic:'🔴',job:'Carries oxygen from the lungs to every cell. Shaped like a donut with no hole so it can squeeze through tiny tubes.',fact:'Your body makes about 2 million new red cells every second.'},
+  fighty:{nm:'Fighty',kind:'White Cell',color:'#ffffff',ic:'⚪',job:'Hunts germs. Can squeeze out of a vessel and chase a germ into the body.',fact:'For every 1 white cell there are about 700 red cells.'},
+  patchlet:{nm:'Patchlet',kind:'Platelet',color:'#ffcc4d',ic:'🔶',job:'Sticks to a leak and calls more platelets until a plug forms. That plug becomes a scab.',fact:'Platelets are not whole cells. They are little chips broken off a giant cell in the bone marrow.'}
+};
+var ORGANS={
+  heart:{nm:'Heart',ic:'❤️',x:500,y:300,fact:'The heart is a muscle pump. It beats about 100,000 times a day and never takes a day off.',desc:'Home base. Rest, shop, and pick a path.'},
+  stomach:{nm:'Stomach',ic:'🍕',x:230,y:440,fact:'The stomach squeezes food and mixes it with acid strong enough to burn skin. A slime coat protects the stomach from itself.',desc:'Food gets melted into fuel here. Pizza Night happens here.'},
+  bones:{nm:'Bones',ic:'🦴',x:770,y:440,fact:'Bones are alive. Inside the big ones is marrow, a factory that makes blood cells.',desc:'Hard outside, busy inside. New cells come from here.'},
+  lab:{nm:'Cell Lab',ic:'🧬',x:500,y:90,fact:'Every cell carries DNA, a set of instructions for building you. Stretched out, the DNA in one cell is about 2 meters long.',desc:'Where cells are built and repaired.'},
+  lungs:{nm:'Lungs',ic:'💨',x:200,y:150,fact:'Lungs are full of tiny air sacs. Flattened out they would cover a tennis court.',desc:'Oxygen comes in here. Unlocked by beating the Sugar Monster.'},
+  brain:{nm:'Brain',ic:'🧠',x:800,y:150,fact:'The brain uses about 20 percent of your energy even though it is only 2 percent of your weight.',desc:'Mission control. Coming soon.'}
+};
+var LINKS=[['heart','stomach'],['heart','bones'],['heart','lab'],['stomach','bones'],['lab','bones'],['lab','stomach'],['lab','lungs'],['stomach','lungs'],['lab','brain'],['bones','brain']];
+
+var GERMS={
+  sugar:{nm:'Sugar Monster',ic:'🍭',fact:'Sugar is fuel, but too much at once makes a spike and then a crash. Your body stores extra as fat.'},
+  cold:{nm:'Cold Virus',ic:'🦠',fact:'A virus is so small it has to hijack a cell to make copies of itself. That is why colds spread.'},
+  bellybug:{nm:'Belly Bug',ic:'🤢',fact:'Most belly bugs come in on hands. Washing hands for 20 seconds knocks most of them off.'},
+  splinter:{nm:'Splinter',ic:'🌵',fact:'A splinter brings germs in past the skin wall. White cells rush to the spot, which is why it gets red and puffy.'}
+};
+var MYSTERIES=[
+  {id:'fat',nm:'Armor Fat',ic:'🛡️',text:'Most of the fat in your body is stored outside your organs to protect them, like padding.',by:'Garrett'},
+  {id:'hiccup',nm:'Hiccups',ic:'❓',text:'Nobody is fully sure why we hiccup. The diaphragm muscle twitches and the throat snaps shut.',by:''},
+  {id:'yawn',nm:'Yawn Contagion',ic:'😮',text:'Seeing someone yawn can make you yawn. Scientists still argue about why.',by:''},
+  {id:'goose',nm:'Goosebumps',ic:'🐔',text:'Goosebumps are tiny muscles pulling your hairs up straight. It once helped fluffy ancestors look bigger and stay warm.',by:''}
+];
+
+var EVENTS=[
+  {id:'splinter',t:'A Splinter!',txt:'A sharp sliver of wood has poked through the skin wall. Germs are crawling in behind it.',ic:'🌵',
+   c:[{l:'Send Fighty to swat the germs',fx:{crew:['fighty',-1],coin:2,germ:'splinter'},r:'Fighty squeezes out of the vessel and swats three germs. Tiring, but you earn 2 stars.'},
+      {l:'Send Patchlet to plug the hole',fx:{crew:['patchlet',-1],coin:1,germ:'splinter'},r:'Patchlet sticks to the hole and calls friends. A plug forms. 1 star.'}]},
+  {id:'fever',t:'Getting Warm',txt:'The body is heating up to cook a germ. It is working, but it is thirsty work.',ic:'🔥',
+   c:[{l:'Spend 2 water to keep cool',fx:{h2o:-2,coin:2},r:'Cool and steady. The germ gives up. 2 stars.'},
+      {l:'Push through',fx:{crew:['oxinator',-1]},r:'Oxinator overheats and needs a rest.'}]},
+  {id:'sneeze',t:'Sneeze Coming!',txt:'Dust in the nose. A sneeze blasts air out at over 100 miles an hour.',ic:'🤧',
+   c:[{l:'Hold on tight!',fx:{coin:1},r:'WHOOSH. The dust is gone. 1 star for hanging on.'},
+      {l:'Ride the blast',fx:{o2:2},r:'Fresh air rushes in right after. +2 oxygen.'}]},
+  {id:'cold',t:'Cold Virus Spotted',txt:'A cold virus is trying to sneak into a cell to make copies of itself.',ic:'🦠',
+   c:[{l:'Fighty attacks',fx:{crew:['fighty',-1],coin:3,germ:'cold'},r:'Fighty eats the virus whole. 3 stars. Fighty is tired.'},
+      {l:'Sneak past it',fx:{glu:-1,germ:'cold'},r:'You slip by but burn a little fuel. The body will deal with it later.'}]},
+  {id:'snack',t:'Snack Time!',txt:'The kid just ate an apple. Fuel is flooding in from the stomach.',ic:'🍎',
+   c:[{l:'Scoop it up',fx:{glu:3},r:'+3 glucose. Apple sugar comes in slow and steady, no crash.'},
+      {l:'Let it pass',fx:{coin:1},r:'The muscles take it. The Brain gives you 1 star for sharing.'}]},
+  {id:'river',t:'Big Vessel Ahead',txt:'The flow is fast here. Cells are zooming past like cars on a highway.',ic:'🌊',
+   c:[{l:'Ride the fast lane',fx:{h2o:-1,coin:2},r:'Zoom! You arrive early. 2 stars, but it was a bumpy ride.'},
+      {l:'Take the slow side tube',fx:{o2:-1},r:'Safe and slow. You use a little extra oxygen.'}]},
+  {id:'bellybug',t:'Belly Bug!',txt:'A stomach bug slipped in on unwashed hands. It is making waves.',ic:'🤢',
+   c:[{l:'Fighty swats it',fx:{crew:['fighty',-1],coin:2,germ:'bellybug'},r:'Swatted. 2 stars. Fighty is tired.'},
+      {l:'Flush it with water',fx:{h2o:-2,coin:1,germ:'bellybug'},r:'Washed out. 1 star.'}]},
+  {id:'sleep',t:'Bedtime',txt:'The kid fell asleep. The whole body switches to repair mode.',ic:'😴',
+   c:[{l:'Rest the crew',fx:{rest:1},r:'Every crew cell gets 1 energy back. Sleep is when the body fixes itself.'},
+      {l:'Keep exploring',fx:{coin:2},r:'The Brain likes your hustle. 2 stars.'}]},
+  {id:'cut',t:'Scraped Knee!',txt:'Blood is leaking out of a scrape. Patchlet is bouncing to go.',ic:'🤕',mission:'knee'}
+];
+
+/* ---------- audio (silent until first tap) ---------- */
+var AC=null;
+function beep(f,d,type,vol){
+  if(!P.sound)return;
+  try{
+    if(!AC)AC=new (window.AudioContext||window.webkitAudioContext)();
+    if(AC.state==='suspended')AC.resume();
+    var o=AC.createOscillator(),g=AC.createGain();
+    o.type=type||'square';o.frequency.value=f*(1+(Math.random()-.5)*.12);
+    g.gain.value=vol||.08;g.gain.exponentialRampToValueAtTime(.0001,AC.currentTime+(d||.1));
+    o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+(d||.1));
+  }catch(e){}
+}
+var SFX={tap:function(){beep(520,.06,'square',.05);},good:function(){beep(660,.1,'triangle');setTimeout(function(){beep(880,.14,'triangle');},90);},
+  bad:function(){beep(180,.2,'sawtooth',.06);},coin:function(){beep(1040,.08,'square',.05);setTimeout(function(){beep(1320,.1,'square',.05);},70);},
+  hit:function(){beep(140,.08,'square',.1);},win:function(){[523,659,784,1046].forEach(function(f,i){setTimeout(function(){beep(f,.18,'triangle',.08);},i*120);});}};
+
+/* ---------- fx helpers ---------- */
+function toast(t){var el=document.getElementById('toast');el.textContent=t;el.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(function(){el.classList.remove('show');},1500);}
+function flash(){var f=document.getElementById('flash');f.style.transition='none';f.style.opacity=.5;setTimeout(function(){f.style.transition='opacity .25s';f.style.opacity=0;},30);}
+function shake(){if(!P.shake)return;var a=document.getElementById('app');a.classList.remove('shake');void a.offsetWidth;a.classList.add('shake');}
+function punch(el){el.classList.remove('punch');void el.offsetWidth;el.classList.add('punch');}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+document.getElementById('badge').onclick=function(){toast(VERSION);};
+document.body.addEventListener('pointerdown',function(e){if(e.target.closest('.btn,.node,.tab,.choice'))SFX.tap();},true);
+
+/* ---------- HUD ---------- */
+function hud(){
+  if(!R)return;
+  var set=function(id,v){var m=document.getElementById(id);m.querySelector('i').style.width=(v/10*100)+'%';m.querySelector('span').textContent=v;};
+  set('m-o2',R.o2);set('m-glu',R.glu);set('m-h2o',R.h2o);
+  document.getElementById('m-coin').textContent=R.coin;
+}
+function clamp(v){return Math.max(0,Math.min(10,v));}
+
+/* ---------- screens ---------- */
+var cur='';
+function show(id){
+  Array.prototype.forEach.call(document.querySelectorAll('.scr'),function(s){s.classList.toggle('on',s.id==='s-'+id);});
+  cur=id;
+}
+function leaveJournal(){if(!R)title();else if(R.ended)show('end');else hub();}
+document.getElementById('btnJournal').onclick=function(){if(cur==='journal')leaveJournal();else journal();};
+
+/* ---------- SVG art ---------- */
+function podSvg(size){
+  return '<svg class="pod" width="'+size+'" height="'+size+'" viewBox="0 0 100 100"><defs><radialGradient id="pg" cx="40%" cy="35%" r="60%"><stop offset="0" stop-color="#ffffff" stop-opacity=".9"/><stop offset=".4" stop-color="#4fe3d2" stop-opacity=".5"/><stop offset="1" stop-color="#1a6f66" stop-opacity=".6"/></radialGradient></defs><circle cx="50" cy="50" r="42" fill="url(#pg)" stroke="#bffaf3" stroke-width="3"/><ellipse cx="36" cy="32" rx="10" ry="6" fill="#ffffff" opacity=".8" transform="rotate(-30 36 32)"/><circle cx="42" cy="58" r="7" fill="#ff5a5a"/><circle cx="58" cy="58" r="7" fill="#ffffff"/><circle cx="50" cy="44" r="7" fill="#ffcc4d"/></svg>';
+}
+function cellSvg(k){
+  var c=CREW[k];var eye='<circle cx="42" cy="46" r="5" fill="#2a080e"/><circle cx="58" cy="46" r="5" fill="#2a080e"/><circle cx="44" cy="44" r="2" fill="#fff"/><circle cx="60" cy="44" r="2" fill="#fff"/><path d="M40 60 Q50 68 60 60" stroke="#2a080e" stroke-width="3" fill="none" stroke-linecap="round"/>';
+  var body=k==='patchlet'?'<path d="M50 10 L80 30 L85 65 L55 92 L20 70 L15 35 Z" fill="'+c.color+'" stroke="#2a080e" stroke-width="3" stroke-linejoin="round"/>':
+    k==='fighty'?'<circle cx="50" cy="50" r="40" fill="'+c.color+'" stroke="#2a080e" stroke-width="3"/><circle cx="30" cy="30" r="6" fill="#b48bff"/><circle cx="70" cy="35" r="5" fill="#b48bff"/><circle cx="65" cy="72" r="6" fill="#b48bff"/>':
+    '<circle cx="50" cy="50" r="40" fill="'+c.color+'" stroke="#2a080e" stroke-width="3"/><circle cx="50" cy="50" r="18" fill="#c8303a" opacity=".6"/>';
+  return '<svg viewBox="0 0 100 100">'+body+eye+'</svg>';
+}
+function hearts(n){var s='';for(var i=0;i<3;i++)s+=i<n?'❤️':'🖤';return s;}
+function crewHtml(){
+  return '<div class="crew">'+['oxinator','fighty','patchlet'].map(function(k){var c=CREW[k];return '<div class="cell'+(R.crew[k]===0?' tired':'')+'" data-k="'+k+'">'+cellSvg(k)+'<div><b>'+c.nm+'</b><span class="hp">'+hearts(R.crew[k])+'</span></div></div>';}).join('')+'</div>';
+}
+
+/* ---------- TITLE ---------- */
+function title(){
+  var el=document.getElementById('s-title');
+  el.innerHTML='<div class="wrap title">'+podSvg(160)+'<h2>BLOODSTREAM</h2><p class="sub">Garrett\'s crew. Inside a body. Nobody dies, but things get sticky.</p>'+
+    '<div class="row" style="max-width:520px;margin:16px auto 0"><button class="btn big" id="start" style="font-size:26px">🚀 Launch the Bubble Pod</button></div>'+
+    '<p class="sub" style="margin-top:14px">Trips: '+P.runs+' · Wins: '+P.wins+' · Best stars: '+P.bestStars+' · Journal: '+journalPct()+'%</p>'+
+    '<div class="row" style="max-width:520px;margin:6px auto 0"><button class="btn ghost" id="tSound">'+(P.sound?'🔊 Sound on':'🔇 Sound off')+'</button><button class="btn ghost" id="tShake">'+(P.shake?'📳 Shake on':'📴 Shake off')+'</button><a class="btn ghost" href="index.html" style="text-decoration:none">📚 Shelf</a></div></div>';
+  el.querySelector('#start').onclick=function(){newRun();unlockJ('cell','oxinator');unlockJ('cell','fighty');unlockJ('cell','patchlet');unlockJ('organ','heart');hud();hub('The Brain says: Explore the Stomach, the Bones, and the Cell Lab. Find the Sugar Monster. Keep the crew fed.');};
+  el.querySelector('#tSound').onclick=function(){P.sound=!P.sound;save();title();};
+  el.querySelector('#tShake').onclick=function(){P.shake=!P.shake;save();title();};
+  show('title');
+}
+
+/* ---------- HUB / MAP ---------- */
+function hub(msg){
+  var el=document.getElementById('s-hub');
+  var here=ORGANS[R.at];
+  var svg='<svg id="map" viewBox="0 0 1000 540">';
+  LINKS.forEach(function(l){var a=ORGANS[l[0]],b=ORGANS[l[1]];var open=P.unlocked.indexOf(l[0])>=0&&P.unlocked.indexOf(l[1])>=0;var adj=(l[0]===R.at||l[1]===R.at)&&open;
+    svg+='<path d="M'+a.x+' '+a.y+' Q '+((a.x+b.x)/2+(a.y-b.y)*.25)+' '+((a.y+b.y)/2+(b.x-a.x)*.25)+' '+b.x+' '+b.y+'" fill="none" stroke="'+(adj?'#ffcc4d':open?'#b13a4b':'#5a1420')+'" stroke-width="'+(adj?10:7)+'" stroke-linecap="round" stroke-dasharray="'+(adj?'0':'14 10')+'" opacity="'+(open?'.9':'.4')+'"/>';});
+  Object.keys(ORGANS).forEach(function(k){var o=ORGANS[k];var locked=P.unlocked.indexOf(k)<0;var reach=!locked&&k!==R.at&&LINKS.some(function(l){return (l[0]===R.at&&l[1]===k)||(l[1]===R.at&&l[0]===k);});
+    svg+='<g class="node'+(locked?' locked':'')+(k===R.at?' here':'')+'" data-k="'+k+'" data-reach="'+(reach?1:0)+'"><circle class="ring" cx="'+o.x+'" cy="'+o.y+'" r="46" fill="none" stroke="'+(reach?'#ffcc4d':'#b13a4b')+'" stroke-width="3"/><circle class="base" cx="'+o.x+'" cy="'+o.y+'" r="38" fill="'+(R.visited[k]?'#8e2736':'#5a1420')+'" stroke="#2a080e" stroke-width="3"/><text class="ic" x="'+o.x+'" y="'+(o.y+9)+'">'+(locked?'🔒':o.ic)+'</text><text x="'+o.x+'" y="'+(o.y+64)+'">'+o.nm+(reach?' ▶':'')+'</text></g>';});
+  var p=ORGANS[R.at];
+  svg+='<g class="pod" transform="translate('+(p.x-14)+' '+(p.y-78)+')"><circle cx="14" cy="14" r="13" fill="#4fe3d2" opacity=".8" stroke="#bffaf3" stroke-width="2"/><circle cx="10" cy="17" r="3" fill="#ff5a5a"/><circle cx="18" cy="17" r="3" fill="#ffffff"/><circle cx="14" cy="10" r="3" fill="#ffcc4d"/></g></svg>';
+  var actions='';
+  if(R.at==='heart'){actions='<div class="row"><button class="btn teal" id="shop">🛒 Supply Shop</button><button class="btn ghost" id="rest">💤 Rest (2 glucose)</button></div>';}
+  else{actions='<div class="row"><button class="btn" id="organ">'+here.ic+' Enter the '+here.nm+'</button></div>';}
+  var snackable=Object.keys(R.crew).some(function(k){return R.crew[k]<3;});
+  actions+='<div class="row"><button class="btn ghost" id="snack" '+(snackable&&R.glu>=2?'':'disabled')+'>🍪 Snack: heal 1 cell (2 glucose)</button></div>';
+  if(R.done.pizza&&R.done.race&&R.done.knee&&!R.done.boss)actions+='<div class="row"><button class="btn red" id="boss">🍭 The Sugar Monster is HERE. Fight!</button></div>';
+  el.innerHTML='<div class="wrap split"><div>'+svg+'<p class="sub" style="text-align:center">Tap a gold path to travel. Each hop costs 1 oxygen and 1 water.</p></div>'+
+    '<div><div class="card"><h2>'+here.ic+' '+here.nm+'</h2><p>'+esc(msg||here.desc)+'</p>'+actions+'</div><div class="card">'+crewHtml()+'<p class="sub" style="margin-top:8px">Sugar meter: '+'🍭'.repeat(R.sugar)+(R.sugar?'':'none')+' · Snacks feed the monster.</p></div></div></div>';
+  Array.prototype.forEach.call(el.querySelectorAll('.node'),function(n){n.onclick=function(){if(n.getAttribute('data-reach')==='1')travel(n.getAttribute('data-k'));else if(n.classList.contains('locked'))toast('Locked. Beat a boss to open it.');};});
+  var b;
+  if(b=el.querySelector('#shop'))b.onclick=shop;
+  if(b=el.querySelector('#rest'))b.onclick=function(){if(R.glu<2){toast('Need 2 glucose');SFX.bad();return;}R.glu-=2;R.sugar+=1;Object.keys(R.crew).forEach(function(k){R.crew[k]=Math.min(3,R.crew[k]+1);});SFX.good();hud();hub('Everyone rests at the Heart and gets 1 energy back.');};
+  if(b=el.querySelector('#organ'))b.onclick=organ;
+  if(b=el.querySelector('#snack'))b.onclick=snack;
+  if(b=el.querySelector('#boss'))b.onclick=function(){startGame('boss');};
+  hud();show('hub');
+}
+function snack(){
+  var k=['oxinator','fighty','patchlet'].sort(function(a,b){return R.crew[a]-R.crew[b];})[0];
+  if(R.crew[k]>=3){toast('Everyone is full of energy');return;}
+  if(R.glu<2){toast('Need 2 glucose');SFX.bad();return;}
+  R.glu-=2;R.crew[k]+=1;R.sugar+=1;SFX.good();hud();
+  hub(CREW[k].nm+' eats a snack and feels better. The Sugar Monster grows a little stronger.');
+}
+function travel(k){
+  if(R.o2<1||R.h2o<1){toast('Not enough oxygen or water. Go to the Heart shop.');SFX.bad();if(R.at!=='heart'){R.at='heart';hub('The crew drifts back to the Heart on empty.');}return;}
+  R.o2-=1;R.h2o-=1;R.steps+=1;
+  var route=[R.at,k].sort().join('-');if(R.routes.indexOf(route)<0){R.routes.push(route);unlockJ('map',route);}
+  R.at=k;R.visited[k]=true;unlockJ('organ',k);hud();
+  if(R.steps%2===1||Math.random()<.5)event();else hub();
+}
+
+/* ---------- EVENT CARDS ---------- */
+function event(){
+  var pool=EVENTS.filter(function(e){return R.eventsSeen.indexOf(e.id)<0&&!(e.mission&&R.done[e.mission]);});
+  if(!pool.length){pool=EVENTS.filter(function(e){return !e.mission;});R.eventsSeen=[];}
+  var e=pool[Math.floor(Math.random()*pool.length)];R.eventsSeen.push(e.id);
+  if(e.mission){startGame(e.mission);return;}
+  var el=document.getElementById('s-event');
+  el.innerHTML='<div class="wrap"><div class="card"><div class="big" style="text-align:center">'+e.ic+'</div><h2>'+esc(e.t)+'</h2><p>'+esc(e.txt)+'</p>'+e.c.map(function(c,i){return '<button class="btn ghost choice" data-i="'+i+'">'+esc(c.l)+'</button>';}).join('')+'</div></div>';
+  Array.prototype.forEach.call(el.querySelectorAll('.choice'),function(b){b.onclick=function(){
+    var c=e.c[+b.getAttribute('data-i')];var fx=c.fx||{};
+    if(fx.o2)R.o2=clamp(R.o2+fx.o2);if(fx.glu)R.glu=clamp(R.glu+fx.glu);if(fx.h2o)R.h2o=clamp(R.h2o+fx.h2o);
+    if(fx.coin){R.coin+=fx.coin;SFX.coin();}
+    if(fx.crew){R.crew[fx.crew[0]]=Math.max(0,R.crew[fx.crew[0]]+fx.crew[1]);SFX.hit();shake();}
+    if(fx.rest)Object.keys(R.crew).forEach(function(k){R.crew[k]=Math.min(3,R.crew[k]+1);});
+    if(fx.germ)unlockJ('germ',fx.germ);
+    hud();
+    var fact=fx.germ?GERMS[fx.germ].fact:'';
+    el.innerHTML='<div class="wrap"><div class="card"><h2>'+esc(e.t)+'</h2><p>'+esc(c.r)+'</p>'+(fact?'<div class="fact">💡 '+esc(fact)+'</div>':'')+'<div class="row"><button class="btn" id="go">Onward ▶</button></div></div></div>';
+    el.querySelector('#go').onclick=function(){checkTired();};
+  };});
+  show('event');
+}
+function checkTired(){
+  var allTired=Object.keys(R.crew).every(function(k){return R.crew[k]===0;});
+  if(allTired){R.at='heart';Object.keys(R.crew).forEach(function(k){R.crew[k]=1;});hub('Everyone was too tired to go on. The Bubble Pod floated back to the Heart. Each cell has 1 energy. Snack up.');return;}
+  hub();
+}
+
+/* ---------- ORGAN SCREENS ---------- */
+function organ(){
+  var k=R.at,o=ORGANS[k];var el=document.getElementById('s-organ');var body='';
+  if(k==='stomach'){
+    body=R.done.pizza?'<p>Pizza Night is done. The stomach is quietly churning.</p>':'<p>🍕 <b>Mission: Pizza Night.</b> The kid ate a big pizza. The stomach needs help counting slices into fuel.</p><div class="row"><button class="btn" id="pizza">Start Pizza Night</button></div>';
+  } else if(k==='bones'){
+    body=R.done.race?'<p>Running Race is done. The marrow factory hums.</p>':'<p>🏃 <b>Mission: Running Race.</b> The kid is sprinting! The leg bones need oxygen fast. Oxinator, catch every bubble.</p><div class="row"><button class="btn" id="race">Start Running Race</button></div>';
+  } else if(k==='lab'){
+    body='<p>🧬 The Cell Lab builds new cells. Spend 3 water to make 1 glucose from stored energy, or just look around.</p><div class="row"><button class="btn teal" id="convert">💧💧💧 → 🍪 Convert</button></div>'+(R.done.knee?'':'<p class="sub">Patchlet is restless. A scraped knee could happen any time out on the trail.</p>');
+  } else if(k==='lungs'){
+    body='<p>💨 Fresh air! The lungs fill the pod with oxygen.</p><div class="row"><button class="btn teal" id="breathe">Breathe in (+4 oxygen)</button></div>';
+  } else {body='<p>Coming soon.</p>';}
+  el.innerHTML='<div class="wrap"><div class="card"><h2>'+o.ic+' '+o.nm+'</h2>'+body+'<div class="fact">💡 '+esc(o.fact)+'</div><div class="row"><button class="btn ghost" id="back">◀ Back to map</button></div></div></div>';
+  var b;
+  if(b=el.querySelector('#pizza'))b.onclick=pizzaNight;
+  if(b=el.querySelector('#race'))b.onclick=function(){startGame('race');};
+  if(b=el.querySelector('#convert'))b.onclick=function(){if(R.h2o<3){toast('Need 3 water');SFX.bad();return;}R.h2o-=3;R.glu=clamp(R.glu+1);SFX.good();hud();organ();};
+  if(b=el.querySelector('#breathe'))b.onclick=function(){R.o2=clamp(R.o2+4);SFX.good();hud();organ();};
+  el.querySelector('#back').onclick=function(){hub();};
+  show('organ');
+}
+
+/* ---------- MATH ---------- */
+function mathLevel(){return Math.min(3,P.mathLevel);}
+function makeProblem(ctx){
+  var L=mathLevel(),a,b,q,ans;
+  if(L===0){a=2+rnd(8);b=2+rnd(8);q=a+' + '+b;ans=a+b;}
+  else if(L===1){a=10+rnd(10);b=2+rnd(9);q=a+' - '+b;ans=a-b;}
+  else if(L===2){a=2+rnd(5);b=2+rnd(5);q=a+' x '+b;ans=a*b;}
+  else{b=2+rnd(4);ans=2+rnd(6);a=b*ans;q=a+' ÷ '+b;}
+  return {q:q,ans:ans};
+}
+function rnd(n){return Math.floor(Math.random()*n);}
+function askMath(prompt,onRight,onDone){
+  var pr=makeProblem();var typed='';var tries=0;
+  var el=document.getElementById('s-shop');
+  function draw(){
+    el.innerHTML='<div class="wrap"><div class="card"><h2>🧮 '+esc(prompt)+'</h2><div class="prob">'+pr.q+' = ?</div><div class="ans" id="ans">'+(typed||'_')+'</div><div class="pad">'+[1,2,3,4,5,6,7,8,9,'⌫',0,'✔'].map(function(k){return '<button class="btn" data-k="'+k+'">'+k+'</button>';}).join('')+'</div></div></div>';
+    Array.prototype.forEach.call(el.querySelectorAll('.pad .btn'),function(b){b.onclick=function(){var k=b.getAttribute('data-k');
+      if(k==='⌫')typed=typed.slice(0,-1);else if(k==='✔'){check();return;}else if(typed.length<3)typed+=k;
+      el.querySelector('#ans').textContent=typed||'_';};});
+  }
+  function check(){
+    if(+typed===pr.ans){SFX.good();flash();P.mathLevel=Math.min(3,P.mathLevel+(tries===0?0.34:0));save();onRight();}
+    else{tries++;SFX.bad();shake();typed='';toast(tries>=2?'Hint: the answer is close to '+(pr.ans+(rnd(2)?2:-2)):'Not yet. Try again.');draw();}
+  }
+  draw();show('shop');
+}
+
+/* ---------- SHOP ---------- */
+function shop(){
+  var el=document.getElementById('s-shop');
+  var items=[['o2','💨 Oxygen','+3',1],['glu','🍪 Glucose','+3',1],['h2o','💧 Water','+3',1]];
+  el.innerHTML='<div class="wrap"><div class="card"><h2>🛒 Supply Shop at the Heart</h2><p class="sub">You have ⭐ '+R.coin+'. Each pack costs 1 star. Solve the count to buy.</p><div class="shop">'+items.map(function(it){return '<button class="btn teal" data-k="'+it[0]+'" '+(R.coin<it[3]?'disabled':'')+'>'+it[1]+'<small>'+it[2]+' for ⭐1</small></button>';}).join('')+'</div><div class="row"><button class="btn ghost" id="back">◀ Back</button></div></div></div>';
+  Array.prototype.forEach.call(el.querySelectorAll('.shop .btn'),function(b){b.onclick=function(){var k=b.getAttribute('data-k');
+    askMath('Count it out to buy',function(){R.coin-=1;R[k]=clamp(R[k]+3);SFX.coin();hud();shop();});};});
+  el.querySelector('#back').onclick=function(){hub();};
+  show('shop');
+}
+function pizzaNight(){
+  var slices=4+rnd(5);
+  var el=document.getElementById('s-shop');
+  var typed='',tries=0,ans=slices*2;
+  function draw(){
+    el.innerHTML='<div class="wrap"><div class="card"><h2>🍕 Pizza Night</h2><p>'+slices+' slices landed in the stomach. Each slice melts into 2 fuel. How much fuel is that?</p><div class="prob">'+slices+' x 2 = ?</div><div class="ans" id="ans">'+(typed||'_')+'</div><div class="pad">'+[1,2,3,4,5,6,7,8,9,'⌫',0,'✔'].map(function(k){return '<button class="btn" data-k="'+k+'">'+k+'</button>';}).join('')+'</div></div></div>';
+    Array.prototype.forEach.call(el.querySelectorAll('.pad .btn'),function(b){b.onclick=function(){var k=b.getAttribute('data-k');
+      if(k==='⌫')typed=typed.slice(0,-1);else if(k==='✔'){if(+typed===ans){SFX.win();flash();R.done.pizza=true;R.glu=clamp(R.glu+4);R.coin+=3;R.sugar+=1;unlockJ('mystery','hiccup');hud();
+          el.innerHTML='<div class="wrap"><div class="card"><h2>🍕 Pizza melted!</h2><p>'+ans+' fuel. The crew scoops up 4 glucose and the Brain pays ⭐3. Big meals also feed the Sugar Monster a little.</p><div class="fact">💡 Pizza has fat, so it melts slowly. That is why you feel full for a long time.</div><div class="row"><button class="btn" id="go">Back to map ▶</button></div></div></div>';
+          el.querySelector('#go').onclick=function(){hub();};}
+        else{tries++;SFX.bad();shake();typed='';toast(tries>=2?'Count by 2s: 2, 4, 6...':'Not yet. Try again.');draw();}return;}
+      else if(typed.length<3)typed+=k;
+      el.querySelector('#ans').textContent=typed||'_';};});
+  }
+  draw();show('shop');
+}
+
+/* ---------- MINIGAMES (canvas) ---------- */
+var G=null;
+function startGame(kind){
+  var el=document.getElementById('s-game');
+  var info={race:{t:'🏃 Running Race',who:'oxinator',how:'Drag the pod left and right. Catch blue oxygen bubbles. Dodge grey CO2 clouds.',sec:20},
+            knee:{t:'🤕 Scraped Knee',who:'patchlet',how:'Tap every leak before it grows big. Patchlet plugs it.',sec:20},
+            boss:{t:'🍭 Sugar Monster',who:'fighty',how:'Tap sugar blobs before they land. Every swat hurts the monster. Missed blobs tire the crew.',sec:0}}[kind];
+  el.innerHTML='<div class="wrap"><h2>'+info.t+'</h2><div id="gameWrap"><canvas id="game" width="900" height="500"></canvas><div id="gameHud"><span id="gScore">0</span><span id="gTime"></span></div><div id="gameMsg"><div style="font-size:48px">'+CREW[info.who].ic+'</div><h3>'+CREW[info.who].nm+' is up!</h3><p>'+info.how+'</p><button class="btn" id="gStart">Go!</button></div></div></div>';
+  show('game');
+  var cv=el.querySelector('#game'),ctx=cv.getContext('2d'),W=cv.width,H=cv.height;
+  var wrap=el.querySelector('#gameWrap');
+  G={kind:kind,t:0,score:0,miss:0,items:[],px:W/2,hp:0,maxhp:0,over:false,last:0,raf:0,stop:0,hit:0};
+  function pos(e){var r=cv.getBoundingClientRect();return {x:(e.clientX-r.left)/r.width*W,y:(e.clientY-r.top)/r.height*H};}
+  wrap.onpointerdown=function(e){if(G.over||G.t===0)return;var p=pos(e);
+    if(kind==='race'){G.px=p.x;}
+    else{for(var i=G.items.length-1;i>=0;i--){var it=G.items[i];var d=Math.hypot(it.x-p.x,it.y-p.y);if(d<it.r+22){G.items.splice(i,1);G.score++;G.hit=3;spark(it.x,it.y,kind==='boss'?'#ff6ad5':'#ffcc4d');SFX.good();if(kind==='boss'){G.hp-=1;shake();}break;}}}
+  };
+  wrap.onpointermove=function(e){if(kind==='race'&&e.buttons)G.px=pos(e).x;};
+  var parts=[];
+  function spark(x,y,c){for(var i=0;i<10;i++)parts.push({x:x,y:y,vx:(Math.random()-.5)*8,vy:(Math.random()-.5)*8,l:1,c:c});}
+  function spawn(dt){
+    if(kind==='race'){if(Math.random()<dt*2.2){var bad=Math.random()<.3;G.items.push({x:40+Math.random()*(W-80),y:-20,r:bad?26:20,vy:120+Math.random()*120+G.t*4,bad:bad});}}
+    else if(kind==='knee'){if(Math.random()<dt*1.5){G.items.push({x:60+Math.random()*(W-120),y:80+Math.random()*(H-160),r:14,grow:18+Math.random()*10});}}
+    else{if(Math.random()<dt*(1.6+G.t*.05)){G.items.push({x:200+Math.random()*(W-400),y:150,r:24,vy:90+Math.random()*90+G.t*5,vx:(Math.random()-.5)*120});}}
+  }
+  function step(ts){
+    if(!G||G.over)return;
+    var dt=Math.min(.05,(ts-(G.last||ts))/1000);G.last=ts;
+    if(G.hit>0){G.hit--;ctx.fillStyle='rgba(255,255,255,.18)';ctx.fillRect(0,0,W,H);G.raf=requestAnimationFrame(step);return;}/* hit-stop */
+    G.t+=dt;spawn(dt);
+    ctx.clearRect(0,0,W,H);
+    /* background */
+    ctx.fillStyle='#4a0f1a';ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle='#7a1f2b';ctx.lineWidth=40;ctx.lineCap='round';
+    for(var i=0;i<4;i++){ctx.beginPath();ctx.moveTo(-50,80+i*120+Math.sin(G.t+i)*10);ctx.bezierCurveTo(W*.3,40+i*120,W*.7,120+i*120,W+50,80+i*120);ctx.stroke();}
+    if(kind==='boss'){
+      ctx.font='90px serif';ctx.textAlign='center';var bob=Math.sin(G.t*3)*8;ctx.fillText('🍭',W/2,120+bob);
+      ctx.fillStyle='#2a080e';ctx.fillRect(W/2-150,20,300,22);ctx.fillStyle='#ff6ad5';ctx.fillRect(W/2-150,20,300*Math.max(0,G.hp/G.maxhp),22);
+      ctx.fillStyle='#fff';ctx.font='bold 16px sans-serif';ctx.fillText('Sugar Monster '+G.hp+'/'+G.maxhp,W/2,58);
+    }
+    /* items */
+    for(i=G.items.length-1;i>=0;i--){var it=G.items[i];
+      if(kind==='race'){it.y+=it.vy*dt;
+        if(Math.hypot(it.x-G.px,it.y-(H-60))<it.r+34){G.items.splice(i,1);if(it.bad){G.miss++;SFX.hit();shake();spark(it.x,it.y,'#888');}else{G.score++;SFX.good();spark(it.x,it.y,'#6fb6ff');}continue;}
+        if(it.y>H+30){G.items.splice(i,1);if(!it.bad)G.miss++;continue;}
+        ctx.beginPath();ctx.arc(it.x,it.y,it.r,0,7);ctx.fillStyle=it.bad?'#777':'#6fb6ff';ctx.fill();ctx.fillStyle='#fff';ctx.font='bold 16px sans-serif';ctx.textAlign='center';ctx.fillText(it.bad?'CO2':'O2',it.x,it.y+6);
+      } else if(kind==='knee'){it.r+=it.grow*dt;
+        if(it.r>60){G.items.splice(i,1);G.miss++;SFX.hit();shake();continue;}
+        ctx.beginPath();ctx.arc(it.x,it.y,it.r,0,7);ctx.fillStyle='#ff5a5a';ctx.fill();ctx.strokeStyle='#ffcc4d';ctx.lineWidth=4;ctx.stroke();
+        ctx.fillStyle='#fff';ctx.font='bold 14px sans-serif';ctx.textAlign='center';ctx.fillText('LEAK',it.x,it.y+5);
+      } else {it.y+=it.vy*dt;it.x+=it.vx*dt;
+        if(it.y>H+20){G.items.splice(i,1);G.miss++;SFX.hit();shake();continue;}
+        ctx.beginPath();ctx.arc(it.x,it.y,it.r,0,7);ctx.fillStyle='#ff6ad5';ctx.fill();ctx.fillStyle='#2a080e';ctx.beginPath();ctx.arc(it.x-8,it.y-4,3,0,7);ctx.arc(it.x+8,it.y-4,3,0,7);ctx.fill();
+      }
+    }
+    /* pod (race) */
+    if(kind==='race'){var sq=1+Math.min(.25,Math.abs(G.px-(G.lastpx||G.px))*.01);G.lastpx=G.px;ctx.save();ctx.translate(G.px,H-60);ctx.scale(sq,1/sq);ctx.beginPath();ctx.arc(0,0,34,0,7);ctx.fillStyle='rgba(79,227,210,.7)';ctx.fill();ctx.strokeStyle='#bffaf3';ctx.lineWidth=3;ctx.stroke();ctx.beginPath();ctx.arc(0,0,12,0,7);ctx.fillStyle='#ff5a5a';ctx.fill();ctx.restore();}
+    /* particles */
+    for(i=parts.length-1;i>=0;i--){var p=parts[i];p.x+=p.vx;p.y+=p.vy;p.l-=dt*2.5;if(p.l<=0){parts.splice(i,1);continue;}ctx.globalAlpha=p.l;ctx.fillStyle=p.c;ctx.fillRect(p.x-3,p.y-3,6,6);}ctx.globalAlpha=1;
+    el.querySelector('#gScore').textContent=(kind==='boss'?'Swats: ':'Caught: ')+G.score+'  Missed: '+G.miss;
+    var left=kind==='boss'?'':Math.ceil(info.sec-G.t)+'s';el.querySelector('#gTime').textContent=left;
+    var end=kind==='boss'?(G.hp<=0||G.miss>=8):G.t>=info.sec;
+    if(end)finish();else G.raf=requestAnimationFrame(step);
+  }
+  function finish(){
+    G.over=true;var msg=el.querySelector('#gameMsg');msg.classList.remove('hide');
+    var who=info.who,stars=0,txt='',fact='';
+    if(kind==='race'){stars=Math.min(5,Math.floor(G.score/3));var dmg=Math.floor(G.miss/4);R.crew[who]=Math.max(0,R.crew[who]-dmg);R.o2=clamp(R.o2+Math.min(4,Math.floor(G.score/4)));R.done.race=true;txt='Oxinator caught '+G.score+' bubbles. The legs got their oxygen. ⭐'+stars+(dmg?' Oxinator is tired from the CO2.':'');fact='Muscles burn more oxygen when you run, so your heart beats faster to deliver it.';unlockJ('mystery','goose');}
+    else if(kind==='knee'){stars=Math.min(5,Math.floor(G.score/3));var d2=Math.floor(G.miss/3);R.crew[who]=Math.max(0,R.crew[who]-d2);R.h2o=clamp(R.h2o-Math.min(3,G.miss));R.done.knee=true;txt='Patchlet plugged '+G.score+' leaks. A scab is forming. ⭐'+stars+(G.miss?' Some blood leaked out ('+Math.min(3,G.miss)+' water).':'');fact='A scab is a dried plug of platelets and sticky threads called fibrin. Picking it reopens the leak.';unlockJ('mystery','yawn');}
+    else{var won=G.hp<=0;if(won){stars=5;R.done.boss=true;P.wins++;if(P.unlocked.indexOf('lungs')<0)P.unlocked.push('lungs');unlockJ('germ','sugar');unlockJ('mystery','fat');SFX.win();txt='Fighty swatted the Sugar Monster down to nothing! ⭐5. The LUNGS are now unlocked on the map.';fact=GERMS.sugar.fact;}
+      else{R.crew.fighty=0;R.sugar=Math.max(0,R.sugar-2);txt='Too many sugar blobs got through. Fighty needs a snack and a rest. The monster shrank a little. Try again from the Heart.';fact='Sugar crashes happen when a big spike drops fast. Slow fuel like apples and bread keeps the body steady.';}}
+    R.coin+=stars;R.stars+=stars;save();hud();
+    msg.innerHTML='<h3>'+(kind==='boss'&&G.hp>0?'Not this time':'Done!')+'</h3><p>'+txt+'</p><div class="fact" style="text-align:left">💡 '+fact+'</div><button class="btn" id="gDone">'+(kind==='boss'&&G.hp<=0?'Finish the trip ▶':'Back to map ▶')+'</button>';
+    msg.querySelector('#gDone').onclick=function(){if(kind==='boss'&&R.done.boss)endRun();else checkTired();};
+  }
+  el.querySelector('#gStart').onclick=function(){el.querySelector('#gameMsg').classList.add('hide');G.t=0.0001;G.last=0;if(kind==='boss'){G.maxhp=10+R.sugar*2;G.hp=G.maxhp;}G.raf=requestAnimationFrame(step);};
+}
+
+/* ---------- END OF RUN ---------- */
+function endRun(){
+  R.ended=true;P.runs++;P.bestStars=Math.max(P.bestStars,R.stars);save();recordPlay();
+  var el=document.getElementById('s-end');
+  el.innerHTML='<div class="wrap title"><div class="big">🏆</div><h2 style="font-size:40px">Trip Complete</h2><p>Stars this trip: <span class="stars" id="cnt">0</span></p><p class="sub">Journal: '+journalPct()+'% filled · Trips: '+P.runs+'</p><p>The Sugar Monster is beaten and the Lungs are open. More of the body unlocks as Dad builds it.</p><div class="row" style="max-width:520px;margin:14px auto 0"><button class="btn" id="again">🚀 New trip</button><button class="btn ghost" id="jr">📖 Journal</button></div></div>';
+  show('end');
+  var n=0,target=R.stars,c=el.querySelector('#cnt');var iv=setInterval(function(){n++;c.textContent='⭐ '+n;SFX.coin();if(n>=target)clearInterval(iv);},120);if(target===0)c.textContent='⭐ 0';
+  el.querySelector('#again').onclick=function(){title();};
+  el.querySelector('#jr').onclick=journal;
+}
+
+/* ---------- JOURNAL ---------- */
+function unlockJ(type,id){var k=type+':'+id;if(!P.journal[k]){P.journal[k]=1;save();toast('📖 New journal card: '+jName(type,id));}}
+function jName(t,id){if(t==='cell')return CREW[id].nm;if(t==='organ')return ORGANS[id].nm;if(t==='germ')return GERMS[id].nm;if(t==='map'){var p=id.split('-');return ORGANS[p[0]].nm+' to '+ORGANS[p[1]].nm;}if(t==='mystery'){var m=MYSTERIES.filter(function(x){return x.id===id;})[0];return m?m.nm:id;}return id;}
+function allCards(){
+  var L=[];
+  Object.keys(CREW).forEach(function(k){L.push({t:'cell',id:k,ic:CREW[k].ic,nm:CREW[k].nm,sub:CREW[k].kind,txt:CREW[k].job+' '+CREW[k].fact});});
+  Object.keys(ORGANS).forEach(function(k){L.push({t:'organ',id:k,ic:ORGANS[k].ic,nm:ORGANS[k].nm,sub:'Organ',txt:ORGANS[k].fact});});
+  Object.keys(GERMS).forEach(function(k){L.push({t:'germ',id:k,ic:GERMS[k].ic,nm:GERMS[k].nm,sub:'Germ',txt:GERMS[k].fact});});
+  LINKS.forEach(function(l){var id=l.slice().sort().join('-');L.push({t:'map',id:id,ic:'🗺️',nm:jName('map',id),sub:'Route',txt:'A path you traveled.'});});
+  MYSTERIES.forEach(function(m){L.push({t:'mystery',id:m.id,ic:m.ic,nm:m.nm,sub:'Mystery'+(m.by?' · found by '+m.by:''),txt:m.text});});
+  return L;
+}
+function journalPct(){var all=allCards();var n=all.filter(function(c){return P.journal[c.t+':'+c.id];}).length;return Math.round(n/all.length*100);}
+var jtab='cell';
+function journal(){
+  var el=document.getElementById('s-journal');var all=allCards();
+  var tabs=[['cell','🔴 Cells'],['organ','❤️ Organs'],['germ','🦠 Germs'],['map','🗺️ Maps'],['mystery','❓ Mysteries']];
+  el.innerHTML='<div class="wrap"><h2>📖 Journal · '+journalPct()+'% filled</h2><div class="tabs">'+tabs.map(function(t){return '<div class="tab'+(t[0]===jtab?' on':'')+'" data-t="'+t[0]+'">'+t[1]+'</div>';}).join('')+'</div><div class="jgrid">'+
+    all.filter(function(c){return c.t===jtab;}).map(function(c){var on=P.journal[c.t+':'+c.id];return '<div class="jcard'+(on?'':' locked')+'"><div class="ic">'+(on?c.ic:'❔')+'</div><b>'+(on?esc(c.nm):'???')+'</b><p>'+(on?esc(c.sub)+'<br>'+esc(c.txt):'Not found yet')+'</p></div>';}).join('')+
+    '</div><div class="row"><button class="btn ghost" id="back">◀ Back</button></div></div>';
+  Array.prototype.forEach.call(el.querySelectorAll('.tab'),function(t){t.onclick=function(){jtab=t.getAttribute('data-t');journal();};});
+  el.querySelector('#back').onclick=leaveJournal;
+  show('journal');
+}
+
+/* ---------- boot ---------- */
+title();
+</script>
+</body>
+</html>

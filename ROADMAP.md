@@ -1,7 +1,7 @@
 # Game Shelf — Roadmap
 
 Repo: `motbuchanan/gameshelf` · Live: https://motbuchanan.github.io/gameshelf/
-Last updated: 2026-09-22
+Last updated: 2026-10-18
 
 This file is the single organizing record for the shelf: what each app is,
 what state it's in, what's shipped, and what's next. Update it when a version
@@ -31,6 +31,18 @@ ships or a decision changes. Keep entries short. Status tags:
 ---
 
 ## Apps
+
+### Bloodstream — body-exploring trail game  **LIVE**
+Path: `bloodstream.html` · Current: **v0.2** (2026-10-18) · shelf **v71**
+Oregon Trail / FTL-style single-file game built for Garrett from his own Body Trail
+Builder answers (ride: Bubble Pod; crew: Oxinator, Fighty, Patchlet; boss: Sugar Monster;
+Blood Red palette). Heart hub + node map (Stomach, Bones, Cell Lab open; Lungs unlock on
+boss win; Brain locked). Event cards, snack-heal (feeds the boss), math-gated shop that
+scales addition → division, 3 missions (Pizza Night math, Running Race catch, Scraped Knee
+tap), Sugar Monster tap fight, Journal (cells, organs, germs, routes, mysteries). Nobody dies.
+Writes plays to `bloodstream_games` (shelf Most Played); progress in `bloodstream_v1`.
+Not in gamenight GAME_KEYS / achievements NAMES (same as Puff, Haunt Inc).
+- [ ] Phase 2: Fighty germ-swat minigame, Brain missions, more organs/bosses, crew bios in Journal **IDEA**
 
 ### Measure Up — build-a-band math game  **LIVE**
 Path: `/measureup/` · Current: **v0.33** (2026-08-23)
