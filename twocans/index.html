@@ -93,17 +93,22 @@ header .dot{width:46px;height:46px;font-size:22px}
   background:#fff;resize:none;max-height:150px;line-height:1.3;outline:none}
 #txt:focus{border-color:var(--soft)}
 .round{width:50px;height:50px;flex:none;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--card);border:2px solid var(--line)}
-.bar{gap:7px}
-#camBtn,#libBtn{width:48px;height:48px}
+.bar{gap:6px}
+#emojiBtn,#camBtn,#libBtn{width:46px;height:46px}
 .round svg{width:27px;height:27px}
+#emojiBtn.on{background:var(--ink);border-color:var(--ink)}
+#emojiBtn.on svg{stroke:#fff}
+#emojiBtn.on svg circle[fill]{fill:#fff}
 .round:active{transform:scale(.94)}
 #sendBtn{background:var(--ink);border-color:var(--ink)}
 #sendBtn svg{fill:#fff}
 #sendBtn:disabled{opacity:.35}
-.quick{display:flex;gap:6px;margin:0 0 10px;padding:1px;overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none}
-.quick::-webkit-scrollbar{display:none}
-.quick button{font-size:24px;width:100%;min-width:0;height:44px;border-radius:14px;background:var(--card);border:2px solid var(--line);flex:1 1 0;display:flex;align-items:center;justify-content:center}
-.quick button:active{transform:scale(.92);background:var(--line)}
+#emojiPanel{height:224px;overflow-y:auto;-webkit-overflow-scrolling:touch;margin:0 0 10px;padding:4px 6px;
+  background:var(--card);border:2px solid var(--line);border-radius:16px}
+#emojiPanel .cat{font-size:12px;font-weight:800;color:var(--soft);text-transform:uppercase;letter-spacing:.6px;margin:8px 4px 2px}
+#emojiPanel .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(44px,1fr));gap:1px}
+#emojiPanel .grid button{font-size:27px;height:46px;border:0;background:none;border-radius:10px;padding:0}
+#emojiPanel .grid button:active{background:var(--line)}
 
 /* ---------- overlays ---------- */
 .overlay{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center}
@@ -174,9 +179,12 @@ header .dot{width:46px;height:46px;font-size:22px}
     <div id="list"></div>
     <button id="newPill" class="hidden">New message</button>
     <div class="composer">
-      <div class="quick" id="quick"></div>
+      <div id="emojiPanel" class="hidden"></div>
       <div id="attach" class="hidden"><img id="attachImg" alt=""><span class="grow" id="attachInfo" style="font-size:15px;color:var(--soft)"></span><button class="x" id="attachX" aria-label="Remove photo">X</button></div>
       <div class="bar">
+        <button class="round" id="emojiBtn" aria-label="Emoji">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#2b2622" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="9" cy="10" r="1.1" fill="#2b2622" stroke="none"/><circle cx="15" cy="10" r="1.1" fill="#2b2622" stroke="none"/><path d="M8.3 14a4.5 4.5 0 007.4 0" stroke-linecap="round"/></svg>
+        </button>
         <button class="round" id="camBtn" aria-label="Take a photo">
           <svg viewBox="0 0 24 24" fill="none" stroke="#2b2622" stroke-width="2" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.6"/></svg>
         </button>
@@ -205,7 +213,7 @@ header .dot{width:46px;height:46px;font-size:22px}
 
 <script src="config.js"></script>
 <script type="module">
-const VERSION = 'v0.3';
+const VERSION = 'v0.4';
 const VDATE = 'Oct 19 2026';
 const FB_VER = '10.12.2';
 const ROOM = 'main';
@@ -604,7 +612,7 @@ async function sendNow(){
   const img = pendingImg ? pendingImg.data : '';
   if ((!text && !img) || sending) return;
   sending = true;
-  txt.value = ''; autoGrow(); clearAttach(); canSend();
+  txt.value = ''; autoGrow(); clearAttach(); canSend(); toggleEmoji(false);
   sndSend(); stickBottom = true;
   try { await B.send({ text, img }); }
   catch(e){
@@ -613,13 +621,38 @@ async function sendNow(){
   }
   sending = false;
 }
-// quick replies use old emoji only (shows on older iPads)
-const QUICK = ['\u{1F44D}','❤️','\u{1F602}','\u{1F62E}','\u{1F622}','\u{1F389}','\u{1F44B}','\u{1F60E}'];
-for (const q of QUICK){
-  const b = document.createElement('button'); b.textContent = q;
-  b.onclick = () => { B.send({ text:q, img:'' }).catch(() => toast('That one did not send.')); sndSend(); stickBottom = true; };
-  $('quick').appendChild(b);
+// Emoji picker. All glyphs are older (<= 2018) so they render on every iPad.
+// Garrett can also tap the emoji key on the iPad keyboard for the full set.
+const EMOJI = {
+  'Faces': '😀 😃 😄 😁 😆 😅 😂 🙂 🙃 😉 😊 😇 😍 😘 😗 😚 😋 😛 😝 😜 🤪 😎 🤓 😏 😌 😔 🙁 😣 😖 😫 😩 😢 😭 😤 😠 😡 🤯 😳 😱 😨 😰 😥 😓 🤗 🤔 🤭 🤫 🙄 😬 😴 😪 🤤 😵 🤐 🤢 🤮 🤧 😷 🤒 🤕 🤠 🥳 🥺 👻 🤖 💩 🎃',
+  'Hands': '👍 👎 👌 ✌️ 🤞 🤟 🤘 🤙 👈 👉 👆 👇 ☝️ ✋ 🤚 🖐️ 🖖 👋 💪 🙏 👏 🙌 👐 🤝 ✊ 👊 🤛 🤜 🤲',
+  'Hearts & stars': '❤️ 🧡 💛 💚 💙 💜 🖤 💔 ❣️ 💕 💞 💓 💗 💖 💘 💝 💟 ⭐ 🌟 ✨ ⚡ 🔥 💥 💫 🌈 ☀️ 🎉 🎊 🎈 🎁',
+  'Animals': '🐶 🐱 🐭 🐹 🐰 🦊 🐻 🐼 🐨 🐯 🦁 🐮 🐷 🐸 🐵 🐔 🐧 🐦 🐤 🦆 🦅 🦉 🦇 🐺 🐴 🦄 🐝 🐛 🦋 🐌 🐞 🐢 🐍 🐙 🦐 🦀 🐠 🐟 🐬 🐳 🐋 🦈 🐊 🐘 🐫 🦒 🐕 🐈 🐓',
+  'Food': '🍎 🍐 🍊 🍋 🍌 🍉 🍇 🍓 🍒 🍑 🍍 🥝 🍅 🥑 🥦 🥕 🌽 🥔 🥐 🍞 🥨 🧀 🥚 🍳 🥞 🥓 🍗 🍖 🌭 🍔 🍟 🍕 🥪 🌮 🌯 🥗 🍝 🍜 🍲 🍣 🍱 🍛 🍚 🍙 🍦 🍰 🎂 🍭 🍬 🍫 🍿 🍩 🍪 🥛 ☕ 🥤',
+  'Play & go': '⚽ 🏀 🏈 ⚾ 🎾 🏐 🏉 🎱 🏓 🏸 ⛳ 🎣 🏆 🥇 🥈 🥉 🏅 🎪 🎨 🎬 🎤 🎧 🎹 🥁 🎷 🎺 🎸 🎻 🎲 🎯 🎳 🎮 🧩 🚗 🚕 🚌 🚒 🚓 🚑 🚜 🚲 🏍️ 🚂 🚀 ✈️ 🚁 ⛵ 🏰 🎡 🎢 🎠 🌋 🏠 ⛺ 📚 ✏️ 🔬 🔭 🎓 💡'
+};
+(function buildEmoji(){
+  const panel = $('emojiPanel');
+  for (const [cat, list] of Object.entries(EMOJI)){
+    const h = document.createElement('div'); h.className = 'cat'; h.textContent = cat; panel.appendChild(h);
+    const g = document.createElement('div'); g.className = 'grid';
+    for (const e of list.split(' ')){
+      const b = document.createElement('button'); b.type = 'button'; b.textContent = e;
+      b.onclick = () => { txt.value += e; autoGrow(); canSend(); };
+      g.appendChild(b);
+    }
+    panel.appendChild(g);
+  }
+})();
+function toggleEmoji(open){
+  const show = open === undefined ? $('emojiPanel').classList.contains('hidden') : open;
+  $('emojiPanel').classList.toggle('hidden', !show);
+  $('emojiBtn').classList.toggle('on', show);
+  if (show){ txt.blur(); } // drop the keyboard so the panel is visible
+  if (show && stickBottom) toBottom();
 }
+$('emojiBtn').onclick = () => toggleEmoji();
+txt.addEventListener('focus', () => toggleEmoji(false));
 
 /* ---------- photos ---------- */
 $('camBtn').onclick = () => $('camIn').click();
