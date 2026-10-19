@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="build" content="v0.2 · Oct 18, 2026">
+<meta name="build" content="v0.5 · Oct 18, 2026">
 <title>Bloodstream</title>
 <style>
 :root{
@@ -17,7 +17,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family
 body{background:radial-gradient(ellipse at 30% 20%,#6a1826 0%,var(--bg) 60%,#2a080e 100%)}
 #veins{position:fixed;inset:0;pointer-events:none;opacity:.35}
 #app{position:relative;height:100%;display:flex;flex-direction:column}
-header{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;gap:10px;flex:0 0 auto}
+header{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;gap:10px;flex:0 0 auto;flex-wrap:wrap}
 header h1{font-size:20px;margin:0;letter-spacing:1px}
 #badge{font-size:12px;color:var(--dim);background:rgba(0,0,0,.25);padding:6px 10px;border-radius:999px;border:1px solid var(--line)}
 #hud{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
@@ -25,6 +25,8 @@ header h1{font-size:20px;margin:0;letter-spacing:1px}
 .meter .bar{width:60px;height:8px;background:rgba(0,0,0,.4);border-radius:4px;overflow:hidden}
 .meter .bar i{display:block;height:100%;width:0;transition:width .4s cubic-bezier(.2,.9,.3,1.2)}
 #m-o2 i{background:var(--blue)}#m-glu i{background:var(--gold)}#m-h2o i{background:var(--teal)}
+.meter.low{border-color:var(--red);animation:lowpulse 1s ease-in-out infinite}
+@keyframes lowpulse{0%,100%{box-shadow:0 0 0 0 rgba(255,90,90,0)}50%{box-shadow:0 0 0 4px rgba(255,90,90,.45)}}
 .coin{color:var(--gold)}
 main{flex:1;position:relative;overflow:hidden}
 .scr{position:absolute;inset:0;overflow:auto;padding:10px 14px 16px;opacity:0;transform:scale(.98);pointer-events:none;transition:opacity .25s,transform .25s}
@@ -38,6 +40,7 @@ p{line-height:1.4;font-size:18px;margin:6px 0}
 .btn.ghost{background:rgba(0,0,0,.25);color:var(--ink);border:2px solid var(--line);box-shadow:none}
 .btn.teal{background:var(--teal);box-shadow:0 4px 0 #2a9a8c}.btn.teal:active{box-shadow:0 2px 0 #2a9a8c}
 .btn.red{background:var(--red);box-shadow:0 4px 0 #b13a4b;color:#fff}.btn.red:active{box-shadow:0 2px 0 #b13a4b}
+.btn.go{background:linear-gradient(180deg,#ffd970,#ffcc4d);font-size:19px}
 .btn:disabled{opacity:.4;transform:none}
 .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
 .row .btn{flex:1}
@@ -54,15 +57,24 @@ p{line-height:1.4;font-size:18px;margin:6px 0}
 .cell .hp{font-size:15px;letter-spacing:2px}
 .cell.tired{opacity:.6}
 /* map */
-#map{width:100%;height:auto;max-height:62vh;display:block}
+#map{width:100%;height:auto;max-height:66vh;display:block}
 .node{cursor:pointer}
-.node.locked{opacity:.4;cursor:default}
+.node.locked{opacity:.45;cursor:default}
 .node:active circle.base{transform:scale(.95)}
 .node text{fill:#f4f1ea;font-weight:700;font-size:15px;text-anchor:middle;pointer-events:none}
 .node .ic{font-size:26px;text-anchor:middle;pointer-events:none}
-.node.here circle.ring{stroke:#ffcc4d;stroke-width:4;animation:pulse 1.4s ease-in-out infinite}
-@keyframes pulse{0%,100%{stroke-opacity:1}50%{stroke-opacity:.3}}
+.node.here circle.ring{stroke:#4fe3d2;stroke-width:4}
+.node.reach circle.ring{stroke:#ffcc4d;stroke-width:5;animation:pulse 1.1s ease-in-out infinite}
+.node.reach .gobadge{animation:bob 1.1s ease-in-out infinite}
+@keyframes pulse{0%,100%{stroke-opacity:1;r:46}50%{stroke-opacity:.35;r:52}}
 .pod{pointer-events:none}
+.coach{position:absolute;left:50%;transform:translateX(-50%);bottom:18px;background:var(--gold);color:#2a080e;font-weight:800;font-size:18px;padding:12px 18px;border-radius:999px;box-shadow:0 6px 16px rgba(0,0,0,.4);pointer-events:none;animation:bob 1.2s ease-in-out infinite;white-space:nowrap;z-index:3}
+.mapwrap{position:relative}
+.arrow{pointer-events:none;animation:arrowbob .8s ease-in-out infinite}
+@keyframes arrowbob{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+.legend{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;font-size:14px;color:var(--dim);margin-top:4px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{display:inline-block;width:26px;height:6px;border-radius:3px}
 /* event */
 .choice{display:block;width:100%;text-align:left;margin-top:10px;font-size:18px}
 .fact{background:rgba(0,0,0,.3);border-left:4px solid var(--teal);padding:10px 12px;border-radius:10px;margin-top:12px;font-size:17px}
@@ -78,19 +90,31 @@ p{line-height:1.4;font-size:18px;margin:6px 0}
 #gameWrap{position:relative;width:100%;background:#2a080e;border:3px solid var(--line);border-radius:18px;overflow:hidden;touch-action:none}
 #game{display:block;width:100%;height:auto}
 #gameHud{position:absolute;top:8px;left:10px;right:10px;display:flex;justify-content:space-between;font-weight:700;font-size:18px;pointer-events:none;text-shadow:0 2px 4px #000}
-#gameMsg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;background:rgba(42,8,14,.75);text-align:center;padding:16px}
+#gameMsg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;background:rgba(42,8,14,.78);text-align:center;padding:16px;overflow:auto}
 #gameMsg.hide{display:none}
 #gameMsg h3{font-size:30px;margin:0}
 /* journal */
 .tabs{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
 .tab{padding:10px 14px;border-radius:999px;border:2px solid var(--line);background:rgba(0,0,0,.25);font-weight:700;cursor:pointer;font-size:16px}
 .tab.on{background:var(--gold);color:#2a080e;border-color:var(--gold)}
-.jgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+.jgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
 .jcard{background:rgba(0,0,0,.25);border:2px solid var(--line);border-radius:14px;padding:10px;min-height:120px}
 .jcard.locked{opacity:.35;filter:grayscale(1)}
 .jcard .ic{font-size:34px}
 .jcard b{display:block;font-size:16px;margin:4px 0}
-.jcard p{font-size:14px;margin:0;color:var(--dim)}
+.jcard p{font-size:14px;margin:0 0 4px;color:var(--dim)}
+.jcard p em{color:var(--gold);font-style:normal;font-weight:700}
+/* intro */
+.intro{max-width:720px;margin:0 auto;text-align:center}
+.intro .pic{font-size:64px;line-height:1;margin:6px 0}
+.intro h2{font-size:32px}
+.intro p{font-size:20px}
+.dots{display:flex;gap:8px;justify-content:center;margin:10px 0}
+.dots i{width:12px;height:12px;border-radius:50%;background:rgba(255,255,255,.25)}
+.dots i.on{background:var(--gold)}
+.meters3{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:8px}
+.meters3 div{background:rgba(0,0,0,.3);border:2px solid var(--line);border-radius:14px;padding:10px 14px;font-size:17px;min-width:150px}
+.meters3 b{display:block;font-size:30px}
 /* fx */
 #flash{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:50}
 #toast{position:fixed;top:60px;left:50%;transform:translateX(-50%) translateY(-10px);background:var(--teal);color:#2a080e;padding:10px 18px;border-radius:999px;font-weight:700;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;z-index:60;font-size:17px}
@@ -99,11 +123,17 @@ p{line-height:1.4;font-size:18px;margin:6px 0}
 @keyframes shake{0%,100%{transform:translate(0px,0px)}25%{transform:translate(-4px,2px)}50%{transform:translate(4px,-2px)}75%{transform:translate(-2px,-2px)}}
 .punch{animation:punch .35s cubic-bezier(.2,1.5,.4,1)}
 @keyframes punch{0%{transform:scale(1.3)}100%{transform:scale(1)}}
-.title{text-align:center;padding-top:4vh}
+.title{text-align:center;padding-top:3vh}
 .title h2{font-size:52px;margin:6px 0;letter-spacing:3px;text-shadow:0 4px 0 #2a080e}
-.title .pod{width:160px;height:160px;animation:bob 2.4s ease-in-out infinite}
+.title .pod{width:150px;height:150px;animation:bob 2.4s ease-in-out infinite}
 .stars{color:var(--gold);font-size:20px}
 .big{font-size:40px}
+.mission{display:flex;align-items:center;gap:12px;background:rgba(0,0,0,.25);border:2px solid var(--line);border-radius:14px;padding:10px 12px;margin-top:8px}
+.mission .ic{font-size:34px}
+.mission b{display:block;font-size:18px}
+.mission .sub{font-size:14px}
+.mission .btn{margin-left:auto;min-height:48px;padding:6px 14px;font-size:17px}
+.mission.done{opacity:.55}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -113,16 +143,17 @@ p{line-height:1.4;font-size:18px;margin:6px 0}
   <header>
     <h1>❤️ BLOODSTREAM</h1>
     <div id="hud">
-      <div class="meter" id="m-o2">💨<div class="bar"><i></i></div><span>0</span></div>
-      <div class="meter" id="m-glu">🍪<div class="bar"><i></i></div><span>0</span></div>
-      <div class="meter" id="m-h2o">💧<div class="bar"><i></i></div><span>0</span></div>
+      <div class="meter" id="m-o2" title="Oxygen">💨<div class="bar"><i></i></div><span>0</span></div>
+      <div class="meter" id="m-glu" title="Glucose">🍪<div class="bar"><i></i></div><span>0</span></div>
+      <div class="meter" id="m-h2o" title="Water">💧<div class="bar"><i></i></div><span>0</span></div>
       <div class="meter coin">⭐ <span id="m-coin">0</span></div>
       <button class="btn ghost" id="btnJournal" style="min-height:40px;padding:4px 12px;font-size:15px">📖 Journal</button>
     </div>
-    <div id="badge">v0.2 · Oct 18, 2026</div>
+    <div id="badge">v0.5 · Oct 18, 2026</div>
   </header>
   <main>
     <div class="scr" id="s-title"></div>
+    <div class="scr" id="s-intro"></div>
     <div class="scr" id="s-hub"></div>
     <div class="scr" id="s-event"></div>
     <div class="scr" id="s-organ"></div>
@@ -135,7 +166,7 @@ p{line-height:1.4;font-size:18px;margin:6px 0}
 <div id="flash"></div>
 <div id="toast"></div>
 <script>
-/* BLOODSTREAM - v0.2 - Oct 18 2026 - Phase 1 - built for Garrett */
+/* BLOODSTREAM - v0.5 - Oct 18 2026 - Phase 3b (unique bosses) - built for Garrett */
 var VERSION=document.querySelector('meta[name=build]').getAttribute('content');
 var KEY='bloodstream_v1';
 
@@ -145,8 +176,11 @@ function load(){try{var s=localStorage.getItem(KEY);if(s)return JSON.parse(s);}c
 function save(){try{localStorage.setItem(KEY,JSON.stringify(P));}catch(e){mem[KEY]=P;}}
 
 /* ---------- persistent profile (across runs) ---------- */
-var P=load()||{runs:0,wins:0,bestStars:0,unlocked:['heart','stomach','bones','lab'],journal:{},mathLevel:0,sound:true,shake:true};
-if(!P.journal)P.journal={};
+var P=load()||{runs:0,wins:0,bestStars:0,unlocked:['heart','stomach','bones','lab'],journal:{},mathLevel:0,sound:true,shake:true,seenIntro:false,bosses:{}};
+if(!P.journal)P.journal={};if(!P.bosses)P.bosses={};if(P.seenIntro==null)P.seenIntro=false;
+/* v0.2 -> v0.3 migration: an old win already unlocked lungs; give the brain too */
+if(P.unlocked.indexOf('lungs')>=0&&P.unlocked.indexOf('brain')<0){P.unlocked.push('brain');P.bosses.sugar=true;}
+function syncUnlocks(){Object.keys(P.bosses).forEach(function(b){if(BOSSES[b])BOSSES[b].unlocks.forEach(function(u){if(P.unlocked.indexOf(u)<0)P.unlocked.push(u);});});save();}
 
 /* ---------- run state ---------- */
 var R=null;
@@ -155,51 +189,106 @@ function recordPlay(){try{var a=JSON.parse(localStorage.getItem(PLAYKEY))||[];if
 function newRun(){
   R={started:Date.now(),o2:6,glu:6,h2o:6,coin:4,stars:0,at:'heart',sugar:0,steps:0,
      crew:{patchlet:3,oxinator:3,fighty:3},
-     done:{pizza:false,race:false,knee:false,boss:false},
-     visited:{heart:true},routes:[],eventsSeen:[]};
+     done:{pizza:false,race:false,knee:false,sneeze:false,teeth:false,swim:false,bedtime:false,apple:false,flex:false,balance:false,eyespy:false},
+     boss:null,visited:{heart:true},routes:[],eventsSeen:[],coach:true,combo:0};
 }
 
 /* ---------- content ---------- */
 var CREW={
-  oxinator:{nm:'Oxinator',kind:'Red Cell',color:'#ff5a5a',ic:'🔴',job:'Carries oxygen from the lungs to every cell. Shaped like a donut with no hole so it can squeeze through tiny tubes.',fact:'Your body makes about 2 million new red cells every second.'},
-  fighty:{nm:'Fighty',kind:'White Cell',color:'#ffffff',ic:'⚪',job:'Hunts germs. Can squeeze out of a vessel and chase a germ into the body.',fact:'For every 1 white cell there are about 700 red cells.'},
-  patchlet:{nm:'Patchlet',kind:'Platelet',color:'#ffcc4d',ic:'🔶',job:'Sticks to a leak and calls more platelets until a plug forms. That plug becomes a scab.',fact:'Platelets are not whole cells. They are little chips broken off a giant cell in the bone marrow.'}
+  oxinator:{nm:'Oxinator',kind:'Red Cell',color:'#ff5a5a',ic:'🔴',
+    job:'Carries oxygen from the lungs to every cell. Shaped like a donut with no hole so it can squeeze through tiny tubes.',
+    fact:'Your body makes about 2 million new red cells every second.',
+    bio:'Born in the bone marrow 3 months ago. Has done 4,000 laps around the body and still gets excited at the lungs every time.',
+    secret:'Has no nucleus. Gave it up so there would be more room for oxygen.',
+    fav:'Favorite place: the Lungs. Favorite smell: fresh air after rain.'},
+  fighty:{nm:'Fighty',kind:'White Cell',color:'#ffffff',ic:'⚪',
+    job:'Hunts germs. Can squeeze out of a vessel and chase a germ into the body.',
+    fact:'For every 1 white cell there are about 700 red cells.',
+    bio:'Trained in the Cell Lab. Loud, brave, eats germs whole. Keeps a list of every germ ever beaten and reads it before bed.',
+    secret:'Is a little afraid of soap. Soap washes germs away before Fighty gets to fight them.',
+    fav:'Favorite move: the squeeze-through-the-wall surprise attack.'},
+  patchlet:{nm:'Patchlet',kind:'Platelet',color:'#ffcc4d',ic:'🔶',
+    job:'Sticks to a leak and calls more platelets until a plug forms. That plug becomes a scab.',
+    fact:'Platelets are not whole cells. They are little chips broken off a giant cell in the bone marrow.',
+    bio:'The smallest crew member and the first one to reach any emergency. Sticky on purpose. Hums while patching.',
+    secret:'Only lives about 10 days, so Patchlet treats every day like a big one.',
+    fav:'Favorite sound: a scab forming. Says it sounds like tiny velcro.'}
 };
 var ORGANS={
-  heart:{nm:'Heart',ic:'❤️',x:500,y:300,fact:'The heart is a muscle pump. It beats about 100,000 times a day and never takes a day off.',desc:'Home base. Rest, shop, and pick a path.'},
-  stomach:{nm:'Stomach',ic:'🍕',x:230,y:440,fact:'The stomach squeezes food and mixes it with acid strong enough to burn skin. A slime coat protects the stomach from itself.',desc:'Food gets melted into fuel here. Pizza Night happens here.'},
-  bones:{nm:'Bones',ic:'🦴',x:770,y:440,fact:'Bones are alive. Inside the big ones is marrow, a factory that makes blood cells.',desc:'Hard outside, busy inside. New cells come from here.'},
+  heart:{nm:'Heart',ic:'❤️',x:500,y:300,fact:'The heart is a muscle pump. It beats about 100,000 times a day and never takes a day off.',desc:'Home base. Shop, rest, and pick a path.'},
+  stomach:{nm:'Stomach',ic:'🍕',x:250,y:440,fact:'The stomach squeezes food and mixes it with acid strong enough to burn skin. A slime coat protects the stomach from itself.',desc:'Food gets melted into fuel here.'},
+  bones:{nm:'Bones',ic:'🦴',x:750,y:440,fact:'Bones are alive. Inside the big ones is marrow, a factory that makes blood cells.',desc:'Hard outside, busy inside. New cells come from here.'},
   lab:{nm:'Cell Lab',ic:'🧬',x:500,y:90,fact:'Every cell carries DNA, a set of instructions for building you. Stretched out, the DNA in one cell is about 2 meters long.',desc:'Where cells are built and repaired.'},
-  lungs:{nm:'Lungs',ic:'💨',x:200,y:150,fact:'Lungs are full of tiny air sacs. Flattened out they would cover a tennis court.',desc:'Oxygen comes in here. Unlocked by beating the Sugar Monster.'},
-  brain:{nm:'Brain',ic:'🧠',x:800,y:150,fact:'The brain uses about 20 percent of your energy even though it is only 2 percent of your weight.',desc:'Mission control. Coming soon.'}
+  lungs:{nm:'Lungs',ic:'💨',x:230,y:150,fact:'Lungs are full of tiny air sacs. Flattened out they would cover a tennis court.',desc:'Oxygen comes in here.'},
+  brain:{nm:'Brain',ic:'🧠',x:770,y:150,fact:'The brain uses about 20 percent of your energy even though it is only 2 percent of your weight.',desc:'Mission control. The Brain hands out jobs.'},
+  skin:{nm:'Skin',ic:'✋',x:80,y:300,fact:'Skin is the biggest organ you have. It replaces itself about every month, so you shed tiny flakes all day.',desc:'The wall that keeps germs out. Sunshine here makes vitamin D.'},
+  kidneys:{nm:'Kidneys',ic:'💧',x:920,y:300,fact:'Kidneys filter all your blood about 40 times a day and send the junk out as pee.',desc:'The blood cleaners. Fresh water lives here.'},
+  muscles:{nm:'Muscles',ic:'💪',x:500,y:500,fact:'You have over 600 muscles. The strongest for its size is in your jaw. The busiest are the ones that move your eyes.',desc:'They burn fuel and make heat. Stretch here.'},
+  teeth:{nm:'Teeth',ic:'🦷',x:80,y:90,fact:'Tooth enamel is the hardest thing in your body, harder than bone. But it cannot grow back, so brushing matters.',desc:'The front door for food. The Cavity Crew hides here.'},
+  eyes:{nm:'Eyes',ic:'👁️',x:920,y:90,fact:'Your eyes see everything upside down. The brain flips the picture for you.',desc:'See what the kid sees. Eye Spy happens here.'},
+  ears:{nm:'Ears',ic:'👂',x:920,y:500,fact:'Deep in your ear are three tiny loops full of liquid. When you spin, the liquid keeps swirling. That is why you feel dizzy.',desc:'Hearing and balance live here.'}
 };
-var LINKS=[['heart','stomach'],['heart','bones'],['heart','lab'],['stomach','bones'],['lab','bones'],['lab','stomach'],['lab','lungs'],['stomach','lungs'],['lab','brain'],['bones','brain']];
+var LINKS=[['heart','stomach'],['heart','bones'],['heart','lab'],['stomach','bones'],['lab','bones'],['lab','stomach'],['lab','lungs'],['stomach','lungs'],['lab','brain'],['bones','brain'],['lungs','skin'],['stomach','skin'],['brain','kidneys'],['bones','kidneys'],['stomach','muscles'],['bones','muscles'],['heart','muscles'],['lungs','teeth'],['skin','teeth'],['brain','eyes'],['lab','eyes'],['brain','ears'],['kidneys','ears']];
+var UNLOCK_BY={lungs:'sugar',brain:'sugar',skin:'cold',muscles:'cold',kidneys:'bellybug',teeth:'bellybug',eyes:'cavity',ears:'cavity'};
 
 var GERMS={
-  sugar:{nm:'Sugar Monster',ic:'🍭',fact:'Sugar is fuel, but too much at once makes a spike and then a crash. Your body stores extra as fat.'},
-  cold:{nm:'Cold Virus',ic:'🦠',fact:'A virus is so small it has to hijack a cell to make copies of itself. That is why colds spread.'},
-  bellybug:{nm:'Belly Bug',ic:'🤢',fact:'Most belly bugs come in on hands. Washing hands for 20 seconds knocks most of them off.'},
-  splinter:{nm:'Splinter',ic:'🌵',fact:'A splinter brings germs in past the skin wall. White cells rush to the spot, which is why it gets red and puffy.'}
+  sugar:{nm:'Sugar Monster',ic:'🍭',boss:true,fact:'Sugar is fuel, but too much at once makes a spike and then a crash. Your body stores extra as fat.'},
+  cold:{nm:'Cold Virus',ic:'🦠',boss:true,fact:'A virus is so small it has to hijack a cell to make copies of itself. That is why colds spread.'},
+  bellybug:{nm:'Belly Bug',ic:'🤢',boss:true,fact:'Most belly bugs come in on hands. Washing hands for 20 seconds knocks most of them off.'},
+  splinter:{nm:'Splinter',ic:'🌵',fact:'A splinter brings germs in past the skin wall. White cells rush to the spot, which is why it gets red and puffy.'},
+  cavity:{nm:'Cavity Crew',ic:'🦷',boss:true,fact:'Cavity germs eat sugar stuck on teeth and leave acid behind. The acid drills holes. Brushing sweeps them out.'},
+  dust:{nm:'Dust Mite',ic:'🌫️',fact:'Dust in the nose tickles nerves. The nose fires a sneeze to blast it out at over 100 miles an hour.'},
+  pollen:{nm:'Pollen Grain',ic:'🌼',fact:'Pollen is harmless plant dust, but some bodies treat it like an invader. That overreaction is an allergy: itchy eyes and sneezes.'},
+  fever:{nm:'Fever Dragon',ic:'🐉',boss:true,fact:'A fever is the body turning up the heat on purpose. Most germs hate it hot. The Brain is the thermostat.'}
+};
+var BOSSES={
+  sugar:{at:'heart',needs:['pizza','race','knee'],unlocks:['lungs','brain'],blob:'#ff6ad5',hp:function(){return 10+R.sugar*2;},who:'fighty',
+    intro:'The Sugar Monster is HERE at the Heart!',win:'Fighty swatted the Sugar Monster down to nothing! The LUNGS and the BRAIN are open on the map.'},
+  cold:{at:'lungs',needs:['sneeze','swim'],unlocks:['skin','muscles'],blob:'#8ee86a',hp:function(){return 12+R.sugar;},who:'fighty',
+    intro:'The Cold Virus is multiplying in the Lungs!',win:'Fighty ate every copy of the Cold Virus. The SKIN and the MUSCLES are open on the map.'},
+  bellybug:{at:'stomach',needs:['teeth','pizza'],unlocks:['kidneys','teeth'],blob:'#b48bff',hp:function(){return 14+R.sugar;},who:'fighty',
+    intro:'The Belly Bug is churning up the Stomach!',win:'Fighty flushed the Belly Bug out for good. The KIDNEYS and the TEETH are open on the map.'},
+  cavity:{at:'teeth',needs:['teeth','apple'],unlocks:['eyes','ears'],blob:'#ffe08a',hp:function(){return 16+R.sugar*2;},who:'fighty',
+    intro:'The Cavity Crew boss is drilling the Teeth!',win:'Fighty knocked the Cavity Crew off the teeth. The EYES and the EARS are open on the map.'},
+  fever:{at:'brain',needs:['flex','balance','eyespy','bedtime'],unlocks:[],blob:'#ff8a3a',hp:function(){return 20+R.sugar;},who:'fighty',
+    intro:'The Fever Dragon is heating up the Brain!',win:'Fighty cooled the Fever Dragon down. The whole body is yours to explore.'}
+};
+var MISSIONS={
+  pizza:{nm:'Pizza Night',ic:'🍕',who:'stomach',sub:'Count slices into fuel'},
+  race:{nm:'Running Race',ic:'🏃',who:'bones',sub:'Catch oxygen for the legs'},
+  knee:{nm:'Scraped Knee',ic:'🤕',who:'trail',sub:'Patch the leaks'},
+  sneeze:{nm:'Sneeze Attack',ic:'🤧',who:'brain',sub:'Swat the dust before it tickles the nose'},
+  teeth:{nm:'Brush Teeth',ic:'🦷',who:'brain',sub:'Tap the cavity crew before they drill'},
+  swim:{nm:'Swimming',ic:'🏊',who:'brain',sub:'Catch warm blood, dodge the cold'},
+  bedtime:{nm:'Bedtime',ic:'😴',who:'brain',sub:'Repair mode: heal everyone'},
+  apple:{nm:'Apple Snack',ic:'🍎',who:'stomach',sub:'Turn apple slices into fuel'},
+  flex:{nm:'Stretch Out',ic:'💪',who:'muscles',sub:'Tap the cramps before they knot up'},
+  balance:{nm:'Dizzy Spin',ic:'👂',who:'ears',sub:'Catch the steady drops, dodge the wobbles'},
+  eyespy:{nm:'Eye Spy',ic:'👁️',who:'eyes',sub:'Spot the pollen hiding among the cells'}
 };
 var MYSTERIES=[
   {id:'fat',nm:'Armor Fat',ic:'🛡️',text:'Most of the fat in your body is stored outside your organs to protect them, like padding.',by:'Garrett'},
   {id:'hiccup',nm:'Hiccups',ic:'❓',text:'Nobody is fully sure why we hiccup. The diaphragm muscle twitches and the throat snaps shut.',by:''},
   {id:'yawn',nm:'Yawn Contagion',ic:'😮',text:'Seeing someone yawn can make you yawn. Scientists still argue about why.',by:''},
-  {id:'goose',nm:'Goosebumps',ic:'🐔',text:'Goosebumps are tiny muscles pulling your hairs up straight. It once helped fluffy ancestors look bigger and stay warm.',by:''}
+  {id:'goose',nm:'Goosebumps',ic:'🐔',text:'Goosebumps are tiny muscles pulling your hairs up straight. It once helped fluffy ancestors look bigger and stay warm.',by:''},
+  {id:'tall',nm:'Morning Tall',ic:'📏',text:'You are about 1 cm taller in the morning. The squishy discs in your spine get squeezed flat during the day.',by:''},
+  {id:'newstomach',nm:'New Stomach',ic:'🔄',text:'Your stomach lining is replaced every few days. Otherwise the acid would eat it.',by:''},
+  {id:'sneezeeyes',nm:'Sneeze Blink',ic:'👁️',text:'Your eyes close when you sneeze. It is a reflex, not because they would pop out. That part is a myth.',by:''},
+  {id:'tickle',nm:'No Self-Tickle',ic:'🤭',text:'You cannot tickle yourself. Your brain predicts your own touch and cancels the surprise.',by:''},
+  {id:'crack',nm:'Knuckle Pop',ic:'👊',text:'The pop when you crack a knuckle is a gas bubble forming in the joint fluid. It is not bones.',by:''},
+  {id:'heat',nm:'Body Furnace',ic:'🔥',text:'Your muscles make most of your body heat. Shivering is muscles twitching fast to warm you up.',by:''},
+  {id:'earwax',nm:'Ear Guard',ic:'👂',text:'Earwax is a trap. It catches dust and bugs before they get deep in the ear, then slowly carries them out.',by:''}
 ];
 
 var EVENTS=[
   {id:'splinter',t:'A Splinter!',txt:'A sharp sliver of wood has poked through the skin wall. Germs are crawling in behind it.',ic:'🌵',
-   c:[{l:'Send Fighty to swat the germs',fx:{crew:['fighty',-1],coin:2,germ:'splinter'},r:'Fighty squeezes out of the vessel and swats three germs. Tiring, but you earn 2 stars.'},
-      {l:'Send Patchlet to plug the hole',fx:{crew:['patchlet',-1],coin:1,germ:'splinter'},r:'Patchlet sticks to the hole and calls friends. A plug forms. 1 star.'}]},
+   c:[{l:'Fighty, swat the germs!',game:['swat','splinter']},
+      {l:'Patchlet, plug the hole',fx:{crew:['patchlet',-1],coin:1,germ:'splinter'},r:'Patchlet sticks to the hole and calls friends. A plug forms. 1 star.'}]},
   {id:'fever',t:'Getting Warm',txt:'The body is heating up to cook a germ. It is working, but it is thirsty work.',ic:'🔥',
    c:[{l:'Spend 2 water to keep cool',fx:{h2o:-2,coin:2},r:'Cool and steady. The germ gives up. 2 stars.'},
       {l:'Push through',fx:{crew:['oxinator',-1]},r:'Oxinator overheats and needs a rest.'}]},
-  {id:'sneeze',t:'Sneeze Coming!',txt:'Dust in the nose. A sneeze blasts air out at over 100 miles an hour.',ic:'🤧',
-   c:[{l:'Hold on tight!',fx:{coin:1},r:'WHOOSH. The dust is gone. 1 star for hanging on.'},
-      {l:'Ride the blast',fx:{o2:2},r:'Fresh air rushes in right after. +2 oxygen.'}]},
   {id:'cold',t:'Cold Virus Spotted',txt:'A cold virus is trying to sneak into a cell to make copies of itself.',ic:'🦠',
-   c:[{l:'Fighty attacks',fx:{crew:['fighty',-1],coin:3,germ:'cold'},r:'Fighty eats the virus whole. 3 stars. Fighty is tired.'},
+   c:[{l:'Fighty, attack!',game:['swat','cold']},
       {l:'Sneak past it',fx:{glu:-1,germ:'cold'},r:'You slip by but burn a little fuel. The body will deal with it later.'}]},
   {id:'snack',t:'Snack Time!',txt:'The kid just ate an apple. Fuel is flooding in from the stomach.',ic:'🍎',
    c:[{l:'Scoop it up',fx:{glu:3},r:'+3 glucose. Apple sugar comes in slow and steady, no crash.'},
@@ -208,11 +297,26 @@ var EVENTS=[
    c:[{l:'Ride the fast lane',fx:{h2o:-1,coin:2},r:'Zoom! You arrive early. 2 stars, but it was a bumpy ride.'},
       {l:'Take the slow side tube',fx:{o2:-1},r:'Safe and slow. You use a little extra oxygen.'}]},
   {id:'bellybug',t:'Belly Bug!',txt:'A stomach bug slipped in on unwashed hands. It is making waves.',ic:'🤢',
-   c:[{l:'Fighty swats it',fx:{crew:['fighty',-1],coin:2,germ:'bellybug'},r:'Swatted. 2 stars. Fighty is tired.'},
+   c:[{l:'Fighty, swat it!',game:['swat','bellybug']},
       {l:'Flush it with water',fx:{h2o:-2,coin:1,germ:'bellybug'},r:'Washed out. 1 star.'}]},
-  {id:'sleep',t:'Bedtime',txt:'The kid fell asleep. The whole body switches to repair mode.',ic:'😴',
+  {id:'sleep',t:'Nap Time',txt:'The kid dozed off on the couch. The body switches to repair mode for a bit.',ic:'😴',
    c:[{l:'Rest the crew',fx:{rest:1},r:'Every crew cell gets 1 energy back. Sleep is when the body fixes itself.'},
       {l:'Keep exploring',fx:{coin:2},r:'The Brain likes your hustle. 2 stars.'}]},
+  {id:'drink',t:'Big Gulp',txt:'The kid drank a whole glass of water. It is pouring in.',ic:'🥤',
+   c:[{l:'Fill the tanks',fx:{h2o:3},r:'+3 water. The kidneys say thanks.'},
+      {l:'Share with the muscles',fx:{coin:1,h2o:1},r:'+1 water and 1 star for sharing.'}]},
+  {id:'hiccup',t:'Hiccups!',txt:'HIC. The diaphragm muscle is twitching. HIC. The whole pod bounces.',ic:'😮',
+   c:[{l:'Hold on and wait it out',fx:{coin:1},r:'HIC... hic... gone. 1 star for patience.'},
+      {l:'Ride the bounces to the next tube',fx:{o2:-1,coin:2},r:'Bouncy shortcut! 2 stars, but it used some oxygen.'}]},
+  {id:'bite',t:'Itchy Bug Bite',txt:'A mosquito poked through the skin. The spot is getting red and puffy.',ic:'🦟',
+   c:[{l:'Fighty, clear the spot!',game:['swat','splinter']},
+      {l:'Send cool water to calm it',fx:{h2o:-1,coin:1},r:'The itch calms down. 1 star.'}]},
+  {id:'loud',t:'Loud Noise!',txt:'BANG. A door slammed. The heart jumps and the whole body gets a jolt of go-fast juice.',ic:'📢',
+   c:[{l:'Use the rush to zoom',fx:{glu:-1,coin:2},r:'Adrenaline burns fuel but you fly. 2 stars.'},
+      {l:'Take a deep breath',fx:{o2:1},r:'Slow breaths calm the heart. +1 oxygen.'}]},
+  {id:'growth',t:'Growth Spurt',txt:'The bones are stretching tonight. The Cell Lab is working overtime.',ic:'📏',
+   c:[{l:'Deliver extra fuel',fx:{glu:-2,coin:3},r:'The bones say thanks. 3 stars from the Brain.'},
+      {l:'Just watch',fx:{coin:1},r:'Bones grow mostly at night. 1 star for noticing.'}]},
   {id:'cut',t:'Scraped Knee!',txt:'Blood is leaking out of a scrape. Patchlet is bouncing to go.',ic:'🤕',mission:'knee'}
 ];
 
@@ -231,13 +335,15 @@ function beep(f,d,type,vol){
 }
 var SFX={tap:function(){beep(520,.06,'square',.05);},good:function(){beep(660,.1,'triangle');setTimeout(function(){beep(880,.14,'triangle');},90);},
   bad:function(){beep(180,.2,'sawtooth',.06);},coin:function(){beep(1040,.08,'square',.05);setTimeout(function(){beep(1320,.1,'square',.05);},70);},
-  hit:function(){beep(140,.08,'square',.1);},win:function(){[523,659,784,1046].forEach(function(f,i){setTimeout(function(){beep(f,.18,'triangle',.08);},i*120);});}};
+  hit:function(){beep(140,.08,'square',.1);},win:function(){[523,659,784,1046].forEach(function(f,i){setTimeout(function(){beep(f,.18,'triangle',.08);},i*120);});},
+  combo:function(n){beep(660*Math.pow(1.0595,Math.min(n,12)),.09,'triangle',.07);},
+  whoosh:function(){beep(300,.18,'sawtooth',.03);}};
 
 /* ---------- fx helpers ---------- */
-function toast(t){var el=document.getElementById('toast');el.textContent=t;el.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(function(){el.classList.remove('show');},1500);}
+function toast(t){var el=document.getElementById('toast');el.textContent=t;el.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(function(){el.classList.remove('show');},1600);}
 function flash(){var f=document.getElementById('flash');f.style.transition='none';f.style.opacity=.5;setTimeout(function(){f.style.transition='opacity .25s';f.style.opacity=0;},30);}
 function shake(){if(!P.shake)return;var a=document.getElementById('app');a.classList.remove('shake');void a.offsetWidth;a.classList.add('shake');}
-function punch(el){el.classList.remove('punch');void el.offsetWidth;el.classList.add('punch');}
+function punch(el){if(!el)return;el.classList.remove('punch');void el.offsetWidth;el.classList.add('punch');}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 document.getElementById('badge').onclick=function(){toast(VERSION);};
 document.body.addEventListener('pointerdown',function(e){if(e.target.closest('.btn,.node,.tab,.choice'))SFX.tap();},true);
@@ -245,9 +351,9 @@ document.body.addEventListener('pointerdown',function(e){if(e.target.closest('.b
 /* ---------- HUD ---------- */
 function hud(){
   if(!R)return;
-  var set=function(id,v){var m=document.getElementById(id);m.querySelector('i').style.width=(v/10*100)+'%';m.querySelector('span').textContent=v;};
+  var set=function(id,v){var m=document.getElementById(id);m.querySelector('i').style.width=(v/10*100)+'%';m.querySelector('span').textContent=v;m.classList.toggle('low',v<=1);};
   set('m-o2',R.o2);set('m-glu',R.glu);set('m-h2o',R.h2o);
-  document.getElementById('m-coin').textContent=R.coin;
+  var c=document.getElementById('m-coin');if(c.textContent!==String(R.coin)){c.textContent=R.coin;punch(c.parentNode);}
 }
 function clamp(v){return Math.max(0,Math.min(10,v));}
 
@@ -279,56 +385,111 @@ function crewHtml(){
 /* ---------- TITLE ---------- */
 function title(){
   var el=document.getElementById('s-title');
-  el.innerHTML='<div class="wrap title">'+podSvg(160)+'<h2>BLOODSTREAM</h2><p class="sub">Garrett\'s crew. Inside a body. Nobody dies, but things get sticky.</p>'+
-    '<div class="row" style="max-width:520px;margin:16px auto 0"><button class="btn big" id="start" style="font-size:26px">🚀 Launch the Bubble Pod</button></div>'+
-    '<p class="sub" style="margin-top:14px">Trips: '+P.runs+' · Wins: '+P.wins+' · Best stars: '+P.bestStars+' · Journal: '+journalPct()+'%</p>'+
+  el.innerHTML='<div class="wrap title">'+podSvg(150)+'<h2>BLOODSTREAM</h2><p class="sub">Garrett\'s crew. Inside a body. Nobody dies, but things get sticky.</p>'+
+    '<div class="row" style="max-width:520px;margin:14px auto 0"><button class="btn big" id="start" style="font-size:26px">🚀 Launch the Bubble Pod</button></div>'+
+    '<div class="row" style="max-width:520px;margin:8px auto 0"><button class="btn ghost" id="how">❓ How to play</button></div>'+
+    '<p class="sub" style="margin-top:14px">Trips: '+P.runs+' · Bosses beaten: '+Object.keys(P.bosses).filter(function(b){return BOSSES[b];}).length+'/'+Object.keys(BOSSES).length+' · Best stars: '+P.bestStars+' · Journal: '+journalPct()+'%</p>'+
     '<div class="row" style="max-width:520px;margin:6px auto 0"><button class="btn ghost" id="tSound">'+(P.sound?'🔊 Sound on':'🔇 Sound off')+'</button><button class="btn ghost" id="tShake">'+(P.shake?'📳 Shake on':'📴 Shake off')+'</button><a class="btn ghost" href="index.html" style="text-decoration:none">📚 Shelf</a></div></div>';
-  el.querySelector('#start').onclick=function(){newRun();unlockJ('cell','oxinator');unlockJ('cell','fighty');unlockJ('cell','patchlet');unlockJ('organ','heart');hud();hub('The Brain says: Explore the Stomach, the Bones, and the Cell Lab. Find the Sugar Monster. Keep the crew fed.');};
+  el.querySelector('#start').onclick=function(){if(!P.seenIntro)intro(true);else launch();};
+  el.querySelector('#how').onclick=function(){intro(false);};
   el.querySelector('#tSound').onclick=function(){P.sound=!P.sound;save();title();};
   el.querySelector('#tShake').onclick=function(){P.shake=!P.shake;save();title();};
   show('title');
+}
+function launch(){
+  newRun();unlockJ('cell','oxinator');unlockJ('cell','fighty');unlockJ('cell','patchlet');unlockJ('organ','heart');hud();
+  hub(P.bosses.sugar?'The Brain says: Check in at the Brain for new missions. Keep the crew fed.':'The Brain says: Visit the Stomach, the Bones, and the Cell Lab and do their jobs. Then the Sugar Monster will show up here at the Heart.');
+}
+
+/* ---------- INTRO / HOW TO PLAY ---------- */
+function intro(thenLaunch){
+  var el=document.getElementById('s-intro');var i=0;
+  var miniMap='<svg viewBox="0 0 400 130" style="width:100%;max-width:420px;display:block;margin:6px auto"><path d="M80 65 Q200 20 320 65" fill="none" stroke="#ffcc4d" stroke-width="10" stroke-linecap="round"/><path d="M80 65 Q200 120 320 65" fill="none" stroke="#5a1420" stroke-width="7" stroke-linecap="round" stroke-dasharray="14 10" opacity=".6"/><circle cx="80" cy="65" r="34" fill="#8e2736" stroke="#4fe3d2" stroke-width="4"/><text x="80" y="75" font-size="28" text-anchor="middle">❤️</text><circle cx="320" cy="65" r="34" fill="#5a1420" stroke="#ffcc4d" stroke-width="5"/><text x="320" y="75" font-size="28" text-anchor="middle">🍕</text><text x="320" y="118" font-size="14" font-weight="700" fill="#ffcc4d" text-anchor="middle">GO ▶</text><text x="80" y="118" font-size="14" font-weight="700" fill="#4fe3d2" text-anchor="middle">YOU ARE HERE</text></svg>';
+  var cards=[
+    {pic:podSvg(120),h:'You are tiny.',p:'You shrank down and flew into a kid\'s body in the <b>Bubble Pod</b>. The body is a giant machine, and your crew helps keep it running.'},
+    {pic:'<div class="crew" style="justify-content:center">'+['oxinator','fighty','patchlet'].map(function(k){return '<div class="cell" style="flex:0 1 200px">'+cellSvg(k)+'<div><b>'+CREW[k].nm+'</b><span class="sub">'+CREW[k].kind+'</span></div></div>';}).join('')+'</div>',h:'Meet your crew',p:'<b>Oxinator</b> carries oxygen. <b>Fighty</b> fights germs. <b>Patchlet</b> patches leaks. Each one has 3 hearts of energy. Tired cells get a snack. Nobody dies.'},
+    {pic:'<div class="meters3"><div><b>💨</b>Oxygen<br><span class="sub">air to breathe</span></div><div><b>🍪</b>Glucose<br><span class="sub">food fuel</span></div><div><b>💧</b>Water<br><span class="sub">keeps it flowing</span></div></div>',h:'Three tanks',p:'They are at the top of the screen. <b>Every trip between organs costs 1 oxygen and 1 water.</b> Buy more at the Heart\'s shop with ⭐ stars. Stars come from missions.'},
+    {pic:miniMap,h:'How to travel',p:'A <b style="color:#ffcc4d">glowing gold path</b> means you can go there. <b>Tap the organ at the end of it</b>, or tap its GO button under the map. Dim dashed paths are too far for now. 🔒 means locked until you beat a boss.'},
+    {pic:'<div class="pic">🍭</div>',h:'Your mission',p:'Visit the <b>Stomach</b>, the <b>Bones</b>, and the <b>Cell Lab</b> and do their jobs. Then the <b>Sugar Monster</b> shows up at the Heart. Beat it to open more of the body. Every snack you eat makes the monster a little stronger, so spend wisely.'}
+  ];
+  function draw(){
+    var c=cards[i];
+    el.innerHTML='<div class="intro"><div>'+c.pic+'</div><h2>'+c.h+'</h2><p>'+c.p+'</p><div class="dots">'+cards.map(function(_,k){return '<i class="'+(k===i?'on':'')+'"></i>';}).join('')+'</div>'+
+      '<div class="row">'+(i>0?'<button class="btn ghost" id="prev" style="flex:0 0 110px">◀ Back</button>':'')+'<button class="btn" id="next">'+(i===cards.length-1?(thenLaunch?'🚀 Launch!':'✔ Got it'):'Next ▶')+'</button></div>'+(thenLaunch&&i<cards.length-1?'<div class="row"><button class="btn ghost" id="skip" style="font-size:15px;min-height:44px">Skip the tour</button></div>':'')+'</div>';
+    var b;
+    if(b=el.querySelector('#prev'))b.onclick=function(){i--;draw();};
+    el.querySelector('#next').onclick=function(){if(i<cards.length-1){i++;draw();}else finish();};
+    if(b=el.querySelector('#skip'))b.onclick=finish;
+  }
+  function finish(){P.seenIntro=true;save();if(thenLaunch)launch();else title();}
+  draw();show('intro');
+}
+
+/* ---------- MAP HELPERS ---------- */
+function reachable(k){return P.unlocked.indexOf(k)>=0&&k!==R.at&&LINKS.some(function(l){return (l[0]===R.at&&l[1]===k)||(l[1]===R.at&&l[0]===k);});}
+function bossHere(){
+  var k=Object.keys(BOSSES).filter(function(b){var B=BOSSES[b];if(B.at!==R.at)return false;if(R.boss)return false;
+    var ready=B.needs.every(function(m){return R.done[m];});if(!ready)return false;
+    var allBeaten=Object.keys(BOSSES).every(function(x){return P.bosses[x];});
+    return !P.bosses[b]||allBeaten;});
+  return k[0]||null;
 }
 
 /* ---------- HUB / MAP ---------- */
 function hub(msg){
   var el=document.getElementById('s-hub');
   var here=ORGANS[R.at];
-  var svg='<svg id="map" viewBox="0 0 1000 540">';
+  var svg='<svg id="map" viewBox="0 0 1000 590">';
   LINKS.forEach(function(l){var a=ORGANS[l[0]],b=ORGANS[l[1]];var open=P.unlocked.indexOf(l[0])>=0&&P.unlocked.indexOf(l[1])>=0;var adj=(l[0]===R.at||l[1]===R.at)&&open;
-    svg+='<path d="M'+a.x+' '+a.y+' Q '+((a.x+b.x)/2+(a.y-b.y)*.25)+' '+((a.y+b.y)/2+(b.x-a.x)*.25)+' '+b.x+' '+b.y+'" fill="none" stroke="'+(adj?'#ffcc4d':open?'#b13a4b':'#5a1420')+'" stroke-width="'+(adj?10:7)+'" stroke-linecap="round" stroke-dasharray="'+(adj?'0':'14 10')+'" opacity="'+(open?'.9':'.4')+'"/>';});
-  Object.keys(ORGANS).forEach(function(k){var o=ORGANS[k];var locked=P.unlocked.indexOf(k)<0;var reach=!locked&&k!==R.at&&LINKS.some(function(l){return (l[0]===R.at&&l[1]===k)||(l[1]===R.at&&l[0]===k);});
-    svg+='<g class="node'+(locked?' locked':'')+(k===R.at?' here':'')+'" data-k="'+k+'" data-reach="'+(reach?1:0)+'"><circle class="ring" cx="'+o.x+'" cy="'+o.y+'" r="46" fill="none" stroke="'+(reach?'#ffcc4d':'#b13a4b')+'" stroke-width="3"/><circle class="base" cx="'+o.x+'" cy="'+o.y+'" r="38" fill="'+(R.visited[k]?'#8e2736':'#5a1420')+'" stroke="#2a080e" stroke-width="3"/><text class="ic" x="'+o.x+'" y="'+(o.y+9)+'">'+(locked?'🔒':o.ic)+'</text><text x="'+o.x+'" y="'+(o.y+64)+'">'+o.nm+(reach?' ▶':'')+'</text></g>';});
+    svg+='<path d="M'+a.x+' '+a.y+' Q '+((a.x+b.x)/2+(a.y-b.y)*.25)+' '+((a.y+b.y)/2+(b.x-a.x)*.25)+' '+b.x+' '+b.y+'" fill="none" stroke="'+(adj?'#ffcc4d':open?'#b13a4b':'#5a1420')+'" stroke-width="'+(adj?11:7)+'" stroke-linecap="round" stroke-dasharray="'+(adj?'0':'14 10')+'" opacity="'+(adj?'1':open?'.75':'.4')+'"/>';});
+  var reachList=[];
+  Object.keys(ORGANS).forEach(function(k){var o=ORGANS[k];var locked=P.unlocked.indexOf(k)<0;var reach=reachable(k);if(reach)reachList.push(k);
+    svg+='<g class="node'+(locked?' locked':'')+(k===R.at?' here':'')+(reach?' reach':'')+'" data-k="'+k+'" data-reach="'+(reach?1:0)+'"><circle class="ring" cx="'+o.x+'" cy="'+o.y+'" r="46" fill="none" stroke="'+(reach?'#ffcc4d':'#b13a4b')+'" stroke-width="3"/><circle class="base" cx="'+o.x+'" cy="'+o.y+'" r="38" fill="'+(R.visited[k]?'#8e2736':'#5a1420')+'" stroke="#2a080e" stroke-width="3"/><text class="ic" x="'+o.x+'" y="'+(o.y+9)+'">'+(locked?'🔒':o.ic)+'</text><text x="'+o.x+'" y="'+(o.y+64)+'">'+o.nm+'</text>'+
+      (reach?'<g class="gobadge"><rect x="'+(o.x-26)+'" y="'+(o.y-78)+'" width="52" height="24" rx="12" fill="#ffcc4d"/><text x="'+o.x+'" y="'+(o.y-61)+'" style="fill:#2a080e;font-size:14px">GO ▶</text></g>':'')+
+      (k===R.at?'<text x="'+o.x+'" y="'+(o.y-58)+'" style="fill:#4fe3d2;font-size:13px">YOU ARE HERE</text>':'')+'</g>';});
   var p=ORGANS[R.at];
-  svg+='<g class="pod" transform="translate('+(p.x-14)+' '+(p.y-78)+')"><circle cx="14" cy="14" r="13" fill="#4fe3d2" opacity=".8" stroke="#bffaf3" stroke-width="2"/><circle cx="10" cy="17" r="3" fill="#ff5a5a"/><circle cx="18" cy="17" r="3" fill="#ffffff"/><circle cx="14" cy="10" r="3" fill="#ffcc4d"/></g></svg>';
+  svg+='<g class="pod" transform="translate('+(p.x-86)+' '+(p.y-46)+')"><circle cx="14" cy="14" r="13" fill="#4fe3d2" opacity=".85" stroke="#bffaf3" stroke-width="2"/><circle cx="10" cy="17" r="3" fill="#ff5a5a"/><circle cx="18" cy="17" r="3" fill="#ffffff"/><circle cx="14" cy="10" r="3" fill="#ffcc4d"/></g>';
+  if(R.coach&&reachList.length){var hx=ORGANS[R.at].x,hy=ORGANS[R.at].y;var t=ORGANS[reachList.slice().sort(function(a,b){var da=Math.hypot(ORGANS[a].x-hx,ORGANS[a].y-hy),db=Math.hypot(ORGANS[b].x-hx,ORGANS[b].y-hy);return db-da;})[0]];svg+='<g transform="translate('+t.x+' '+(t.y-118)+')"><g class="arrow"><path d="M0 28 L-16 4 L-6 4 L-6 -22 L6 -22 L6 4 L16 4 Z" fill="#ffffff" stroke="#2a080e" stroke-width="3" stroke-linejoin="round"/></g></g>';}
+  svg+='</svg>';
   var actions='';
   if(R.at==='heart'){actions='<div class="row"><button class="btn teal" id="shop">🛒 Supply Shop</button><button class="btn ghost" id="rest">💤 Rest (2 glucose)</button></div>';}
   else{actions='<div class="row"><button class="btn" id="organ">'+here.ic+' Enter the '+here.nm+'</button></div>';}
   var snackable=Object.keys(R.crew).some(function(k){return R.crew[k]<3;});
   actions+='<div class="row"><button class="btn ghost" id="snack" '+(snackable&&R.glu>=2?'':'disabled')+'>🍪 Snack: heal 1 cell (2 glucose)</button></div>';
-  if(R.done.pizza&&R.done.race&&R.done.knee&&!R.done.boss)actions+='<div class="row"><button class="btn red" id="boss">🍭 The Sugar Monster is HERE. Fight!</button></div>';
-  el.innerHTML='<div class="wrap split"><div>'+svg+'<p class="sub" style="text-align:center">Tap a gold path to travel. Each hop costs 1 oxygen and 1 water.</p></div>'+
-    '<div><div class="card"><h2>'+here.ic+' '+here.nm+'</h2><p>'+esc(msg||here.desc)+'</p>'+actions+'</div><div class="card">'+crewHtml()+'<p class="sub" style="margin-top:8px">Sugar meter: '+'🍭'.repeat(R.sugar)+(R.sugar?'':'none')+' · Snacks feed the monster.</p></div></div></div>';
-  Array.prototype.forEach.call(el.querySelectorAll('.node'),function(n){n.onclick=function(){if(n.getAttribute('data-reach')==='1')travel(n.getAttribute('data-k'));else if(n.classList.contains('locked'))toast('Locked. Beat a boss to open it.');};});
+  var bk=bossHere();
+  if(bk)actions+='<div class="row"><button class="btn red" id="boss">'+GERMS[bk].ic+' '+BOSSES[bk].intro+' Fight!</button></div>';
+  var goBtns=reachList.length?'<div class="card"><b style="font-size:17px">Where next?</b><p class="sub" style="margin:2px 0 4px">1 oxygen + 1 water per trip</p><div class="row">'+reachList.map(function(k){return '<button class="btn go" data-go="'+k+'">'+ORGANS[k].ic+' Go to '+ORGANS[k].nm+'</button>';}).join('')+'</div></div>':'';
+  el.innerHTML='<div class="wrap split"><div class="mapwrap">'+svg+(R.coach&&reachList.length?'<div class="coach">👆 Tap a glowing organ to travel</div>':'')+
+    '<div class="legend"><span><i style="background:#ffcc4d"></i>can go now</span><span><i style="background:#b13a4b;opacity:.75"></i>too far for now</span><span>🔒 beat a boss to open</span></div></div>'+
+    '<div><div class="card"><h2>'+here.ic+' '+here.nm+'</h2><p>'+esc(msg||here.desc)+'</p>'+actions+'</div>'+goBtns+'<div class="card">'+crewHtml()+'<p class="sub" style="margin-top:8px">Sugar meter: '+'🍭'.repeat(R.sugar)+(R.sugar?'':'none')+' · Snacks feed the monsters.</p></div></div></div>';
+  Array.prototype.forEach.call(el.querySelectorAll('.node'),function(n){n.onclick=function(){var k=n.getAttribute('data-k');
+    if(n.getAttribute('data-reach')==='1')travel(k);
+    else if(n.classList.contains('locked')){var by=UNLOCK_BY[k];toast('Locked. Beat the '+(by?GERMS[by].nm:'boss')+' to open the '+ORGANS[k].nm+'.');}
+    else if(k===R.at)toast('You are already here.');
+    else toast('Too far. Travel along the gold paths one hop at a time.');};});
+  Array.prototype.forEach.call(el.querySelectorAll('[data-go]'),function(b){b.onclick=function(){travel(b.getAttribute('data-go'));};});
   var b;
   if(b=el.querySelector('#shop'))b.onclick=shop;
   if(b=el.querySelector('#rest'))b.onclick=function(){if(R.glu<2){toast('Need 2 glucose');SFX.bad();return;}R.glu-=2;R.sugar+=1;Object.keys(R.crew).forEach(function(k){R.crew[k]=Math.min(3,R.crew[k]+1);});SFX.good();hud();hub('Everyone rests at the Heart and gets 1 energy back.');};
   if(b=el.querySelector('#organ'))b.onclick=organ;
   if(b=el.querySelector('#snack'))b.onclick=snack;
-  if(b=el.querySelector('#boss'))b.onclick=function(){startGame('boss');};
+  if(b=el.querySelector('#boss'))b.onclick=function(){startGame('boss',bk);};
   hud();show('hub');
+  punch(el.querySelector('.node.here'));
 }
 function snack(){
   var k=['oxinator','fighty','patchlet'].sort(function(a,b){return R.crew[a]-R.crew[b];})[0];
   if(R.crew[k]>=3){toast('Everyone is full of energy');return;}
   if(R.glu<2){toast('Need 2 glucose');SFX.bad();return;}
   R.glu-=2;R.crew[k]+=1;R.sugar+=1;SFX.good();hud();
-  hub(CREW[k].nm+' eats a snack and feels better. The Sugar Monster grows a little stronger.');
+  hub(CREW[k].nm+' eats a snack and feels better. The monsters grow a little stronger.');
 }
 function travel(k){
-  if(R.o2<1||R.h2o<1){toast('Not enough oxygen or water. Go to the Heart shop.');SFX.bad();if(R.at!=='heart'){R.at='heart';hub('The crew drifts back to the Heart on empty.');}return;}
-  R.o2-=1;R.h2o-=1;R.steps+=1;
+  if(R.o2<1||R.h2o<1){toast('Out of oxygen or water. Back to the Heart shop.');SFX.bad();if(R.at!=='heart'){R.at='heart';hub('The crew drifts back to the Heart on empty. Buy supplies before the next trip.');}return;}
+  R.o2-=1;R.h2o-=1;R.steps+=1;R.coach=false;SFX.whoosh();
   var route=[R.at,k].sort().join('-');if(R.routes.indexOf(route)<0){R.routes.push(route);unlockJ('map',route);}
   R.at=k;R.visited[k]=true;unlockJ('organ',k);hud();
+  if(R.steps===1){hub('You made it! Tap "Enter the '+ORGANS[k].nm+'" to see what is inside.');return;}
   if(R.steps%2===1||Math.random()<.5)event();else hub();
 }
 
@@ -341,7 +502,9 @@ function event(){
   var el=document.getElementById('s-event');
   el.innerHTML='<div class="wrap"><div class="card"><div class="big" style="text-align:center">'+e.ic+'</div><h2>'+esc(e.t)+'</h2><p>'+esc(e.txt)+'</p>'+e.c.map(function(c,i){return '<button class="btn ghost choice" data-i="'+i+'">'+esc(c.l)+'</button>';}).join('')+'</div></div>';
   Array.prototype.forEach.call(el.querySelectorAll('.choice'),function(b){b.onclick=function(){
-    var c=e.c[+b.getAttribute('data-i')];var fx=c.fx||{};
+    var c=e.c[+b.getAttribute('data-i')];
+    if(c.game){startGame(c.game[0],c.game[1]);return;}
+    var fx=c.fx||{};
     if(fx.o2)R.o2=clamp(R.o2+fx.o2);if(fx.glu)R.glu=clamp(R.glu+fx.glu);if(fx.h2o)R.h2o=clamp(R.h2o+fx.h2o);
     if(fx.coin){R.coin+=fx.coin;SFX.coin();}
     if(fx.crew){R.crew[fx.crew[0]]=Math.max(0,R.crew[fx.crew[0]]+fx.crew[1]);SFX.hit();shake();}
@@ -361,31 +524,51 @@ function checkTired(){
 }
 
 /* ---------- ORGAN SCREENS ---------- */
+function missionRow(m,btnId){var M=MISSIONS[m];var d=R.done[m];return '<div class="mission'+(d?' done':'')+'"><div class="ic">'+M.ic+'</div><div><b>'+M.nm+'</b><span class="sub">'+M.sub+'</span></div>'+(d?'<span style="margin-left:auto;font-size:26px">✔</span>':'<button class="btn" data-m="'+m+'">Start</button>')+'</div>';}
 function organ(){
   var k=R.at,o=ORGANS[k];var el=document.getElementById('s-organ');var body='';
-  if(k==='stomach'){
-    body=R.done.pizza?'<p>Pizza Night is done. The stomach is quietly churning.</p>':'<p>🍕 <b>Mission: Pizza Night.</b> The kid ate a big pizza. The stomach needs help counting slices into fuel.</p><div class="row"><button class="btn" id="pizza">Start Pizza Night</button></div>';
-  } else if(k==='bones'){
-    body=R.done.race?'<p>Running Race is done. The marrow factory hums.</p>':'<p>🏃 <b>Mission: Running Race.</b> The kid is sprinting! The leg bones need oxygen fast. Oxinator, catch every bubble.</p><div class="row"><button class="btn" id="race">Start Running Race</button></div>';
-  } else if(k==='lab'){
-    body='<p>🧬 The Cell Lab builds new cells. Spend 3 water to make 1 glucose from stored energy, or just look around.</p><div class="row"><button class="btn teal" id="convert">💧💧💧 → 🍪 Convert</button></div>'+(R.done.knee?'':'<p class="sub">Patchlet is restless. A scraped knee could happen any time out on the trail.</p>');
-  } else if(k==='lungs'){
-    body='<p>💨 Fresh air! The lungs fill the pod with oxygen.</p><div class="row"><button class="btn teal" id="breathe">Breathe in (+4 oxygen)</button></div>';
-  } else {body='<p>Coming soon.</p>';}
+  if(k==='stomach'){body='<p>The stomach is churning. Food becomes fuel here.</p>'+missionRow('pizza')+missionRow('apple');}
+  else if(k==='bones'){body='<p>Inside the bone is the marrow factory, humming away.</p>'+missionRow('race');}
+  else if(k==='lab'){body='<p>🧬 The Cell Lab builds new cells. Spend 3 water to make 1 glucose from stored energy.</p><div class="row"><button class="btn teal" id="convert">💧💧💧 → 🍪 Convert</button></div>'+(R.done.knee?'':'<p class="sub">Patchlet is restless. A scraped knee could happen any time out on the trail.</p>');}
+  else if(k==='lungs'){body='<p>💨 Fresh air! The lungs fill the pod with oxygen.</p><div class="row"><button class="btn teal" id="breathe">Breathe in (+4 oxygen)</button></div>';}
+  else if(k==='brain'){body='<p>🧠 Mission Control. The Brain has jobs for the crew. Finish them to call out the next boss.</p>'+['sneeze','swim','teeth','bedtime'].map(function(m){return missionRow(m);}).join('')+
+    '<p class="sub" style="margin-top:10px"><b>Boss board</b></p>'+Object.keys(BOSSES).map(function(b){var B=BOSSES[b];var beaten=P.bosses[b];return '<div class="mission'+(beaten?' done':'')+'"><div class="ic">'+GERMS[b].ic+'</div><div><b>'+GERMS[b].nm+(beaten?' ✔':'')+'</b><span class="sub">At the '+ORGANS[B.at].nm+' after: '+B.needs.map(function(m){return MISSIONS[m].nm+(R.done[m]?' ✔':'');}).join(', ')+'</span></div></div>';}).join('');}
+  else if(k==='skin'){body='<p>✋ Sunshine on the skin makes vitamin D, which helps the whole crew.</p><div class="row"><button class="btn teal" id="sun" '+(R.sunned?'disabled':'')+'>☀️ Sunbathe: heal 1 heart for everyone (once per trip)</button></div>';}
+  else if(k==='kidneys'){body='<p>💧 The kidneys clean the blood and keep the water right.</p><div class="row"><button class="btn teal" id="filter">Filter (+4 water)</button></div>';}
+  else if(k==='muscles'){body='<p>💪 Muscles burn fuel and make heat. A good stretch keeps them from knotting up.</p>'+missionRow('flex');}
+  else if(k==='teeth'){body='<p>🦷 The front door. Food comes through here, and so do germs that like sugar.</p><p class="sub">Brush Teeth is a Brain mission. The Cavity Crew boss shows up here once the teeth are clean and an Apple Snack is done.</p>';}
+  else if(k==='eyes'){body='<p>👁️ Look out through the kid\'s eyes. Pollen is floating in and hiding among the cells.</p>'+missionRow('eyespy');}
+  else if(k==='ears'){body='<p>👂 Deep in the ear, liquid loops tell the body which way is up.</p>'+missionRow('balance');}
+  else {body='<p>Nothing to do here yet.</p>';}
   el.innerHTML='<div class="wrap"><div class="card"><h2>'+o.ic+' '+o.nm+'</h2>'+body+'<div class="fact">💡 '+esc(o.fact)+'</div><div class="row"><button class="btn ghost" id="back">◀ Back to map</button></div></div></div>';
+  Array.prototype.forEach.call(el.querySelectorAll('[data-m]'),function(b){b.onclick=function(){var m=b.getAttribute('data-m');
+    if(m==='pizza')pizzaNight();else if(m==='apple')appleSnack();else if(m==='bedtime')bedtime();else startGame(m);};});
   var b;
-  if(b=el.querySelector('#pizza'))b.onclick=pizzaNight;
-  if(b=el.querySelector('#race'))b.onclick=function(){startGame('race');};
   if(b=el.querySelector('#convert'))b.onclick=function(){if(R.h2o<3){toast('Need 3 water');SFX.bad();return;}R.h2o-=3;R.glu=clamp(R.glu+1);SFX.good();hud();organ();};
   if(b=el.querySelector('#breathe'))b.onclick=function(){R.o2=clamp(R.o2+4);SFX.good();hud();organ();};
+  if(b=el.querySelector('#filter'))b.onclick=function(){R.h2o=clamp(R.h2o+4);SFX.good();hud();organ();};
+  if(b=el.querySelector('#sun'))b.onclick=function(){R.sunned=true;Object.keys(R.crew).forEach(function(k){R.crew[k]=Math.min(3,R.crew[k]+1);});SFX.good();flash();organ();};
   el.querySelector('#back').onclick=function(){hub();};
   show('organ');
+}
+function bedtime(){
+  R.done.bedtime=true;Object.keys(R.crew).forEach(function(k){R.crew[k]=3;});R.coin+=2;SFX.win();flash();unlockJ('mystery','tall');hud();
+  var el=document.getElementById('s-organ');
+  el.innerHTML='<div class="wrap"><div class="card"><div class="big" style="text-align:center">😴</div><h2>Bedtime</h2><p>The kid is asleep. The whole body goes into repair mode. Every crew cell is back to full energy and the Brain pays ⭐2 for a good night.</p><div class="fact">💡 While you sleep, your brain washes itself with fluid and files away what you learned today. That is why sleep helps you remember.</div><div class="row"><button class="btn" id="go">Back to map ▶</button></div></div></div>';
+  el.querySelector('#go').onclick=function(){hub();};
+}
+
+function appleSnack(){
+  askMath('Apple Snack: count the fuel',function(){R.done.apple=true;R.glu=clamp(R.glu+3);R.coin+=2;unlockJ('mystery','crack');hud();
+    var el=document.getElementById('s-shop');
+    el.innerHTML='<div class="wrap"><div class="card"><div class="big" style="text-align:center">🍎</div><h2>Apple Snack</h2><p>Slow steady fuel. +3 glucose and ⭐2, and the Sugar meter does not go up. Apples do not feed the monsters.</p><div class="fact">💡 An apple has fiber, which makes its sugar come in slowly. Candy has no fiber, so its sugar hits all at once.</div><div class="row"><button class="btn" id="go">Back to map ▶</button></div></div></div>';
+    el.querySelector('#go').onclick=function(){hub();};});
 }
 
 /* ---------- MATH ---------- */
 function mathLevel(){return Math.min(3,P.mathLevel);}
-function makeProblem(ctx){
-  var L=mathLevel(),a,b,q,ans;
+function makeProblem(){
+  var L=Math.floor(mathLevel()),a,b,q,ans;
   if(L===0){a=2+rnd(8);b=2+rnd(8);q=a+' + '+b;ans=a+b;}
   else if(L===1){a=10+rnd(10);b=2+rnd(9);q=a+' - '+b;ans=a-b;}
   else if(L===2){a=2+rnd(5);b=2+rnd(5);q=a+' x '+b;ans=a*b;}
@@ -393,7 +576,7 @@ function makeProblem(ctx){
   return {q:q,ans:ans};
 }
 function rnd(n){return Math.floor(Math.random()*n);}
-function askMath(prompt,onRight,onDone){
+function askMath(prompt,onRight){
   var pr=makeProblem();var typed='';var tries=0;
   var el=document.getElementById('s-shop');
   function draw(){
@@ -413,7 +596,7 @@ function askMath(prompt,onRight,onDone){
 function shop(){
   var el=document.getElementById('s-shop');
   var items=[['o2','💨 Oxygen','+3',1],['glu','🍪 Glucose','+3',1],['h2o','💧 Water','+3',1]];
-  el.innerHTML='<div class="wrap"><div class="card"><h2>🛒 Supply Shop at the Heart</h2><p class="sub">You have ⭐ '+R.coin+'. Each pack costs 1 star. Solve the count to buy.</p><div class="shop">'+items.map(function(it){return '<button class="btn teal" data-k="'+it[0]+'" '+(R.coin<it[3]?'disabled':'')+'>'+it[1]+'<small>'+it[2]+' for ⭐1</small></button>';}).join('')+'</div><div class="row"><button class="btn ghost" id="back">◀ Back</button></div></div></div>';
+  el.innerHTML='<div class="wrap"><div class="card"><h2>🛒 Supply Shop at the Heart</h2><p class="sub">You have ⭐ '+R.coin+'. Each pack costs 1 star. Solve the count to buy.</p><div class="shop">'+items.map(function(it){return '<button class="btn teal" data-k="'+it[0]+'" '+(R.coin<it[3]?'disabled':'')+'>'+it[1]+'<small>'+it[2]+' for ⭐1</small></button>';}).join('')+'</div>'+(R.coin<1?'<p class="sub">No stars? Missions and event cards pay stars. The Brain gives ⭐2 for Bedtime.</p>':'')+'<div class="row"><button class="btn ghost" id="back">◀ Back</button></div></div></div>';
   Array.prototype.forEach.call(el.querySelectorAll('.shop .btn'),function(b){b.onclick=function(){var k=b.getAttribute('data-k');
     askMath('Count it out to buy',function(){R.coin-=1;R[k]=clamp(R[k]+3);SFX.coin();hud();shop();});};});
   el.querySelector('#back').onclick=function(){hub();};
@@ -426,8 +609,8 @@ function pizzaNight(){
   function draw(){
     el.innerHTML='<div class="wrap"><div class="card"><h2>🍕 Pizza Night</h2><p>'+slices+' slices landed in the stomach. Each slice melts into 2 fuel. How much fuel is that?</p><div class="prob">'+slices+' x 2 = ?</div><div class="ans" id="ans">'+(typed||'_')+'</div><div class="pad">'+[1,2,3,4,5,6,7,8,9,'⌫',0,'✔'].map(function(k){return '<button class="btn" data-k="'+k+'">'+k+'</button>';}).join('')+'</div></div></div>';
     Array.prototype.forEach.call(el.querySelectorAll('.pad .btn'),function(b){b.onclick=function(){var k=b.getAttribute('data-k');
-      if(k==='⌫')typed=typed.slice(0,-1);else if(k==='✔'){if(+typed===ans){SFX.win();flash();R.done.pizza=true;R.glu=clamp(R.glu+4);R.coin+=3;R.sugar+=1;unlockJ('mystery','hiccup');hud();
-          el.innerHTML='<div class="wrap"><div class="card"><h2>🍕 Pizza melted!</h2><p>'+ans+' fuel. The crew scoops up 4 glucose and the Brain pays ⭐3. Big meals also feed the Sugar Monster a little.</p><div class="fact">💡 Pizza has fat, so it melts slowly. That is why you feel full for a long time.</div><div class="row"><button class="btn" id="go">Back to map ▶</button></div></div></div>';
+      if(k==='⌫')typed=typed.slice(0,-1);else if(k==='✔'){if(+typed===ans){SFX.win();flash();R.done.pizza=true;R.glu=clamp(R.glu+4);R.coin+=3;R.sugar+=1;unlockJ('mystery','hiccup');unlockJ('mystery','newstomach');hud();
+          el.innerHTML='<div class="wrap"><div class="card"><h2>🍕 Pizza melted!</h2><p>'+ans+' fuel. The crew scoops up 4 glucose and the Brain pays ⭐3. Big meals also feed the monsters a little.</p><div class="fact">💡 Pizza has fat, so it melts slowly. That is why you feel full for a long time.</div><div class="row"><button class="btn" id="go">Back to map ▶</button></div></div></div>';
           el.querySelector('#go').onclick=function(){hub();};}
         else{tries++;SFX.bad();shake();typed='';toast(tries>=2?'Count by 2s: 2, 4, 6...':'Not yet. Try again.');draw();}return;}
       else if(typed.length<3)typed+=k;
@@ -436,89 +619,176 @@ function pizzaNight(){
   draw();show('shop');
 }
 
-/* ---------- MINIGAMES (canvas) ---------- */
+/* ---------- MINIGAMES (canvas) ----------
+   kinds: race (drag + catch), knee (tap growing leaks), swat (tap crawling germs, spare the red cells),
+          boss (tap falling blobs, drain the boss bar). Missions reskin a kind. */
 var G=null;
-function startGame(kind){
+function startGame(kind,arg){
   var el=document.getElementById('s-game');
-  var info={race:{t:'🏃 Running Race',who:'oxinator',how:'Drag the pod left and right. Catch blue oxygen bubbles. Dodge grey CO2 clouds.',sec:20},
-            knee:{t:'🤕 Scraped Knee',who:'patchlet',how:'Tap every leak before it grows big. Patchlet plugs it.',sec:20},
-            boss:{t:'🍭 Sugar Monster',who:'fighty',how:'Tap sugar blobs before they land. Every swat hurts the monster. Missed blobs tire the crew.',sec:0}}[kind];
+  var INFO={
+    race:{t:'🏃 Running Race',who:'oxinator',how:'Drag the pod left and right. Catch blue O2 bubbles. Dodge grey CO2 clouds.',sec:20,good:'#6fb6ff',bad:'#777',gl:'O2',bl:'CO2',mission:'race'},
+    swim:{t:'🏊 Swimming',who:'oxinator',how:'Cold water! Drag the pod. Catch warm red blood. Dodge the blue cold spots.',sec:20,good:'#ff5a5a',bad:'#6fb6ff',gl:'WARM',bl:'COLD',mission:'swim'},
+    knee:{t:'🤕 Scraped Knee',who:'patchlet',how:'Tap every leak before it grows big. Patchlet plugs it.',sec:20,lbl:'LEAK',color:'#ff5a5a',mission:'knee'},
+    teeth:{t:'🦷 Brush Teeth',who:'patchlet',how:'Cavity germs are drilling! Tap each one before it grows. Sweep them all out.',sec:20,lbl:'DRILL',color:'#b48bff',mission:'teeth',germ:'cavity'},
+    flex:{t:'💪 Stretch Out',who:'patchlet',how:'Cramps are knotting up! Tap each knot before it grows. Patchlet smooths it out.',sec:20,lbl:'KNOT',color:'#ff8a3a',mission:'flex',kind:'knee'},
+    balance:{t:'👂 Dizzy Spin',who:'oxinator',how:'The kid is spinning! Drag the pod. Catch the green STEADY drops, dodge the purple WOBBLE blobs.',sec:20,good:'#8ee86a',bad:'#b48bff',gl:'STEADY',bl:'WOBBLE',mission:'balance',kind:'race'},
+    eyespy:{t:'👁️ Eye Spy',who:'fighty',how:'Pollen is sneaking in among the red cells. Tap only the yellow pollen. Leave the red cells alone!',sec:18,germ:'pollen',mission:'eyespy',kind:'swat'},
+    swat:{t:'⚪ Fighty vs '+(GERMS[arg]?GERMS[arg].nm:'Germ'),who:'fighty',how:'Germs are crawling in! Tap the green germs. Do NOT tap the red cells, they are friends.',sec:18,germ:arg},
+    sneeze:{t:'🤧 Sneeze Attack',who:'fighty',how:'Dust is drifting toward the nose! Tap every dust puff. Leave the red cells alone.',sec:18,germ:'dust',mission:'sneeze',kind:'swat'},
+    boss:{t:(GERMS[arg]?GERMS[arg].ic+' '+GERMS[arg].nm:'Boss'),who:'fighty',how:({
+      sugar:'Sugar blobs are raining down! Tap each one before it lands. The monster gets FASTER as it gets weaker. 8 land and Fighty is out.',
+      cold:'The virus makes COPIES. Leave one alone too long and it splits in two. Tap them fast and keep the count down. 14 on screen and the Lungs are overrun.',
+      bellybug:'The Belly Bug darts around and spits acid. Tap the BUG itself to hurt it. Acid that lands on the stomach wall counts as a miss. 8 misses and Fighty is out.',
+      cavity:'The Cavity Crew drills into the teeth along the bottom. Tap each driller before its hole gets big. Lose 4 teeth and the fight is over.',
+      fever:'The Fever Dragon is turning up the heat! DRAG the pod. Catch blue water drops to cool down and hurt the dragon. Dodge the fire. If the thermometer fills, Fighty overheats.'
+    })[arg]||'Tap the blobs before they land.',sec:0}
+  };
+  var info=INFO[kind];var base=info.kind||kind;if(base==='swim')base='race';if(base==='teeth')base='knee';if(base==='sneeze')base='swat';var friendRate=kind==='eyespy'?.55:.25;
   el.innerHTML='<div class="wrap"><h2>'+info.t+'</h2><div id="gameWrap"><canvas id="game" width="900" height="500"></canvas><div id="gameHud"><span id="gScore">0</span><span id="gTime"></span></div><div id="gameMsg"><div style="font-size:48px">'+CREW[info.who].ic+'</div><h3>'+CREW[info.who].nm+' is up!</h3><p>'+info.how+'</p><button class="btn" id="gStart">Go!</button></div></div></div>';
   show('game');
   var cv=el.querySelector('#game'),ctx=cv.getContext('2d'),W=cv.width,H=cv.height;
   var wrap=el.querySelector('#gameWrap');
-  G={kind:kind,t:0,score:0,miss:0,items:[],px:W/2,hp:0,maxhp:0,over:false,last:0,raf:0,stop:0,hit:0};
+  if(G&&G.raf){cancelAnimationFrame(G.raf);G.over=true;}
+  G={kind:kind,base:base,t:0,score:0,miss:0,items:[],px:W/2,hp:0,maxhp:0,over:false,last:0,raf:0,hit:0,combo:0};
+  var B=kind==='boss'?BOSSES[arg]:null;
   function pos(e){var r=cv.getBoundingClientRect();return {x:(e.clientX-r.left)/r.width*W,y:(e.clientY-r.top)/r.height*H};}
+  var BK=B?arg:null;
+  function hitBoss(x,y){G.score++;G.combo++;G.hit=3;G.hp-=1;spark(x,y,B.blob);SFX.combo(G.combo);shake();}
   wrap.onpointerdown=function(e){if(G.over||G.t===0)return;var p=pos(e);
-    if(kind==='race'){G.px=p.x;}
-    else{for(var i=G.items.length-1;i>=0;i--){var it=G.items[i];var d=Math.hypot(it.x-p.x,it.y-p.y);if(d<it.r+22){G.items.splice(i,1);G.score++;G.hit=3;spark(it.x,it.y,kind==='boss'?'#ff6ad5':'#ffcc4d');SFX.good();if(kind==='boss'){G.hp-=1;shake();}break;}}}
+    if(base==='race'||BK==='fever'){G.px=p.x;return;}
+    if(BK==='bellybug'){var bg=G.bug;if(bg&&Math.hypot(bg.x-p.x,bg.y-p.y)<bg.r+28){hitBoss(bg.x,bg.y);bg.tx=80+Math.random()*(W-160);bg.ty=110+Math.random()*(H-220);bg.speed=Math.min(520,bg.speed+30);bg.sq=1.5;}else G.combo=0;return;}
+    var hitSomething=false;
+    for(var i=G.items.length-1;i>=0;i--){var it=G.items[i];var d=Math.hypot(it.x-p.x,it.y-p.y);if(d<it.r+22){
+      if(it.friend){G.items.splice(i,1);G.miss++;G.combo=0;SFX.bad();shake();spark(it.x,it.y,'#ff5a5a');toast('Oops, that was a red cell!');}
+      else{G.items.splice(i,1);if(BK==='cavity'&&it.tooth!=null)G.teeth[it.tooth].busy=false;if(B){hitBoss(it.x,it.y);}else{G.score++;G.combo++;G.hit=3;spark(it.x,it.y,'#ffcc4d');SFX.combo(G.combo);}}
+      hitSomething=true;break;}}
+    if(!hitSomething)G.combo=0;
   };
-  wrap.onpointermove=function(e){if(kind==='race'&&e.buttons)G.px=pos(e).x;};
+  wrap.onpointermove=function(e){if((base==='race'||BK==='fever')&&e.buttons)G.px=pos(e).x;};
   var parts=[];
-  function spark(x,y,c){for(var i=0;i<10;i++)parts.push({x:x,y:y,vx:(Math.random()-.5)*8,vy:(Math.random()-.5)*8,l:1,c:c});}
+  function spark(x,y,c){for(var i=0;i<12;i++)parts.push({x:x,y:y,vx:(Math.random()-.5)*9,vy:(Math.random()-.5)*9,l:1,c:c});}
   function spawn(dt){
-    if(kind==='race'){if(Math.random()<dt*2.2){var bad=Math.random()<.3;G.items.push({x:40+Math.random()*(W-80),y:-20,r:bad?26:20,vy:120+Math.random()*120+G.t*4,bad:bad});}}
-    else if(kind==='knee'){if(Math.random()<dt*1.5){G.items.push({x:60+Math.random()*(W-120),y:80+Math.random()*(H-160),r:14,grow:18+Math.random()*10});}}
-    else{if(Math.random()<dt*(1.6+G.t*.05)){G.items.push({x:200+Math.random()*(W-400),y:150,r:24,vy:90+Math.random()*90+G.t*5,vx:(Math.random()-.5)*120});}}
+    if(base==='race'){if(Math.random()<dt*2.2){var bad=Math.random()<.3;G.items.push({x:40+Math.random()*(W-80),y:-20,r:bad?26:20,vy:120+Math.random()*120+G.t*4,bad:bad});}}
+    else if(base==='knee'){if(Math.random()<dt*1.5){G.items.push({x:60+Math.random()*(W-120),y:80+Math.random()*(H-160),r:14,grow:18+Math.random()*10});}}
+    else if(base==='swat'){if(Math.random()<dt*(1.8+G.t*.04)){var fr=Math.random()<friendRate;var side=Math.random()<.5?-1:1;G.items.push({x:side<0?-30:W+30,y:70+Math.random()*(H-140),r:fr?22:24,vx:-side*(60+Math.random()*80+G.t*3),wob:Math.random()*6.28,friend:fr});}}
+    else if(BK==='sugar'){var rage=1-G.hp/G.maxhp;if(Math.random()<dt*(1.5+rage*2.2)){G.items.push({x:200+Math.random()*(W-400),y:150,r:24,vy:90+Math.random()*90+rage*180,vx:(Math.random()-.5)*(120+rage*160)});}}
+    else if(BK==='cold'){if(G.items.length<3||Math.random()<dt*.7){var sd=Math.random()<.5?-1:1;G.items.push({x:sd<0?-20:W+20,y:90+Math.random()*(H-180),r:22,vx:-sd*(50+Math.random()*50),vy:(Math.random()-.5)*60,age:0,wob:Math.random()*6.28});}}
+    else if(BK==='bellybug'){if(!G.bug)G.bug={x:W/2,y:H/2,tx:W/2,ty:H/2,r:40,speed:220,spit:0,sq:1};var bg=G.bug;bg.spit+=dt;var every=Math.max(.55,1.3-(1-G.hp/G.maxhp)*.6);if(bg.spit>every){bg.spit=0;G.items.push({x:bg.x,y:bg.y+20,r:16,vy:160+Math.random()*120,vx:(Math.random()-.5)*160});}}
+    else if(BK==='cavity'){if(!G.teeth)G.teeth=[0,1,2,3,4,5,6,7].map(function(i){return {x:150+i*86,cav:false,busy:false};});if(Math.random()<dt*(.9+(1-G.hp/G.maxhp)*.8)){var free=G.teeth.map(function(t,i){return i;}).filter(function(i){return !G.teeth[i].cav&&!G.teeth[i].busy;});if(free.length){var ti=free[Math.floor(Math.random()*free.length)];G.teeth[ti].busy=true;G.items.push({x:G.teeth[ti].x,y:H-95,r:10,grow:4.5+Math.random()*3+(1-G.hp/G.maxhp)*5,tooth:ti,wob:Math.random()*6.28});}}}
+    else if(BK==='fever'){if(G.temp==null)G.temp=35;G.temp+=dt*(2.2+(1-G.hp/G.maxhp)*1.5);if(Math.random()<dt*2.3){var fire=Math.random()<.4;G.items.push({x:60+Math.random()*(W-120),y:-20,r:fire?24:19,vy:130+Math.random()*130,fire:fire});}}
   }
+  function drawTeeth(){if(!G.teeth)return;ctx.fillStyle='#e9b7c2';ctx.fillRect(0,H-40,W,40);G.teeth.forEach(function(t){ctx.fillStyle=t.cav?'#b9a98f':'#fffdf6';ctx.strokeStyle='#2a080e';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(t.x-30,H-40);ctx.lineTo(t.x-30,H-125);ctx.quadraticCurveTo(t.x,H-150,t.x+30,H-125);ctx.lineTo(t.x+30,H-40);ctx.closePath();ctx.fill();ctx.stroke();if(t.cav){ctx.fillStyle='#3a2210';ctx.beginPath();ctx.arc(t.x,H-95,16,0,7);ctx.fill();}});}
+  function drawThermo(){var x=W-60,top=80,hgt=H-160;ctx.fillStyle='#2a080e';ctx.fillRect(x-14,top,28,hgt);ctx.beginPath();ctx.arc(x,top+hgt+10,26,0,7);ctx.fill();var f=Math.max(0,Math.min(1,(G.temp||35)/100));var g=ctx.createLinearGradient(0,top+hgt,0,top);g.addColorStop(0,'#6fb6ff');g.addColorStop(.6,'#ffcc4d');g.addColorStop(1,'#ff5a5a');ctx.fillStyle=g;ctx.fillRect(x-8,top+hgt*(1-f),16,hgt*f);ctx.beginPath();ctx.arc(x,top+hgt+10,20,0,7);ctx.fill();ctx.fillStyle='#fff';ctx.font='bold 14px sans-serif';ctx.textAlign='center';ctx.fillText('HEAT',x,top-10);}
+  function germFace(it,color){ctx.beginPath();ctx.arc(it.x,it.y,it.r,0,7);ctx.fillStyle=color;ctx.fill();ctx.strokeStyle='#2a080e';ctx.lineWidth=3;ctx.stroke();
+    for(var a=0;a<6;a++){var ang=a*1.047+it.wob+G.t*2;ctx.beginPath();ctx.arc(it.x+Math.cos(ang)*(it.r+6),it.y+Math.sin(ang)*(it.r+6),4,0,7);ctx.fillStyle=color;ctx.fill();}
+    ctx.fillStyle='#2a080e';ctx.beginPath();ctx.arc(it.x-7,it.y-4,3.5,0,7);ctx.arc(it.x+7,it.y-4,3.5,0,7);ctx.fill();ctx.beginPath();ctx.arc(it.x,it.y+6,6,0.2,2.9);ctx.strokeStyle='#2a080e';ctx.lineWidth=2.5;ctx.stroke();}
+  function redCell(it){ctx.beginPath();ctx.arc(it.x,it.y,it.r,0,7);ctx.fillStyle='#ff5a5a';ctx.fill();ctx.strokeStyle='#2a080e';ctx.lineWidth=3;ctx.stroke();ctx.beginPath();ctx.arc(it.x,it.y,it.r*.45,0,7);ctx.fillStyle='#c8303a';ctx.fill();
+    ctx.fillStyle='#2a080e';ctx.beginPath();ctx.arc(it.x-6,it.y-3,2.5,0,7);ctx.arc(it.x+6,it.y-3,2.5,0,7);ctx.fill();ctx.beginPath();ctx.arc(it.x,it.y+3,5,0.3,2.8);ctx.strokeStyle='#2a080e';ctx.lineWidth=2;ctx.stroke();}
   function step(ts){
     if(!G||G.over)return;
     var dt=Math.min(.05,(ts-(G.last||ts))/1000);G.last=ts;
-    if(G.hit>0){G.hit--;ctx.fillStyle='rgba(255,255,255,.18)';ctx.fillRect(0,0,W,H);G.raf=requestAnimationFrame(step);return;}/* hit-stop */
+    if(G.hit>0){G.hit--;ctx.fillStyle='rgba(255,255,255,.18)';ctx.fillRect(0,0,W,H);G.raf=requestAnimationFrame(step);return;}
     G.t+=dt;spawn(dt);
     ctx.clearRect(0,0,W,H);
-    /* background */
-    ctx.fillStyle='#4a0f1a';ctx.fillRect(0,0,W,H);
-    ctx.strokeStyle='#7a1f2b';ctx.lineWidth=40;ctx.lineCap='round';
+    ctx.fillStyle=kind==='swim'?'#2a2f55':kind==='teeth'?'#f0e8d8':kind==='balance'?'#1f2a3a':kind==='eyespy'?'#3a2a55':kind==='flex'?'#5a1a1a':'#4a0f1a';ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle=kind==='swim'?'#3b4a7a':kind==='teeth'?'#d8ccb4':kind==='balance'?'#2d3e55':kind==='eyespy'?'#55407a':kind==='flex'?'#8a2a2a':'#7a1f2b';ctx.lineWidth=40;ctx.lineCap='round';
     for(var i=0;i<4;i++){ctx.beginPath();ctx.moveTo(-50,80+i*120+Math.sin(G.t+i)*10);ctx.bezierCurveTo(W*.3,40+i*120,W*.7,120+i*120,W+50,80+i*120);ctx.stroke();}
-    if(kind==='boss'){
-      ctx.font='90px serif';ctx.textAlign='center';var bob=Math.sin(G.t*3)*8;ctx.fillText('🍭',W/2,120+bob);
-      ctx.fillStyle='#2a080e';ctx.fillRect(W/2-150,20,300,22);ctx.fillStyle='#ff6ad5';ctx.fillRect(W/2-150,20,300*Math.max(0,G.hp/G.maxhp),22);
-      ctx.fillStyle='#fff';ctx.font='bold 16px sans-serif';ctx.fillText('Sugar Monster '+G.hp+'/'+G.maxhp,W/2,58);
+    if(B){
+      if(BK==='bellybug'){var bg=G.bug;if(bg){var dx=bg.tx-bg.x,dy=bg.ty-bg.y,dd=Math.hypot(dx,dy);if(dd<8){bg.tx=80+Math.random()*(W-160);bg.ty=110+Math.random()*(H-220);}else{bg.x+=dx/dd*bg.speed*dt;bg.y+=dy/dd*bg.speed*dt;}bg.sq+=(1-bg.sq)*dt*8;ctx.save();ctx.translate(bg.x,bg.y);ctx.scale(bg.sq,2-bg.sq);ctx.font='80px serif';ctx.textAlign='center';ctx.fillText(GERMS.bellybug.ic,0,28);ctx.restore();}}
+      else if(BK==='cavity'){drawTeeth();ctx.font='60px serif';ctx.textAlign='center';ctx.fillText(GERMS.cavity.ic,W/2,130+Math.sin(G.t*3)*6);}
+      else if(BK==='fever'){ctx.font='90px serif';ctx.textAlign='center';ctx.fillText(GERMS.fever.ic,W/2,125+Math.sin(G.t*3)*8);drawThermo();ctx.fillStyle='rgba(255,90,40,'+(Math.max(0,(G.temp||35)-60)/100)+')';ctx.fillRect(0,0,W,H);}
+      else{ctx.font='90px serif';ctx.textAlign='center';var bob=Math.sin(G.t*3)*8;ctx.fillText(GERMS[G.bossKey].ic,W/2,120+bob);}
+      if(BK==='cold'){ctx.fillStyle='#fff';ctx.font='bold 16px sans-serif';ctx.textAlign='center';ctx.fillText('Viruses on screen: '+G.items.length+' / 14',W/2,H-16);}
+      ctx.fillStyle='#2a080e';ctx.fillRect(W/2-150,20,300,22);ctx.fillStyle=B.blob;ctx.fillRect(W/2-150,20,300*Math.max(0,G.hp/G.maxhp),22);
+      ctx.fillStyle='#fff';ctx.font='bold 16px sans-serif';ctx.fillText(GERMS[G.bossKey].nm+' '+G.hp+'/'+G.maxhp,W/2,58);
     }
-    /* items */
+    if(kind==='sneeze'){ctx.font='70px serif';ctx.textAlign='center';ctx.fillText('👃',W/2,H-30);}
+    if(kind==='balance'){ctx.save();ctx.translate(W/2,H/2);ctx.rotate(G.t*.6);ctx.strokeStyle='rgba(255,255,255,.08)';ctx.lineWidth=30;for(var rr=60;rr<500;rr+=90){ctx.beginPath();ctx.arc(0,0,rr,0,4);ctx.stroke();}ctx.restore();}
     for(i=G.items.length-1;i>=0;i--){var it=G.items[i];
-      if(kind==='race'){it.y+=it.vy*dt;
-        if(Math.hypot(it.x-G.px,it.y-(H-60))<it.r+34){G.items.splice(i,1);if(it.bad){G.miss++;SFX.hit();shake();spark(it.x,it.y,'#888');}else{G.score++;SFX.good();spark(it.x,it.y,'#6fb6ff');}continue;}
-        if(it.y>H+30){G.items.splice(i,1);if(!it.bad)G.miss++;continue;}
-        ctx.beginPath();ctx.arc(it.x,it.y,it.r,0,7);ctx.fillStyle=it.bad?'#777':'#6fb6ff';ctx.fill();ctx.fillStyle='#fff';ctx.font='bold 16px sans-serif';ctx.textAlign='center';ctx.fillText(it.bad?'CO2':'O2',it.x,it.y+6);
-      } else if(kind==='knee'){it.r+=it.grow*dt;
-        if(it.r>60){G.items.splice(i,1);G.miss++;SFX.hit();shake();continue;}
-        ctx.beginPath();ctx.arc(it.x,it.y,it.r,0,7);ctx.fillStyle='#ff5a5a';ctx.fill();ctx.strokeStyle='#ffcc4d';ctx.lineWidth=4;ctx.stroke();
-        ctx.fillStyle='#fff';ctx.font='bold 14px sans-serif';ctx.textAlign='center';ctx.fillText('LEAK',it.x,it.y+5);
+      if(base==='race'){it.y+=it.vy*dt;
+        if(Math.hypot(it.x-G.px,it.y-(H-60))<it.r+34){G.items.splice(i,1);if(it.bad){G.miss++;SFX.hit();shake();spark(it.x,it.y,info.bad);}else{G.score++;G.combo++;SFX.combo(G.combo);spark(it.x,it.y,info.good);}continue;}
+        if(it.y>H+30){G.items.splice(i,1);if(!it.bad){G.miss++;G.combo=0;}continue;}
+        ctx.beginPath();ctx.arc(it.x,it.y,it.r,0,7);ctx.fillStyle=it.bad?info.bad:info.good;ctx.fill();ctx.fillStyle='#fff';ctx.font='bold 14px sans-serif';ctx.textAlign='center';ctx.fillText(it.bad?info.bl:info.gl,it.x,it.y+5);
+      } else if(base==='knee'){it.r+=it.grow*dt;
+        if(it.r>60){G.items.splice(i,1);G.miss++;G.combo=0;SFX.hit();shake();continue;}
+        ctx.beginPath();ctx.arc(it.x,it.y,it.r,0,7);ctx.fillStyle=info.color;ctx.fill();ctx.strokeStyle='#ffcc4d';ctx.lineWidth=4;ctx.stroke();
+        ctx.fillStyle='#fff';ctx.font='bold 14px sans-serif';ctx.textAlign='center';ctx.fillText(info.lbl,it.x,it.y+5);
+      } else if(base==='swat'){it.x+=it.vx*dt;it.y+=Math.sin(G.t*4+it.wob)*40*dt;
+        if(it.x<-40||it.x>W+40){G.items.splice(i,1);if(!it.friend){G.miss++;G.combo=0;SFX.hit();}continue;}
+        if(it.friend)redCell(it);else germFace(it,kind==='sneeze'?'#cfcfcf':kind==='eyespy'?'#ffe08a':'#8ee86a');
+      } else if(BK==='cold'){it.x+=it.vx*dt;it.y+=it.vy*dt;it.age+=dt;
+        if(it.x<30||it.x>W-30)it.vx*=-1;if(it.y<70||it.y>H-40)it.vy*=-1;it.x=Math.max(30,Math.min(W-30,it.x));it.y=Math.max(70,Math.min(H-40,it.y));
+        if(it.age>3.2&&it.r>=15){it.age=0;it.r*=.82;G.items.push({x:it.x+20,y:it.y-10,r:it.r,vx:-it.vx+(Math.random()-.5)*40,vy:it.vy+(Math.random()-.5)*60,age:0,wob:Math.random()*6.28});SFX.bad();spark(it.x,it.y,'#8ee86a');}
+        germFace(it,'#8ee86a');
+      } else if(BK==='bellybug'){it.y+=it.vy*dt;it.x+=it.vx*dt;
+        if(it.y>H+10){G.items.splice(i,1);G.miss++;G.combo=0;SFX.hit();shake();continue;}
+        ctx.beginPath();ctx.moveTo(it.x,it.y-it.r-8);ctx.quadraticCurveTo(it.x+it.r,it.y,it.x,it.y+it.r);ctx.quadraticCurveTo(it.x-it.r,it.y,it.x,it.y-it.r-8);ctx.fillStyle='#b4ff7a';ctx.fill();ctx.strokeStyle='#2a080e';ctx.lineWidth=2;ctx.stroke();
+      } else if(BK==='cavity'){it.r+=it.grow*dt;
+        if(it.r>34){G.items.splice(i,1);G.teeth[it.tooth].cav=true;G.teeth[it.tooth].busy=false;G.miss++;G.combo=0;SFX.hit();shake();continue;}
+        ctx.beginPath();ctx.arc(it.x,it.y,it.r,0,7);ctx.fillStyle='#5a3a1a';ctx.fill();germFace({x:it.x,y:it.y-it.r-14,r:14,wob:it.wob},'#ffe08a');
+      } else if(BK==='fever'){it.y+=it.vy*dt;
+        if(Math.hypot(it.x-G.px,it.y-(H-60))<it.r+34){G.items.splice(i,1);if(it.fire){G.temp+=11;G.miss++;G.combo=0;SFX.hit();shake();spark(it.x,it.y,'#ff8a3a');}else{G.temp=Math.max(0,G.temp-9);hitBoss(it.x,it.y);}continue;}
+        if(it.y>H+30){G.items.splice(i,1);continue;}
+        if(it.fire){ctx.font='34px serif';ctx.textAlign='center';ctx.fillText('🔥',it.x,it.y+12);}else{ctx.beginPath();ctx.moveTo(it.x,it.y-it.r-6);ctx.quadraticCurveTo(it.x+it.r,it.y+2,it.x,it.y+it.r);ctx.quadraticCurveTo(it.x-it.r,it.y+2,it.x,it.y-it.r-6);ctx.fillStyle='#6fb6ff';ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();}
       } else {it.y+=it.vy*dt;it.x+=it.vx*dt;
-        if(it.y>H+20){G.items.splice(i,1);G.miss++;SFX.hit();shake();continue;}
-        ctx.beginPath();ctx.arc(it.x,it.y,it.r,0,7);ctx.fillStyle='#ff6ad5';ctx.fill();ctx.fillStyle='#2a080e';ctx.beginPath();ctx.arc(it.x-8,it.y-4,3,0,7);ctx.arc(it.x+8,it.y-4,3,0,7);ctx.fill();
+        if(it.y>H+20){G.items.splice(i,1);G.miss++;G.combo=0;SFX.hit();shake();continue;}
+        ctx.beginPath();ctx.arc(it.x,it.y,it.r,0,7);ctx.fillStyle=B.blob;ctx.fill();ctx.fillStyle='#2a080e';ctx.beginPath();ctx.arc(it.x-8,it.y-4,3,0,7);ctx.arc(it.x+8,it.y-4,3,0,7);ctx.fill();
       }
     }
-    /* pod (race) */
-    if(kind==='race'){var sq=1+Math.min(.25,Math.abs(G.px-(G.lastpx||G.px))*.01);G.lastpx=G.px;ctx.save();ctx.translate(G.px,H-60);ctx.scale(sq,1/sq);ctx.beginPath();ctx.arc(0,0,34,0,7);ctx.fillStyle='rgba(79,227,210,.7)';ctx.fill();ctx.strokeStyle='#bffaf3';ctx.lineWidth=3;ctx.stroke();ctx.beginPath();ctx.arc(0,0,12,0,7);ctx.fillStyle='#ff5a5a';ctx.fill();ctx.restore();}
-    /* particles */
+    if(base==='race'||BK==='fever'){var sq=1+Math.min(.25,Math.abs(G.px-(G.lastpx||G.px))*.01);G.lastpx=G.px;ctx.save();ctx.translate(G.px,H-60);ctx.scale(sq,1/sq);ctx.beginPath();ctx.arc(0,0,34,0,7);ctx.fillStyle='rgba(79,227,210,.7)';ctx.fill();ctx.strokeStyle='#bffaf3';ctx.lineWidth=3;ctx.stroke();ctx.beginPath();ctx.arc(0,0,12,0,7);ctx.fillStyle='#ff5a5a';ctx.fill();ctx.restore();}
     for(i=parts.length-1;i>=0;i--){var p=parts[i];p.x+=p.vx;p.y+=p.vy;p.l-=dt*2.5;if(p.l<=0){parts.splice(i,1);continue;}ctx.globalAlpha=p.l;ctx.fillStyle=p.c;ctx.fillRect(p.x-3,p.y-3,6,6);}ctx.globalAlpha=1;
-    el.querySelector('#gScore').textContent=(kind==='boss'?'Swats: ':'Caught: ')+G.score+'  Missed: '+G.miss;
-    var left=kind==='boss'?'':Math.ceil(info.sec-G.t)+'s';el.querySelector('#gTime').textContent=left;
-    var end=kind==='boss'?(G.hp<=0||G.miss>=8):G.t>=info.sec;
+    el.querySelector('#gScore').textContent=(BK==='cavity'?'Brushed off: ':BK==='fever'?'Cooled: ':B?'Swats: ':base==='swat'?'Swatted: ':base==='knee'?'Plugged: ':'Caught: ')+G.score+'  Missed: '+G.miss+(G.combo>=3?'  🔥x'+G.combo:'');
+    el.querySelector('#gTime').textContent=B?'':Math.ceil(info.sec-G.t)+'s';
+    var lost=B&&(BK==='cold'?G.items.length>=14:BK==='cavity'?G.teeth&&G.teeth.filter(function(t){return t.cav;}).length>=4:BK==='fever'?(G.temp||0)>=100:G.miss>=8);
+    var end=B?(G.hp<=0||lost):G.t>=info.sec;
     if(end)finish();else G.raf=requestAnimationFrame(step);
   }
   function finish(){
     G.over=true;var msg=el.querySelector('#gameMsg');msg.classList.remove('hide');
-    var who=info.who,stars=0,txt='',fact='';
-    if(kind==='race'){stars=Math.min(5,Math.floor(G.score/3));var dmg=Math.floor(G.miss/4);R.crew[who]=Math.max(0,R.crew[who]-dmg);R.o2=clamp(R.o2+Math.min(4,Math.floor(G.score/4)));R.done.race=true;txt='Oxinator caught '+G.score+' bubbles. The legs got their oxygen. ⭐'+stars+(dmg?' Oxinator is tired from the CO2.':'');fact='Muscles burn more oxygen when you run, so your heart beats faster to deliver it.';unlockJ('mystery','goose');}
-    else if(kind==='knee'){stars=Math.min(5,Math.floor(G.score/3));var d2=Math.floor(G.miss/3);R.crew[who]=Math.max(0,R.crew[who]-d2);R.h2o=clamp(R.h2o-Math.min(3,G.miss));R.done.knee=true;txt='Patchlet plugged '+G.score+' leaks. A scab is forming. ⭐'+stars+(G.miss?' Some blood leaked out ('+Math.min(3,G.miss)+' water).':'');fact='A scab is a dried plug of platelets and sticky threads called fibrin. Picking it reopens the leak.';unlockJ('mystery','yawn');}
-    else{var won=G.hp<=0;if(won){stars=5;R.done.boss=true;P.wins++;if(P.unlocked.indexOf('lungs')<0)P.unlocked.push('lungs');unlockJ('germ','sugar');unlockJ('mystery','fat');SFX.win();txt='Fighty swatted the Sugar Monster down to nothing! ⭐5. The LUNGS are now unlocked on the map.';fact=GERMS.sugar.fact;}
-      else{R.crew.fighty=0;R.sugar=Math.max(0,R.sugar-2);txt='Too many sugar blobs got through. Fighty needs a snack and a rest. The monster shrank a little. Try again from the Heart.';fact='Sugar crashes happen when a big spike drops fast. Slow fuel like apples and bread keeps the body steady.';}}
+    var who=info.who,stars=0,txt='',fact='',won=true;
+    if(base==='race'){stars=Math.min(5,Math.floor(G.score/3));var dmg=Math.floor(G.miss/4);R.crew[who]=Math.max(0,R.crew[who]-dmg);
+      if(kind==='race'){R.o2=clamp(R.o2+Math.min(4,Math.floor(G.score/4)));txt='Oxinator caught '+G.score+' bubbles. The legs got their oxygen. ⭐'+stars+(dmg?' Oxinator is tired from the CO2.':'');fact='Muscles burn more oxygen when you run, so your heart beats faster to deliver it.';unlockJ('mystery','goose');}
+      else if(kind==='swim'){R.glu=clamp(R.glu+Math.min(3,Math.floor(G.score/5)));txt='Oxinator kept '+G.score+' warm blood bubbles moving. The kid stayed warm in the pool. ⭐'+stars;fact='In cold water your body pulls warm blood toward your middle to protect your heart and brain. That is why fingers get cold first.';}
+      else{unlockJ('mystery','earwax');txt='Oxinator caught '+G.score+' steady drops. The spinning stopped and the kid did not fall over. ⭐'+stars;fact=ORGANS.ears.fact;}}
+    else if(base==='knee'){stars=Math.min(5,Math.floor(G.score/3));var d2=Math.floor(G.miss/3);R.crew[who]=Math.max(0,R.crew[who]-d2);
+      if(kind==='knee'){R.h2o=clamp(R.h2o-Math.min(3,G.miss));txt='Patchlet plugged '+G.score+' leaks. A scab is forming. ⭐'+stars+(G.miss?' Some blood leaked out ('+Math.min(3,G.miss)+' water).':'');fact='A scab is a dried plug of platelets and sticky threads called fibrin. Picking it reopens the leak.';unlockJ('mystery','yawn');}
+      else if(kind==='teeth'){unlockJ('germ','cavity');txt='Patchlet swept out '+G.score+' cavity germs. Teeth are clean. ⭐'+stars;fact=GERMS.cavity.fact;}
+      else{unlockJ('mystery','heat');txt='Patchlet smoothed out '+G.score+' knots. The muscles are loose and warm. ⭐'+stars;fact='A cramp is a muscle squeezing and forgetting to let go. Water, salt, and stretching help it relax.';}}
+    else if(base==='swat'){stars=Math.min(5,Math.floor(G.score/4));var d3=Math.floor(G.miss/3);R.crew[who]=Math.max(0,R.crew[who]-d3);var gk=info.germ;if(gk)unlockJ('germ',gk);
+      if(kind==='sneeze'){unlockJ('mystery','sneezeeyes');txt='Fighty swatted '+G.score+' dust puffs. AH-CHOO! The rest blasted out the nose. ⭐'+stars;}
+      else if(kind==='eyespy'){unlockJ('mystery','tickle');txt='Fighty spotted '+G.score+' pollen grains hiding in the crowd. Sharp eyes! ⭐'+stars+(G.miss?' A few red cells got bonked by mistake.':'');}
+      else txt='Fighty swatted '+G.score+' '+(GERMS[gk]?GERMS[gk].nm:'germ')+' germs. ⭐'+stars+(G.miss?' A few got by, or a red cell got bonked.':'');
+      fact=gk&&GERMS[gk]?GERMS[gk].fact:'';}
+    else{won=G.hp<=0;var bk=G.bossKey;
+      if(won){stars=5;R.boss=bk;P.wins++;P.bosses[bk]=true;B.unlocks.forEach(function(u){if(P.unlocked.indexOf(u)<0)P.unlocked.push(u);});unlockJ('germ',bk);if(bk==='sugar')unlockJ('mystery','fat');SFX.win();flash();txt=B.win+' ⭐5';fact=GERMS[bk].fact;
+        if(B.unlocks.length)txt+='<div class="row" style="justify-content:center">'+B.unlocks.map(function(u){return '<span class="punch" style="font-size:44px">'+ORGANS[u].ic+'</span>';}).join('')+'</div><b style="color:#ffcc4d">NEW AREAS UNLOCKED</b>';}
+      else{R.crew.fighty=0;R.sugar=Math.max(0,R.sugar-2);
+        txt=({sugar:'Too many sugar blobs got through. Fighty needs a snack and a rest. The monster shrank a little. Come back and try again.',
+          cold:'The virus made too many copies and filled the Lungs. Fighty needs a rest. Next time, pop them before they split.',
+          bellybug:'Too much acid hit the stomach wall. Fighty needs a rest. Next time, chase the bug itself.',
+          cavity:'Four teeth got cavities. Fighty needs a rest. Next time, brush the drillers off faster.',
+          fever:'The heat got too high and Fighty overheated. Next time, catch more water and dodge the fire.'})[bk];
+        fact=({sugar:'Sugar crashes happen when a big spike drops fast. Slow fuel like apples and bread keeps the body steady.',
+          cold:'Viruses spread by making copies inside your cells. Rest and fluids give your white cells time to catch up.',
+          bellybug:'Stomach acid is strong, but the stomach wall has a slime shield. A belly bug makes the wall angry and crampy.',
+          cavity:'A cavity is a hole that acid drilled in the enamel. Once it is through, a dentist has to fill it.',
+          fever:'A fever is helpful up to a point. Water and rest help the body cool back down when the fight is over.'})[bk];}}
+    if(info.mission)R.done[info.mission]=true;
     R.coin+=stars;R.stars+=stars;save();hud();
-    msg.innerHTML='<h3>'+(kind==='boss'&&G.hp>0?'Not this time':'Done!')+'</h3><p>'+txt+'</p><div class="fact" style="text-align:left">💡 '+fact+'</div><button class="btn" id="gDone">'+(kind==='boss'&&G.hp<=0?'Finish the trip ▶':'Back to map ▶')+'</button>';
-    msg.querySelector('#gDone').onclick=function(){if(kind==='boss'&&R.done.boss)endRun();else checkTired();};
+    msg.innerHTML='<h3>'+(B&&!won?'Not this time':'Done!')+'</h3><p>'+txt+'</p>'+(fact?'<div class="fact" style="text-align:left">💡 '+fact+'</div>':'')+'<button class="btn" id="gDone">'+(B&&won?'Finish the trip ▶':'Back to map ▶')+'</button>';
+    msg.querySelector('#gDone').onclick=function(){if(B&&won)endRun();else checkTired();};
   }
-  el.querySelector('#gStart').onclick=function(){el.querySelector('#gameMsg').classList.add('hide');G.t=0.0001;G.last=0;if(kind==='boss'){G.maxhp=10+R.sugar*2;G.hp=G.maxhp;}G.raf=requestAnimationFrame(step);};
+  el.querySelector('#gStart').onclick=function(){el.querySelector('#gameMsg').classList.add('hide');G.t=0.0001;G.last=0;if(B){G.bossKey=arg;G.maxhp=B.hp();G.hp=G.maxhp;}G.raf=requestAnimationFrame(step);};
 }
 
 /* ---------- END OF RUN ---------- */
 function endRun(){
   R.ended=true;P.runs++;P.bestStars=Math.max(P.bestStars,R.stars);save();recordPlay();
+  var beaten=Object.keys(P.bosses).filter(function(b){return BOSSES[b];}).length,total=Object.keys(BOSSES).length;
+  var order=['sugar','cold','bellybug','cavity','fever'];var nb=order.filter(function(b){return !P.bosses[b];})[0];
+  var next=!nb?'All '+total+' bosses beaten. Replay any of them for stars and fill the Journal. More body coming as Dad builds it.':'Next: the '+GERMS[nb].nm+' is waiting at the '+ORGANS[BOSSES[nb].at].nm+'. The Brain\'s boss board shows what it needs.';
   var el=document.getElementById('s-end');
-  el.innerHTML='<div class="wrap title"><div class="big">🏆</div><h2 style="font-size:40px">Trip Complete</h2><p>Stars this trip: <span class="stars" id="cnt">0</span></p><p class="sub">Journal: '+journalPct()+'% filled · Trips: '+P.runs+'</p><p>The Sugar Monster is beaten and the Lungs are open. More of the body unlocks as Dad builds it.</p><div class="row" style="max-width:520px;margin:14px auto 0"><button class="btn" id="again">🚀 New trip</button><button class="btn ghost" id="jr">📖 Journal</button></div></div>';
+  el.innerHTML='<div class="wrap title"><div class="big">🏆</div><h2 style="font-size:40px">Trip Complete</h2><p>Stars this trip: <span class="stars" id="cnt">0</span></p><p class="sub">Journal: '+journalPct()+'% filled · Trips: '+P.runs+' · Bosses: '+beaten+'/'+total+'</p><p>'+next+'</p><div class="row" style="max-width:520px;margin:14px auto 0"><button class="btn" id="again">🚀 New trip</button><button class="btn ghost" id="jr">📖 Journal</button></div></div>';
   show('end');
   var n=0,target=R.stars,c=el.querySelector('#cnt');var iv=setInterval(function(){n++;c.textContent='⭐ '+n;SFX.coin();if(n>=target)clearInterval(iv);},120);if(target===0)c.textContent='⭐ 0';
   el.querySelector('#again').onclick=function(){title();};
@@ -530,9 +800,9 @@ function unlockJ(type,id){var k=type+':'+id;if(!P.journal[k]){P.journal[k]=1;sav
 function jName(t,id){if(t==='cell')return CREW[id].nm;if(t==='organ')return ORGANS[id].nm;if(t==='germ')return GERMS[id].nm;if(t==='map'){var p=id.split('-');return ORGANS[p[0]].nm+' to '+ORGANS[p[1]].nm;}if(t==='mystery'){var m=MYSTERIES.filter(function(x){return x.id===id;})[0];return m?m.nm:id;}return id;}
 function allCards(){
   var L=[];
-  Object.keys(CREW).forEach(function(k){L.push({t:'cell',id:k,ic:CREW[k].ic,nm:CREW[k].nm,sub:CREW[k].kind,txt:CREW[k].job+' '+CREW[k].fact});});
+  Object.keys(CREW).forEach(function(k){var c=CREW[k];L.push({t:'cell',id:k,ic:c.ic,nm:c.nm,sub:c.kind,html:'<p>'+esc(c.job)+'</p><p><em>Bio:</em> '+esc(c.bio)+'</p><p><em>Secret:</em> '+esc(c.secret)+'</p><p><em>'+esc(c.fav)+'</em></p><p>'+esc(c.fact)+'</p>'});});
   Object.keys(ORGANS).forEach(function(k){L.push({t:'organ',id:k,ic:ORGANS[k].ic,nm:ORGANS[k].nm,sub:'Organ',txt:ORGANS[k].fact});});
-  Object.keys(GERMS).forEach(function(k){L.push({t:'germ',id:k,ic:GERMS[k].ic,nm:GERMS[k].nm,sub:'Germ',txt:GERMS[k].fact});});
+  Object.keys(GERMS).forEach(function(k){L.push({t:'germ',id:k,ic:GERMS[k].ic,nm:GERMS[k].nm,sub:GERMS[k].boss?'BOSS germ':'Germ',txt:GERMS[k].fact});});
   LINKS.forEach(function(l){var id=l.slice().sort().join('-');L.push({t:'map',id:id,ic:'🗺️',nm:jName('map',id),sub:'Route',txt:'A path you traveled.'});});
   MYSTERIES.forEach(function(m){L.push({t:'mystery',id:m.id,ic:m.ic,nm:m.nm,sub:'Mystery'+(m.by?' · found by '+m.by:''),txt:m.text});});
   return L;
@@ -542,8 +812,8 @@ var jtab='cell';
 function journal(){
   var el=document.getElementById('s-journal');var all=allCards();
   var tabs=[['cell','🔴 Cells'],['organ','❤️ Organs'],['germ','🦠 Germs'],['map','🗺️ Maps'],['mystery','❓ Mysteries']];
-  el.innerHTML='<div class="wrap"><h2>📖 Journal · '+journalPct()+'% filled</h2><div class="tabs">'+tabs.map(function(t){return '<div class="tab'+(t[0]===jtab?' on':'')+'" data-t="'+t[0]+'">'+t[1]+'</div>';}).join('')+'</div><div class="jgrid">'+
-    all.filter(function(c){return c.t===jtab;}).map(function(c){var on=P.journal[c.t+':'+c.id];return '<div class="jcard'+(on?'':' locked')+'"><div class="ic">'+(on?c.ic:'❔')+'</div><b>'+(on?esc(c.nm):'???')+'</b><p>'+(on?esc(c.sub)+'<br>'+esc(c.txt):'Not found yet')+'</p></div>';}).join('')+
+  el.innerHTML='<div class="wrap"><h2>📖 Journal · '+journalPct()+'% filled</h2><div class="tabs">'+tabs.map(function(t){var n=all.filter(function(c){return c.t===t[0]&&P.journal[c.t+':'+c.id];}).length,tot=all.filter(function(c){return c.t===t[0];}).length;return '<div class="tab'+(t[0]===jtab?' on':'')+'" data-t="'+t[0]+'">'+t[1]+' '+n+'/'+tot+'</div>';}).join('')+'</div><div class="jgrid">'+
+    all.filter(function(c){return c.t===jtab;}).map(function(c){var on=P.journal[c.t+':'+c.id];return '<div class="jcard'+(on?'':' locked')+'"><div class="ic">'+(on?c.ic:'❔')+'</div><b>'+(on?esc(c.nm):'???')+'</b>'+(on?'<p>'+esc(c.sub)+'</p>'+(c.html||'<p>'+esc(c.txt)+'</p>'):'<p>Not found yet</p>')+'</div>';}).join('')+
     '</div><div class="row"><button class="btn ghost" id="back">◀ Back</button></div></div>';
   Array.prototype.forEach.call(el.querySelectorAll('.tab'),function(t){t.onclick=function(){jtab=t.getAttribute('data-t');journal();};});
   el.querySelector('#back').onclick=leaveJournal;
@@ -551,7 +821,7 @@ function journal(){
 }
 
 /* ---------- boot ---------- */
-title();
+syncUnlocks();title();
 </script>
 </body>
 </html>
