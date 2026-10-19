@@ -1,5 +1,5 @@
 // Two Cans service worker. CACHE name must match the version badge in index.html.
-const CACHE = 'twocans-v0.5';
+const CACHE = 'twocans-v0.7';
 const CORE = ['./', './index.html', './config.js', './manifest.webmanifest', './icon-180.png', './icon-512.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).then(() => self.skipWaiting()));
@@ -12,11 +12,8 @@ self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
-  // Firebase SDK files are versioned and never change: cache first
-  if (url.hostname === 'www.gstatic.com' && url.pathname.startsWith('/firebasejs/')) {
-    e.respondWith(caches.open(CACHE).then(c => c.match(req).then(hit => hit || fetch(req).then(r => { if (r.ok) c.put(req, r.clone()); return r; }))));
-    return;
-  }
+  // Never touch the Firebase SDK or any other host: let the browser fetch it
+  // straight from the network (a cached-bad SDK copy could crash old Safari).
   // Only our own folder below this point; never touch messages or logins
   if (url.origin !== location.origin || !url.pathname.startsWith(new URL('./', self.registration.scope).pathname)) return;
   // Network first so updates land, cache when offline

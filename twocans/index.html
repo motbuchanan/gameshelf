@@ -103,6 +103,21 @@ header .dot{width:46px;height:46px;font-size:22px}
 #sendBtn{background:var(--ink);border-color:var(--ink)}
 #sendBtn svg{fill:#fff}
 #sendBtn:disabled{opacity:.35}
+#recStop{background:var(--dad);border-color:var(--dad)}
+#recInfo{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:600;color:var(--ink);
+  padding:0 8px;height:50px;background:#fff;border:2px solid var(--line);border-radius:24px;overflow:hidden}
+#recHint{font-size:13px;font-weight:500;color:var(--soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.recDot{width:12px;height:12px;border-radius:50%;background:var(--bad);flex:none;animation:recpulse 1s infinite}
+@keyframes recpulse{0%,100%{opacity:1}50%{opacity:.25}}
+/* voice message bubble */
+.voice{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:var(--r);color:#fff;min-width:150px;max-width:260px}
+.row.me .voice{border-bottom-right-radius:7px}
+.row.them .voice{border-bottom-left-radius:7px}
+.voice .play{width:38px;height:38px;flex:none;border-radius:50%;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center}
+.voice .play svg{width:20px;height:20px;fill:#fff}
+.voice .track{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.3);position:relative;overflow:hidden}
+.voice .fill{position:absolute;left:0;top:0;bottom:0;width:0;background:#fff;border-radius:3px}
+.voice .dur{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;flex:none}
 #emojiPanel{height:224px;overflow-y:auto;-webkit-overflow-scrolling:touch;margin:0 0 10px;padding:4px 6px;
   background:var(--card);border:2px solid var(--line);border-radius:16px}
 #emojiPanel .cat{font-size:12px;font-weight:800;color:var(--soft);text-transform:uppercase;letter-spacing:.6px;margin:8px 4px 2px}
@@ -181,7 +196,7 @@ header .dot{width:46px;height:46px;font-size:22px}
     <div class="composer">
       <div id="emojiPanel" class="hidden"></div>
       <div id="attach" class="hidden"><img id="attachImg" alt=""><span class="grow" id="attachInfo" style="font-size:15px;color:var(--soft)"></span><button class="x" id="attachX" aria-label="Remove photo">X</button></div>
-      <div class="bar">
+      <div class="bar" id="bar">
         <button class="round" id="emojiBtn" aria-label="Emoji">
           <svg viewBox="0 0 24 24" fill="none" stroke="#2b2622" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="9" cy="10" r="1.1" fill="#2b2622" stroke="none"/><circle cx="15" cy="10" r="1.1" fill="#2b2622" stroke="none"/><path d="M8.3 14a4.5 4.5 0 007.4 0" stroke-linecap="round"/></svg>
         </button>
@@ -192,8 +207,20 @@ header .dot{width:46px;height:46px;font-size:22px}
           <svg viewBox="0 0 24 24" fill="none" stroke="#2b2622" stroke-width="2" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="14" rx="2"/><path d="M3.5 16l5-5 4 4 3-3 5 5"/><circle cx="16" cy="9" r="1.5"/></svg>
         </button>
         <textarea id="txt" rows="1" placeholder="Type or talk" enterkeyhint="send" autocapitalize="sentences" autocorrect="on" spellcheck="true"></textarea>
-        <button class="round" id="sendBtn" aria-label="Send" disabled>
+        <button class="round" id="micBtn" aria-label="Record a voice message">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#2b2622" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0"/><path d="M12 18v3"/></svg>
+        </button>
+        <button class="round hidden" id="sendBtn" aria-label="Send" disabled>
           <svg viewBox="0 0 24 24"><path d="M3 20.5l18-8.5L3 3.5l2.5 8.5z"/></svg>
+        </button>
+      </div>
+      <div class="bar hidden" id="recBar">
+        <button class="round" id="recCancel" aria-label="Cancel recording">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#b4442f" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+        <div class="grow" id="recInfo"><span class="recDot"></span><span id="recTime">0:00</span><span id="recHint">Recording... tap the check to send</span></div>
+        <button class="round" id="recStop" aria-label="Stop and send">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l5 5 9-11"/></svg>
         </button>
       </div>
       <input type="file" id="camIn" accept="image/*" capture="environment" hidden>
@@ -213,7 +240,7 @@ header .dot{width:46px;height:46px;font-size:22px}
 
 <script src="config.js"></script>
 <script type="module">
-const VERSION = 'v0.5';
+const VERSION = 'v0.7';
 const VDATE = 'Oct 19 2026';
 const FB_VER = '10.12.2';
 const ROOM = 'main';
@@ -316,9 +343,9 @@ function demoBackend(){
     async signIn(email){ user = { uid: uidFor(email), email }; store.set('tc.demo.user', user); authCbs.forEach(cb => cb(user)); },
     async signOut(){ user = null; store.set('tc.demo.user', null); authCbs.forEach(cb => cb(null)); },
     listen(cb){ msgCbs.push(cb); setTimeout(emitMsgs, 0); return () => {}; },
-    async send({ text, img }){
+    async send({ text, img, aud }){
       const me = personByEmail(user.email);
-      db.msgs.push({ id: 'm' + Date.now() + Math.random().toString(36).slice(2,6), from:user.uid, name:me.name, text, img, ts: Date.now() });
+      db.msgs.push({ id: 'm' + Date.now() + Math.random().toString(36).slice(2,6), from:user.uid, name:me.name, text, img, aud: aud || '', ts: Date.now() });
       save(); emitMsgs();
     },
     async unsend(id){ db.msgs = db.msgs.filter(m => m.id !== id); save(); emitMsgs(); },
@@ -335,10 +362,9 @@ async function firebaseBackend(){
   ]);
   const app = initializeApp(CFG.firebase);
   const auth = A.getAuth(app);
-  let db;
-  try {
-    db = F.initializeFirestore(app, { localCache: F.persistentLocalCache({ tabManager: F.persistentMultipleTabManager() }) });
-  } catch(e){ db = F.getFirestore(app); }
+  // Memory cache only. The IndexedDB offline cache crashes older iPad Safari
+  // ("A problem repeatedly occurred") and isn't needed: messages sync live.
+  const db = F.getFirestore(app);
   if (window.__TWOCANS_EMU){ // test harness only, set by the test runner, never by a URL
     A.connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings:true });
     F.connectFirestoreEmulator(db, '127.0.0.1', 8080);
@@ -357,15 +383,15 @@ async function firebaseBackend(){
       return F.onSnapshot(q, { includeMetadataChanges:true }, snap => {
         const list = snap.docs.map(d => {
           const x = d.data({ serverTimestamps:'estimate' });
-          return { id:d.id, from:x.from, name:x.name, text:x.text || '', img:x.img || '',
+          return { id:d.id, from:x.from, name:x.name, text:x.text || '', img:x.img || '', aud:x.aud || '',
                    ts: x.ts && x.ts.toMillis ? x.ts.toMillis() : Date.now(), pending: d.metadata.hasPendingWrites };
         }).reverse();
         cb(list);
       }, onErr);
     },
-    async send({ text, img }){
+    async send({ text, img, aud }){
       const me = personByEmail(user.email);
-      await F.addDoc(msgsCol, { from:user.uid, name: me ? me.name : 'Someone', text, img, ts: F.serverTimestamp() });
+      await F.addDoc(msgsCol, { from:user.uid, name: me ? me.name : 'Someone', text, img, aud: aud || '', ts: F.serverTimestamp() });
     },
     async unsend(id){ await F.deleteDoc(F.doc(msgsCol, id)); },
     async clearAll(){
@@ -390,7 +416,8 @@ async function firebaseBackend(){
 /* ---------- app state ---------- */
 let B = null, me = null, other = null, myUid = null;
 let msgs = [], seenMap = {}, unsubs = [], firstLoad = true, lastMarked = 0;
-let pendingImg = null;
+let pendingImg = null, pendingAud = null;
+const MIC_OK = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
 
 /* ---------- login ---------- */
 let chosen = null;
@@ -485,6 +512,9 @@ function msgEl(m){
     im.onclick = () => openViewer(m.img);
     row.appendChild(im);
   }
+  if (m.aud){
+    row.appendChild(voiceEl(m.aud, color));
+  }
   if (m.text){
     const b = document.createElement('div'); b.className = 'bub'; b.style.background = color;
     b.textContent = m.text;
@@ -494,6 +524,32 @@ function msgEl(m){
   const meta = document.createElement('div'); meta.className = 'meta'; row.appendChild(meta);
   addLongPress(row, () => askRemove(m.id, mine));
   return row;
+}
+
+/* ---------- voice message playback ---------- */
+const PLAY_SVG = '<svg viewBox="0 0 24 24"><path d="M7 5l12 7-12 7z"/></svg>';
+const PAUSE_SVG = '<svg viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>';
+let curAudio = null;
+function fmtDur(s){ s = Math.max(0, Math.round(s || 0)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
+function voiceEl(src, color){
+  const wrap = document.createElement('div'); wrap.className = 'voice'; wrap.style.background = color;
+  const play = document.createElement('button'); play.className = 'play'; play.setAttribute('aria-label', 'Play voice message'); play.innerHTML = PLAY_SVG;
+  const track = document.createElement('div'); track.className = 'track';
+  const fill = document.createElement('div'); fill.className = 'fill'; track.appendChild(fill);
+  const dur = document.createElement('span'); dur.className = 'dur'; dur.textContent = '0:00';
+  wrap.append(play, track, dur);
+  const a = new Audio(); a.preload = 'metadata'; a.src = src;
+  a.addEventListener('loadedmetadata', () => { if (isFinite(a.duration)) dur.textContent = fmtDur(a.duration); });
+  a.addEventListener('timeupdate', () => { if (a.duration){ fill.style.width = (a.currentTime / a.duration * 100) + '%'; dur.textContent = fmtDur(a.duration - a.currentTime); } });
+  const reset = () => { play.innerHTML = PLAY_SVG; fill.style.width = '0%'; if (isFinite(a.duration)) dur.textContent = fmtDur(a.duration); };
+  a.addEventListener('ended', () => { reset(); if (curAudio === a) curAudio = null; });
+  a.addEventListener('pause', () => { play.innerHTML = PLAY_SVG; });
+  play.onclick = e => {
+    e.stopPropagation();
+    if (a.paused){ if (curAudio && curAudio !== a) curAudio.pause(); curAudio = a; a.play().then(() => { play.innerHTML = PAUSE_SVG; }).catch(() => toast('Could not play that clip.')); }
+    else { a.pause(); }
+  };
+  return wrap;
 }
 let stickBottom = true;
 function render(prev){
@@ -613,7 +669,13 @@ $('viewer').onclick = () => { $('viewer').classList.add('hidden'); $('viewImg').
 /* ---------- composer ---------- */
 const txt = $('txt');
 function autoGrow(){ txt.style.height = 'auto'; txt.style.height = Math.min(txt.scrollHeight, 150) + 'px'; }
-function canSend(){ $('sendBtn').disabled = !(txt.value.trim() || pendingImg); }
+function canSend(){
+  const has = !!(txt.value.trim() || pendingImg || pendingAud);
+  const showMic = !has && MIC_OK;
+  $('micBtn').classList.toggle('hidden', !showMic);
+  $('sendBtn').classList.toggle('hidden', showMic);
+  $('sendBtn').disabled = !has;
+}
 txt.addEventListener('input', () => { autoGrow(); canSend(); });
 txt.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey && !e.isComposing){ e.preventDefault(); sendNow(); }
@@ -624,11 +686,12 @@ let sending = false;
 async function sendNow(){
   const text = txt.value.trim().slice(0, 4000);
   const img = pendingImg ? pendingImg.data : '';
-  if ((!text && !img) || sending) return;
+  const aud = pendingAud || '';
+  if ((!text && !img && !aud) || sending) return;
   sending = true;
-  txt.value = ''; autoGrow(); clearAttach(); canSend(); toggleEmoji(false);
+  txt.value = ''; autoGrow(); clearAttach(); pendingAud = null; canSend(); toggleEmoji(false);
   sndSend(); stickBottom = true;
-  try { await B.send({ text, img }); }
+  try { await B.send({ text, img, aud }); }
   catch(e){
     toast('That one did not send. Check the Wi-Fi and try again.', 4000);
     if (text && !txt.value){ txt.value = text; autoGrow(); canSend(); }
@@ -714,6 +777,98 @@ async function shrink(file){
   if (out.length > 880000) throw new Error('too big');
   return out;
 }
+
+/* ---------- voice recording ---------- */
+// Record with the native recorder, then re-encode to a small mono WAV so the clip
+// plays on BOTH Safari (Garrett) and Chrome (Dad) and fits inside one message.
+const VOICE_RATE = 12000;      // 12 kHz mono is clear enough for a voice note
+const VOICE_MAX_SEC = 24;      // keeps the encoded clip under the message size cap
+let mediaRec = null, recStream = null, recChunks = [], recTimer = null, recT0 = 0, recAbort = false;
+function recUI(on){
+  $('bar').classList.toggle('hidden', on);
+  $('recBar').classList.toggle('hidden', !on);
+  if (on) toggleEmoji(false);
+}
+async function startRec(){
+  if (mediaRec || !MIC_OK) return;
+  let stream;
+  try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation:true, noiseSuppression:true } }); }
+  catch(e){ toast('I could not use the microphone. Check that the mic is allowed for this site.', 4500); return; }
+  recStream = stream; recChunks = []; recAbort = false;
+  try { mediaRec = new MediaRecorder(stream); }
+  catch(e){ stream.getTracks().forEach(t => t.stop()); recStream = null; toast('This browser cannot record audio.'); return; }
+  mediaRec.ondataavailable = e => { if (e.data && e.data.size) recChunks.push(e.data); };
+  mediaRec.onstop = onRecStop;
+  recT0 = Date.now(); recUI(true); tickRec();
+  mediaRec.start();
+}
+function tickRec(){
+  clearTimeout(recTimer);
+  const s = Math.floor((Date.now() - recT0) / 1000);
+  $('recTime').textContent = fmtDur(s);
+  if (s >= VOICE_MAX_SEC){ $('recHint').textContent = 'That is the longest clip'; stopRec(true); return; }
+  recTimer = setTimeout(tickRec, 250);
+}
+function stopRec(send){
+  if (!mediaRec) return;
+  recAbort = !send;
+  clearTimeout(recTimer); recTimer = null;
+  try { mediaRec.stop(); } catch(e){}
+  recUI(false);
+}
+async function onRecStop(){
+  const chunks = recChunks; recChunks = [];
+  if (recStream){ recStream.getTracks().forEach(t => t.stop()); recStream = null; }
+  mediaRec = null;
+  if (recAbort || !chunks.length) return;
+  try {
+    const blob = new Blob(chunks);
+    const buf = await blob.arrayBuffer();
+    const ac = actx || new (window.AudioContext || window.webkitAudioContext)();
+    const ab = await decodeAudio(ac, buf);
+    if (ab.duration < 0.4){ toast('That was too quick. Try again.'); return; }
+    const mono = toMono(ab);
+    const down = resample(mono, ab.sampleRate, VOICE_RATE);
+    const url = await blobToDataURL(new Blob([encodeWav(down, VOICE_RATE)], { type:'audio/wav' }));
+    if (url.length > 880000){ toast('That clip was a little too long. Try a shorter one.', 4000); return; }
+    pendingAud = url; canSend(); sendNow();
+  } catch(e){ toast('That recording did not work. Try again.'); }
+}
+function decodeAudio(ac, arr){
+  return new Promise((res, rej) => { const p = ac.decodeAudioData(arr, res, rej); if (p && p.then) p.then(res, rej); });
+}
+function toMono(ab){
+  if (ab.numberOfChannels === 1) return ab.getChannelData(0);
+  const a = ab.getChannelData(0), b = ab.getChannelData(1), out = new Float32Array(a.length);
+  for (let i = 0; i < a.length; i++) out[i] = (a[i] + b[i]) / 2;
+  return out;
+}
+function resample(data, from, to){
+  if (from === to) return data;
+  const ratio = from / to, n = Math.floor(data.length / ratio), out = new Float32Array(n);
+  for (let i = 0; i < n; i++){
+    const idx = i * ratio, i0 = Math.floor(idx), i1 = Math.min(i0 + 1, data.length - 1), f = idx - i0;
+    out[i] = data[i0] * (1 - f) + data[i1] * f;
+  }
+  return out;
+}
+function encodeWav(samples, rate){
+  const len = samples.length, buf = new ArrayBuffer(44 + len * 2), view = new DataView(buf);
+  const wr = (o, s) => { for (let i = 0; i < s.length; i++) view.setUint8(o + i, s.charCodeAt(i)); };
+  wr(0, 'RIFF'); view.setUint32(4, 36 + len * 2, true); wr(8, 'WAVE'); wr(12, 'fmt ');
+  view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true);
+  view.setUint32(24, rate, true); view.setUint32(28, rate * 2, true); view.setUint16(32, 2, true); view.setUint16(34, 16, true);
+  wr(36, 'data'); view.setUint32(40, len * 2, true);
+  let o = 44;
+  for (let i = 0; i < len; i++){ let s = Math.max(-1, Math.min(1, samples[i])); view.setInt16(o, s < 0 ? s * 0x8000 : s * 0x7FFF, true); o += 2; }
+  return buf;
+}
+function blobToDataURL(blob){
+  return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(blob); });
+}
+$('micBtn').onclick = startRec;
+$('recStop').onclick = () => stopRec(true);
+$('recCancel').onclick = () => stopRec(false);
 
 /* ---------- keyboard-safe sizing on iPad ---------- */
 const appEl = $('app');
