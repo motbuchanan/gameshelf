@@ -1,5 +1,5 @@
 // Two Cans service worker. CACHE name must match the version badge in index.html.
-const CACHE = 'twocans-v0.1';
+const CACHE = 'twocans-v0.2';
 const CORE = ['./', './index.html', './config.js', './manifest.webmanifest', './icon-180.png', './icon-512.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(CORE)).then(() => self.skipWaiting()));
