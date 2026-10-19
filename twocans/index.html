@@ -213,7 +213,7 @@ header .dot{width:46px;height:46px;font-size:22px}
 
 <script src="config.js"></script>
 <script type="module">
-const VERSION = 'v0.4';
+const VERSION = 'v0.5';
 const VDATE = 'Oct 19 2026';
 const FB_VER = '10.12.2';
 const ROOM = 'main';
@@ -287,7 +287,7 @@ function personByEmail(e){ e = String(e || '').toLowerCase(); return PEOPLE.find
 function personByName(n){ return PEOPLE.find(p => p.name === n) || null; }
 
 /* ---------- backends ---------- */
-// Same shape for both: init, onAuth(cb), signIn(email,pw), signOut(), listen(cb), send({text,img}), unsend(id), markSeen(), onSeen(cb)
+// Same shape for both: init, onAuth(cb), signIn(email,pw), signOut(), listen(cb), send({text,img}), unsend(id), clearAll(), markSeen(), onSeen(cb)
 function demoBackend(){
   const K = 'tc.demo.v1';
   let db = store.get(K, null);
@@ -321,7 +321,8 @@ function demoBackend(){
       db.msgs.push({ id: 'm' + Date.now() + Math.random().toString(36).slice(2,6), from:user.uid, name:me.name, text, img, ts: Date.now() });
       save(); emitMsgs();
     },
-    async unsend(id){ db.msgs = db.msgs.filter(m => !(m.id === id && m.from === user.uid)); save(); emitMsgs(); },
+    async unsend(id){ db.msgs = db.msgs.filter(m => m.id !== id); save(); emitMsgs(); },
+    async clearAll(){ db.msgs = []; save(); emitMsgs(); },
     async markSeen(){ db.seen[user.uid] = Date.now(); save(); emitSeen(); },
     onSeen(cb){ seenCbs.push(cb); setTimeout(emitSeen, 0); return () => {}; }
   };
@@ -367,6 +368,15 @@ async function firebaseBackend(){
       await F.addDoc(msgsCol, { from:user.uid, name: me ? me.name : 'Someone', text, img, ts: F.serverTimestamp() });
     },
     async unsend(id){ await F.deleteDoc(F.doc(msgsCol, id)); },
+    async clearAll(){
+      const snap = await F.getDocs(msgsCol);
+      let batch = F.writeBatch(db), n = 0;
+      for (const d of snap.docs){
+        batch.delete(d.ref);
+        if (++n >= 400){ await batch.commit(); batch = F.writeBatch(db); n = 0; }
+      }
+      if (n) await batch.commit();
+    },
     async markSeen(){ await F.setDoc(F.doc(seenCol, user.uid), { at: F.serverTimestamp() }); },
     onSeen(cb, onErr){
       return F.onSnapshot(seenCol, snap => {
@@ -482,7 +492,7 @@ function msgEl(m){
     row.appendChild(b);
   }
   const meta = document.createElement('div'); meta.className = 'meta'; row.appendChild(meta);
-  if (mine) addLongPress(row, () => askUnsend(m.id));
+  addLongPress(row, () => askRemove(m.id, mine));
   return row;
 }
 let stickBottom = true;
@@ -565,11 +575,12 @@ function addLongPress(el, fn){
   const cancel = () => { if (t){ clearTimeout(t); t = null; } };
   el.addEventListener('pointerup', cancel); el.addEventListener('pointercancel', cancel); el.addEventListener('pointerleave', cancel);
   el.addEventListener('pointermove', e => { if (Math.abs(e.clientX - sx) + Math.abs(e.clientY - sy) > 12) cancel(); });
-  el.addEventListener('contextmenu', e => { if (!e.target.closest('.pic')) e.preventDefault(); });
+  el.addEventListener('contextmenu', e => e.preventDefault());
 }
-function askUnsend(id){
-  openSheet('This message', [
-    { label:'Unsend it', danger:true, fn: () => B.unsend(id).catch(() => toast('Could not unsend. Try again.')) }
+function askRemove(id, mine){
+  openSheet(mine ? 'Your message' : 'This message', [
+    { label: mine ? 'Unsend it' : 'Remove it', danger:true,
+      fn: () => B.unsend(id).catch(() => toast('Could not remove that. Try again.')) }
   ]);
 }
 
@@ -591,7 +602,10 @@ $('sheetClose').onclick = closeSheet;
 $('sheet').addEventListener('click', e => { if (e.target.id === 'sheet') closeSheet(); });
 $('menuBtn').onclick = () => openSheet('Two Cans', [
   { label: soundOn ? 'Turn sound off' : 'Turn sound on', right: soundOn ? 'On' : 'Off', fn: () => { soundOn = !soundOn; store.set('tc.sound', soundOn); toast(soundOn ? 'Sound on' : 'Sound off'); } },
-  { label:'Sign out', danger:true, fn: () => openSheet('Sign out?', [{ label:'Yes, sign out', danger:true, fn: () => B.signOut() }]) }
+  { label:'Clear the whole chat', danger:true, fn: () => openSheet('Clear every message?', [
+      { label:'Yes, clear everything', danger:true, fn: () => { toast('Clearing...'); B.clearAll().then(() => toast('Chat cleared')).catch(() => toast('Could not clear. Try again.')); } }
+    ]) },
+  { label:'Sign out', fn: () => openSheet('Sign out?', [{ label:'Yes, sign out', danger:true, fn: () => B.signOut() }]) }
 ]);
 function openViewer(src){ $('viewImg').src = src; $('viewer').classList.remove('hidden'); }
 $('viewer').onclick = () => { $('viewer').classList.add('hidden'); $('viewImg').removeAttribute('src'); };
