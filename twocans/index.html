@@ -1,1 +1,696 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<title>Two Cans</title>
+<meta name="robots" content="noindex, nofollow">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Two Cans">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#f3ead8">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-180.png">
+<style>
+:root{
+  --paper:#f3ead8; --paper2:#ebdfc6; --ink:#2b2622; --soft:#7a6e62; --line:#d9cbb0;
+  --tin:#b9c0c4; --card:#fffaf0; --dad:#2c6e8a; --kid:#d8742a; --bad:#b4442f;
+  --r:22px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--paper);color:var(--ink);
+  font:18px/1.35 ui-rounded,"SF Pro Rounded",-apple-system,system-ui,"Segoe UI",Roboto,sans-serif;
+  overscroll-behavior:none}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+#app{position:fixed;left:0;right:0;top:0;height:100%;display:flex;flex-direction:column;overflow:hidden}
+.screen{display:none;flex:1;min-height:0;flex-direction:column}
+.screen.on{display:flex}
+.hidden{display:none!important}
 
+/* ---------- setup + login ---------- */
+.center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px;text-align:center}
+.logo{width:120px;height:120px}
+h1{font-size:34px;margin:0;letter-spacing:.5px}
+.sub{color:var(--soft);margin:0;max-width:440px}
+.who{display:flex;gap:18px;flex-wrap:wrap;justify-content:center}
+.whoBtn{width:170px;height:170px;border-radius:28px;background:var(--card);border:3px solid var(--line);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;font-size:24px;font-weight:700;
+  box-shadow:0 4px 0 var(--line)}
+.whoBtn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--line)}
+.dot{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:30px;font-weight:800}
+.pwBox{display:flex;flex-direction:column;gap:12px;width:min(360px,100%)}
+.pwBox input{font:inherit;font-size:22px;padding:16px 18px;border-radius:16px;border:3px solid var(--line);background:#fff;text-align:center}
+.big{padding:16px 22px;border-radius:16px;background:var(--ink);color:#fff;font-weight:700;font-size:20px}
+.big:disabled{opacity:.5}
+.link{color:var(--soft);text-decoration:underline;font-size:16px}
+.err{color:var(--bad);min-height:1.4em;font-weight:600}
+code{background:var(--paper2);padding:2px 6px;border-radius:6px;font-size:15px}
+
+/* ---------- chat ---------- */
+header{display:flex;align-items:center;gap:12px;padding:10px 14px;padding-top:calc(10px + env(safe-area-inset-top));
+  background:var(--paper2);border-bottom:2px solid var(--line);flex:none}
+header .dot{width:46px;height:46px;font-size:22px}
+.hname{font-weight:800;font-size:22px}
+.hstat{font-size:14px;color:var(--soft)}
+.grow{flex:1;min-width:0}
+.badge{font-size:12px;color:var(--soft);padding:6px 8px;border-radius:10px;background:var(--paper)}
+.iconBtn{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center}
+.iconBtn:active{background:var(--line)}
+.iconBtn svg{width:28px;height:28px}
+
+#list{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 12px 8px;
+  display:flex;flex-direction:column;gap:4px}
+.day{align-self:center;margin:14px 0 6px;font-size:13px;font-weight:700;color:var(--soft);
+  background:var(--paper2);padding:4px 12px;border-radius:999px;letter-spacing:.4px;text-transform:uppercase}
+.row{display:flex;flex-direction:column;max-width:78%}
+.row.me{align-self:flex-end;align-items:flex-end}
+.row.them{align-self:flex-start;align-items:flex-start}
+.bub{padding:11px 15px;border-radius:var(--r);color:#fff;white-space:pre-wrap;word-wrap:break-word;overflow-wrap:anywhere;
+  font-size:19px;user-select:text;-webkit-user-select:text}
+.row.me .bub{border-bottom-right-radius:7px}
+.row.them .bub{border-bottom-left-radius:7px}
+.bub.onlyEmoji{background:none!important;font-size:46px;padding:0 4px;line-height:1.1}
+.pic{display:block;border-radius:18px;max-width:min(340px,100%);max-height:340px;margin:2px 0;background:var(--paper2);
+  border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+.meta{font-size:12px;color:var(--soft);margin:2px 8px 6px}
+.row.pending .bub,.row.pending .pic{opacity:.6}
+.seen{font-size:12px;font-weight:700;color:var(--soft);align-self:flex-end;margin:-2px 8px 6px}
+.empty{margin:auto;text-align:center;color:var(--soft);padding:20px}
+
+#newPill{position:absolute;left:50%;transform:translateX(-50%);bottom:110px;background:var(--ink);color:#fff;
+  padding:10px 18px;border-radius:999px;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.25);z-index:5}
+
+.composer{flex:none;background:var(--paper2);border-top:2px solid var(--line);
+  padding:10px 10px calc(10px + env(safe-area-inset-bottom))}
+#attach{display:flex;align-items:center;gap:10px;margin:0 4px 10px}
+#attach img{width:72px;height:72px;object-fit:cover;border-radius:12px;border:3px solid #fff}
+#attach .x{width:40px;height:40px;border-radius:50%;background:var(--card);border:2px solid var(--line);font-weight:800}
+.bar{display:flex;align-items:flex-end;gap:8px}
+#txt{flex:1;min-width:0;font:inherit;font-size:19px;padding:12px 16px;border-radius:24px;border:2px solid var(--line);
+  background:#fff;resize:none;max-height:150px;line-height:1.3;outline:none}
+#txt:focus{border-color:var(--soft)}
+.round{width:52px;height:52px;flex:none;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--card);border:2px solid var(--line)}
+.round svg{width:28px;height:28px}
+.round:active{transform:scale(.94)}
+#sendBtn{background:var(--ink);border-color:var(--ink)}
+#sendBtn svg{fill:#fff}
+#sendBtn:disabled{opacity:.35}
+.quick{display:flex;gap:6px;margin:0 2px 8px;overflow-x:auto}
+.quick button{font-size:26px;width:46px;height:42px;border-radius:12px;background:var(--card);border:2px solid var(--line);flex:none}
+
+/* ---------- overlays ---------- */
+.overlay{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center}
+#viewer{background:rgba(0,0,0,.92);flex-direction:column;gap:12px}
+#viewer img{max-width:96vw;max-height:82vh;border-radius:10px;-webkit-touch-callout:default}
+#viewer p{color:#ddd;margin:0;font-size:15px}
+#sheet{background:rgba(0,0,0,.35);align-items:flex-end}
+.sheetCard{background:var(--card);width:min(520px,100%);border-radius:24px 24px 0 0;padding:18px 18px calc(18px + env(safe-area-inset-bottom));
+  display:flex;flex-direction:column;gap:10px}
+.sheetCard h3{margin:4px 0 8px;font-size:20px}
+.opt{padding:16px;border-radius:14px;background:var(--paper);text-align:left;font-weight:600;display:flex;justify-content:space-between}
+.opt.danger{color:var(--bad)}
+.toast{position:fixed;left:50%;top:calc(76px + env(safe-area-inset-top));transform:translateX(-50%);background:var(--ink);color:#fff;
+  padding:10px 18px;border-radius:12px;z-index:30;font-weight:600;font-size:16px;max-width:90vw;text-align:center}
+@media (orientation:landscape) and (min-width:900px){
+  #list,.composer>*{width:min(860px,100%);margin-left:auto;margin-right:auto}
+  #list{width:100%;padding-left:max(12px,calc(50% - 430px));padding-right:max(12px,calc(50% - 430px))}
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- setup needed -->
+  <section id="scrSetup" class="screen">
+    <div class="center">
+      <svg class="logo" viewBox="0 0 120 120" aria-hidden="true" id="logo1"></svg>
+      <h1>Two Cans</h1>
+      <p class="sub">This copy isn't hooked up yet. Fill in <code>config.js</code> using the setup checklist, then reload.</p>
+      <a class="link" href="?demo">Try the practice version</a>
+    </div>
+  </section>
+
+  <!-- login -->
+  <section id="scrLogin" class="screen">
+    <div class="center">
+      <svg class="logo" viewBox="0 0 120 120" aria-hidden="true" id="logo2"></svg>
+      <h1>Two Cans</h1>
+      <div id="whoStep">
+        <p class="sub" style="margin-bottom:16px">Who's holding this can?</p>
+        <div class="who" id="whoBtns"></div>
+      </div>
+      <div id="pwStep" class="pwBox hidden">
+        <p class="sub" id="pwHi"></p>
+        <input id="pw" type="password" autocomplete="current-password" placeholder="Password">
+        <button class="big" id="goBtn">Open</button>
+        <div class="err" id="loginErr"></div>
+        <button class="link" id="backBtn">Back</button>
+      </div>
+      <p class="sub hidden" id="demoNote" style="font-size:14px">Practice version: any password works, nothing leaves this device.</p>
+    </div>
+  </section>
+
+  <!-- chat -->
+  <section id="scrChat" class="screen" style="position:relative">
+    <header>
+      <div class="dot" id="hDot">G</div>
+      <div class="grow">
+        <div class="hname" id="hName">Garrett</div>
+        <div class="hstat" id="hStat">Two Cans</div>
+      </div>
+      <button class="badge" id="verBadge"></button>
+      <button class="iconBtn" id="menuBtn" aria-label="Menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#2b2622" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+    </header>
+    <div id="list"></div>
+    <button id="newPill" class="hidden">New message</button>
+    <div class="composer">
+      <div class="quick" id="quick"></div>
+      <div id="attach" class="hidden"><img id="attachImg" alt=""><span class="grow" id="attachInfo" style="font-size:15px;color:var(--soft)"></span><button class="x" id="attachX" aria-label="Remove photo">X</button></div>
+      <div class="bar">
+        <button class="round" id="camBtn" aria-label="Take a photo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#2b2622" stroke-width="2" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.6"/></svg>
+        </button>
+        <button class="round" id="libBtn" aria-label="Pick a photo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#2b2622" stroke-width="2" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="14" rx="2"/><path d="M3.5 16l5-5 4 4 3-3 5 5"/><circle cx="16" cy="9" r="1.5"/></svg>
+        </button>
+        <textarea id="txt" rows="1" placeholder="Type or tap the mic" enterkeyhint="send" autocapitalize="sentences" autocorrect="on" spellcheck="true"></textarea>
+        <button class="round" id="sendBtn" aria-label="Send" disabled>
+          <svg viewBox="0 0 24 24"><path d="M3 20.5l18-8.5L3 3.5l2.5 8.5z"/></svg>
+        </button>
+      </div>
+      <input type="file" id="camIn" accept="image/*" capture="environment" hidden>
+      <input type="file" id="libIn" accept="image/*" hidden>
+    </div>
+  </section>
+</div>
+
+<div id="viewer" class="overlay hidden"><img id="viewImg" alt=""><p>Press and hold the picture to save it. Tap anywhere to close.</p></div>
+<div id="sheet" class="overlay hidden">
+  <div class="sheetCard">
+    <h3 id="sheetTitle">Two Cans</h3>
+    <div id="sheetOpts"></div>
+    <button class="opt" id="sheetClose" style="justify-content:center">Close</button>
+  </div>
+</div>
+
+<script type="module">
+const VERSION = 'v0.1';
+const VDATE = 'Oct 19 2026';
+const FB_VER = '10.12.2';
+const ROOM = 'main';
+
+/* ---------- small helpers ---------- */
+const $ = id => document.getElementById(id);
+const store = (() => { const mem = {}; return {
+  get(k, d){ try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch(e){ return k in mem ? mem[k] : d; } },
+  set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){ mem[k] = v; } }
+};})();
+let toastT;
+function toast(msg, ms = 2400){
+  document.querySelectorAll('.toast').forEach(t => t.remove());
+  const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
+  document.body.appendChild(t); clearTimeout(toastT); toastT = setTimeout(() => t.remove(), ms);
+}
+function show(id){ document.querySelectorAll('.screen').forEach(s => s.classList.toggle('on', s.id === id)); }
+function initial(n){ return (n || '?').trim().charAt(0).toUpperCase(); }
+
+function logoSVG(el){
+  el.innerHTML = `
+  <path d="M28 58 Q60 30 92 58" fill="none" stroke="#a0846a" stroke-width="3" stroke-dasharray="2 5" stroke-linecap="round"/>
+  <g transform="translate(10 52)"><rect x="0" y="6" width="34" height="44" rx="4" fill="#b9c0c4"/><ellipse cx="17" cy="6" rx="17" ry="6" fill="#d7dcdf"/>
+   <rect x="0" y="18" width="34" height="16" fill="#2c6e8a"/><ellipse cx="17" cy="50" rx="17" ry="5" fill="#9aa2a7"/></g>
+  <g transform="translate(76 52)"><rect x="0" y="6" width="34" height="44" rx="4" fill="#b9c0c4"/><ellipse cx="17" cy="6" rx="17" ry="6" fill="#d7dcdf"/>
+   <rect x="0" y="18" width="34" height="16" fill="#d8742a"/><ellipse cx="17" cy="50" rx="17" ry="5" fill="#9aa2a7"/></g>`;
+}
+logoSVG($('logo1')); logoSVG($('logo2'));
+$('verBadge').textContent = `${VERSION} · ${VDATE.replace(/ \d{4}$/, '')}`;
+$('verBadge').onclick = () => toast(`Two Cans ${VERSION} · ${VDATE}`);
+
+/* ---------- sound (silent until a tap unlocks it) ---------- */
+let actx = null;
+let soundOn = store.get('tc.sound', true);
+function unlockAudio(){
+  if (actx) return;
+  try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){ actx = null; }
+}
+['pointerdown','keydown'].forEach(ev => window.addEventListener(ev, unlockAudio, { once:true, capture:true }));
+function tone(freqs, dur = .12, gap = .09, vol = .18){
+  if (!soundOn || !actx) return;
+  try {
+    if (actx.state === 'suspended') actx.resume();
+    let t = actx.currentTime + .01;
+    for (const f of freqs){
+      const o = actx.createOscillator(), g = actx.createGain();
+      o.type = 'triangle'; o.frequency.value = f;
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + .01);
+      g.gain.exponentialRampToValueAtTime(.0005, t + dur);
+      o.connect(g).connect(actx.destination); o.start(t); o.stop(t + dur + .02);
+      t += gap;
+    }
+  } catch(e){}
+}
+const sndSend = () => tone([660], .09, .1, .12);
+const sndGet  = () => tone([784, 1047], .16, .11, .2);
+
+/* ---------- config ---------- */
+const DEMO = new URLSearchParams(location.search).has('demo');
+const CFG = window.TWOCANS_CONFIG || null;
+function configReady(){
+  if (!CFG || !CFG.firebase || !Array.isArray(CFG.people) || CFG.people.length < 2) return false;
+  const f = CFG.firebase;
+  if (!f.apiKey || /PASTE/.test(f.apiKey) || !f.projectId || /PASTE/.test(f.projectId)) return false;
+  return CFG.people.every(p => p.email && !/PASTE/.test(p.email));
+}
+const PEOPLE = (DEMO || !configReady())
+  ? [{ name:'Dad', email:'dad@demo', color:'#2c6e8a' }, { name:'Garrett', email:'garrett@demo', color:'#d8742a' }]
+  : CFG.people.map(p => ({ name:p.name, email:String(p.email).toLowerCase().trim(), color:p.color || '#555' }));
+function personByEmail(e){ e = String(e || '').toLowerCase(); return PEOPLE.find(p => p.email === e) || null; }
+function personByName(n){ return PEOPLE.find(p => p.name === n) || null; }
+
+/* ---------- backends ---------- */
+// Same shape for both: init, onAuth(cb), signIn(email,pw), signOut(), listen(cb), send({text,img}), unsend(id), markSeen(), onSeen(cb)
+function demoBackend(){
+  const K = 'tc.demo.v1';
+  let db = store.get(K, null);
+  if (!db){
+    const now = Date.now();
+    db = { msgs: [
+      { id:'d1', from:'u-garrett', name:'Garrett', text:'Good morning Dad', img:'', ts: now - 3600e3 * 20 },
+      { id:'d2', from:'u-dad', name:'Dad', text:'Morning buddy. What are you working on today?', img:'', ts: now - 3600e3 * 19.9 },
+      { id:'d3', from:'u-garrett', name:'Garrett', text:'Fractions and a science thing about volcanoes', img:'', ts: now - 3600e3 * 19.7 },
+      { id:'d4', from:'u-dad', name:'Dad', text:'\u{1F44D}', img:'', ts: now - 3600e3 * 19.6 }
+    ], seen: {} };
+    store.set(K, db);
+  }
+  let user = store.get('tc.demo.user', null);
+  const authCbs = [], msgCbs = [], seenCbs = [];
+  const save = () => store.set(K, db);
+  const emitMsgs = () => { const list = db.msgs.slice().sort((a,b) => a.ts - b.ts).map(m => ({ ...m, pending:false })); msgCbs.forEach(cb => cb(list)); };
+  const emitSeen = () => seenCbs.forEach(cb => cb({ ...db.seen }));
+  const uidFor = email => 'u-' + (personByEmail(email)?.name || 'x').toLowerCase();
+  // second tab / second login on same device stays in sync
+  window.addEventListener('storage', e => { if (e.key && e.key.endsWith(K)) { db = store.get(K, db); emitMsgs(); emitSeen(); } });
+  return {
+    demo: true,
+    async init(){},
+    onAuth(cb){ authCbs.push(cb); setTimeout(() => cb(user), 0); },
+    async signIn(email){ user = { uid: uidFor(email), email }; store.set('tc.demo.user', user); authCbs.forEach(cb => cb(user)); },
+    async signOut(){ user = null; store.set('tc.demo.user', null); authCbs.forEach(cb => cb(null)); },
+    listen(cb){ msgCbs.push(cb); setTimeout(emitMsgs, 0); return () => {}; },
+    async send({ text, img }){
+      const me = personByEmail(user.email);
+      db.msgs.push({ id: 'm' + Date.now() + Math.random().toString(36).slice(2,6), from:user.uid, name:me.name, text, img, ts: Date.now() });
+      save(); emitMsgs();
+    },
+    async unsend(id){ db.msgs = db.msgs.filter(m => !(m.id === id && m.from === user.uid)); save(); emitMsgs(); },
+    async markSeen(){ db.seen[user.uid] = Date.now(); save(); emitSeen(); },
+    onSeen(cb){ seenCbs.push(cb); setTimeout(emitSeen, 0); return () => {}; }
+  };
+}
+
+async function firebaseBackend(){
+  const base = `https://www.gstatic.com/firebasejs/${FB_VER}/`;
+  const [{ initializeApp }, A, F] = await Promise.all([
+    import(base + 'firebase-app.js'), import(base + 'firebase-auth.js'), import(base + 'firebase-firestore.js')
+  ]);
+  const app = initializeApp(CFG.firebase);
+  const auth = A.getAuth(app);
+  let db;
+  try {
+    db = F.initializeFirestore(app, { localCache: F.persistentLocalCache({ tabManager: F.persistentMultipleTabManager() }) });
+  } catch(e){ db = F.getFirestore(app); }
+  if (window.__TWOCANS_EMU){ // test harness only, set by the test runner, never by a URL
+    A.connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings:true });
+    F.connectFirestoreEmulator(db, '127.0.0.1', 8080);
+  }
+  const msgsCol = F.collection(db, 'rooms', ROOM, 'messages');
+  const seenCol = F.collection(db, 'rooms', ROOM, 'seen');
+  let user = null;
+  return {
+    demo: false,
+    async init(){},
+    onAuth(cb){ A.onAuthStateChanged(auth, u => { user = u; cb(u ? { uid:u.uid, email:u.email } : null); }); },
+    async signIn(email, pw){ await A.signInWithEmailAndPassword(auth, email, pw); },
+    async signOut(){ await A.signOut(auth); },
+    listen(cb, onErr){
+      const q = F.query(msgsCol, F.orderBy('ts', 'desc'), F.limit(250));
+      return F.onSnapshot(q, { includeMetadataChanges:true }, snap => {
+        const list = snap.docs.map(d => {
+          const x = d.data({ serverTimestamps:'estimate' });
+          return { id:d.id, from:x.from, name:x.name, text:x.text || '', img:x.img || '',
+                   ts: x.ts && x.ts.toMillis ? x.ts.toMillis() : Date.now(), pending: d.metadata.hasPendingWrites };
+        }).reverse();
+        cb(list);
+      }, onErr);
+    },
+    async send({ text, img }){
+      const me = personByEmail(user.email);
+      await F.addDoc(msgsCol, { from:user.uid, name: me ? me.name : 'Someone', text, img, ts: F.serverTimestamp() });
+    },
+    async unsend(id){ await F.deleteDoc(F.doc(msgsCol, id)); },
+    async markSeen(){ await F.setDoc(F.doc(seenCol, user.uid), { at: F.serverTimestamp() }); },
+    onSeen(cb, onErr){
+      return F.onSnapshot(seenCol, snap => {
+        const m = {}; snap.docs.forEach(d => { const x = d.data({ serverTimestamps:'estimate' }); m[d.id] = x.at && x.at.toMillis ? x.at.toMillis() : 0; });
+        cb(m);
+      }, onErr);
+    }
+  };
+}
+
+/* ---------- app state ---------- */
+let B = null, me = null, other = null, myUid = null;
+let msgs = [], seenMap = {}, unsubs = [], firstLoad = true, lastMarked = 0;
+let pendingImg = null;
+
+/* ---------- login ---------- */
+let chosen = null;
+function renderWho(){
+  const box = $('whoBtns'); box.innerHTML = '';
+  for (const p of PEOPLE){
+    const b = document.createElement('button'); b.className = 'whoBtn';
+    b.innerHTML = `<span class="dot" style="background:${p.color}">${initial(p.name)}</span><span></span>`;
+    b.lastChild.textContent = p.name;
+    b.onclick = () => pickWho(p);
+    box.appendChild(b);
+  }
+  $('demoNote').classList.toggle('hidden', !B.demo);
+}
+function pickWho(p){
+  chosen = p;
+  $('whoStep').classList.add('hidden'); $('pwStep').classList.remove('hidden');
+  $('pwHi').textContent = `Hi ${p.name}. What's the password?`;
+  $('loginErr').textContent = ''; $('pw').value = '';
+  setTimeout(() => $('pw').focus(), 50);
+}
+$('backBtn').onclick = () => { $('pwStep').classList.add('hidden'); $('whoStep').classList.remove('hidden'); };
+async function doLogin(){
+  if (!chosen) return;
+  const pw = $('pw').value;
+  if (!pw && !B.demo){ $('loginErr').textContent = 'Type the password first.'; return; }
+  $('goBtn').disabled = true; $('loginErr').textContent = '';
+  try { await B.signIn(chosen.email, pw); }
+  catch(e){
+    const c = (e && e.code) || '';
+    $('loginErr').textContent =
+      c.includes('too-many-requests') ? 'Too many tries. Wait a few minutes.' :
+      c.includes('network') ? 'No internet right now.' :
+      'That password did not match.';
+  }
+  $('goBtn').disabled = false;
+}
+$('goBtn').onclick = doLogin;
+$('pw').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+/* ---------- auth flow ---------- */
+function stopListening(){ unsubs.forEach(u => { try { u && u(); } catch(e){} }); unsubs = []; }
+function denied(){
+  stopListening();
+  toast('This login is not allowed in Two Cans.', 4000);
+  B.signOut();
+}
+function onUser(u){
+  stopListening();
+  if (!u){ me = null; myUid = null; show('scrLogin'); $('pwStep').classList.add('hidden'); $('whoStep').classList.remove('hidden'); renderWho(); return; }
+  const p = personByEmail(u.email);
+  if (!p){ denied(); return; }
+  me = p; myUid = u.uid;
+  other = PEOPLE.find(x => x !== p) || p;
+  $('hDot').textContent = initial(other.name); $('hDot').style.background = other.color;
+  $('hName').textContent = other.name;
+  $('hStat').textContent = `You are ${me.name}`;
+  msgs = []; seenMap = {}; firstLoad = true; lastMarked = 0;
+  $('list').innerHTML = ''; nodes.clear();
+  show('scrChat');
+  const onErr = err => { if (err && String(err.code).includes('permission')) denied(); else toast('Lost connection. It will catch up.'); };
+  unsubs.push(B.listen(list => { const prev = msgs; msgs = list; render(prev); }, onErr));
+  unsubs.push(B.onSeen(m => { seenMap = m; renderSeen(); }, onErr));
+}
+
+/* ---------- rendering ---------- */
+const nodes = new Map(); // key -> element
+const fmtTime = ms => new Date(ms).toLocaleTimeString([], { hour:'numeric', minute:'2-digit' });
+function dayLabel(ms){
+  const d = new Date(ms), t = new Date(); const y = new Date(); y.setDate(t.getDate() - 1);
+  const same = (a,b) => a.toDateString() === b.toDateString();
+  if (same(d,t)) return 'Today';
+  if (same(d,y)) return 'Yesterday';
+  return d.toLocaleDateString([], { weekday:'long', month:'short', day:'numeric' });
+}
+const EMOJI_ONLY = /^(?:\p{Extended_Pictographic}|‍|️|\s){1,8}$/u;
+function nearBottom(){ const l = $('list'); return l.scrollHeight - l.scrollTop - l.clientHeight < 120; }
+function toBottom(){ const l = $('list'); l.scrollTop = l.scrollHeight; $('newPill').classList.add('hidden'); }
+
+function msgEl(m){
+  const mine = m.from === myUid;
+  const row = document.createElement('div');
+  row.className = 'row ' + (mine ? 'me' : 'them');
+  row.dataset.id = m.id;
+  const who = personByName(m.name);
+  const color = who ? who.color : (mine ? me.color : other.color);
+  if (m.img){
+    const im = document.createElement('img'); im.className = 'pic'; im.alt = 'Photo';
+    im.decoding = 'async'; im.src = m.img;
+    im.onload = () => { if (stickBottom) toBottom(); };
+    im.onclick = () => openViewer(m.img);
+    row.appendChild(im);
+  }
+  if (m.text){
+    const b = document.createElement('div'); b.className = 'bub'; b.style.background = color;
+    b.textContent = m.text;
+    if (!m.img && EMOJI_ONLY.test(m.text)) b.classList.add('onlyEmoji');
+    row.appendChild(b);
+  }
+  const meta = document.createElement('div'); meta.className = 'meta'; row.appendChild(meta);
+  if (mine) addLongPress(row, () => askUnsend(m.id));
+  return row;
+}
+let stickBottom = true;
+function render(prev){
+  const list = $('list');
+  const wasNear = nearBottom();
+  const prevIds = new Set(prev.map(m => m.id));
+  const want = [];
+  let lastDay = '';
+  for (const m of msgs){
+    const dl = dayLabel(m.ts);
+    if (dl !== lastDay){
+      lastDay = dl; const k = 'day:' + dl;
+      let el = nodes.get(k);
+      if (!el){ el = document.createElement('div'); el.className = 'day'; el.textContent = dl; nodes.set(k, el); }
+      want.push(el);
+    }
+    let el = nodes.get(m.id);
+    if (!el){ el = msgEl(m); nodes.set(m.id, el); }
+    el.classList.toggle('pending', !!m.pending);
+    el.querySelector('.meta').textContent = m.pending ? 'Sending...' : fmtTime(m.ts);
+    want.push(el);
+  }
+  const keep = new Set(want);
+  for (const [k, el] of nodes) if (!keep.has(el)){ el.remove(); nodes.delete(k); }
+  // put elements in order without rebuilding
+  let cursor = list.firstElementChild;
+  for (const el of want){
+    if (cursor === el){ cursor = el.nextElementSibling; continue; }
+    list.insertBefore(el, cursor);
+  }
+  const emptyMsg = list.querySelector('.empty');
+  if (!msgs.length){ if (!emptyMsg){ const e = document.createElement('div'); e.className = 'empty'; e.textContent = `Say hi to ${other.name}.`; list.appendChild(e); } }
+  else if (emptyMsg) emptyMsg.remove();
+
+  const fresh = firstLoad ? [] : msgs.filter(m => !prevIds.has(m.id));
+  const freshTheirs = fresh.filter(m => m.from !== myUid);
+  const freshMine = fresh.some(m => m.from === myUid);
+  if (firstLoad || wasNear || freshMine){ stickBottom = true; toBottom(); }
+  else if (freshTheirs.length){ $('newPill').classList.remove('hidden'); }
+  if (freshTheirs.length) sndGet();
+  firstLoad = false;
+  renderSeen();
+  maybeMarkSeen();
+}
+function renderSeen(){
+  document.querySelectorAll('.seen').forEach(e => e.remove());
+  if (!myUid) return;
+  const mine = msgs.filter(m => m.from === myUid && !m.pending);
+  if (!mine.length) return;
+  const last = mine[mine.length - 1];
+  // only show under my message if it is the newest thing in the chat
+  if (msgs[msgs.length - 1].id !== last.id) return;
+  const otherUid = Object.keys(seenMap).find(k => k !== myUid);
+  const at = otherUid ? seenMap[otherUid] : 0;
+  if (at && at >= last.ts - 1500){
+    const s = document.createElement('div'); s.className = 'seen';
+    s.textContent = `${other.name} saw this`;
+    $('list').appendChild(s);
+    if (nearBottom()) toBottom();
+  }
+}
+function maybeMarkSeen(){
+  if (!myUid || document.visibilityState !== 'visible' || !$('scrChat').classList.contains('on')) return;
+  const theirs = msgs.filter(m => m.from !== myUid);
+  if (!theirs.length) return;
+  const newest = theirs[theirs.length - 1].ts;
+  if (newest <= lastMarked) return;
+  lastMarked = newest;
+  B.markSeen().catch(() => { lastMarked = 0; });
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible'){ maybeMarkSeen(); } });
+$('list').addEventListener('scroll', () => { stickBottom = nearBottom(); if (stickBottom) $('newPill').classList.add('hidden'); }, { passive:true });
+$('newPill').onclick = toBottom;
+
+/* ---------- long press to unsend ---------- */
+function addLongPress(el, fn){
+  let t = null, sx = 0, sy = 0;
+  el.addEventListener('pointerdown', e => { sx = e.clientX; sy = e.clientY; t = setTimeout(() => { t = null; fn(); }, 650); });
+  const cancel = () => { if (t){ clearTimeout(t); t = null; } };
+  el.addEventListener('pointerup', cancel); el.addEventListener('pointercancel', cancel); el.addEventListener('pointerleave', cancel);
+  el.addEventListener('pointermove', e => { if (Math.abs(e.clientX - sx) + Math.abs(e.clientY - sy) > 12) cancel(); });
+  el.addEventListener('contextmenu', e => { if (!e.target.closest('.pic')) e.preventDefault(); });
+}
+function askUnsend(id){
+  openSheet('This message', [
+    { label:'Unsend it', danger:true, fn: () => B.unsend(id).catch(() => toast('Could not unsend. Try again.')) }
+  ]);
+}
+
+/* ---------- sheet + viewer ---------- */
+function openSheet(title, opts){
+  $('sheetTitle').textContent = title;
+  const box = $('sheetOpts'); box.innerHTML = '';
+  for (const o of opts){
+    const b = document.createElement('button'); b.className = 'opt' + (o.danger ? ' danger' : '');
+    b.innerHTML = '<span></span><span></span>'; b.firstChild.textContent = o.label; b.lastChild.textContent = o.right || '';
+    b.style.width = '100%'; b.style.marginBottom = '8px';
+    b.onclick = () => { closeSheet(); o.fn(); };
+    box.appendChild(b);
+  }
+  $('sheet').classList.remove('hidden');
+}
+function closeSheet(){ $('sheet').classList.add('hidden'); }
+$('sheetClose').onclick = closeSheet;
+$('sheet').addEventListener('click', e => { if (e.target.id === 'sheet') closeSheet(); });
+$('menuBtn').onclick = () => openSheet('Two Cans', [
+  { label: soundOn ? 'Turn sound off' : 'Turn sound on', right: soundOn ? 'On' : 'Off', fn: () => { soundOn = !soundOn; store.set('tc.sound', soundOn); toast(soundOn ? 'Sound on' : 'Sound off'); } },
+  { label:'Sign out', danger:true, fn: () => openSheet('Sign out?', [{ label:'Yes, sign out', danger:true, fn: () => B.signOut() }]) }
+]);
+function openViewer(src){ $('viewImg').src = src; $('viewer').classList.remove('hidden'); }
+$('viewer').onclick = () => { $('viewer').classList.add('hidden'); $('viewImg').removeAttribute('src'); };
+
+/* ---------- composer ---------- */
+const txt = $('txt');
+function autoGrow(){ txt.style.height = 'auto'; txt.style.height = Math.min(txt.scrollHeight, 150) + 'px'; }
+function canSend(){ $('sendBtn').disabled = !(txt.value.trim() || pendingImg); }
+txt.addEventListener('input', () => { autoGrow(); canSend(); });
+txt.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing){ e.preventDefault(); sendNow(); }
+});
+txt.addEventListener('focus', () => setTimeout(() => { if (stickBottom) toBottom(); }, 300));
+$('sendBtn').onclick = sendNow;
+let sending = false;
+async function sendNow(){
+  const text = txt.value.trim().slice(0, 4000);
+  const img = pendingImg ? pendingImg.data : '';
+  if ((!text && !img) || sending) return;
+  sending = true;
+  txt.value = ''; autoGrow(); clearAttach(); canSend();
+  sndSend(); stickBottom = true;
+  try { await B.send({ text, img }); }
+  catch(e){
+    toast('That one did not send. Check the Wi-Fi and try again.', 4000);
+    if (text && !txt.value){ txt.value = text; autoGrow(); canSend(); }
+  }
+  sending = false;
+}
+// quick replies use old emoji only (shows on older iPads)
+const QUICK = ['\u{1F44D}','❤️','\u{1F602}','\u{1F62E}','\u{1F622}','\u{1F389}','\u{1F44B}','\u{1F60E}'];
+for (const q of QUICK){
+  const b = document.createElement('button'); b.textContent = q;
+  b.onclick = () => { B.send({ text:q, img:'' }).catch(() => toast('That one did not send.')); sndSend(); stickBottom = true; };
+  $('quick').appendChild(b);
+}
+
+/* ---------- photos ---------- */
+$('camBtn').onclick = () => $('camIn').click();
+$('libBtn').onclick = () => $('libIn').click();
+$('camIn').onchange = e => takeFile(e.target);
+$('libIn').onchange = e => takeFile(e.target);
+$('attachX').onclick = () => { clearAttach(); canSend(); };
+function clearAttach(){ pendingImg = null; $('attach').classList.add('hidden'); $('attachImg').removeAttribute('src'); }
+async function takeFile(input){
+  const f = input.files && input.files[0]; input.value = '';
+  if (!f) return;
+  $('attach').classList.remove('hidden'); $('attachInfo').textContent = 'Getting the picture ready...';
+  try {
+    const data = await shrink(f);
+    pendingImg = { data };
+    $('attachImg').src = data;
+    $('attachInfo').textContent = 'Add words if you want, then send.';
+    canSend();
+    txt.focus();
+  } catch(e){
+    clearAttach(); canSend(); toast('That picture did not work. Try another one.');
+  }
+}
+function loadImage(file){
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file); const im = new Image();
+    im.onload = () => { URL.revokeObjectURL(url); res(im); };
+    im.onerror = () => { URL.revokeObjectURL(url); rej(new Error('bad image')); };
+    im.src = url;
+  });
+}
+// Shrinks to fit inside a Firestore message (well under the 1 MB document limit)
+async function shrink(file){
+  const im = await loadImage(file);
+  let max = 1280, q = .72, out = '';
+  for (let tries = 0; tries < 6; tries++){
+    const s = Math.min(1, max / Math.max(im.naturalWidth, im.naturalHeight));
+    const w = Math.max(1, Math.round(im.naturalWidth * s)), h = Math.max(1, Math.round(im.naturalHeight * s));
+    const c = document.createElement('canvas'); c.width = w; c.height = h;
+    const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, w, h); g.drawImage(im, 0, 0, w, h);
+    out = c.toDataURL('image/jpeg', q);
+    if (out.length <= 700000) return out;
+    max = Math.round(max * .8); q = Math.max(.5, q - .06);
+  }
+  if (out.length > 880000) throw new Error('too big');
+  return out;
+}
+
+/* ---------- keyboard-safe sizing on iPad ---------- */
+const appEl = $('app');
+function fit(){
+  const vv = window.visualViewport;
+  const h = vv ? vv.height : window.innerHeight;
+  appEl.style.height = h + 'px';
+  appEl.style.transform = vv && vv.offsetTop ? `translateY(${vv.offsetTop}px)` : '';
+  if (stickBottom && $('scrChat').classList.contains('on')) toBottom();
+}
+if (window.visualViewport){ visualViewport.addEventListener('resize', fit); visualViewport.addEventListener('scroll', fit); }
+window.addEventListener('resize', fit); fit();
+
+/* ---------- service worker ---------- */
+if ('serviceWorker' in navigator && location.protocol === 'https:'){
+  navigator.serviceWorker.register('sw.js', { scope:'./' }).catch(() => {});
+}
+
+/* ---------- start ---------- */
+(async () => {
+  if (!DEMO && !configReady()){ show('scrSetup'); return; }
+  try {
+    B = DEMO ? demoBackend() : await firebaseBackend();
+    await B.init();
+  } catch(e){
+    show('scrSetup');
+    document.querySelector('#scrSetup .sub').textContent = 'Could not reach the message service. Check the internet and reload.';
+    return;
+  }
+  window.__twocans = { get backend(){ return B; }, version: VERSION };
+  B.onAuth(onUser);
+})();
+</script>
+</body>
+</html>
