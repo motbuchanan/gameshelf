@@ -447,7 +447,7 @@ header .dot{width:46px;height:46px;font-size:22px}
 
 <script src="config.js"></script>
 <script type="module">
-const VERSION = 'v0.15';
+const VERSION = 'v0.16';
 const VDATE = 'Oct 20 2026';
 const FB_VER = '10.12.2';
 const ROOM = 'main';
@@ -728,6 +728,14 @@ function onUser(u){
 /* ---------- rendering ---------- */
 const nodes = new Map(); // key -> element
 const fmtTime = ms => new Date(ms).toLocaleTimeString([], { hour:'numeric', minute:'2-digit' });
+function fmtSeenAt(ms){
+  const d = new Date(ms), now = new Date();
+  const t = fmtTime(ms);
+  if (d.toDateString() === now.toDateString()) return t;
+  const y = new Date(now); y.setDate(now.getDate() - 1);
+  if (d.toDateString() === y.toDateString()) return 'yesterday at ' + t;
+  return d.toLocaleDateString([], { month:'short', day:'numeric' }) + ' at ' + t;
+}
 function dayLabel(ms){
   const d = new Date(ms), t = new Date(); const y = new Date(); y.setDate(t.getDate() - 1);
   const same = (a,b) => a.toDateString() === b.toDateString();
@@ -847,7 +855,7 @@ function renderSeen(){
   const at = otherUid ? seenMap[otherUid] : 0;
   if (at && at >= last.ts - 1500){
     const s = document.createElement('div'); s.className = 'seen';
-    s.textContent = `${other.name} saw this`;
+    s.textContent = `${other.name} saw this · ${fmtSeenAt(at)}`;
     $('list').appendChild(s);
     if (nearBottom()) toBottom();
   }
