@@ -928,14 +928,14 @@ svg .charg{will-change:transform}
 <div id="toast"></div>
 <button id="homeBtn" onclick="goHome()" aria-label="Back to Garage">🏠</button>
 <button id="ellyBtn" onclick="openEllyHelp()" aria-label="Ask Elly for help"></button>
-<div id="vbadge">v1.48 · Oct 20</div>
+<div id="vbadge">v1.49 · Oct 22</div>
 
 <script>
 'use strict';
 /* ============ UTILS ============ */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const VERSION='v1.48 · Oct 20';
+const VERSION='v1.49 · Oct 22';
 const RM=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -1265,7 +1265,7 @@ function modal(html){ $('#mbox').innerHTML=html; $('#modal').classList.add('on')
 function closeModal(){ $('#modal').classList.remove('on'); }
 $('#modal').addEventListener('click',e=>{ if(e.target.id==='modal'){ closeModal();
   // safety: if we dismissed a gate/coach modal onto a game screen with nothing running, return to the hub
-  const live=(typeof MJ!=='undefined'&&MJ.on)||(typeof QZ!=='undefined'&&QZ.on)||(typeof GIG!=='undefined'&&GIG.on)||(typeof LESSON!=='undefined'&&LESSON.on);
+  const live=(typeof MJ!=='undefined'&&MJ&&MJ.on)||(typeof QZ!=='undefined'&&QZ&&QZ.on)||(typeof GIG!=='undefined'&&GIG&&GIG.on)||(typeof LESSON!=='undefined'&&LESSON&&LESSON.on); /* v1.49: QZ is null between quizzes; tapping outside a card used to throw */
   const onGameScr=['scr-mj','scr-quiz','scr-lesson'].some(id=>{const el=$('#'+id);return el&&el.classList.contains('on');});
   if(onGameScr&&!live){ renderHub(); show('scr-hub'); }
 } });
@@ -20135,11 +20135,21 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
   function stepDone(id,silent){ var h=hwS(), q=QUESTS[id]; h.quest[id]=qStep(id)+1; sv(); try{ good(); }catch(e){}
     if(h.quest[id]>=q.steps.length){ setTimeout(function(){ arrive(id); },silent?50:650); return; }
     if(!silent)tst('✓ '+NKBY[id].name+'’s quest: step '+h.quest[id]+' of 3 done!'); }
+  function findSpots(k){ try{ var got=(S.gx&&S.gx.day&&Array.isArray(S.gx.got))?S.gx.got:[]; return (window.gxSpots?window.gxSpots():[]).filter(function(sp){ return sp.k===k&&got.indexOf(sp.i)<0; }); }catch(e){ return []; } }
+  function findArt(k,sz){ try{ var G=window.BQ&&window.BQ.GATHER; if(G&&G[k])return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 44 44" style="display:block;margin:0 auto">'+G[k].art+'</svg>'; }catch(e){} return ''; }
+  function showFind(k){ try{ var tw=document.getElementById('scr-town'); if(!tw||!tw.classList.contains('on')){ if(typeof openTown==='function')openTown(); }
+    setTimeout(function(){ var sp=findSpots(k)[0]; if(!sp){ tst('None left today. Ask Fern!'); return; } if(window.twCam)twCam.centerOn(sp.x,sp.y,true);
+      setTimeout(function(){ var el=document.querySelector('#twStage .tw-gath[data-i="'+sp.i+'"]'); if(el)el.classList.add('hw-target'); tst('There it is! Tap the glowing '+findName(k,1)+'.'); },450); },400); }catch(e){} }
   function stepBtn(id,st){
     if(st.t==='talk')return '<button class="btn wide" onclick="'+cb(function(){ closeModal(); try{ citizenCard(st.who); }catch(e){} })+'">💬 Go talk to '+esc(citName(st.who))+'</button>';
     if(st.t==='visit')return '<button class="btn wide" onclick="'+cb(function(){ closeModal(); goShow(st.go); })+'">🗺️ Show me '+esc(st.where)+'</button>';
     if(st.t==='ask')return '<button class="btn wide" onclick="'+cb(function(){ askStep(id); })+'">❓ Answer the question</button>';
-    if(st.t==='find'){ var have=pocketN(st.k); return have>=st.n?'<button class="btn wide" onclick="'+cb(function(){ S.gx.pockets[st.k]-=st.n; sv(); closeModal(); stepDone(id); setTimeout(function(){ if(!arrived(id))openQuest(id); },700); })+'">🎒 Give '+st.n+' '+esc(findName(st.k,st.n))+'</button>':'<div class="sub center">You have '+have+' of '+st.n+'. Finds sparkle on the map every day. Tap them to collect.</div><button class="btn wide ghost" onclick="closeModal()">I’ll go look</button>'; }
+    if(st.t==='find'){ var have=pocketN(st.k); if(have>=st.n)return '<button class="btn wide" onclick="'+cb(function(){ S.gx.pockets[st.k]-=st.n; sv(); closeModal(); stepDone(id); setTimeout(function(){ if(!arrived(id))openQuest(id); },700); })+'">🎒 Give '+st.n+' '+esc(findName(st.k,st.n))+'</button>';
+      var left=findSpots(st.k).length, need=st.n-have; var fa=findArt(st.k,44);
+      var h='<div class="card center" style="padding:8px">'+fa+'<div style="font-weight:800">You have '+have+' of '+st.n+' '+esc(findName(st.k,2))+'</div><div class="sub" style="margin:2px 0 0">Finds are the little glowing circles on the town map. Tap one to pick it up. It goes in your POCKETS.</div></div>';
+      if(left)h+='<button class="btn wide" onclick="'+cb(function(){ closeModal(); showFind(st.k); })+'">🔎 Show me '+(findName(st.k,1).match(/^[aeiou]/i)?'an ':'a ')+esc(findName(st.k,1))+' on the map</button>';
+      if(left<need)h+='<div class="sub center">'+(left?'Only '+left+' more '+esc(findName(st.k,left))+' on the map today.':'No more '+esc(findName(st.k,2))+' on the map today.')+'</div><button class="btn wide ghost" onclick="'+cb(function(){ S.gx=S.gx||{}; S.gx.pockets=S.gx.pockets||{}; S.gx.pockets[st.k]=(S.gx.pockets[st.k]||0)+(need-left); sv(); tst('Fern gave you '+(need-left)+' '+findName(st.k,need-left)+' from her Nature Journal!'); closeModal(); setTimeout(function(){ openQuest(id); },300); })+'">🌿 Ask Fern for '+(need-left)+' spare'+(need-left===1?'':'s')+'</button>';
+      return h+'<button class="btn wide ghost" onclick="closeModal()">Later</button>'; }
     if(st.t==='candy'){ var c=candyTotal(); return c>=st.n?'<button class="btn wide" onclick="'+cb(function(){ spendCandy(st.n); closeModal(); stepDone(id); })+'">🍬 Give '+st.n+' candy</button>':'<div class="sub center">You have '+c+' candy. Trick-or-treat at the apartment buildings first.</div><button class="btn wide ghost" onclick="closeModal()">Okay</button>'; }
     return ''; }
   function openQuest(id){ tap(); var n=NKBY[id], q=QUESTS[id]; if(!n||!q)return;
@@ -20779,6 +20789,7 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
 
   (function(){ var st=document.createElement('style'); st.textContent=''
     +'.tw-fac.hw-locked .tw-fb{filter:saturate(.35) brightness(.7)}'
+    +'.tw-gath.hw-target{box-shadow:0 0 0 4px #ffd158,0 0 22px 8px #ffd158;animation:hwTarget .8s ease-in-out infinite alternate}@keyframes hwTarget{0%{transform:translate(-50%,-50%) scale(1)}100%{transform:translate(-50%,-50%) scale(1.35)}}'
     +'.hw-porch{position:absolute;top:2px;left:4px;font-size:16px;animation:hwGlow 1.4s ease-in-out infinite}'
     +'@keyframes hwGlow{0%,100%{filter:drop-shadow(0 0 2px #ffb347)}50%{filter:drop-shadow(0 0 8px #ffd158)}}'
     +'.hw-ttb{border:2px solid #ff8a1e;text-align:left;font-size:14px}'
