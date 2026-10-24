@@ -5,10 +5,16 @@ uploaded against what the last chat thought it shipped. Full build notes stay in
 (in the NOTES zip, never uploaded).
 
 ## Current
-- **v1.54 · Oct 24 2026** (sw cache `measureup-v1-54`). Contains v1.51, v1.52 and v1.53. Live URL: https://motbuchanan.github.io/gameshelf/measureup/
+- **v1.55 · Oct 24 2026** (sw cache `measureup-v1-55`). Contains v1.51 through v1.54. Live URL: https://motbuchanan.github.io/gameshelf/measureup/
 - Files in the repo folder: `index.html`, `sw.js`, `manifest.json`, `ROADMAP.md` (this file, new in v1.51).
 
 ## What shipped lately
+- **v1.55 Robot abilities 2 + Constellation Connect (Oct 24).** Bot Garage: PAINT (pick a color; area by squares or
+  rows x columns, perimeter all the way around, cans = area / coverage rounded UP; L-shaped rooms at the top tier) and
+  LIFT (read a dial scale with unlabeled ticks, add a load against what the robot can carry, pounds and ounces). The
+  robot has a paint-roller pose and a lifting pose. Vega's dome: CONSTELLATION CONNECT (stars where grid lines cross:
+  Big Dipper, Cassiopeia, Cygnus, Orion, Leo; "2 right and 1 down from the last star" at Coordinates 6+) and DESIGN YOUR
+  OWN (up to 8 stars, named, kept in the dome). Pro bands to 20 for Tens & Ones (place value), Skip Counting, Volume.
 - **v1.54 Starlight Row (Oct 24), Garrett's own ideas.** VEGA (a cat, Arizona) and the STARLIGHT DOME: the Star Organ, whose
   8 pipes are telescopes pointed at the planets (short pipe = high note, Mercury to Neptune), Play for Vega (3 challenges),
   4 Sky Shows (Day & Night, Moon Phases, Planet Lineup, Seasons: predict, work the model, quick check, Star Log), and Vega's
@@ -49,12 +55,11 @@ uploaded against what the last chat thought it shipped. Full build notes stay in
 - One fixed plot of land, camera-driven; no pointer capture; three currencies; crash-proof art; the red error box stays.
 
 ## Open queue (in order)
-1. Deploy v1.54 (includes v1.51-v1.53). Device check: news card, build + name a robot, one dig, one dish, Play for Vega,
-   one Sky Show, the Star Quest row in the To-Do.
-2. Grown-ups report in about a week. Coach's Pick, the Clock Quest and the new Space/robot work should show up in it.
-3. v1.55 ROBOT ABILITIES 2 + STARS: Paint (area and perimeter: paint a room, how many cans), Lift (weight: pounds and
-   ounces, balance scale), Constellation Connect in the dome (dot-to-dot on a coordinate grid, then design your own), and
-   Pro bands for whatever the report shows near 12 (likely Place Value, Skip Counting, Odd/Even, Doubles, Volume).
-4. v1.56 WORDS + CODE: Word Hoard depth, Robot Workshop chapters 6-7 with Garrett's own robot as a second bot, Grammar.
-5. v1.57 LIFE SKILLS: History wing, Money & Life skills (a robot Shop ability: budgets, change, unit prices).
+1. Deploy v1.55 (includes v1.51-v1.54). Device check: news card, install Paint and Lift, one paint job, one lift job,
+   one constellation, design one.
+2. Grown-ups report in about a week: Coordinates, Area, Perimeter, Measurement should move; check what else is near 12.
+3. v1.56 WORDS + CODE: Word Hoard depth, Robot Workshop chapters 6-7 with Garrett's own robot as a second bot, Grammar.
+   Pro bands from the report (likely Odd & Even, Doubling & Halving, Fractions follow-ups).
+4. v1.57 LIFE SKILLS: History wing, Money & Life skills (a robot Shop ability: budgets, change, unit prices).
+5. Ideas parked: a robot Garden ability (plant needs, measuring growth), Vega's planet postcards (distances, big numbers).
 6. Tuning after play: Pro proof forceL bands, Pro Soundcheck batch size (11) and maxQ (4), tier toast, To-Do row set.
