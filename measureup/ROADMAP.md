@@ -5,10 +5,17 @@ uploaded against what the last chat thought it shipped. Full build notes stay in
 (in the NOTES zip, never uploaded).
 
 ## Current
-- **v1.52 · Oct 23 2026** (sw cache `measureup-v1-52`). Live URL: https://motbuchanan.github.io/gameshelf/measureup/
+- **v1.53 · Oct 23 2026** (sw cache `measureup-v1-53`). Contains v1.51 and v1.52. Live URL: https://motbuchanan.github.io/gameshelf/measureup/
 - Files in the repo folder: `index.html`, `sw.js`, `manifest.json`, `ROADMAP.md` (this file, new in v1.51).
 
 ## What shipped lately
+- **v1.53 Coach's Pick + Clock Quest (Oct 23), built from Garrett's Grown-ups report.** Weekly Checkup unblocked (3 unplaced
+  concepts kept it from ever running; now up to 5 unplaced are asked first and count as placed). Coach's Pick: Elly picks 3
+  low or long-unplayed concepts a day, one-tap Jam each, all three = a gold record; Hank's jobs and Dot's cases favor the picks
+  3 to 1. Clock push (Clocks & Time was Lvl 2): a clock-face Big Job, a "read the long hand as minutes" mistake kind for Dot,
+  and Tock's 5-step Clock Quest ending in the Golden Pocket Watch. Pro bands (to Lvl 20) for the five he had capped: Rounding,
+  Negative Numbers, Days & Months, Money & Coins, Greater & Less Than (15 more Elly lessons). News card, guides, To-Do rows,
+  Grown-ups card.
 - **v1.52 Think Tank + Labs (Oct 23).** Four new neighbors on two new streets at the bottom of the map. THINK TANK: Hank's
   Big Jobs (generated 2-3 step word problems, one step at a time, 5 a day + overtime) and Dot's Detective Desk (Spot the
   Mistake: one planted error per case, find it then fix it; 13 kinds of mistake to collect for the Golden Magnifier).
@@ -35,10 +42,10 @@ uploaded against what the last chat thought it shipped. Full build notes stay in
 - One fixed plot of land, camera-driven; no pointer capture; three currencies; crash-proof art; the red error box stays.
 
 ## Open queue (in order)
-1. Deploy v1.52 (includes v1.51), then Garrett's device check (news cards, TO DO, Hazel's row, a Pro audition, Big Jobs,
-   a Detective case, one experiment).
-2. Mot sends the Grown-ups' report (tonight). Then v1.53: Pro bands for the remaining 35 concepts (Numbers & Counting 14,
-   Measuring/Time/Money 9, Shapes & Space 7, Data 3, Coding, Conducting), ordered by the report.
+1. Deploy v1.53 (includes v1.51 + v1.52), then Garrett's device check (news card, Coach's Pick, Clock Quest step 1, a Weekly
+   Checkup, a Rounding question above Lvl 12).
+2. Next Grown-ups report in about a week: did the picks lift the never-practiced concepts, did Clocks move? Then Pro bands for
+   whatever he caps next (Probability is at 12 and next in line), plus the remaining 30 concepts as they near 12.
 3. Then Word Hoard depth + Robot chapters 6-7, Grammar, History wing, Money/Life skills; more experiments (circuits,
    sound, shadows, weather) in the labs.
 4. Tuning after play: Pro proof forceL bands, Pro Soundcheck batch size (11) and maxQ (4), tier toast, To-Do row set.
