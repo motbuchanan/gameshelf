@@ -5,10 +5,16 @@ uploaded against what the last chat thought it shipped. Full build notes stay in
 (in the NOTES zip, never uploaded).
 
 ## Current
-- **v1.56 · Oct 24 2026** (sw cache `measureup-v1-56`). Contains v1.51 through v1.55. Live URL: https://motbuchanan.github.io/gameshelf/measureup/
+- **v1.57 · Oct 24 2026** (sw cache `measureup-v1-57`). Contains v1.51 through v1.56. Live URL: https://motbuchanan.github.io/gameshelf/measureup/
 - Files in the repo folder: `index.html`, `sw.js`, `manifest.json`, `ROADMAP.md` (this file, new in v1.51).
 
 ## What shipped lately
+- **v1.57 The Invention Bench (Oct 24).** The Idea Notebook comes to life: every idea Garrett picks after an Ai Co. job
+  becomes a blueprint at Ada's Invention Bench. He builds it in 3 steps (count the bolts = multiplication, cut the bar into
+  equal pieces = division, measure the frame = feet / yards / inches) and the part goes ON his robot (show up to 4).
+  18 parts. Three change the jobs: Tow Trailer (Lift: one more box, 1.5x the load), Metal Detector (Dig: how many squares
+  away after a miss), Timer Screen (Dishes: a clock face on the timer step). The rest pay +2 coins on that ability's jobs.
+  Ideas he typed himself become custom parts (a gold gear badge, +1 coin on any job).
 - **v1.56 Ai Co. Helper Bots + the Candy Bank (Oct 24), Garrett's ideas.** His robot company AI CO. ("for the ai
   corporation"): two helper abilities, DISHES (load the rack in rows x columns, share cups equally with remainders,
   dishwasher timer) and CLEAN UP (sort a messy room into bins, then read the robot's bar graph, line plot, median/mean).
@@ -64,11 +70,10 @@ uploaded against what the last chat thought it shipped. Full build notes stay in
 - One fixed plot of land, camera-driven; no pointer capture; three currencies; crash-proof art; the red error box stays.
 
 ## Open queue (in order)
-1. Deploy v1.56 (includes v1.51-v1.55). Device check: both news cards, the Candy Bank numbers (fix the all-time total
+1. Deploy v1.57 (includes v1.51-v1.56). Device check: both news cards, the Candy Bank numbers (fix the all-time total
    in Grown-ups if the estimate is off), install Dishes + Clean Up, one Ai Co. job end to end.
 2. Halloween night (Oct 31): Count Your Haul with the real bag; Grand Finals + Monster Bash open by themselves.
 3. Grown-ups report in about a week: Rows & Columns, Line Plots, Mean & Median, Coordinates, Area should move.
-4. v1.57 WORDS + CODE: Word Hoard depth, Robot Workshop chapters 6-7 with Garrett's robot, Grammar; Ai Co. upgrades from
-   the Idea Notebook (build the ideas he picks as real robot parts).
-5. v1.58 LIFE SKILLS: History wing, Money & Life skills (Ai Co. pricing jobs, a robot Shop ability).
+4. v1.58 WORDS + CODE: Word Hoard depth, Robot Workshop chapters 6-7 with Garrett's robot, Grammar.
+5. v1.59 LIFE SKILLS: History wing, Money & Life skills (Ai Co. pricing jobs, a robot Shop ability).
 6. Tuning after play: Pro proof forceL bands, Pro Soundcheck batch size (11) and maxQ (4), tier toast, To-Do row set.
