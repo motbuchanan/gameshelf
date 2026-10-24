@@ -5,10 +5,17 @@ uploaded against what the last chat thought it shipped. Full build notes stay in
 (in the NOTES zip, never uploaded).
 
 ## Current
-- **v1.53 · Oct 23 2026** (sw cache `measureup-v1-53`). Contains v1.51 and v1.52. Live URL: https://motbuchanan.github.io/gameshelf/measureup/
+- **v1.54 · Oct 24 2026** (sw cache `measureup-v1-54`). Contains v1.51, v1.52 and v1.53. Live URL: https://motbuchanan.github.io/gameshelf/measureup/
 - Files in the repo folder: `index.html`, `sw.js`, `manifest.json`, `ROADMAP.md` (this file, new in v1.51).
 
 ## What shipped lately
+- **v1.54 Starlight Row (Oct 24), Garrett's own ideas.** VEGA (a cat, Arizona) and the STARLIGHT DOME: the Star Organ, whose
+  8 pipes are telescopes pointed at the planets (short pipe = high note, Mercury to Neptune), Play for Vega (3 challenges),
+  4 Sky Shows (Day & Night, Moon Phases, Planet Lineup, Seasons: predict, work the model, quick check, Star Log), and Vega's
+  5-step Star Quest (Pocket Telescope + Star Antenna). New concept Space & Sky. THE BOT GARAGE: build and name your own
+  robot (4 heads, 4 eyes, 4 bodies, wheels/treads/legs/hover, antennas, 9 paints, 6 light colors), install abilities:
+  DIG (treasure on a coordinate grid, 3 tiers) and COOK (scale a recipe, measure cups, oven timer; 8 dishes). Gold paint at
+  10 robot jobs. Probability Pro bands to Lvl 20. Fix: v1.52 keepsakes, Lab Coat and Golden Magnifier now register.
 - **v1.53 Coach's Pick + Clock Quest (Oct 23), built from Garrett's Grown-ups report.** Weekly Checkup unblocked (3 unplaced
   concepts kept it from ever running; now up to 5 unplaced are asked first and count as placed). Coach's Pick: Elly picks 3
   low or long-unplayed concepts a day, one-tap Jam each, all three = a gold record; Hank's jobs and Dot's cases favor the picks
@@ -42,10 +49,12 @@ uploaded against what the last chat thought it shipped. Full build notes stay in
 - One fixed plot of land, camera-driven; no pointer capture; three currencies; crash-proof art; the red error box stays.
 
 ## Open queue (in order)
-1. Deploy v1.53 (includes v1.51 + v1.52), then Garrett's device check (news card, Coach's Pick, Clock Quest step 1, a Weekly
-   Checkup, a Rounding question above Lvl 12).
-2. Next Grown-ups report in about a week: did the picks lift the never-practiced concepts, did Clocks move? Then Pro bands for
-   whatever he caps next (Probability is at 12 and next in line), plus the remaining 30 concepts as they near 12.
-3. Then Word Hoard depth + Robot chapters 6-7, Grammar, History wing, Money/Life skills; more experiments (circuits,
-   sound, shadows, weather) in the labs.
-4. Tuning after play: Pro proof forceL bands, Pro Soundcheck batch size (11) and maxQ (4), tier toast, To-Do row set.
+1. Deploy v1.54 (includes v1.51-v1.53). Device check: news card, build + name a robot, one dig, one dish, Play for Vega,
+   one Sky Show, the Star Quest row in the To-Do.
+2. Grown-ups report in about a week. Coach's Pick, the Clock Quest and the new Space/robot work should show up in it.
+3. v1.55 ROBOT ABILITIES 2 + STARS: Paint (area and perimeter: paint a room, how many cans), Lift (weight: pounds and
+   ounces, balance scale), Constellation Connect in the dome (dot-to-dot on a coordinate grid, then design your own), and
+   Pro bands for whatever the report shows near 12 (likely Place Value, Skip Counting, Odd/Even, Doubles, Volume).
+4. v1.56 WORDS + CODE: Word Hoard depth, Robot Workshop chapters 6-7 with Garrett's own robot as a second bot, Grammar.
+5. v1.57 LIFE SKILLS: History wing, Money & Life skills (a robot Shop ability: budgets, change, unit prices).
+6. Tuning after play: Pro proof forceL bands, Pro Soundcheck batch size (11) and maxQ (4), tier toast, To-Do row set.

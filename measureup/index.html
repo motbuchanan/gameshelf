@@ -928,14 +928,14 @@ svg .charg{will-change:transform}
 <div id="toast"></div>
 <button id="homeBtn" onclick="goHome()" aria-label="Back to Garage">🏠</button>
 <button id="ellyBtn" onclick="openEllyHelp()" aria-label="Ask Elly for help"></button>
-<div id="vbadge">v1.53 · Oct 23</div>
+<div id="vbadge">v1.54 · Oct 24</div>
 
 <script>
 'use strict';
 /* ============ UTILS ============ */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const VERSION='v1.53 · Oct 23';
+const VERSION='v1.54 · Oct 24';
 const RM=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -19395,7 +19395,9 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
     var lv=f.ks[id]||0, got=[];
     while(KS[lv]&&f.pts[id]>=KS[lv].at){ var t=KS[lv]; var iid=ksId(t.k,id); S.inv[iid]=(S.inv[iid]||0)+1; got.push(BYID[iid]); lv++; }
     if(got.length){ f.ks[id]=lv; sv(); party();
-      setTimeout(function(){ try{ var it=got[got.length-1]; modal('<div class="center">'+csvg(id,72)+'<h2 style="margin:4px 0 0">🎀 A keepsake from '+esc(nm(id))+'!</h2></div><div class="center"><div class="st-art" style="margin:6px auto;width:96px;height:96px">'+art(it.id,88)+'</div><b>'+esc(it.name)+'</b></div><div class="speak center"><b>'+esc(nm(id))+':</b> '+(lv>=3?'You are my best friend in the whole town. I want you to have this.':(lv===2?'You keep helping me out. Here, I made this just for you!':'Thanks for being such a good neighbor. This is for you!'))+'</div><div class="sub center">One of a kind. It is in your Stuff.</div><button class="btn wide" onclick="closeModal()">Thank you!</button>'); }catch(e){} },650); }
+      /* v1.54: wait until no card / quiz / Soundcheck is open, so a keepsake never replaces an experiment or a job mid-way */
+      setTimeout(function ksShow(){ try{ var mb=document.getElementById('modal'), sc=document.querySelector('.scr.on'); if((mb&&mb.classList.contains('on'))||(sc&&sc.id==='scr-quiz')||(window.__pl&&__pl.run&&__pl.run())){ setTimeout(ksShow,2000); return; } }catch(_){}
+        try{ var it=got[got.length-1]; if(!it)return; modal('<div class="center">'+csvg(id,72)+'<h2 style="margin:4px 0 0">🎀 A keepsake from '+esc(nm(id))+'!</h2></div><div class="center"><div class="st-art" style="margin:6px auto;width:96px;height:96px">'+art(it.id,88)+'</div><b>'+esc(it.name)+'</b></div><div class="speak center"><b>'+esc(nm(id))+':</b> '+(lv>=3?'You are my best friend in the whole town. I want you to have this.':(lv===2?'You keep helping me out. Here, I made this just for you!':'Thanks for being such a good neighbor. This is for you!'))+'</div><div class="sub center">One of a kind. It is in your Stuff.</div><button class="btn wide" onclick="closeModal()">Thank you!</button>'); }catch(e){} },650); }
     return got.length; }
   window.frAdd=addFriend; window.frPts=pts;
   /* one personal chore a day per neighbor */
@@ -19498,7 +19500,7 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
   /* ---------- What's New (one card for v1.41-v1.43) ---------- */
   (function(){ if(typeof openTown!=='function')return; var _ot=openTown; window.openTown=openTown=function(){ var r=_ot.apply(this,arguments);
     try{ if(S.flags&&S.flags.introDone&&!S.flags.seen143){ S.flags.seen143=true; sv();
-      setTimeout(function(){ try{ var m=document.getElementById('modal'); if(m&&m.classList.contains('on'))return;
+      var tries=0; setTimeout(function w143(){ try{ var m=document.getElementById('modal'); if(m&&m.classList.contains('on')){ if(++tries<30)setTimeout(w143,2000); return; } /* v1.54: wait instead of dropping the card */
         modal('<div class="center"><div class="row" style="justify-content:center;gap:6px">'+csvg('fern',50)+csvg('gus',50)+csvg('piper',50)+'</div><h2>✨ The neighbors moved in!</h2></div>'
           +'<div class="card" style="text-align:left"><b>🏠 Visit anyone at home.</b> <span class="sub" style="display:inline;margin:0">Knock on doors in the apartment buildings. Give gifts that match their TASTE, do their daily chore, and earn keepsakes: a photo, a plushie, a golden statue.</span></div>'
           +'<div class="card" style="text-align:left"><b>✨ Finds around town.</b> <span class="sub" style="display:inline;margin:0">Acorns, leaves, shells and rare treasures sparkle on the map every day. Tap to collect. Craft them into special things at Piper’s Craft Shed.</span></div>'
@@ -19548,7 +19550,7 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
     {id:'sh',   n:'Shapes & Space', e:'🔷', base:2, c:['shape','solid','compose','xform','coord','compass','angle']},
     {id:'da',   n:'Data & Graphs', e:'📊', base:2, c:['graph','lineplot','stats']},
     {id:'cs',   n:'Coding & Logic', e:'🤖', base:2, c:['code']}, /* v1.50: QG.code is registered by the Robot Workshop block */
-    {id:'sci',  n:'Science', e:'🔬', base:2, c:['sci']}, /* v1.52: QG.sci is registered by the Science Lab block */
+    {id:'sci',  n:'Science', e:'🔬', base:2, c:['sci','space']}, /* v1.52: QG.sci (Science Lab block); v1.54: QG.space (Starlight Dome) */
     {id:'mu',   n:'Music', e:'🎵', base:2, c:['conduct']}
   ];
   /* any concept registered later lands in a catch-all strand */
@@ -19693,7 +19695,7 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
   try{ window.startSoundcheck=startSoundcheck=function(){ sittingStart(null); }; }catch(e){}
 
   /* ---------- Weekly Checkup ---------- */
-  function checkupDue(){ var p=PL(); if(pending().length>5)return false; /* v1.53: was any pending; 3 unplaced concepts blocked Garrett's checkup forever */ if(p.ckDay===dk())return false; if(!p.ckLast)return true; var n=dAgo(p.ckLast); return n!==null&&n>=CK_DAYS; }
+  function checkupDue(){ var p=PL(); if(pending().length>8)return false; /* v1.53: was any pending (3 unplaced concepts blocked Garrett's checkup forever); v1.54: 8, so each new subject (Science, Space) can't block it again. Unplaced ones are asked first. */ if(p.ckDay===dk())return false; if(!p.ckLast)return true; var n=dAgo(p.ckLast); return n!==null&&n>=CK_DAYS; }
   function checkupPick(){ var p=PL(); var all=allConcepts().map(function(c){ var k=p.last[c]||(p.placed[c]!=='prior'?p.placed[c]:null); var n=dAgo(k); return {c:c,age:(n===null?9999:n),r:Math.random()}; });
     all.sort(function(a,b){ return b.age-a.age||a.r-b.r; }); var pend=pending(); var list=pend.concat(all.map(function(x){ return x.c; }).filter(function(c){ return pend.indexOf(c)<0; })); return list.slice(0,Math.max(CK_N,pend.length)); }
   function checkupStart(){ var p=PL(); var list=checkupPick(), ix=0, res=[];
@@ -22808,6 +22810,9 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
   try{ DEF.flags.seen152=false; }catch(e){}
 
   /* ---------- helpers ---------- */
+  /* v1.54: the Town catalog is private to its own script; the exposed handles are TOWN_*. Without these aliases the
+     v1.52 keepsakes and Fizz's Lab Coat never registered (a silent ReferenceError in a try). */
+  var ART=window.TOWN_ART||{}, BYID=window.TOWN_BYID||{}, ITEMS=window.TOWN_ITEMS||[];
   function dk(d){ d=d||new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
   function sv(){ try{ if(typeof save==='function')save(); }catch(e){} }
   function tap(){ try{ if(typeof sTap==='function')sTap(); }catch(e){} }
@@ -23784,6 +23789,648 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
         +'<div class="sub" style="margin:4px 0 0">Weekly Checkup: no longer blocked by a few unplaced concepts; unplaced ones are asked first and count as placed. Pro levels (to 20) now also cover '+esc(proAdded.map(cname).join(', '))+'.</div></div>'); }catch(e){} return r; }; })();
 
   window.__v53={V:V,coach:coach,needScore:needScore,practicedToday:practicedToday,CQ:CQ,cqCheck:cqCheck,coachCheck:coachCheck,GENS:GENS,LESSONS:LESSONS,proAdded:proAdded,jam:jam};
+})();
+</script>
+<script>
+/* ================= v1.54 · STARLIGHT ROW: VEGA'S STAR ORGAN + THE BOT GARAGE (Oct 24 2026) =================
+   Garrett's own ideas (Oct 24, via Mot):
+     1. "A new citizen that plays a pipe organ and works at the planetarium, and the pipes are telescopes."
+        -> VEGA (a cat who can see in the dark, from Arizona) runs the STARLIGHT DOME: the Star Organ (8 telescope pipes,
+           one per planet; longer pipe = lower note), four Sky Shows (Day & Night, Moon Phases, Planet Lineup, Seasons),
+           the Star Log, and Vega's 5-step Star Quest (Pocket Telescope + the Star Antenna for his robot).
+           New concept 'space' (Space & Sky) in the Science strand, with QG.space, so placement, checkups, Coach's Pick,
+           duels and trick-or-treat can ask it. Ohio Science: sun/moon/star patterns (gr 1), Earth's rotation and
+           day/night, moon phases, seasons and the solar system (gr 1-5); sound and pitch (gr 1 physical science).
+     2. "Build a robot and customize its look and what it can do, like dig or cook food."
+        -> THE BOT GARAGE: build and name your own robot (head, eyes, body, wheels/treads/legs/hover, antenna, colors),
+           then install ABILITIES. Dig (shovel arm): treasure hunt on a coordinate grid (Ohio 5.G.1-2, directions and
+           relative moves). Cook (whisk arm): scale a recipe (ratio), measure with cups (fractions), set the oven timer
+           (elapsed time). Gold paint after 10 robot jobs; the Star Antenna from Vega's quest.
+   Also: Probability gets Pro bands (it was capped at 12), and the v1.52 keepsake/Lab Coat/Golden Magnifier catalog bug is
+   fixed in src152/p1.js (TOWN_* aliases).
+   Every new screen: MU_NEWS card (seen154), G guides, To-Do rows, Grown-Ups card. State: S.v54. Debug: window.__v54.
+   No em dashes, no Unicode 13+ emoji, literal hex in SVG attributes. */
+(function(){
+  if(typeof document==='undefined')return;
+  if(typeof QG==='undefined'||typeof CONCEPT_NAMES==='undefined'||typeof S==='undefined')return;
+  try{ DEF.flags.seen154=false; }catch(e){}
+  var ART=window.TOWN_ART||{}, BYID=window.TOWN_BYID||{}, ITEMS=window.TOWN_ITEMS||[];
+
+  /* ---------- helpers ---------- */
+  function dk(d){ d=d||new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
+  function sv(){ try{ if(typeof save==='function')save(); }catch(e){} }
+  function tap(){ try{ if(typeof sTap==='function')sTap(); }catch(e){} }
+  function tst(m){ try{ if(typeof toast==='function')toast(m); }catch(e){} }
+  function good(){ try{ sCorrect(1); }catch(e){} }
+  function bad(){ try{ sWrong(); }catch(e){} }
+  function party(n){ try{ confetti(n||30); }catch(e){} }
+  function fan(){ try{ sFanfare(); }catch(e){} }
+  function notes(n){ try{ addNotes(n); }catch(e){} }
+  function coins(n){ try{ if(window.addCoins)window.addCoins(n); }catch(e){} }
+  function packs(n,why){ try{ if(window.__cc&&__cc.addPacks)__cc.addPacks(n,why); }catch(e){} }
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function modalOn(){ var m=document.getElementById('modal'); return !!(m&&m.classList.contains('on')); }
+  function adj(c,ok){ try{ if(c&&CONCEPT_NAMES[c]&&typeof adjust==='function')adjust(c,!!ok,false,false); }catch(e){} }
+  function L(c){ try{ return Math.max(1,Math.floor(lvlOf(c))); }catch(e){ return 1; } }
+  function R(a,b){ return a+Math.floor(Math.random()*(b-a+1)); }
+  function pk(a){ return a[Math.floor(Math.random()*a.length)]; }
+  function shuf(a){ a=a.slice(); for(var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=a[i]; a[i]=a[j]; a[j]=t; } return a; }
+  function uniq4(ans,wrongs){ var out=[String(ans)]; wrongs.forEach(function(w){ w=String(w); if(out.length<4&&out.indexOf(w)<0&&!/NaN|undefined|Infinity/.test(w))out.push(w); }); return shuf(out); }
+  function hm(t){ t=((t%720)+720)%720; var h=Math.floor(t/60), m=t%60; return (h===0?12:h)+':'+(m<10?'0':'')+m; }
+  function tone2(f,d,t,v,w){ try{ if(typeof tone==='function')tone(f,d,t||'sine',v==null?0.2:v,w||0); }catch(e){} }
+  var CB=[]; function cb(fn){ CB.push(fn); if(CB.length>3000)CB=CB.slice(-1500); return '__v54cb('+(CB.length-1)+')'; }
+  window.__v54cb=function(i){ try{ var f=CB[i]; if(f)f(); }catch(e){ try{ __muErr('v154',e); }catch(_){} } };
+  function scr(id,scoreId,bodyId,hint){ try{ zScr(id,scoreId,bodyId,hint); }catch(e){} try{ show(id); }catch(e){} var s=document.getElementById(id); if(s)s.scrollTop=0; }
+  function meet(id){ try{ if(!S.friends)S.friends={met:{}}; if(!S.friends.met)S.friends.met={}; if(!S.friends.met[id]){ S.friends.met[id]=true; sv(); } }catch(e){} }
+  function fr(id,n){ try{ if(typeof frAdd==='function')frAdd(id,n); }catch(e){} }
+  function ada(sz){ try{ if(typeof window.citSvg==='function'){ var s=citSvg('ada',sz); if(s)return s; } }catch(e){} return '<span style="font-size:'+Math.round(sz*.6)+'px">🦝</span>'; }
+  /* wait until no card, quiz or Soundcheck is open, then show (used for the big reward cards) */
+  function busyNow(){ try{ if(modalOn())return true; var sc=document.querySelector('.scr.on'); if(sc&&sc.id==='scr-quiz')return true; if(window.__pl&&__pl.run&&__pl.run())return true; }catch(e){} return false; }
+  function whenFree(fn,first){ setTimeout(function go(){ if(busyNow()){ setTimeout(go,2000); return; } try{ fn(); }catch(e){} },first==null?1300:first); }
+
+  /* ---------- state ---------- */
+  function V(){ if(!S.v54||typeof S.v54!=='object')S.v54={}; var v=S.v54;
+    if(!v.bot||typeof v.bot!=='object')v.bot={}; var b=v.bot;
+    ['head','eyes','body','move','ant','col','acc'].forEach(function(k){ if(typeof b[k]!=='number')b[k]=0; }); if(typeof b.name!=='string')b.name=''; if(!b.mods||typeof b.mods!=='object')b.mods={}; if(typeof b.built!=='string')b.built='';
+    if(!v.dig||typeof v.dig!=='object')v.dig={}; var d=v.dig; if(typeof d.total!=='number')d.total=0; if(typeof d.day!=='string')d.day=''; if(!d.found||typeof d.found!=='object')d.found={}; if(typeof d.runs!=='number')d.runs=0;
+    if(!v.cook||typeof v.cook!=='object')v.cook={}; var c=v.cook; if(typeof c.day!=='string')c.day=''; if(!c.dishes||typeof c.dishes!=='object')c.dishes={}; if(typeof c.total!=='number')c.total=0;
+    if(!v.sky||typeof v.sky!=='object')v.sky={}; var s=v.sky; if(!s.shows||typeof s.shows!=='object')s.shows={}; if(!s.day||typeof s.day!=='object')s.day={}; if(!Array.isArray(s.log))s.log=[]; if(typeof s.organ!=='number')s.organ=0; if(typeof s.organDay!=='string')s.organDay='';
+    if(!v.sq||typeof v.sq!=='object')v.sq={}; var q=v.sq; if(typeof q.step!=='number')q.step=0; if(typeof q.done!=='string')q.done=''; if(typeof q.pending!=='number')q.pending=0;
+    if(typeof v.jobs!=='number')v.jobs=0; if(!v.seen||typeof v.seen!=='object')v.seen={};
+    return v; }
+
+  /* ================= VEGA ================= */
+  var VEGA={id:'vega',name:'Vega',title:'Star Organist',job:'Planetarium Organist',place:'the Starlight Dome',col:'#8a6ad8',st:'Arizona',wing:'science',
+    bio:'Vega is a cat who can see in the dark, so of course she works at night. She plays the Star Organ at the Starlight Dome: every pipe is also a telescope, and every telescope points at a planet. When she plays a song, the whole sky lights up.',
+    lines:['Longer pipe, lower note. Bigger planet, longer walk around the Sun.','The Moon does not make light. It borrows it from the Sun, like a mirror.','My dream: an organ so big that one pipe can see all the way to another galaxy.'],
+    likes:['telescopes','night skies'],been:['Lowell Observatory in Flagstaff','the Grand Canyon at night'],
+    clues:['Pluto was discovered at an observatory in my state, in 1930.','The Grand Canyon is in my state.','My capital is Phoenix.']};
+  function vegaArt(){ return '<ellipse cx="50" cy="96" rx="22" ry="3" fill="#00000033"/>'
+    +'<path d="M70 84 Q92 80 86 60 Q84 54 80 58 Q84 74 66 78 Z" fill="#6c4fc0"/>'
+    +'<ellipse cx="50" cy="70" rx="21" ry="22" fill="#8a6ad8"/><ellipse cx="50" cy="74" rx="12" ry="15" fill="#c9b8ff"/>'
+    +'<rect x="34" y="86" width="10" height="9" rx="4" fill="#6c4fc0"/><rect x="56" y="86" width="10" height="9" rx="4" fill="#6c4fc0"/>'
+    +'<path d="M20 34 L26 12 L38 26 Z M80 34 L74 12 L62 26 Z" fill="#8a6ad8"/><path d="M24 30 L27 18 L34 26 Z M76 30 L73 18 L66 26 Z" fill="#ff9ab0"/>'
+    +'<circle cx="50" cy="38" r="22" fill="#8a6ad8"/>'
+    +'<ellipse cx="41" cy="36" rx="7" ry="8" fill="#ffd158"/><ellipse cx="59" cy="36" rx="7" ry="8" fill="#ffd158"/><ellipse cx="41" cy="37" rx="2.4" ry="6" fill="#1d1636"/><ellipse cx="59" cy="37" rx="2.4" ry="6" fill="#1d1636"/><circle cx="43" cy="33" r="1.5" fill="#fff"/><circle cx="61" cy="33" r="1.5" fill="#fff"/>'
+    +'<path d="M47 45 L53 45 L50 48 Z" fill="#ff9ab0"/><path d="M50 48 Q46 52 43 50 M50 48 Q54 52 57 50" stroke="#2b2350" stroke-width="1.5" fill="none" stroke-linecap="round"/>'
+    +'<path d="M28 44 H16 M28 48 H17 M72 44 H84 M72 48 H83" stroke="#c9b8ff" stroke-width="1.2"/>'
+    +'<path d="M22 72 L14 58" stroke="#c9a24c" stroke-width="5" stroke-linecap="round"/><rect x="6" y="48" width="12" height="14" rx="3" fill="#c9a24c" transform="rotate(-30 12 55)"/><circle cx="9" cy="50" r="4" fill="#7ad9ff" opacity=".8"/>'
+    +'<path d="M36 20 l2 -5 l2 5 l5 0 l-4 3 l2 5 l-5 -3 l-5 3 l2 -5 l-4 -3 Z" fill="#ffd158" transform="translate(-4 -6) scale(.8)"/>'; }
+  function vegaSvg(sz){ return '<svg width="'+(sz||60)+'" height="'+(sz||60)+'" viewBox="0 0 100 100">'+vegaArt()+'</svg>'; }
+  window.v54Vega=vegaSvg;
+  (function(){
+    var _cn=window.citName; if(typeof _cn==='function'){ window.citName=citName=function(id){ if(id==='vega')return VEGA.name; return _cn.apply(this,arguments); }; }
+    var _cs=window.citSvg; if(typeof _cs==='function'){ window.citSvg=citSvg=function(id,sz){ if(id==='vega')return vegaSvg(sz); return _cs.apply(this,arguments); }; }
+    var _os=window.opSvg; if(typeof _os==='function'){ window.opSvg=opSvg=function(id,sz){ if(id==='vega')return vegaSvg(sz); return _os.apply(this,arguments); }; }
+    var _cj=window.citJob; if(typeof _cj==='function'){ window.citJob=citJob=function(id){ if(id==='vega')return {job:VEGA.job,place:VEGA.place,wing:VEGA.wing}; return _cj.apply(this,arguments); }; }
+    var _ck=window.citKind; if(typeof _ck==='function'){ window.citKind=citKind=function(id){ if(id==='vega')return 'extra'; return _ck.apply(this,arguments); }; }
+    var _cf=window.citFacts; if(typeof _cf==='function'){ window.citFacts=citFacts=function(id){ if(id!=='vega')return _cf.apply(this,arguments); var n=VEGA;
+      return [{k:'job',t:n.job+' at '+n.place,via:'always'},{k:'hook',t:n.bio,via:'talk'},{k:'likes',t:'Into '+n.likes.join(' and ')+'.',via:'talk'},{k:'dream',t:'“'+n.lines[2]+'”',via:'talk'},{k:'home',t:'Home state: '+n.st+'. Lives at Starlight Tower.',via:'wow'}]; }; }
+    var _fl=window.friendsList; if(typeof _fl==='function'){ window.friendsList=friendsList=function(){ var out=_fl.apply(this,arguments); try{ out.forEach(function(p){ if(p.id==='vega')p.svg=function(sz){ return vegaSvg(sz); }; }); }catch(e){} return out; }; }
+    if(typeof MEMBER_JOB==='object'&&MEMBER_JOB)MEMBER_JOB.vega={job:VEGA.job,place:VEGA.place,wing:VEGA.wing};
+    try{ if(window.NB_TASTE_FORCE)NB_TASTE_FORCE.vega='cool'; }catch(e){}
+  })();
+  function moveIn(){ var n=VEGA;
+    if(typeof CITIZENS_EXTRA!=='undefined'&&!CITIZENS_EXTRA.some(function(e){ return e.id==='vega'; }))
+      CITIZENS_EXTRA.push({id:'vega',name:n.name,title:n.title,job:n.job,place:n.place,wing:n.wing,cfg:{body:'round',col:n.col,eyes:'happy',extra:'none',acc:'none',name:''},bio:n.bio,lines:n.lines,v54:true});
+    if(typeof MEMBER_HOME!=='undefined'&&!MEMBER_HOME.vega)MEMBER_HOME.vega={st:n.st,been:n.been,likes:n.likes,hook:n.bio,clues:n.clues,manor:true}; }
+  moveIn();
+  (function(){ if(typeof load==='function'){ var _l=load; window.load=load=function(){ var r=_l.apply(this,arguments); try{ V(); moveIn(); }catch(e){} return r; }; } })();
+  try{ if(typeof window.NB_ADD_BUILDING==='function')window.NB_ADD_BUILDING({id:'starlight',nm:'Starlight Tower',region:'Starlight Row',part:-1,col:'#8a6ad8',tg:'STARS',host:'vega',blurb:'A tall, skinny tower with a telescope on the roof. Vega lives at the top, closest to the stars.',ids:function(){ return ['vega']; }}); }catch(e){}
+  window.v54House=function(){ tap(); try{ closeModal(); }catch(e){} try{ openBuilding('starlight'); }catch(e){ tst('Starlight Tower is opening soon.'); } };
+  try{ (window.KEEPSAKES||[]).forEach(function(t){ var iid='ks_'+t.k+'_vega'; if(BYID[iid])return; var o={id:iid,name:t.name+'Vega',cat:'keepsake',zone:t.zone,style:t.style,p:{},grp:'keepsake',keepsake:true,who:'vega'};
+    BYID[iid]=o; addItem(o); try{ Object.defineProperty(ART,iid,{configurable:true,enumerable:false,get:function(){ var v=''; try{ v=t.draw('vega'); }catch(e){} Object.defineProperty(ART,iid,{value:v,configurable:true,writable:true}); return v; }}); }catch(e){} }); }catch(e){}
+  function addItem(o){ BYID[o.id]=o; if(ITEMS.indexOf(o)>=0)return; var ti=-1; for(var i=0;i<ITEMS.length;i++){ if(ITEMS[i].cat==='theme'){ ti=i; break; } } if(ti<0)ITEMS.push(o); else ITEMS.splice(ti,0,o); }
+  /* Vega's card joins the Bright Ideas page in the Card Club */
+  try{ var CX=window.__cc; if(CX&&CX.CARDS&&CX.SETS&&CX.POOL&&!CX.CARDS.vega){
+    CX.CARDS.vega={id:'vega',kind:'crew',band:'ideas',bandNm:'Bright Ideas',mid:'vega',mname:'Vega',draw:function(mid,sz){ return vegaSvg(sz); },skill:'space',tier:2,slot:4,nm:function(){ return 'Vega'; },sub:function(){ return 'Star Organist · Starlight Dome'; }};
+    CX.POOL.push('vega'); var set=CX.SETS.filter(function(s){ return s.id==='ideas'; })[0]; if(set&&set.ids.indexOf('vega')<0){ set.ids.push('vega'); set.sub='Big Jobs, Detective Desk, Labs, the Starlight Dome'; } } }catch(e){}
+
+  /* ---------- SPACE & SKY is a real concept ---------- */
+  try{ if(!CONCEPT_NAMES.space)CONCEPT_NAMES.space='Space & Sky'; if(DEF&&DEF.skills&&!DEF.skills.space)DEF.skills.space=1; if(S.skills&&!S.skills.space)S.skills.space=1; }catch(e){}
+
+  /* ================= THE ROBOT (parametric art) ================= */
+  var BCOLS=['#5bbfe6','#ff5d5d','#46c46a','#ffc83a','#8a6ad8','#ff8a1e','#ff7ad9','#c0c8d8','#ffd158'];
+  var BCOL_NM=['Sky blue','Fire red','Leaf green','Sunny yellow','Galaxy purple','Rocket orange','Bubblegum','Silver','GOLD'];
+  var ACOLS=['#7ad9ff','#ffd158','#7dff8a','#ff7ad9','#ffffff','#ff5d5d'];
+  var HEADS=['Box','Dome','TV','Ball'], EYES=['Dots','Visor','Big eyes','One eye'], BODIES=['Box','Round','Barrel','Tank'], MOVES=['Wheels','Treads','Legs','Hover'], ANTS=['None','Ball','Dish','Star'];
+  function shade(hex,f){ var n=parseInt(hex.slice(1),16), r=Math.min(255,Math.round((n>>16)*f)), g=Math.min(255,Math.round(((n>>8)&255)*f)), b=Math.min(255,Math.round((n&255)*f)); return '#'+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1); }
+  function botArt(b,pose){ b=b||V().bot; var c=BCOLS[b.col]||BCOLS[0], d=shade(c,.68), lt=shade(c,1.18), a=ACOLS[b.acc]||ACOLS[0], ink='#1d1636', s='';
+    s+='<ellipse cx="50" cy="97" rx="24" ry="2.6" fill="#00000033"/>';
+    /* moves */
+    if(b.move===1)s+='<rect x="25" y="80" width="50" height="15" rx="7.5" fill="#2b2350"/><circle cx="33" cy="87.5" r="4.5" fill="#6a6578"/><circle cx="44" cy="87.5" r="4.5" fill="#6a6578"/><circle cx="56" cy="87.5" r="4.5" fill="#6a6578"/><circle cx="67" cy="87.5" r="4.5" fill="#6a6578"/>';
+    else if(b.move===2)s+='<rect x="37" y="78" width="7" height="12" fill="'+d+'"/><rect x="56" y="78" width="7" height="12" fill="'+d+'"/><rect x="31" y="88" width="16" height="7" rx="3.5" fill="#2b2350"/><rect x="53" y="88" width="16" height="7" rx="3.5" fill="#2b2350"/>';
+    else if(b.move===3)s+='<ellipse cx="50" cy="90" rx="20" ry="5" fill="'+a+'" opacity=".45"/><path class="v54flame" d="M42 82 L46 95 L50 85 L54 95 L58 82 Z" fill="#ffc83a"/><path d="M45 82 L48 90 L50 84 L52 90 L55 82 Z" fill="#ff8a1e"/>';
+    else s+='<circle cx="37" cy="87" r="8.5" fill="#2b2350"/><circle cx="37" cy="87" r="3.6" fill="#c0c8d8"/><circle cx="63" cy="87" r="8.5" fill="#2b2350"/><circle cx="63" cy="87" r="3.6" fill="#c0c8d8"/>';
+    /* arms + tools (Dig = shovel on the left, Cook = whisk on the right) */
+    var dig=!!b.mods.dig, cook=!!b.mods.cook, la=pose==='dig'?'M31 60 L16 76':'M31 60 L18 73', ra=pose==='cook'?'M69 60 L84 66':'M69 60 L82 73';
+    s+='<path d="'+la+'" stroke="'+d+'" stroke-width="5" stroke-linecap="round"/><path d="'+ra+'" stroke="'+d+'" stroke-width="5" stroke-linecap="round"/>';
+    if(dig)s+=(pose==='dig'?'<g transform="translate(-2 4)">':'<g>')+'<path d="M18 73 L12 84" stroke="#8a5630" stroke-width="3" stroke-linecap="round"/><path d="M6 82 Q11 96 17 84 Z" fill="#c0c8d8" stroke="#8f97a8" stroke-width="1"/></g>';
+    else s+='<circle cx="'+(pose==='dig'?16:18)+'" cy="'+(pose==='dig'?76:73)+'" r="4.2" fill="'+d+'"/>';
+    if(cook){ var wx=pose==='cook'?84:82, wy=pose==='cook'?66:73; s+='<path d="M'+wx+' '+wy+' L'+(wx+5)+' '+(wy+8)+'" stroke="#8f97a8" stroke-width="2.5" stroke-linecap="round"/><ellipse cx="'+(wx+8)+'" cy="'+(wy+14)+'" rx="4" ry="7" fill="none" stroke="#c0c8d8" stroke-width="1.6"/><ellipse cx="'+(wx+8)+'" cy="'+(wy+14)+'" rx="1.6" ry="7" fill="none" stroke="#c0c8d8" stroke-width="1.4"/>'; }
+    else s+='<circle cx="'+(pose==='cook'?84:82)+'" cy="'+(pose==='cook'?66:73)+'" r="4.2" fill="'+d+'"/>';
+    /* body */
+    if(b.body===1)s+='<ellipse cx="50" cy="66" rx="22" ry="17" fill="'+c+'"/><ellipse cx="44" cy="60" rx="8" ry="4" fill="'+lt+'" opacity=".6"/>';
+    else if(b.body===2)s+='<rect x="32" y="48" width="36" height="34" rx="14" fill="'+c+'"/><rect x="36" y="52" width="8" height="24" rx="4" fill="'+lt+'" opacity=".5"/>';
+    else if(b.body===3)s+='<path d="M29 49 H71 L66 82 H34 Z" fill="'+c+'"/><path d="M33 53 H40 L38 76 H35 Z" fill="'+lt+'" opacity=".5"/>';
+    else s+='<rect x="30" y="49" width="40" height="33" rx="5" fill="'+c+'"/><rect x="33" y="52" width="9" height="26" rx="3" fill="'+lt+'" opacity=".45"/>';
+    s+='<rect x="42" y="58" width="16" height="11" rx="2.5" fill="'+ink+'"/><circle class="v54blink" cx="46.5" cy="63.5" r="2" fill="'+a+'"/><circle cx="53.5" cy="63.5" r="2" fill="#ffc83a"/><rect x="44" y="73" width="12" height="2.4" rx="1.2" fill="'+d+'"/>';
+    /* neck + head */
+    s+='<rect x="45" y="43" width="10" height="7" fill="'+d+'"/>';
+    var top=18;
+    if(b.head===1){ s+='<path d="M30 46 V34 A20 20 0 0 1 70 34 V46 Z" fill="'+c+'"/><path d="M36 32 A14 14 0 0 1 48 20" stroke="'+lt+'" stroke-width="3" fill="none" opacity=".6"/>'; top=14; }
+    else if(b.head===2){ s+='<rect x="27" y="20" width="46" height="26" rx="8" fill="'+c+'"/><circle cx="24" cy="33" r="3.5" fill="'+d+'"/><circle cx="76" cy="33" r="3.5" fill="'+d+'"/>'; top=20; }
+    else if(b.head===3){ s+='<circle cx="50" cy="31" r="16" fill="'+c+'"/><circle cx="44" cy="24" r="4" fill="'+lt+'" opacity=".6"/>'; top=15; }
+    else { s+='<rect x="32" y="18" width="36" height="28" rx="5" fill="'+c+'"/><rect x="35" y="21" width="8" height="5" rx="2" fill="'+lt+'" opacity=".5"/>'; top=18; }
+    /* eyes */
+    if(b.eyes===1)s+='<rect x="36" y="27" width="28" height="9" rx="4.5" fill="'+a+'"/><rect x="39" y="29" width="9" height="2.6" rx="1.3" fill="#ffffff" opacity=".8"/>';
+    else if(b.eyes===2)s+='<circle cx="42" cy="31" r="6.5" fill="#fff"/><circle cx="58" cy="31" r="6.5" fill="#fff"/><circle cx="43" cy="32" r="3.4" fill="'+ink+'"/><circle cx="59" cy="32" r="3.4" fill="'+ink+'"/><circle cx="44" cy="30.5" r="1.2" fill="#fff"/><circle cx="60" cy="30.5" r="1.2" fill="#fff"/>';
+    else if(b.eyes===3)s+='<circle cx="50" cy="31" r="8" fill="#fff"/><circle cx="50" cy="31" r="4.4" fill="'+a+'"/><circle cx="50" cy="31" r="2.2" fill="'+ink+'"/><circle cx="52" cy="29" r="1.2" fill="#fff"/>';
+    else s+='<circle cx="43" cy="31" r="3.6" fill="'+ink+'"/><circle cx="57" cy="31" r="3.6" fill="'+ink+'"/><circle cx="44.2" cy="29.8" r="1.2" fill="#fff"/><circle cx="58.2" cy="29.8" r="1.2" fill="#fff"/>';
+    s+='<rect x="44" y="39" width="12" height="3" rx="1.5" fill="'+d+'"/>';
+    /* antenna */
+    if(b.ant===1)s+='<path d="M50 '+top+' V'+(top-9)+'" stroke="'+d+'" stroke-width="2"/><circle class="v54blink" cx="50" cy="'+(top-11)+'" r="3.5" fill="#ff5d5d"/>';
+    else if(b.ant===2)s+='<path d="M50 '+top+' V'+(top-6)+'" stroke="'+d+'" stroke-width="2"/><path d="M41 '+(top-12)+' Q50 '+(top-2)+' 59 '+(top-12)+'" fill="'+lt+'" stroke="'+d+'" stroke-width="1.5"/><circle cx="50" cy="'+(top-9)+'" r="1.6" fill="'+d+'"/>';
+    else if(b.ant===3)s+='<path d="M50 '+top+' V'+(top-8)+'" stroke="#c9a24c" stroke-width="2"/><path transform="translate(50 '+(top-13)+')" d="M0 -6 L1.8 -1.9 L6 -1.9 L2.6 0.9 L3.8 5.2 L0 2.6 L-3.8 5.2 L-2.6 0.9 L-6 -1.9 L-1.8 -1.9 Z" fill="#ffd158"/>';
+    return s; }
+  function botSvg(sz,b,pose){ return '<svg width="'+(sz||80)+'" height="'+(sz||80)+'" viewBox="0 0 100 100">'+botArt(b,pose)+'</svg>'; }
+  window.v54Bot=function(sz){ return botSvg(sz); };
+  function botName(){ var n=V().bot.name; return n||'your robot'; }
+  function botNameC(){ var n=V().bot.name; return n||'Your robot'; }
+  function goldOK(){ return V().jobs>=10; }
+  function starOK(){ return !!V().sq.done; }
+
+  /* ================= THE BOT GARAGE ================= */
+  var MODS=[
+    {id:'dig',ic:'⛏️',nm:'Dig',tool:'Shovel arm',what:'Dig for buried treasure. Read a grid point like (4, 2), drive there, dig!',teach:'coordinates on a grid',go:function(){ digStart(); }},
+    {id:'cook',ic:'🍳',nm:'Cook',tool:'Whisk arm',what:'Cook real recipes: make them bigger, measure with cups, and set the oven timer.',teach:'recipes, fractions and time',go:function(){ cookStart(); }}];
+  var SOON=[{ic:'🎨',nm:'Paint',what:'Paint walls and floors (area)'},{ic:'🏋️',nm:'Lift',what:'Carry and weigh heavy things'}];
+  var BG={tab:'head'};
+  window.botHub=function(){ tap(); meet('ada'); try{ closeModal(); }catch(e){} scr('scr-bot','botScore','botBody','The Bot Garage. Build your own robot, pick how it looks, then install abilities: Dig and Cook.'); botRender(); };
+  function optRow(key,names,lockFn){ var b=V().bot;
+    return '<div class="v54opts">'+names.map(function(nm,i){ var lock=lockFn&&lockFn(i); var t=JSON.parse(JSON.stringify(b)); t[key]=i;
+      return '<button class="v54opt'+(b[key]===i?' sel':'')+(lock?' lock':'')+'" onclick="'+cb(function(){ if(lock){ bad(); tst(lock); return; } tap(); V().bot[key]=i; sv(); botRender(); })+'">'+botSvg(54,t)+'<span>'+esc(nm)+(lock?' 🔒':'')+'</span></button>'; }).join('')+'</div>'; }
+  function colRow(key,cols,names,lockFn){ var b=V().bot;
+    return '<div class="v54cols">'+cols.map(function(c,i){ var lock=lockFn&&lockFn(i);
+      return '<button class="v54col'+(b[key]===i?' sel':'')+'" title="'+esc(names?names[i]:'')+'" style="background:'+c+(lock?';opacity:.35':'')+'" onclick="'+cb(function(){ if(lock){ bad(); tst(lock); return; } tap(); V().bot[key]=i; sv(); botRender(); })+'">'+(lock?'🔒':(i===8?'★':''))+'</button>'; }).join('')+'</div>'; }
+  function botRender(){ var body=document.getElementById('botBody'), sc=document.getElementById('botScore'); if(!body)return; var v=V(), b=v.bot;
+    if(sc)sc.textContent='🤖 '+(b.name||'New robot')+' · '+v.jobs+' jobs';
+    var tabs=[['head','Head'],['eyes','Eyes'],['body','Body'],['move','Moves'],['ant','Antenna'],['col','Paint']];
+    var part='';
+    if(BG.tab==='head')part=optRow('head',HEADS); else if(BG.tab==='eyes')part=optRow('eyes',EYES); else if(BG.tab==='body')part=optRow('body',BODIES); else if(BG.tab==='move')part=optRow('move',MOVES);
+    else if(BG.tab==='ant')part=optRow('ant',ANTS,function(i){ return i===3&&!starOK()?'The Star Antenna comes from Vega’s Star Quest.':''; });
+    else part='<div class="sub" style="text-align:left;margin:4px 0">Paint</div>'+colRow('col',BCOLS,BCOL_NM,function(i){ return i===8&&!goldOK()?'Gold paint unlocks after 10 robot jobs ('+V().jobs+' so far).':''; })+'<div class="sub" style="text-align:left;margin:8px 0 4px">Lights</div>'+colRow('acc',ACOLS);
+    var mods=MODS.map(function(m){ var on=!!b.mods[m.id];
+      return '<div class="hw-row"><div class="ic" style="font-size:28px;width:44px;text-align:center">'+m.ic+'</div><div class="tx" style="flex:1;text-align:left"><b>'+m.nm+'</b> <span class="sub" style="display:inline;margin:0">· '+m.tool+'</span><div class="sub" style="margin:0;text-align:left">'+esc(m.what)+'</div></div>'
+        +(on?'<button class="btn small" onclick="'+cb(function(){ tap(); m.go(); })+'">Go</button>':'<button class="btn small ghost" onclick="'+cb(function(){ install(m.id); })+'">Install</button>')+'</div>'; }).join('')
+      +SOON.map(function(m){ return '<div class="hw-row" style="opacity:.5"><div class="ic" style="font-size:26px;width:44px;text-align:center">'+m.ic+'</div><div class="tx" style="flex:1;text-align:left"><b>'+m.nm+'</b><div class="sub" style="margin:0;text-align:left">'+esc(m.what)+'. Ada is still building this one.</div></div></div>'; }).join('');
+    var dn=Object.keys(v.dig.found).length, cn=Object.keys(v.cook.dishes).length;
+    body.innerHTML='<div class="v54garage"><div class="v54stage">'+botSvg(170,b)+'<div class="v54nm"><input id="botNm" maxlength="12" placeholder="Robot name" value="'+esc(b.name)+'"><button class="btn small" onclick="botSaveName()">Save name</button></div></div>'
+      +'<div class="v54build"><div class="lib-tempo" style="flex-wrap:wrap">'+tabs.map(function(t){ return '<button class="btn ghost small'+(BG.tab===t[0]?' sel':'')+'" onclick="'+cb(function(){ tap(); BG.tab=t[0]; botRender(); })+'">'+t[1]+'</button>'; }).join('')+'</div>'+part+'</div></div>'
+      +'<div class="card" style="text-align:left"><b>🛠 Abilities</b><div class="sub" style="text-align:left;margin:2px 0 4px">Install a tool, then tap Go. Each job '+esc(botName())+' finishes counts toward gold paint ('+Math.min(v.jobs,10)+'/10).</div>'+mods+'</div>'
+      +'<div class="row" style="gap:6px;flex-wrap:wrap"><div class="card" style="flex:1 1 140px;margin:0;text-align:left"><b>⛏️ Dig finds</b><div class="sub" style="margin:2px 0;text-align:left">'+dn+' of '+FINDS.length+' kinds found</div><div>'+FINDS.map(function(f){ return '<span title="'+esc(f.nm)+'" style="display:inline-block;opacity:'+(v.dig.found[f.id]?1:.18)+'">'+findSvg(f.id,30)+'</span>'; }).join('')+'</div></div>'
+      +'<div class="card" style="flex:1 1 140px;margin:0;text-align:left"><b>📖 Cookbook</b><div class="sub" style="margin:2px 0;text-align:left">'+cn+' of '+DISHES.length+' dishes cooked</div><div style="font-size:24px">'+DISHES.map(function(d){ return '<span style="opacity:'+(v.cook.dishes[d.id]?1:.2)+'">'+d.ic+'</span>'; }).join(' ')+'</div></div></div>'
+      +'<div class="speak" style="text-align:left"><b>Ada:</b> “'+(b.built?(Object.keys(b.mods).length<2?'Nice build. Now give it something to DO: install an ability.':'A robot that digs AND cooks. Beep is a little jealous.'):'Every inventor needs a robot. Pick a head, eyes, a body and how it moves. Then give it a name!')+'”</div>'
+      +'<div class="row" style="gap:6px;flex-wrap:wrap;margin:8px 0"><button class="btn ghost" onclick="rbHub()">🔧 Robot Workshop</button><button class="btn ghost" onclick="skyHub()">🔭 Starlight Dome</button></div>';
+    var nm=document.getElementById('botNm'); if(nm)nm.addEventListener('keydown',function(e){ if(e.key==='Enter')botSaveName(); });
+    if(!b.built){ b.built=dk(); sv(); } }
+  window.botSaveName=function(){ var el=document.getElementById('botNm'); if(!el)return; var n=String(el.value||'').replace(/[<>"]/g,'').trim().slice(0,12); V().bot.name=n; sv(); tap(); tst(n?'Hello, '+n+'!':'Name cleared.'); botRender(); };
+  function install(id){ var m=MODS.filter(function(x){ return x.id===id; })[0]; if(!m)return; tap(); V().bot.mods[id]=dk(); sv(); fan(); party(24);
+    modal('<div class="center">'+botSvg(120,null,id)+'<h2 style="margin:4px 0">'+m.ic+' '+m.nm+' installed!</h2></div><div class="speak"><b>Ada:</b> “'+esc(botNameC())+' has a '+m.tool.toLowerCase()+' now. '+(id==='dig'?'Buried treasure is hidden in the yard. Every clue is a grid point. Tap the right square and '+botName()+' drives there and digs.':'Every recipe has three jobs: make enough for everyone, measure it right, and set the timer.')+'”</div>'
+      +'<button class="btn wide" onclick="'+cb(function(){ closeModal(); m.go(); })+'">Try it now</button><button class="btn wide ghost" onclick="'+cb(function(){ closeModal(); botRender(); })+'">Back to the garage</button>'); }
+  function needBot(id){ var b=V().bot; if(!b.mods[id]){ b.mods[id]=dk(); sv(); } }
+  function jobDone(){ var v=V(); v.jobs++; sv(); if(v.jobs===10){ whenFree(function(){ modal('<div class="center">'+botSvg(120,Object.assign({},v.bot,{col:8}))+'<h2>★ Gold paint unlocked!</h2></div><div class="speak"><b>Ada:</b> “Ten jobs! '+esc(botNameC())+' earned it. Pick GOLD in the Paint tab.”</div><button class="btn wide" onclick="closeModal();botHub()">To the garage</button><button class="btn wide ghost" onclick="closeModal()">Later</button>'); fan(); party(50); },1600); } try{ sqCheck(); }catch(e){} }
+
+  /* ================= DIG: treasure on a grid ================= */
+  var FINDS=[{id:'fossil',nm:'Dino fossil'},{id:'gem',nm:'Blue gem'},{id:'coin',nm:'Old gold coin'},{id:'bone',nm:'Big bone'},{id:'key',nm:'Rusty key'},{id:'gear',nm:'Lost gear'},{id:'shell',nm:'Seashell'},{id:'bottle',nm:'Message in a bottle'},{id:'arrow',nm:'Arrowhead'},{id:'ring',nm:'Silver ring'}];
+  function findSvg(id,sz){ var i={
+    fossil:'<ellipse cx="22" cy="22" rx="16" ry="13" fill="#d8c8a8"/><path d="M12 22 Q22 10 32 22 M14 26 Q22 18 30 26 M22 12 V32" stroke="#a89878" stroke-width="2" fill="none"/>',
+    gem:'<path d="M10 16 L16 8 H28 L34 16 L22 36 Z" fill="#5bbfe6"/><path d="M10 16 H34 M16 8 L22 16 L28 8 M22 16 V36" stroke="#c9f3ff" stroke-width="1.2" fill="none"/>',
+    coin:'<circle cx="22" cy="22" r="14" fill="#ffd158"/><circle cx="22" cy="22" r="10" fill="none" stroke="#c9a24c" stroke-width="2"/><path d="M22 15 V29 M18 18 H25 A3 3 0 0 1 25 22 H19 A3 3 0 0 0 19 26 H26" stroke="#c9a24c" stroke-width="1.8" fill="none"/>',
+    bone:'<path d="M12 28 L30 12" stroke="#f4f0e8" stroke-width="6" stroke-linecap="round"/><circle cx="10" cy="26" r="4" fill="#f4f0e8"/><circle cx="14" cy="31" r="4" fill="#f4f0e8"/><circle cx="29" cy="9" r="4" fill="#f4f0e8"/><circle cx="33" cy="14" r="4" fill="#f4f0e8"/>',
+    key:'<circle cx="14" cy="22" r="7" fill="none" stroke="#b8763a" stroke-width="4"/><path d="M21 22 H36 M31 22 v5 M35 22 v4" stroke="#b8763a" stroke-width="4" stroke-linecap="round"/>',
+    gear:'<circle cx="22" cy="22" r="10" fill="#8f97a8"/><circle cx="22" cy="22" r="4" fill="#1d1636"/><path d="M22 6 V12 M22 32 V38 M6 22 H12 M32 22 H38 M11 11 L15 15 M29 29 L33 33 M11 33 L15 29 M29 15 L33 11" stroke="#8f97a8" stroke-width="5"/>',
+    shell:'<path d="M8 30 Q22 2 36 30 Z" fill="#ff9ab0"/><path d="M22 10 V30 M15 16 L18 30 M29 16 L26 30" stroke="#e07a90" stroke-width="1.5"/>',
+    bottle:'<rect x="14" y="14" width="16" height="22" rx="5" fill="#7dd87a" opacity=".75"/><rect x="18" y="6" width="8" height="9" rx="2" fill="#7dd87a" opacity=".75"/><rect x="19" y="4" width="6" height="4" fill="#c98a4a"/><rect x="17" y="20" width="10" height="10" fill="#f4f0e8"/>',
+    arrow:'<path d="M22 4 L32 26 L22 38 L12 26 Z" fill="#6a6578"/><path d="M22 10 L27 26 L22 32 L17 26 Z" fill="#8f8a9a"/>',
+    ring:'<circle cx="22" cy="24" r="11" fill="none" stroke="#c0c8d8" stroke-width="5"/><circle cx="22" cy="12" r="4" fill="#ff7ad9"/>'
+   }[id]||''; return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 44 44">'+i+'</svg>'; }
+  var GW=6, GH=5, DG=null;
+  function digTier(){ var l=L('coord'); return l<4?1:l<8?2:3; }
+  function digClue(t,bx,by){ var x,y,txt,how;
+    if(t===1){ x=R(1,GW); y=R(1,GH); txt='Dig at ('+x+', '+y+').'; how='The first number goes ACROSS, the second goes UP. Across '+x+', then up '+y+'.'; }
+    else if(t===2){ var dx,dy,g=0; do{ dx=R(-3,3); dy=R(-3,3); g++; }while((g<60)&&((dx===0&&dy===0)||bx+dx<1||bx+dx>GW||by+dy<1||by+dy>GH)); x=bx+dx; y=by+dy;
+      var parts=[]; if(dx)parts.push(Math.abs(dx)+' '+(dx>0?'right':'left')); if(dy)parts.push(Math.abs(dy)+' '+(dy>0?'up':'down'));
+      txt=botNameC()+' is at ('+bx+', '+by+'). Go '+parts.join(' and ')+'. Dig there!'; how='Start at ('+bx+', '+by+'). Moving right adds to the first number, up adds to the second.'; }
+    else { if(Math.random()<.5){ var row=R(1,GH), a=R(1,GW-2), w=pk([2,4].filter(function(k){ return a+k<=GW; })); if(!w){ w=2; a=Math.min(a,GW-2); } x=a+w/2; y=row; txt='The map says: halfway between ('+a+', '+row+') and ('+(a+w)+', '+row+').'; how='Same second number, so stay on row '+row+'. Halfway from '+a+' to '+(a+w)+' is '+x+'.'; }
+      else { var fx=R(1,GW), fy=R(1,GH), ox,oy,g2=0; do{ ox=R(-2,2); oy=R(-2,2); g2++; }while(g2<60&&((ox===0&&oy===0)||fx+ox<1||fx+ox>GW||fy+oy<1||fy+oy>GH)); x=fx+ox; y=fy+oy;
+        var p2=[]; if(ox)p2.push(Math.abs(ox)+' '+(ox>0?'to the right of':'to the left of')); if(oy)p2.push(Math.abs(oy)+' '+(oy>0?'above':'below'));
+        txt='The treasure is '+p2.join(' and ')+' the flag at ('+fx+', '+fy+').'; how='Start at the flag ('+fx+', '+fy+'), then count. Right and up make the numbers bigger.'; DG&&(DG.flag=[fx,fy]); } }
+    return {x:x,y:y,txt:txt,how:how}; }
+  window.digStart=function(){ tap(); needBot('dig'); try{ closeModal(); }catch(e){} var v=V();
+    var first=!v.seen.dig; DG={i:0,n:5,right:0,tries:0,bx:1,by:1,got:[],t:digTier(),flag:null,busy:false};
+    if(first){ v.seen.dig=1; sv(); modal('<div class="center">'+botSvg(110,null,'dig')+'<h2 style="margin:4px 0">⛏️ How digging works</h2></div><div class="speak"><b>Ada:</b> “Every square in the yard has a name made of two numbers, like <b>(4, 2)</b>.<br>The FIRST number tells you how far ACROSS. The SECOND tells you how far UP.<br>So (4, 2) means: across 4, up 2.”</div><div class="card" style="text-align:left">'+digGrid({demo:[4,2]})+'</div><button class="btn wide" onclick="'+cb(function(){ closeModal(); digNext(); })+'">Let’s dig!</button>'); return; }
+    digNext(); };
+  function digGrid(o){ o=o||{}; var cell=44, html='<div class="v54yard" style="--c:'+cell+'px">';
+    for(var y=GH;y>=1;y--){ html+='<div class="v54ax">'+y+'</div>'; for(var x=1;x<=GW;x++){ var mark='', k=x+','+y;
+        if(o.demo&&o.demo[0]===x&&o.demo[1]===y)mark='<span class="v54x">X</span>';
+        if(o.dug&&o.dug[k])mark=o.dug[k]==='hole'?'<span class="v54hole"></span>':'<span>'+findSvg(o.dug[k],30)+'</span>';
+        if(o.flag&&o.flag[0]===x&&o.flag[1]===y)mark+='<span class="v54flag">🚩</span>';
+        html+='<button class="v54cell" data-x="'+x+'" data-y="'+y+'"'+(o.live?'':' disabled')+'>'+mark+'</button>'; } }
+    html+='<div class="v54ax"></div>'; for(var x2=1;x2<=GW;x2++)html+='<div class="v54ax">'+x2+'</div>';
+    html+=(o.bot?'<div class="v54ybot" id="v54ybot" style="--x:'+o.bot[0]+';--y:'+o.bot[1]+'">'+botSvg(cell,null,'dig')+'</div>':'')+'</div>';
+    return html; }
+  function digNext(){ if(DG.i>=DG.n){ digEnd(); return; } DG.tries=0; DG.flag=null; DG.cur=digClue(DG.t,DG.bx,DG.by); DG.busy=false; digDraw(''); }
+  function digDraw(msg){ var c=DG.cur;
+    modal('<div class="center"><h2 style="margin:2px 0">⛏️ Treasure '+(DG.i+1)+' of '+DG.n+'</h2></div><div class="speak" style="text-align:left"><b>Clue:</b> '+esc(c.txt)+'</div>'
+      +'<div class="v54yardwrap">'+digGrid({live:true,dug:DG.dug||{},bot:[DG.bx,DG.by],flag:DG.flag})+'</div><div id="digMsg" class="sub center" style="min-height:20px">'+msg+'</div>'
+      +'<button class="btn wide ghost small" onclick="'+cb(function(){ closeModal(); botHub(); })+'">Stop digging</button>');
+    var bs=document.querySelectorAll('.v54cell'); for(var k=0;k<bs.length;k++)bs[k].addEventListener('click',function(){ if(DG.busy)return; DG.busy=true; digAt(+this.getAttribute('data-x'),+this.getAttribute('data-y')); }); }
+  function digAt(x,y){ var c=DG.cur, ok=(x===c.x&&y===c.y); DG.dug=DG.dug||{}; var bot=document.getElementById('v54ybot'); if(bot){ bot.style.setProperty('--x',x); bot.style.setProperty('--y',y); } tone2(330,.12,'square',.12);
+    setTimeout(function(){ if(ok){ var f=pk(FINDS); DG.dug[x+','+y]=f.id; DG.got.push(f.id); DG.right+=DG.tries===0?1:0; DG.bx=x; DG.by=y; adj('coord',DG.tries===0); good(); party(16);
+        digDraw('<b>Treasure!</b> A '+esc(f.nm.toLowerCase())+' at ('+x+', '+y+').'); var m=document.getElementById('digMsg'); if(m)m.insertAdjacentHTML('beforeend','<div style="margin-top:6px"><button class="btn" id="digGo">Next clue ▶</button></div>'); DG.busy=true;
+        var g=document.getElementById('digGo'); if(g)g.addEventListener('click',function(){ tap(); DG.i++; digNext(); }); }
+      else { DG.dug[x+','+y]='hole'; DG.tries++; bad(); if(DG.tries===1)adj('coord',false);
+        if(DG.tries>=2){ DG.dug[c.x+','+c.y]='coin'; DG.bx=c.x; DG.by=c.y; digDraw('Just dirt at ('+x+', '+y+'). The treasure was at <b>('+c.x+', '+c.y+')</b>. '+esc(c.how)); var m2=document.getElementById('digMsg'); if(m2)m2.insertAdjacentHTML('beforeend','<div style="margin-top:6px"><button class="btn" id="digGo">Next clue ▶</button></div>'); DG.busy=true; var g2=document.getElementById('digGo'); if(g2)g2.addEventListener('click',function(){ tap(); DG.i++; digNext(); }); }
+        else { DG.cur=c; digDraw('Just dirt at ('+x+', '+y+'). '+esc(c.how)); DG.busy=false; } } },650); }
+  function digEnd(){ var v=V(), d=v.dig, today=d.day!==dk(); d.day=dk(); d.runs++; d.total+=DG.got.length; DG.got.forEach(function(id){ d.found[id]=(d.found[id]||0)+1; });
+    var n=today?15:5, c=today?(10+DG.right*2):DG.right; notes(n); coins(c); fr('ada',1); sv(); jobDone();
+    modal('<div class="center">'+botSvg(110,null,'dig')+'<h2 style="margin:4px 0">⛏️ Dig done!</h2></div><div class="card" style="text-align:center">'+DG.got.map(function(id){ return findSvg(id,40); }).join(' ')+'</div>'
+      +'<div class="speak"><b>Ada:</b> “'+DG.right+' of '+DG.n+' found on the first dig. '+(DG.right>=4?'You can read a map like a pirate!':'Remember: across first, then up.')+'”</div><div class="sub center">+'+n+' notes · +'+c+' coins'+(today?' · today’s dig bonus':'')+'</div>'
+      +'<button class="btn wide" onclick="'+cb(function(){ closeModal(); digStart(); })+'">Dig again</button><button class="btn wide ghost" onclick="'+cb(function(){ closeModal(); botHub(); })+'">Back to the garage</button>'); fan(); }
+
+  /* ================= COOK: scale it, measure it, time it ================= */
+  var DISHES=[
+    {id:'pancakes',nm:'Pancakes',ic:'🥞',serv:2,ing:['eggs',2],cup:'milk',bake:'cook on the griddle',min:[10,15,20]},
+    {id:'cookies',nm:'Cookies',ic:'🍪',serv:12,ing:['spoons of chocolate chips',4],cup:'flour',bake:'bake',min:[12,15,18]},
+    {id:'muffins',nm:'Muffins',ic:'🧁',serv:6,ing:['bananas',2],cup:'sugar',bake:'bake',min:[20,25,30]},
+    {id:'pizza',nm:'Pizza',ic:'🍕',serv:4,ing:['handfuls of cheese',3],cup:'tomato sauce',bake:'bake',min:[15,20,25]},
+    {id:'tacos',nm:'Tacos',ic:'🌮',serv:3,ing:['tortillas',6],cup:'beans',bake:'warm up',min:[10,15,20]},
+    {id:'soup',nm:'Veggie soup',ic:'🍲',serv:4,ing:['carrots',3],cup:'broth',bake:'simmer',min:[25,30,40]},
+    {id:'smoothie',nm:'Smoothie',ic:'🥤',serv:2,ing:['strawberries',8],cup:'yogurt',bake:'chill',min:[10,15,20]},
+    {id:'lemonade',nm:'Lemonade',ic:'🍋',serv:4,ing:['lemons',3],cup:'water',bake:'chill',min:[30,45,60]}];
+  var CK=null;
+  function scaleQ(D){ var t=L('ratio')<4?1:L('ratio')<8?2:3, base=D.serv, n=D.ing[1], what=D.ing[0], k, want, ans, q;
+    if(t===1){ k=pk([2,3]); want=base*k; ans=n*k; q='The recipe makes '+base+' serving'+(base>1?'s':'')+' and uses '+n+' '+what+'. You are cooking for '+want+'. How many '+what+'?'; }
+    else if(t===2){ if(base%2===0&&n%2===0&&Math.random()<.5){ want=base/2; ans=n/2; q='The recipe makes '+base+' servings with '+n+' '+what+'. You only need '+want+'. How many '+what+'?'; } else { k=pk([3,4,5]); want=base*k; ans=n*k; q='The recipe makes '+base+' servings with '+n+' '+what+'. Cook for '+want+'. How many '+what+'?'; } }
+    else { var fs=[1.5,2.5].filter(function(f){ return (base*f)%1===0&&(n*f)%1===0; }); var f=fs.length?pk(fs):pk([3,4]); want=base*f; ans=n*f; q='The recipe makes '+base+' servings with '+n+' '+what+'. Cook for '+want+'. How many '+what+'?'; }
+    return {c:'ratio',q:q,a:String(ans),ch:uniq4(ans,[ans+n,ans-1>0?ans-1:ans+2,n*want,ans+1,Math.max(1,ans-n),ans+2,n+want,ans*2,ans+3]),why:'Find how many batches: '+want+' ÷ '+base+' = '+(want/base)+'. Then '+n+' × '+(want/base)+' = '+ans+'.'}; }
+  var FR={'1/4':.25,'1/2':.5,'3/4':.75,'1':1,'1 1/4':1.25,'1 1/2':1.5,'1 3/4':1.75,'2':2,'2 1/4':2.25,'2 1/2':2.5,'3':3,'1/3':1/3,'2/3':2/3,'1 1/3':4/3};
+  function frName(x){ for(var k in FR)if(Math.abs(FR[k]-x)<1e-9)return k; return null; }
+  function cupWord(x){ return frName(x)+' cup'+(x>1?'s':''); }
+  function measQ(D){ var t=L('frac')<5?1:L('frac')<9?2:3, a, b, ans, q, why, w=[];
+    if(t===1){ var tot=pk([.5,.75,1,1.5]), sc=.25; ans=Math.round(tot/sc); q='You need '+cupWord(tot)+' of '+D.cup+'. Your only scoop is 1/4 cup. How many scoops?'; why=cupWord(tot)+' is '+ans+' quarter cups.'; return {c:'frac',q:q,a:String(ans),ch:uniq4(ans,[ans+1,ans-1,4,2,ans*2]),why:why}; }
+    if(t===2){ var p=pk([[.5,.25],[.25,.25],[.5,.5],[.75,.25],[1,.5],[.5,.75]]); a=p[0]; b=p[1]; ans=a+b; q='Pour in '+cupWord(a)+' of '+D.cup+', then '+cupWord(b)+' more. How much is that?'; why='Turn halves into quarters: '+frName(a)+' + '+frName(b)+' = '+frName(ans)+'.'; w=[ans+.25,ans-.25,a,ans+.5,ans-.5,1.5,1]; }
+    else { var p2=pk([[.75,2],[.5,3],[1.5,2],[.25,3],[.75,3]]); a=p2[0]; b=p2[1]; ans=a*b; q='One batch needs '+cupWord(a)+' of '+D.cup+'. You are making '+b+' batches. How much '+D.cup+'?'; why=b+' × '+frName(a)+' = '+frName(ans)+'.'; w=[ans+.25,ans-.25,a+b,ans+.5,ans-.5,ans-1,ans/2,a]; }
+    var names=w.map(function(x){ return frName(x); }).filter(function(x){ return x; }).map(function(x){ return x+' cup'+(FR[x]>1?'s':''); });
+    return {c:'frac',q:q,a:cupWord(ans),ch:uniq4(cupWord(ans),names),why:why}; }
+  function timeQ(D){ var t=L('elapsed')<4?1:L('elapsed')<8?2:3, mins=D.min[t-1], st, en, q, a, why, w;
+    if(t===1){ st=R(1,11)*60; en=st+mins; q='It starts at '+hm(st)+'. '+D.bake.charAt(0).toUpperCase()+D.bake.slice(1)+' for '+mins+' minutes. When is it done?'; a=hm(en); w=[hm(st+mins+10),hm(st+mins-5),hm(st+60),hm(st+mins+5)]; why=hm(st)+' plus '+mins+' minutes is '+a+'.'; }
+    else if(t===2){ st=R(1,11)*60+pk([35,40,45,50,55]); en=st+mins; q='It starts at '+hm(st)+'. '+D.bake.charAt(0).toUpperCase()+D.bake.slice(1)+' for '+mins+' minutes. When is it done?'; a=hm(en); w=[hm(st+mins-60),hm(st+mins+10),hm(st+mins-10),hm(st+mins+60)]; why='Count to the next hour first, then the rest: '+hm(st)+' + '+mins+' minutes = '+a+'.'; }
+    else { en=R(2,11)*60+pk([0,5,10,15,20]); st=en-mins; q='It has to be done at '+hm(en)+'. It takes '+mins+' minutes to '+D.bake+'. When should it start?'; a=hm(st); w=[hm(en+mins),hm(st+10),hm(st-10),hm(en-mins-60)]; why='Count BACK '+mins+' minutes from '+hm(en)+': '+a+'.'; }
+    return {c:'elapsed',q:q,a:a,ch:uniq4(a,w),why:why}; }
+  window.cookStart=function(){ tap(); needBot('cook'); try{ closeModal(); }catch(e){} var v=V();
+    var first=!v.seen.cook; if(first){ v.seen.cook=1; sv(); modal('<div class="center">'+botSvg(110,null,'cook')+'<h2 style="margin:4px 0">🍳 How cooking works</h2></div><div class="speak" style="text-align:left"><b>Ada:</b> “Every dish has 3 jobs:<br>1. <b>How much?</b> Recipes are written for a few people. Cooking for more? Multiply everything.<br>2. <b>Measure.</b> Cups come in halves and quarters. Two 1/4 cups make 1/2 cup.<br>3. <b>Timer.</b> Add the minutes to the start time.”</div><button class="btn wide" onclick="'+cb(function(){ cookMenu(); })+'">Pick a dish</button>'); return; }
+    cookMenu(); };
+  function cookMenu(){ var v=V(); modal('<div class="center">'+botSvg(90,null,'cook')+'<h2 style="margin:2px 0">🍳 What should '+esc(botName())+' cook?</h2></div><div class="v54menu">'+DISHES.map(function(D){ var n=v.cook.dishes[D.id]||0; return '<button class="v54dish" onclick="'+cb(function(){ cookGo(D.id); })+'"><span style="font-size:34px">'+D.ic+'</span><b>'+esc(D.nm)+'</b><span class="sub" style="margin:0">'+(n?'cooked '+n+'x':'new!')+'</span></button>'; }).join('')+'</div><button class="btn wide ghost small" onclick="'+cb(function(){ closeModal(); botHub(); })+'">Back to the garage</button>'); }
+  function cookGo(id){ tap(); var D=DISHES.filter(function(d){ return d.id===id; })[0]; CK={D:D,steps:[scaleQ(D),measQ(D),timeQ(D)],i:0,clean:0,busy:false}; cookStep(); }
+  function cookStep(){ var s=CK.steps[CK.i]; if(!s){ cookEnd(); return; } CK.tries=0; CK.busy=false; var lab=['How much?','Measure','Set the timer'][CK.i];
+    modal('<div class="center"><div class="v54pan">'+botSvg(84,null,'cook')+'<span style="font-size:46px">'+CK.D.ic+'</span></div><h2 style="margin:2px 0">'+esc(CK.D.nm)+' · '+lab+'</h2><div class="sub">Step '+(CK.i+1)+' of 3</div></div><div class="speak" style="text-align:left">'+esc(s.q)+'</div>'
+      +'<div class="v54ans">'+s.ch.map(function(o){ return '<button class="ckb" data-v="'+esc(o)+'">'+esc(o)+'</button>'; }).join('')+'</div><div id="ckMsg" class="sub center"></div>');
+    var bs=document.querySelectorAll('.ckb'); for(var k=0;k<bs.length;k++)bs[k].addEventListener('click',function(){ var b=this; if(CK.busy||b.disabled)return; var ok=b.getAttribute('data-v')===s.a;
+      if(CK.tries===0)adj(s.c,ok);
+      if(ok){ CK.busy=true; if(CK.tries===0)CK.clean++; good(); tone2(784,.12,'triangle',.15); var m=document.getElementById('ckMsg'); if(m)m.innerHTML='<b>Yes!</b> '+esc(s.why); setTimeout(function(){ if(!modalOn())return; CK.i++; cookStep(); },1500); return; }
+      bad(); CK.tries++; b.disabled=true; b.style.opacity='.4'; var m2=document.getElementById('ckMsg');
+      if(CK.tries>=2){ CK.busy=true; if(m2)m2.innerHTML='It is <b>'+esc(s.a)+'</b>. '+esc(s.why); setTimeout(function(){ if(!modalOn())return; CK.i++; cookStep(); },3000); } else if(m2)m2.textContent=CK.i===0?'Hint: how many batches do you need?':CK.i===1?'Hint: count in quarter cups.':(/should it start/.test(s.q)?'Hint: count BACK from the done time.':'Hint: count to the next hour first.'); }); }
+  function cookEnd(){ var v=V(), c=v.cook, today=c.day!==dk(), D=CK.D; c.day=dk(); c.total++; c.dishes[D.id]=(c.dishes[D.id]||0)+1; var n=today?15:5, co=today?10+CK.clean*3:CK.clean; notes(n); coins(co); fr('ada',1); sv(); jobDone();
+    modal('<div class="center"><div class="v54pan">'+botSvg(100,null,'cook')+'<span style="font-size:64px">'+D.ic+'</span></div><h2 style="margin:4px 0">'+esc(D.nm)+' is ready!</h2></div><div class="speak"><b>Ada:</b> “'+CK.clean+' of 3 jobs right on the first try. '+(CK.clean===3?'Chef '+esc(botNameC())+'!':'Smells great anyway.')+'”</div><div class="sub center">+'+n+' notes · +'+co+' coins'+(today?' · today’s cooking bonus':'')+' · in your Cookbook</div>'
+      +'<button class="btn wide" onclick="'+cb(function(){ cookMenu(); })+'">Cook something else</button><button class="btn wide ghost" onclick="'+cb(function(){ closeModal(); botHub(); })+'">Back to the garage</button>'); fan(); party(30); }
+
+  /* ================= THE STARLIGHT DOME (Vega) =================
+     The Star Organ: 8 pipes, and every pipe is a telescope pointed at a planet, in order from the Sun. The shortest pipe
+     (Mercury) plays the highest note; the longest (Neptune) the lowest. Longer pipe = lower note (sound, grade 1 physical
+     science); planet order, sizes and facts (solar system, grade 5). Sky Shows run like Fizz's lab: PREDICT (never graded)
+     -> work the model -> WHAT HAPPENED -> quick check (graded through adjust('space')) -> the Star Log. */
+  var PLANETS=[
+    {id:'mercury',nm:'Mercury',f:1046.5,col:'#b8b0a8',r:5,fact:'closest to the Sun, and the smallest planet'},
+    {id:'venus',nm:'Venus',f:987.8,col:'#ffd9a0',r:8,fact:'the hottest planet: thick clouds trap the heat'},
+    {id:'earth',nm:'Earth',f:880,col:'#5bbfe6',r:8,fact:'home! The only planet we know of with life'},
+    {id:'mars',nm:'Mars',f:784,col:'#ff7a4a',r:6,fact:'the red planet, covered in rusty dust'},
+    {id:'jupiter',nm:'Jupiter',f:698.5,col:'#e8b880',r:16,fact:'the biggest planet: about 11 Earths across'},
+    {id:'saturn',nm:'Saturn',f:659.3,col:'#f0d890',r:14,fact:'the planet with the biggest, brightest rings'},
+    {id:'uranus',nm:'Uranus',f:587.3,col:'#9ae8f0',r:11,fact:'an ice giant that spins tipped over on its side'},
+    {id:'neptune',nm:'Neptune',f:523.3,col:'#5a7aff',r:11,fact:'the farthest planet, with the fastest winds'}];
+  function planetSvg(p,sz){ var r=p.r, s='<svg width="'+sz+'" height="'+sz+'" viewBox="-20 -20 40 40"><circle r="'+r+'" fill="'+p.col+'"/>';
+    if(p.id==='saturn')s+='<ellipse rx="'+(r+7)+'" ry="3.4" fill="none" stroke="#c9a24c" stroke-width="2.4" transform="rotate(-18)"/>';
+    if(p.id==='jupiter')s+='<path d="M-15 -4 H15 M-16 3 H16" stroke="#c98a4a" stroke-width="2"/><ellipse cx="5" cy="6" rx="3" ry="1.8" fill="#c0503a"/>';
+    if(p.id==='earth')s+='<path d="M-5 -6 Q0 -2 -3 2 Q-6 5 -2 6 M3 -5 Q6 -1 4 3" stroke="#46c46a" stroke-width="3" fill="none" stroke-linecap="round"/>';
+    if(p.id==='mars')s+='<circle cx="-2" cy="-1" r="1.4" fill="#c0503a"/><circle cx="2" cy="2" r="1" fill="#c0503a"/>';
+    return s+'</svg>'; }
+  function organNote(i,len){ var p=PLANETS[i]; tone2(p.f/2,len||.55,'sine',.16); tone2(p.f,len||.55,'sine',.08); tone2(p.f*1.5,(len||.55)*.6,'sine',.025); }
+  function organSvg(hl){ var W=340, H=210, s='<svg width="100%" viewBox="0 0 '+W+' '+H+'" style="max-width:440px" class="v54organ">';
+    s+='<rect x="10" y="168" width="320" height="36" rx="8" fill="#4a3d84"/><rect x="18" y="174" width="304" height="10" rx="3" fill="#f4f0ff"/>';
+    for(var k=0;k<16;k++)s+='<rect x="'+(20+k*19)+'" y="174" width="17" height="10" rx="2" fill="#ffffff" stroke="#c9c2e8" stroke-width=".6"/>';
+    PLANETS.forEach(function(p,i){ var x=26+i*38, len=Math.round(150*523.3/p.f*0.62), top=168-len, on=hl===i;
+      s+='<g class="v54pipe" data-i="'+i+'" style="cursor:pointer"><rect x="'+(x-2)+'" y="0" width="38" height="'+H+'" fill="transparent"/>'
+        +'<rect x="'+x+'" y="'+top+'" width="22" height="'+len+'" rx="4" fill="'+(on?'#ffd158':'#c9a24c')+'"/><rect x="'+(x+3)+'" y="'+(top+4)+'" width="5" height="'+(len-8)+'" rx="2.5" fill="#fff6e0" opacity=".45"/>'
+        +'<rect x="'+(x-3)+'" y="'+(top-6)+'" width="28" height="9" rx="3" fill="#8a7ac8"/><ellipse cx="'+(x+11)+'" cy="'+(top-6)+'" rx="12" ry="3.4" fill="'+(on?'#ffffff':'#7ad9ff')+'"/>'
+        +'<rect x="'+(x+6)+'" y="'+(168-22)+'" width="10" height="5" rx="2" fill="#2b2350"/>'
+        +'<g transform="translate('+(x+11)+' '+(Math.max(14,top-24))+') scale(.55)">'+planetSvg(p,40).replace(/^<svg[^>]*>/,'').replace(/<\/svg>$/,'')+'</g>'
+        +'<text x="'+(x+11)+'" y="200" text-anchor="middle" font-size="8.5" font-weight="900" fill="#f4f0ff">'+p.nm.slice(0,3).toUpperCase()+'</text></g>'; });
+    return s+'</svg>'; }
+  function wireOrgan(root,onTap){ var gs=document.querySelectorAll(root+' .v54pipe'); for(var k=0;k<gs.length;k++)gs[k].addEventListener('click',function(){ var i=+this.getAttribute('data-i'); organNote(i); var r=this.querySelector('ellipse'); if(r){ r.setAttribute('fill','#ffffff'); setTimeout(function(){ r.setAttribute('fill','#7ad9ff'); },300); } if(onTap)onTap(i); }); }
+
+  window.skyHub=function(){ tap(); meet('vega'); try{ closeModal(); }catch(e){} scr('scr-sky','skyScore','skyBody','The Starlight Dome. Play Vega’s Star Organ, watch a Sky Show, and work on the Star Quest.'); skyRender(); };
+  function showRow(k){ var v=V().sky, n=v.shows[k]||0, today=v.day[k]===dk(), E=SHOWS[k];
+    return '<div class="hw-row"><div class="ic" style="font-size:30px;width:44px;text-align:center">'+E.ic+'</div><div class="tx" style="flex:1;text-align:left"><b>'+esc(E.nm)+'</b><div class="sub" style="margin:0;text-align:left">'+(n?'Watched '+n+' time'+(n>1?'s':'')+(today?' · today ✔':''):esc(E.blurb))+'</div></div><button class="btn small'+(today?' ghost':'')+'" onclick="'+cb(function(){ E.start(); })+'">'+(n?'Again':'Start')+'</button></div>'; }
+  function skyRender(){ var body=document.getElementById('skyBody'), sc=document.getElementById('skyScore'); if(!body)return; var v=V(), s=v.sky, n=Object.keys(SHOWS).filter(function(k){ return s.shows[k]; }).length; if(sc)sc.textContent='🔭 '+n+'/4 shows · Space Lvl '+L('space');
+    body.innerHTML='<div class="center">'+vegaSvg(96)+'<h2 style="margin:4px 0 0">The Starlight Dome</h2><div class="sub">Vega’s planetarium. Every organ pipe is a telescope.</div></div>'
+      +'<div class="card" style="text-align:center"><b>🎹 The Star Organ</b><div class="sub">Tap a pipe to play it. Each one is pointed at a planet, closest to the Sun on the left.</div>'+organSvg()+'<div class="sub" id="orgSay" style="min-height:20px"></div>'
+      +'<button class="btn" onclick="'+cb(organChallenge)+'">🎼 Play for Vega'+(s.organDay===dk()?' (again)':'')+'</button></div>'
+      +'<div class="card" style="text-align:left"><b>🌌 Sky Shows</b><div class="sub" style="text-align:left;margin:2px 0 4px">Guess first, then make it happen in the dome. A wrong guess is just a star you have not seen yet.</div>'+Object.keys(SHOWS).map(showRow).join('')+'</div>'
+      +logHTML()
+      +'<div class="row" style="gap:6px;flex-wrap:wrap;margin:8px 0"><button class="btn ghost" onclick="v54House()">🏠 Starlight Tower</button><button class="btn ghost" onclick="botHub()">🤖 Bot Garage</button><button class="btn ghost" onclick="labHub()">🧪 Science Lab</button></div>';
+    wireOrgan('#skyBody',function(i){ var el=document.getElementById('orgSay'); if(el)el.innerHTML='<b>'+PLANETS[i].nm+'</b>: '+esc(PLANETS[i].fact)+'.'; }); }
+  function logHTML(){ var b=V().sky.log.slice(0,8);
+    return '<div class="card" style="text-align:left"><b>📓 Star Log</b>'+(b.length?b.map(function(e){ return '<div style="padding:5px 0;border-top:1px solid #2b2350"><span class="sub" style="display:inline;margin:0">'+esc(e.d.replace(/^\d+-/,''))+' · '+esc(e.nm)+':</span> '+esc(e.t)+'</div>'; }).join(''):'<div class="sub" style="margin:4px 0 0">Finish a Sky Show or play for Vega, and what you found goes here.</div>')+'</div>'; }
+  function logIt(nm,t){ var s=V().sky; s.log.unshift({d:dk(),nm:nm,t:t}); if(s.log.length>40)s.log.length=40; sv(); }
+
+  /* ---------- PLAY FOR VEGA: three organ challenges ---------- */
+  var OG=null;
+  function organChallenge(){ tap(); var t=L('space')<4?1:2;
+    var facts=[['the BIGGEST planet','jupiter'],['the planet WE live on','earth'],['the planet with the biggest RINGS','saturn'],['the RED planet','mars'],['the HOTTEST planet','venus'],['the planet CLOSEST to the Sun','mercury'],['the FARTHEST planet','neptune']];
+    var f=pk(facts), lowHigh=Math.random()<.5?'lowest':'highest';
+    OG={t:t,i:0,clean:0,steps:[
+      {kind:'pitch',say:'Play the '+lowHigh.toUpperCase()+' note.',a:lowHigh==='lowest'?7:0,c:'sci',why:'Longer pipe, lower note. The air inside a long pipe takes longer to wiggle back and forth, so the sound is lower. Short pipe, high note.'},
+      {kind:'order',say:t===1?'Play the first four planets in order from the Sun.':'Play all eight planets in order from the Sun.',n:t===1?4:8,c:'space',why:'Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus, Neptune. Inner four are rocky; the outer four are giants.'},
+      {kind:'fact',say:'Play the telescope that points at '+f[0]+'.',a:PLANETS.map(function(p){ return p.id; }).indexOf(f[1]),c:'space',why:PLANETS.filter(function(p){ return p.id===f[1]; })[0].nm+' is '+PLANETS.filter(function(p){ return p.id===f[1]; })[0].fact+'.'}]};
+    var v=V(); if(!v.seen.organ){ v.seen.organ=1; sv(); modal('<div class="center">'+vegaSvg(90)+'<h2 style="margin:4px 0">🎹 How the Star Organ works</h2></div><div class="speak" style="text-align:left"><b>Vega:</b> “Every pipe is a telescope, pointed at one planet. They go in order from the Sun: Mercury on the left, Neptune on the right.<br>Listen: the SHORT pipes play HIGH notes, the LONG pipes play LOW notes.<br>I will ask for three things. Play them on the organ!”</div><button class="btn wide" onclick="'+cb(organStep)+'">Ready</button>'); return; }
+    organStep(); }
+  function organStep(){ var st=OG.steps[OG.i]; if(!st){ organEnd(); return; } OG.tries=0; OG.seq=0; OG.busy=false;
+    modal('<div class="center">'+vegaSvg(56)+'<h2 style="margin:2px 0">🎼 '+(OG.i+1)+' of 3</h2></div><div class="speak"><b>Vega:</b> “'+esc(st.say)+'”</div><div class="center">'+organSvg()+'</div><div id="ogMsg" class="sub center" style="min-height:22px">'+(st.kind==='order'?'0 of '+st.n:'')+'</div>');
+    wireOrgan('#mbox',function(i){ if(OG.busy)return; var m=document.getElementById('ogMsg');
+      if(st.kind==='order'){ if(i===OG.seq){ OG.seq++; if(m)m.textContent=OG.seq+' of '+st.n+': '+PLANETS[i].nm; if(OG.seq>=st.n){ OG.busy=true; var ok=OG.tries<=1; adj(st.c,ok); if(ok)OG.clean++; good(); if(m)m.innerHTML='<b>Beautiful!</b> '+esc(st.why); setTimeout(function(){ if(!modalOn())return; OG.i++; organStep(); },2400); } }
+        else { OG.tries++; bad(); if(m)m.innerHTML='Not that one. Next from the Sun is <b>'+PLANETS[OG.seq].nm+'</b>.'; } return; }
+      if(i===st.a){ OG.busy=true; if(OG.tries===0){ OG.clean++; } adj(st.c,OG.tries===0); good(); if(m)m.innerHTML='<b>Yes!</b> '+esc(st.why); setTimeout(function(){ if(!modalOn())return; OG.i++; organStep(); },2600); }
+      else { OG.tries++; bad(); if(OG.tries===1)adj(st.c,false); if(m)m.innerHTML=st.kind==='pitch'?'Listen again: is that pipe long or short?':'That one points at '+PLANETS[i].nm+'. Try again!';
+        if(OG.tries>=3){ OG.busy=true; if(m)m.innerHTML='It is the <b>'+PLANETS[st.a].nm+'</b> pipe. '+esc(st.why); setTimeout(function(){ if(!modalOn())return; OG.i++; organStep(); },3200); } } }); }
+  function organEnd(){ var v=V(), s=v.sky, today=s.organDay!==dk(); s.organ++; s.organDay=dk(); var n=today?15:5, c=today?10:0; notes(n); if(c)coins(c); fr('vega',today?2:1); logIt('Star Organ','Longer pipe, lower note. Planets in order: Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus, Neptune. ('+OG.clean+'/3 first try)'); sv(); try{ sqCheck(); }catch(e){}
+    modal('<div class="center">'+vegaSvg(84)+'<h2 style="margin:4px 0">🎼 Bravo!</h2></div><div class="speak"><b>Vega:</b> “'+OG.clean+' of 3 on the first try. '+(OG.clean===3?'The whole sky is clapping.':'Every note you play, the sky gets a little clearer.')+'”</div><div class="sub center">+'+n+' notes'+(c?' · +'+c+' coins':'')+' · in your Star Log</div><button class="btn wide" onclick="skyHub()">Back to the dome</button>'); fan(); party(30); }
+
+  /* ---------- SKY SHOWS ---------- */
+  var SX=null;
+  function predict(k,q,opts,a,next){ var E=SHOWS[k]; opts=shuf(opts);
+    modal('<div class="center">'+vegaSvg(56)+'<h2 style="margin:2px 0">'+E.ic+' '+esc(E.nm)+'</h2></div><div class="speak"><b>Predict first:</b> '+esc(q)+'</div><div class="v54ans">'+opts.map(function(o){ return '<button class="spb" data-v="'+esc(o)+'">'+esc(o)+'</button>'; }).join('')+'</div>');
+    var bs=document.querySelectorAll('.spb'); for(var i=0;i<bs.length;i++)bs[i].addEventListener('click',function(){ SX.guess=this.getAttribute('data-v'); SX.guessOK=SX.guess===a; tap(); next(); }); }
+  /* a slider model: goals in order; each goal is {say, ok(val), done} */
+  function slider(k,o){ var E=SHOWS[k], gi=0;
+    function draw(){ var G=o.goals[gi];
+      modal('<div class="center">'+vegaSvg(44)+'<h2 style="margin:2px 0">'+E.ic+' '+esc(E.nm)+' · '+(gi+1)+' of '+o.goals.length+'</h2><div id="slPic">'+o.pic(o.val)+'</div></div><div class="speak"><b>Goal:</b> '+esc(G.say)+'</div>'
+        +'<div style="display:flex;align-items:center;gap:10px;margin:8px 0"><span style="font-size:20px">'+o.lo+'</span><input id="slR" type="range" min="'+o.min+'" max="'+o.max+'" step="1" value="'+o.val+'" style="flex:1;height:36px"><span style="font-size:20px">'+o.hi+'</span></div><div id="slMsg" class="sub center" style="min-height:22px"></div>');
+      var sl=document.getElementById('slR'), fired=false; if(!sl)return;
+      var check=function(){ o.val=+sl.value; var p=document.getElementById('slPic'); if(p)p.innerHTML=o.pic(o.val);
+        if(!fired&&G.ok(o.val)){ fired=true; good(); setTimeout(function(){ var m=document.getElementById('slMsg'); if(!m)return; m.innerHTML='<div class="speak" style="text-align:left"><b>You did it!</b> '+esc(G.done)+'</div><button class="btn wide" id="slNext">Next ▶</button>'; var n=document.getElementById('slNext'); if(n)n.addEventListener('click',function(){ tap(); gi++; if(gi>=o.goals.length)o.end(); else draw(); }); },250); } };
+      sl.addEventListener('input',check); }
+    draw(); }
+  function wrapUp(k,say,logT){ var E=SHOWS[k];
+    modal('<div class="center">'+vegaSvg(64)+'<h2 style="margin:2px 0">'+E.ic+' What we saw</h2></div><div class="speak"><b>Vega:</b> “'+esc(say)+' '+(SX.guessOK?'And your prediction was right!':'Your guess was different, and now you have seen what really happens.')+'”</div>'
+      +'<button class="btn wide" onclick="'+cb(function(){ skyCheck(k,2,function(){ showDone(k,logT); }); })+'">Quick check ▶</button>'); }
+  function skyCheck(topic,n,done){ var qs=shuf(SPACE.filter(function(q){ return q.tp===topic; })).slice(0,n), i=0;
+    function next(){ if(i>=qs.length){ done(); return; } var q=qs[i], opts=shuf([q.a].concat(q.w));
+      modal('<div class="center">'+vegaSvg(52)+'<h2 style="margin:2px 0">❓ Quick check '+(i+1)+' of '+qs.length+'</h2></div><div class="speak">'+esc(q.q)+'</div><div class="v54ans">'+opts.map(function(o){ return '<button class="sqb" data-v="'+esc(o)+'">'+esc(o)+'</button>'; }).join('')+'</div>');
+      var tried=0, busy=false, bs=document.querySelectorAll('.sqb'); for(var k=0;k<bs.length;k++)bs[k].addEventListener('click',function(){ var b=this; if(busy||b.disabled)return; var ok=b.getAttribute('data-v')===q.a; if(tried===0)adj('space',ok);
+        if(ok){ busy=true; good(); tst(q.why||'Yes!'); i++; setTimeout(next,900); return; } bad(); tried++; b.disabled=true; b.style.opacity='.4'; if(tried>=2){ busy=true; tst('It is: '+q.a+'. '+(q.why||'')); i++; setTimeout(next,2400); } else tst('Think about what you saw in the dome.'); }); }
+    next(); }
+  function showDone(k,logT){ var v=V(), s=v.sky, today=s.day[k]!==dk(); s.shows[k]=(s.shows[k]||0)+1; s.day[k]=dk(); var n=today?15:5, c=today?10:0; notes(n); if(c)coins(c); fr('vega',today?2:1); logIt(SHOWS[k].nm,logT); sv(); try{ sqCheck(); }catch(e){}
+    modal('<div class="center">'+vegaSvg(80)+'<h2 style="margin:2px 0">'+SHOWS[k].ic+' '+esc(SHOWS[k].nm)+': done!</h2></div><div class="card" style="text-align:left"><b>📓 In your Star Log:</b><div style="margin-top:4px">'+esc(logT)+'</div></div><div class="sub center">+'+n+' notes'+(c?' · +'+c+' coins':'')+'</div><button class="btn wide" onclick="skyHub()">Back to the dome</button>'); fan(); party(30); }
+
+  /* DAY & NIGHT: spin the Earth */
+  function earthPic(a){ var cx=190, cy=88, r=56, rad=a*Math.PI/180, px=cx+r*Math.cos(rad), py=cy+r*Math.sin(rad), lit=Math.cos(rad)<0;
+    return '<svg width="100%" viewBox="0 0 280 180" style="max-width:380px"><rect width="280" height="180" rx="12" fill="#0b0820"/>'
+      +'<circle cx="26" cy="88" r="30" fill="#ffd158"/><circle cx="26" cy="88" r="38" fill="#ffd158" opacity=".2"/><path d="M60 70 L120 70 M60 88 L120 88 M60 106 L120 106" stroke="#ffd158" stroke-width="2" stroke-dasharray="6 6" opacity=".6"/>'
+      +'<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="#3a8bd9"/><path d="M'+(cx-20)+' '+(cy-30)+' q14 8 6 22 q-10 14 6 26 M'+(cx+14)+' '+(cy-36)+' q10 16 -2 30 q-8 10 10 24" stroke="#46c46a" stroke-width="10" fill="none" stroke-linecap="round"/>'
+      +'<path d="M'+cx+' '+(cy-r)+' A'+r+' '+r+' 0 0 1 '+cx+' '+(cy+r)+' Z" fill="#0b0820" opacity=".62"/>'
+      +'<circle cx="'+px.toFixed(1)+'" cy="'+py.toFixed(1)+'" r="7" fill="'+(lit?'#ffd158':'#8a7ac8')+'" stroke="#ffffff" stroke-width="2"/>'
+      +'<text x="'+cx+'" y="172" text-anchor="middle" font-size="13" font-weight="900" fill="'+(lit?'#ffd158':'#b7a9ee')+'">Ohio: '+(lit?'DAYTIME ☀':'NIGHT ☾')+'</text></svg>'; }
+  function dayStart(){ SX={k:'day'}; predict('day','Why do we have day and night?',['Earth spins around once every day','The Sun goes around the Earth every day','The Sun turns off at night'],'Earth spins around once every day',function(){
+    slider('day',{val:0,min:0,max:359,lo:'↻',hi:'↻',pic:earthPic,goals:[
+      {say:'Spin the Earth until it is DAYTIME in Ohio (the dot).',ok:function(a){ return Math.cos(a*Math.PI/180)<-0.3; },done:'Ohio faces the Sun now, so it is day. The Sun did not move: the Earth turned.'},
+      {say:'Keep spinning until it is NIGHT in Ohio again.',ok:function(a){ return Math.cos(a*Math.PI/180)>0.3; },done:'Now Ohio faces away from the Sun, into space. Night! One whole spin takes 24 hours: one day.'}],
+      end:function(){ wrapUp('day','The Earth spins like a top. The side facing the Sun has day; the side facing away has night. One spin = one day = 24 hours. The Sun only LOOKS like it moves across the sky.','Day and night happen because the Earth spins. One spin takes 24 hours.'); }}); }); }
+  /* MOON PHASES: slide through a month */
+  var MPH=[[0,1,'New Moon'],[2,6,'Waxing Crescent'],[7,8,'First Quarter (half)'],[9,13,'Waxing Gibbous'],[14,16,'Full Moon'],[17,21,'Waning Gibbous'],[22,23,'Last Quarter (half)'],[24,28,'Waning Crescent'],[29,29,'New Moon']];
+  function phaseName(d){ for(var i=0;i<MPH.length;i++)if(d>=MPH[i][0]&&d<=MPH[i][1])return MPH[i][2]; return ''; }
+  function moonPath(d,cx,cy,r){ var p=d/29.5, k=Math.cos(2*Math.PI*p), rx=Math.abs(k)*r, wax=p<0.5, outer=wax?1:0, inner=wax?(k>0?0:1):(k>0?1:0);
+    return 'M'+cx+' '+(cy-r)+' A'+r+' '+r+' 0 0 '+outer+' '+cx+' '+(cy+r)+' A'+rx.toFixed(2)+' '+r+' 0 0 '+inner+' '+cx+' '+(cy-r)+' Z'; }
+  function moonPic(d){ return '<svg width="100%" viewBox="0 0 280 170" style="max-width:380px"><rect width="280" height="170" rx="12" fill="#0b0820"/><circle cx="40" cy="30" r="1.4" fill="#fff"/><circle cx="240" cy="40" r="1.2" fill="#fff"/><circle cx="210" cy="140" r="1.4" fill="#fff"/><circle cx="60" cy="130" r="1" fill="#fff"/>'
+      +'<circle cx="140" cy="78" r="52" fill="#2b2350"/>'+(d===0||d===29?'':'<path d="'+moonPath(d,140,78,52)+'" fill="#fff6d8"/>')+'<circle cx="122" cy="64" r="7" fill="#000" opacity=".08"/><circle cx="156" cy="96" r="9" fill="#000" opacity=".08"/>'
+      +'<text x="140" y="152" text-anchor="middle" font-size="13" font-weight="900" fill="#ffd158">Day '+d+': '+phaseName(d)+'</text></svg>'; }
+  function moonStart(){ SX={k:'moon'}; predict('moon','About how long is it from one full moon to the next?',['about a month (29 days)','one day','one week','one year'],'about a month (29 days)',function(){
+    slider('moon',{val:0,min:0,max:29,lo:'🌑',hi:'🌑',pic:moonPic,goals:[
+      {say:'Slide the days until the Moon is HALF lit (First Quarter).',ok:function(d){ return d>=7&&d<=8; },done:'About a week after the New Moon, we see half of the lit side.'},
+      {say:'Now slide to a FULL Moon.',ok:function(d){ return d>=14&&d<=16; },done:'About two weeks in: the whole lit side faces us. Full Moon!'},
+      {say:'Keep going until it is a NEW Moon again (almost dark).',ok:function(d){ return d>=28; },done:'29 or 30 days later, back to dark. That is where the word MONTH comes from: moon-th!'}],
+      end:function(){ wrapUp('moon','The Moon does not make its own light. The Sun always lights half of it. As the Moon goes around the Earth, we see more or less of that lit half: new, crescent, half, gibbous, full, and back. One trip around takes about 29 and a half days.','The Moon borrows light from the Sun. The phases repeat about every 29 and a half days.'); }}); }); }
+  /* PLANET LINEUP: tap them in order, then find the giant */
+  function lineStart(){ SX={k:'line'}; predict('line','Which planet is the BIGGEST?',['Jupiter','Earth','Saturn','Mars'],'Jupiter',function(){ var order=shuf(PLANETS.map(function(p,i){ return i; })), next=0, miss=0, phase=0;
+    function draw(msg){ modal('<div class="center">'+vegaSvg(44)+'<h2 style="margin:2px 0">'+SHOWS.line.ic+' Planet Lineup</h2></div><div class="speak"><b>Goal:</b> '+(phase===0?'Tap the planets in order from the Sun. '+next+' of 8 so far.':'Tap the BIGGEST planet.')+'</div>'
+        +'<div class="v54planets">'+order.map(function(i){ var p=PLANETS[i], done=phase===0&&i<next; return '<button class="v54pl'+(done?' done':'')+'" data-i="'+i+'"'+(done?' disabled':'')+'>'+planetSvg(p,62)+'<span>'+(done?(i+1)+'. ':'')+p.nm+'</span></button>'; }).join('')+'</div><div class="sub center" id="plMsg" style="min-height:22px">'+(msg||'')+'</div>');
+      var bs=document.querySelectorAll('.v54pl'); for(var k=0;k<bs.length;k++)bs[k].addEventListener('click',function(){ var i=+this.getAttribute('data-i'); organNote(i,.35);
+        if(phase===0){ if(i===next){ next++; if(next>=8){ phase=1; good(); draw('All eight! Rocky planets first, then the giants.'); } else draw(PLANETS[i].nm+': '+PLANETS[i].fact+'.'); } else { miss++; bad(); draw('Not yet. Which is next from the Sun after '+(next?PLANETS[next-1].nm:'the Sun')+'?'); } return; }
+        if(i===4){ good(); var m=document.getElementById('plMsg'); if(m)m.innerHTML='<b>Jupiter!</b> About 11 Earths could line up across it.<div style="margin-top:6px"><button class="btn" id="plGo">Next ▶</button></div>'; var g=document.getElementById('plGo'); if(g)g.addEventListener('click',function(){ tap(); wrapUp('line','Eight planets go around the Sun. The four close ones are small and rocky: Mercury, Venus, Earth, Mars. The four far ones are giants made mostly of gas and ice: Jupiter, Saturn, Uranus, Neptune. Jupiter is the biggest of all.','Order from the Sun: Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus, Neptune. Jupiter is the biggest.'); }); }
+        else { bad(); var m2=document.getElementById('plMsg'); if(m2)m2.textContent=PLANETS[i].nm+' is big? Look for the one with stripes and a red spot.'; } }); }
+    draw(''); }); }
+  /* SEASONS: daylight in Ohio through the year */
+  var MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'], DAYH=[9.4,10.6,12,13.4,14.6,15.2,14.9,13.8,12.4,11,9.8,9.1], SUNH=[27,35,46,58,67,72,70,62,51,39,30,25];
+  function seasonPic(m){ var h=SUNH[m], x0=40, x1=240, base=140, top=base-h*1.4, mid=(x0+x1)/2, sx=mid, sy=top;
+    return '<svg width="100%" viewBox="0 0 280 180" style="max-width:380px"><rect width="280" height="180" rx="12" fill="'+(DAYH[m]>13?'#5bbfe6':DAYH[m]>11?'#7aa8e6':'#8a7ac8')+'"/>'
+      +'<path d="M'+x0+' '+base+' Q'+mid+' '+(top*2-base)+' '+x1+' '+base+'" stroke="#ffffff" stroke-width="2" stroke-dasharray="5 5" fill="none" opacity=".8"/>'
+      +'<circle cx="'+sx+'" cy="'+sy.toFixed(1)+'" r="14" fill="#ffd158"/><circle cx="'+sx+'" cy="'+sy.toFixed(1)+'" r="20" fill="#ffd158" opacity=".25"/>'
+      +'<rect x="0" y="'+base+'" width="280" height="40" fill="'+(m<2||m===11?'#f4f0ff':m<5?'#7dd87a':m<8?'#46c46a':'#c98a4a')+'"/><rect x="128" y="'+(base-22)+'" width="24" height="22" fill="#c46a4a"/><path d="M124 '+(base-22)+' L140 '+(base-36)+' L156 '+(base-22)+' Z" fill="#8a5630"/>'
+      +'<text x="140" y="168" text-anchor="middle" font-size="13" font-weight="900" fill="#1d1636">'+MON[m]+' · '+DAYH[m].toFixed(1)+' hours of daylight</text><text x="16" y="22" font-size="11" font-weight="900" fill="#1d1636">Noon Sun height: '+h+'°</text></svg>'; }
+  function seasStart(){ SX={k:'seas'}; predict('seas','Why is summer warmer than winter in Ohio?',['The Sun is higher and the days are longer','Earth is closer to the Sun in summer','The Sun gets bigger in summer'],'The Sun is higher and the days are longer',function(){
+    slider('seas',{val:0,min:0,max:11,lo:'❄️',hi:'❄️',pic:seasonPic,goals:[
+      {say:'Find the month with the LONGEST day in Ohio.',ok:function(m){ return m===5; },done:'June! About 15 hours of daylight, and the Sun climbs high at noon.'},
+      {say:'Now find the month with the SHORTEST day.',ok:function(m){ return m===11; },done:'December: only about 9 hours of daylight, and the Sun stays low.'}],
+      end:function(){ wrapUp('seas','The Earth is tipped over a little. In summer, our half leans toward the Sun: the Sun climbs higher and stays up longer, so it heats us more. In winter we lean away. Surprise: the Earth is actually CLOSEST to the Sun in early January!','Seasons happen because Earth is tilted: in summer the Sun is higher and the days are longer.'); }}); }); }
+  var SHOWS={
+    day:{nm:'Day & Night',ic:'🌍',blurb:'Spin the Earth. Where does the night come from?',start:function(){ tap(); dayStart(); }},
+    moon:{nm:'Moon Phases',ic:'🌙',blurb:'Slide through a month of moons.',start:function(){ tap(); moonStart(); }},
+    line:{nm:'Planet Lineup',ic:'🔭',blurb:'Line up all eight planets, then find the giant.',start:function(){ tap(); lineStart(); }},
+    seas:{nm:'Seasons',ic:'☀️',blurb:'Why is summer hot? (It is not what most people think!)',start:function(){ tap(); seasStart(); }}};
+
+  /* ---------- THE SPACE QUESTION BANK (QG.space + the quick checks) ---------- */
+  var SPACE=[
+    {tp:'day',lv:1,q:'What makes day and night?',a:'The Earth spinning',w:['The Sun turning off','Clouds covering the Sun','The Moon blocking the Sun']},
+    {tp:'day',lv:1,q:'When it is daytime in Ohio, our side of the Earth is facing...',a:'the Sun',w:['the Moon','away from the Sun','Mars']},
+    {tp:'day',lv:2,q:'How long does it take the Earth to spin around once?',a:'24 hours',w:['1 hour','1 week','365 days']},
+    {tp:'day',lv:2,q:'The Sun seems to rise in the...',a:'east',w:['west','north','south']},
+    {tp:'day',lv:3,q:'When it is noon in Ohio, it is night on the other side of the Earth because...',a:'that side faces away from the Sun',w:['the Sun is turned off there','they have no Sun','the Moon is in the way']},
+    {tp:'day',lv:3,q:'How long does it take the Earth to go all the way around the Sun?',a:'about 365 days (a year)',w:['24 hours','about 29 days','10 years']},
+    {tp:'moon',lv:1,q:'Where does moonlight come from?',a:'Sunlight bouncing off the Moon',w:['The Moon makes its own light','Street lights','Stars inside the Moon']},
+    {tp:'moon',lv:1,q:'When the whole Moon is lit up, it is called a...',a:'full moon',w:['new moon','half moon','blue moon']},
+    {tp:'moon',lv:2,q:'About how long is it from one full moon to the next?',a:'about 29 days',w:['about 7 days','1 day','about 365 days']},
+    {tp:'moon',lv:2,q:'A new moon looks...',a:'almost completely dark',w:['completely bright','like a half circle','red']},
+    {tp:'moon',lv:3,q:'The Moon looks like it changes shape because...',a:'we see different amounts of its sunlit half',w:['it really shrinks','Earth’s shadow covers it every night','clouds cut pieces off']},
+    {tp:'moon',lv:3,q:'A week after a new moon, the Moon is about...',a:'half lit',w:['full','completely dark','gone']},
+    {tp:'line',lv:1,q:'Which planet do we live on?',a:'Earth',w:['Mars','Venus','Jupiter']},
+    {tp:'line',lv:1,q:'Which planet is the biggest?',a:'Jupiter',w:['Earth','Mercury','Mars']},
+    {tp:'line',lv:1,q:'How many planets go around our Sun?',a:'8',w:['3','12','100']},
+    {tp:'line',lv:2,q:'Which planet is closest to the Sun?',a:'Mercury',w:['Venus','Earth','Neptune']},
+    {tp:'line',lv:2,q:'Which planet has the biggest, brightest rings?',a:'Saturn',w:['Mars','Earth','Mercury']},
+    {tp:'line',lv:2,q:'Which planet is called the red planet?',a:'Mars',w:['Jupiter','Venus','Neptune']},
+    {tp:'line',lv:3,q:'Which comes right after Earth, going out from the Sun?',a:'Mars',w:['Venus','Jupiter','Saturn']},
+    {tp:'line',lv:3,q:'The four planets closest to the Sun are small and...',a:'rocky',w:['made of gas','made of ice cream','frozen solid']},
+    {tp:'line',lv:3,q:'Venus is not the closest planet to the Sun, but it is the hottest. Why?',a:'Its thick clouds trap the heat',w:['It is the biggest','It spins the fastest','It has rings']},
+    {tp:'seas',lv:1,q:'In which season is the Sun up the longest in Ohio?',a:'summer',w:['winter','fall','it never changes']},
+    {tp:'seas',lv:1,q:'In winter, the days in Ohio are...',a:'shorter',w:['longer','24 hours long','exactly the same as summer']},
+    {tp:'seas',lv:2,q:'Why is summer warmer in Ohio?',a:'The Sun is higher and up longer',w:['Earth is closer to the Sun','The Sun gets bigger','There are no clouds']},
+    {tp:'seas',lv:2,q:'In which month is the shortest day in Ohio?',a:'December',w:['June','March','September']},
+    {tp:'seas',lv:3,q:'Seasons happen because the Earth is...',a:'tilted',w:['flat','square','standing still']},
+    {tp:'seas',lv:3,q:'When it is summer in Ohio, in Australia (the other half of the Earth) it is...',a:'winter',w:['summer too','always night','spring forever']},
+    {tp:'organ',lv:1,q:'On the Star Organ, which pipe plays the LOWEST note?',a:'the longest pipe',w:['the shortest pipe','the shiniest pipe','they all sound the same']},
+    {tp:'organ',lv:2,q:'Sound is made when something...',a:'vibrates (wiggles back and forth)',w:['gets cold','turns blue','stands very still']},
+    {tp:'organ',lv:2,q:'A tuba is long and a flute is short. Which plays lower notes?',a:'the tuba',w:['the flute','they sound the same','neither makes sound']},
+    {tp:'organ',lv:3,q:'Pluck a short rubber band and a long one. The short one sounds...',a:'higher',w:['lower','the same','silent']},
+    {tp:'stars',lv:1,q:'The Sun is a...',a:'star',w:['planet','moon','comet']},
+    {tp:'stars',lv:2,q:'Why can’t we see stars in the daytime?',a:'The Sun is so bright it hides them',w:['Stars turn off in the day','Stars go behind the Moon','Stars only exist at night']},
+    {tp:'stars',lv:2,q:'A tool that makes faraway things in the sky look bigger is a...',a:'telescope',w:['microscope','thermometer','compass']},
+    {tp:'stars',lv:3,q:'A group of stars that makes a picture, like the Big Dipper, is a...',a:'constellation',w:['planet','galaxy','comet']},
+    {tp:'stars',lv:3,q:'Pluto was discovered in 1930 at an observatory in which state?',a:'Arizona',w:['Ohio','Florida','Alaska']}];
+  window.__SPACE=SPACE;
+  QG.space=function(Lv){ Lv=Math.max(1,Math.floor(+Lv||1)); var band=Lv<5?1:Lv<9?2:3; var pool=SPACE.filter(function(q){ return q.lv===band; }); if(!pool.length)pool=SPACE; var q=pk(pool);
+    return {q:q.q, vis:'', choices:shuf([q.a].concat(q.w)), a:q.a}; };
+
+  /* ---------- VEGA'S STAR QUEST ---------- */
+  function showsN(){ var s=V().sky; return Object.keys(SHOWS).filter(function(k){ return s.shows[k]; }).length; }
+  var SQ=[
+    {t:'Play for Vega',how:'At the Star Organ, tap Play for Vega and play the three things she asks for.',go:function(){ skyHub(); },ok:function(v){ return v.sky.organ>=1; }},
+    {t:'Watch 2 Sky Shows',how:'Pick any two Sky Shows in the dome. Predict, then make it happen.',go:function(){ skyHub(); },ok:function(){ return showsN()>=2; },prog:function(){ return Math.min(2,showsN())+' of 2'; }},
+    {t:'Watch all 4 Sky Shows',how:'Day & Night, Moon Phases, Planet Lineup, Seasons.',go:function(){ skyHub(); },ok:function(){ return showsN()>=4; },prog:function(){ return showsN()+' of 4'; }},
+    {t:'Answer 10 sky questions right',how:'Quick checks after the Sky Shows and Vega’s organ questions all count. Watch a show again for new questions.',go:function(){ skyHub(); },ok:function(v){ return (v.sky.right|0)>=10; },prog:function(v){ return Math.min(10,v.sky.right|0)+' of 10'; }},
+    {t:'Answer 20 sky questions right',how:'Ten more. The Pocket Telescope (and a Star Antenna for your robot) is waiting.',go:function(){ skyHub(); },ok:function(v){ return (v.sky.right|0)>=20; },prog:function(v){ return Math.min(20,v.sky.right|0)+' of 20'; }}];
+  try{ ART.v54_scope='<rect x="8" y="16" width="26" height="9" rx="3" fill="#c9a24c" transform="rotate(-24 21 20)"/><rect x="30" y="8" width="8" height="12" rx="2" fill="#8a7ac8" transform="rotate(-24 34 14)"/><circle cx="37" cy="10" r="3" fill="#7ad9ff"/><path d="M20 26 L14 40 M20 26 L26 40 M20 26 V40" stroke="#6b4a2a" stroke-width="2"/><path d="M6 6 l1 -3 l1 3 l3 0 l-2.4 2 l1 3 l-2.6 -2 l-2.6 2 l1 -3 l-2.4 -2 Z" fill="#ffd158"/>';
+    if(!BYID.v54_scope)addItem({id:'v54_scope',name:'Pocket Telescope',cat:'keepsake',zone:'wall',style:'cool',p:{},grp:'keepsake',keepsake:true}); }catch(e){}
+  function sqCheck(){ var v=V(), q=v.sq, moved=false, nT=0; while(q.step<SQ.length&&SQ[q.step].ok(v)){ q.step++; moved=true; if(q.step<SQ.length)(function(s,k){ setTimeout(function(){ tst('🔭 Star Quest: step '+s+' of '+SQ.length+' done!'); },1100+k*1800); })(q.step,nT++); }
+    if(moved)sv();
+    if(q.step>=SQ.length&&!q.done){ q.done=dk(); S.inv=S.inv||{}; S.inv.v54_scope=1; q.pending=1; sv(); notes(50); packs(1,'Star Quest'); whenFree(sqShow); } }
+  function sqShow(){ var q=V().sq; if(!q.pending)return; q.pending=0; sv(); var b=JSON.parse(JSON.stringify(V().bot)); b.ant=3;
+    modal('<div class="center">'+(typeof itemArt==='function'?itemArt('v54_scope',90):'')+'<h2>🔭 Star Quest complete!</h2></div><div class="speak"><b>Vega:</b> “You know the sky now: day and night, the Moon, the planets, the seasons. Take my Pocket Telescope. And your robot gets a Star Antenna!”</div><div class="center">'+botSvg(90,b)+'</div><div class="sub center">Pocket Telescope (in your Stuff) · Star Antenna (Bot Garage) · +50 notes · +1 card pack</div><button class="btn wide" onclick="closeModal()">To the stars!</button>'); fan(); party(60); }
+  setTimeout(function(){ try{ if(V().sq.pending)whenFree(sqShow,0); }catch(e){} },4000);
+  window.sqGo=function(){ tap(); var v=V(); if(v.sq.step>=SQ.length){ tst('Star Quest complete!'); return; } try{ closeModal(); }catch(e){} SQ[v.sq.step].go(); };
+  (function(){ if(typeof adjust!=='function')return; var _a=adjust; window.adjust=adjust=function(c,ok){ var r=_a.apply(this,arguments); try{ if(c==='space'){ if(ok){ var s=V().sky; s.right=(s.right|0)+1; sv(); } sqCheck(); } }catch(e){} return r; }; })();
+
+  /* ================= PROBABILITY PRO BANDS (Lvl 13-20) =================
+     Garrett was capped at 12 in Probability. Ohio 7.SP.5-8 previewed at a kid level: chance as a fraction, "not",
+     expected counts, listing outcomes (coins, dice), sums of two dice, fair games. Every answer is checked by test-v154. */
+  /* fractions that are EQUAL in value (4/36 and 1/9) must never both be offered */
+  function fval(x){ var m=String(x).match(/^(\d+)\/(\d+)$/); return m?(+m[1])/(+m[2]):NaN; }
+  function chs(ans,wrongs){ var seen=[fval(ans)], keep=[]; wrongs.forEach(function(w){ var v=fval(w); if(!isNaN(v)){ if(seen.some(function(s){ return Math.abs(s-v)<1e-9; }))return; seen.push(v); } keep.push(w); }); return uniq4(ans,keep); }
+  function gcd(a,b){ return b?gcd(b,a%b):a; }
+  function frc(n,d){ return n+'/'+d; }
+  function bag(cols){ return '<div style="margin:6px 0">'+cols.map(function(c){ var s=''; for(var i=0;i<c[1];i++)s+='<span style="display:inline-block;width:18px;height:18px;border-radius:50%;margin:2px;background:'+c[2]+'"></span>'; return s; }).join('')+'</div>'; }
+  var CN={red:'#ff5d5d',blue:'#5bbfe6',green:'#46c46a',yellow:'#ffd158',purple:'#8a6ad8'};
+  var PGENS=[
+    function(Lv){ var names=shuf(Object.keys(CN)).slice(0,3), cnt=[R(1,6),R(1,6),R(1,6)], tot=cnt[0]+cnt[1]+cnt[2], t=R(0,2), not=Math.random()<.4, n=not?tot-cnt[t]:cnt[t];
+      var q='A bag has '+cnt[0]+' '+names[0]+', '+cnt[1]+' '+names[1]+' and '+cnt[2]+' '+names[2]+' marbles. You grab one without looking. What is the chance it is '+(not?'NOT ':'')+names[t]+'?';
+      return {q:q,vis:bag(names.map(function(nm,i){ return [nm,cnt[i],CN[nm]]; })),choices:chs(frc(n,tot),[frc(tot-n,tot),frc(n,tot-n||1),frc(cnt[t],tot),frc(n+1,tot),frc(n,tot+1),frc(Math.max(1,n-1),tot),frc(n+2,tot)]),a:frc(n,tot)}; },
+    function(Lv){ if(Math.random()<.5){ var d=pk([2,4,5,10]), k=R(1,d-1), tries=d*R(4,12), ans=tries*k/d;
+        return {q:'A spinner lands on gold '+k+' out of '+d+' times. You spin it '+tries+' times. About how many golds should you expect?',vis:'',choices:chs(String(ans),[String(tries-ans),String(ans+d),String(k*tries),String(Math.max(1,ans-k))]),a:String(ans)}; }
+      var kind=pk(['coins','die']);
+      if(kind==='coins'){ var c=pk([2,3]), outs=Math.pow(2,c); return {q:'You flip '+c+' coins. How many different ways can they land? (Like HH, HT...)',vis:'',choices:chs(String(outs),[String(c*2),String(c+1),String(outs*2),String(c)]),a:String(outs)}; }
+      var ev=pk([['an even number',3],['a number bigger than 4',2],['a 6',1],['a number less than 3',2],['an odd number',3]]); return {q:'You roll one 6-sided die. What is the chance of rolling '+ev[0]+'?',vis:'',choices:chs(frc(ev[1],6),[frc(6-ev[1],6),frc(ev[1],3),frc(1,ev[1]+1),frc(ev[1]+1,6),frc(ev[1],12),frc(Math.max(1,ev[1]-1),6)]),a:frc(ev[1],6)}; },
+    function(Lv){ var r=Math.random();
+      if(r<.4){ var sum=R(2,12), ways=6-Math.abs(7-sum); return {q:'You roll two dice and add them. What is the chance the sum is '+sum+'?',vis:'<div class="sub">Two dice make 36 possible pairs.</div>',choices:chs(frc(ways,36),[frc(ways+1,36),frc(1,sum),frc(ways,12),frc(Math.max(1,ways-1),36),frc(ways+2,36),frc(ways,6)]),a:frc(ways,36)}; }
+      if(r<.7){ var a=pk([2,3,4,6]), b=pk([2,3,4,5,6]); return {q:'A menu has '+a+' drinks and '+b+' snacks. You pick one of each. How many different combos are there?',vis:'',choices:chs(String(a*b),[String(a+b),String(a*b+1),String(a*b-a),String(a+b+1)]),a:String(a*b)}; }
+      var ga=pk([[3,3,'Fair'],[4,2,'Not fair'],[2,4,'Not fair'],[5,1,'Not fair']]); return {q:'Game: roll a die. You win on '+ga[0]+' of the 6 numbers, your friend wins on the other '+ga[1]+'. Is the game fair?',vis:'',choices:shuf(['Fair','Not fair']),a:ga[2]}; }];
+  var PLES=[
+    {t:'Chance as a fraction',l:['Chance = the ways you WANT out of ALL the ways it could go.','3 red marbles in a bag of 10: the chance of red is 3/10.','The chance of NOT red is the rest: 7/10. The two always add up to the whole.'],ex:'4 blue, 2 green: chance of green is 2/6, chance of NOT green is 4/6.'},
+    {t:'Expect and list',l:['Expected count = chance × how many tries. 1/4 chance, 40 spins: about 10.','To count ways, LIST them: 2 coins can land HH, HT, TH, TT. That is 4.','Each coin you add doubles the ways: 3 coins make 8.'],ex:'One die: even numbers are 2, 4, 6. That is 3 out of 6.'},
+    {t:'Two at once',l:['Two dice make 6 × 6 = 36 pairs. Count the pairs that give your sum.','A sum of 7 is the most common: 1+6, 2+5, 3+4, 4+3, 5+2, 6+1. That is 6/36.','Pick one of each from two groups? Multiply: 3 drinks × 4 snacks = 12 combos. A game is FAIR when both players have the same chance.'],ex:'Sum of 2 needs 1+1: only 1 way out of 36.'}];
+  var probAdded=false; try{ if(typeof window.proRegister==='function'&&QG.prob)probAdded=!!window.proRegister('prob',PGENS,PLES); }catch(e){}
+
+  /* ================= WIRING ================= */
+  /* v1.44 strands: Space joins the Science strand (allConcepts() would otherwise drop it in the catch-all) */
+  /* (the STRANDS edit lives in v144.js; nothing to do here) */
+  (function(){ if(document.getElementById('v54-css'))return; var st=document.createElement('style'); st.id='v54-css'; st.textContent=
+     '.v54garage{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start}.v54stage{flex:0 0 190px;margin:0 auto;text-align:center;background:radial-gradient(circle at 50% 40%,#2b2350,#140f2a);border:1px solid #3a2f6e;border-radius:16px;padding:8px}'
+    +'.v54nm{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}.v54nm input{width:140px;padding:9px;border-radius:10px;border:1px solid #3a2f6e;background:#1b1830;color:#f4f0ff;font-weight:800;font-size:15px}.v54nm .btn{margin:0}'
+    +'.v54build{flex:1 1 260px;min-width:0}.v54opts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:6px 0}.v54opt{background:#1b1830;border:2px solid #3a2f6e;border-radius:12px;padding:4px 2px;color:#f4f0ff;font-weight:800;font-size:12px;display:flex;flex-direction:column;align-items:center;min-height:44px}.v54opt.sel{border-color:#ffd158;background:#2b2350}.v54opt.lock{opacity:.5}'
+    +'.v54cols{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0}.v54col{width:40px;height:40px;border-radius:50%;border:3px solid #1d1636;font-weight:900;color:#1d1636}.v54col.sel{border-color:#ffffff;box-shadow:0 0 0 3px #ffd158}'
+    +'.v54yardwrap{overflow-x:auto;padding:4px 0}.v54yard{position:relative;display:grid;grid-template-columns:20px repeat(6,var(--c));grid-auto-rows:var(--c);gap:3px;width:max-content;margin:0 auto}'
+    +'.v54ax{display:flex;align-items:center;justify-content:center;font-weight:900;color:#ffd158;font-size:14px}.v54cell{background:#6b4a2a;border:2px solid #4e3420;border-radius:6px;padding:0;display:flex;align-items:center;justify-content:center;position:relative;font-weight:900;color:#ffd158}.v54cell:not([disabled]):active{transform:scale(.94)}'
+    +'.v54hole{width:60%;height:40%;background:#2b1a0a;border-radius:50%}.v54x{font-size:22px;color:#ff5d5d}.v54flag{position:absolute;top:-4px;right:0;font-size:16px}'
+    +'.v54ybot{position:absolute;width:var(--c);height:var(--c);pointer-events:none;left:calc(23px + (var(--x) - 1) * (var(--c) + 3px));top:calc((5 - var(--y)) * (var(--c) + 3px) - 10px);transition:left .5s ease,top .5s ease}'
+    +'.v54menu{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:8px 0}.v54dish{background:#1b1830;border:2px solid #3a2f6e;border-radius:12px;padding:6px 2px;color:#f4f0ff;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:13px}'
+    +'.v54pan{display:flex;align-items:center;justify-content:center;gap:4px}.v54planets{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:8px 0}.v54pl{background:#140f2a;border:2px solid #3a2f6e;border-radius:12px;color:#f4f0ff;font-weight:800;font-size:12px;display:flex;flex-direction:column;align-items:center;padding:4px 2px}.v54pl.done{border-color:#46c46a;opacity:.6}'
+    +'.v54ans{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}.v54ans button{font-size:17px;font-weight:900;padding:12px 8px;border-radius:12px;background:#2b2350;color:#f4f0ff;border:2px solid #3a2f6e;min-height:54px;line-height:1.2}.v54ans button:active{transform:scale(.97)}'
+    +'.v54blink{animation:v54blink 2.4s infinite}@keyframes v54blink{0%,80%,100%{opacity:1}90%{opacity:.25}}.v54flame{animation:v54fl .3s infinite alternate}@keyframes v54fl{to{transform:translateY(2px)}}'
+    +'@media (max-height:480px){.v54yard{--c:34px !important}}'
+    +'@media (max-width:420px){.v54menu,.v54planets{grid-template-columns:repeat(2,minmax(0,1fr))}.v54opts{grid-template-columns:repeat(2,minmax(0,1fr))}}'
+    +'@media (prefers-reduced-motion:reduce){.v54blink,.v54flame{animation:none}.v54ybot{transition:none}}';
+    document.head.appendChild(st); })();
+
+  /* the map: STARLIGHT ROW after LAB ROW */
+  (function(){ var _tp=townPlan; window.townPlan=townPlan=function(){ var rows=_tp.apply(this,arguments);
+    try{ if(!rows.some(function(r){ return r.name==='STARLIGHT ROW'; })){ var v=V();
+      rows.push({y:4820,name:'STARLIGHT ROW',sub:'space · star organ · build a bot',color:'#8a6ad8',slots:[
+        {col:'#8a6ad8',tg:'SPACE',nm:'Starlight Dome',host:'vega',v54:'vega',prog:showsN()+'/4 sky shows',go:'sky'},
+        {col:'#5bbfe6',tg:'BUILD A BOT',nm:'Bot Garage',host:'ada',v54:'bot',prog:v.bot.name?esc(v.bot.name)+' · '+v.jobs+' jobs':'build your robot!',go:'bot'}]}); } }catch(e){ try{ __muErr('townPlan(v154)',e); }catch(_){} }
+    return rows; }; })();
+  (function(){ var _tf=window.townFacade; if(typeof _tf!=='function')return; window.townFacade=townFacade=function(v){ var html=_tf.apply(this,arguments);
+    try{ if(v&&v.v54)html=html.replace(/<div class="tw-host">[\s\S]*?<\/div>/,'<div class="tw-host">'+(v.v54==='bot'?botSvg(60):vegaSvg(60))+'</div>'); }catch(e){}
+    return html; }; })();
+  (function(){ var _tg=townGo; window.townGo=townGo=function(dest){ if(dest==='sky'){ window.skyHub(); return; } if(dest==='bot'){ window.botHub(); return; } return _tg.apply(this,arguments); }; })();
+  /* Coach's Pick: a Space pick jams in the dome */
+  (function(){ var _cj=window.coachJam; if(typeof _cj!=='function')return; window.coachJam=function(c){ if(c==='space'){ tap(); try{ closeModal(); }catch(e){} skyHub(); return; } return _cj.apply(this,arguments); }; })();
+
+  /* What's New */
+  (window.MU_NEWS=window.MU_NEWS||[]).push({flag:'seen154',pri:2,when:function(){ return !!(S.stats&&S.stats.answers>0); },html:function(){
+    var row=function(art,t,s){ return '<div class="card" style="text-align:left;display:flex;gap:10px;align-items:center">'+art+'<div><b>'+t+'</b><div class="sub" style="margin:2px 0 0;text-align:left">'+s+'</div></div></div>'; };
+    return '<div class="center"><h2 style="margin:4px 0">✨ Garrett’s ideas are in the city!</h2><div class="sub">A new street at the very bottom of the map: STARLIGHT ROW.</div></div>'
+      +row(vegaSvg(58),'🔭 Vega’s Starlight Dome','Vega plays the Star Organ, and every pipe is a TELESCOPE pointed at a planet. Play it for her, then watch the Sky Shows: day and night, the Moon, the planets, the seasons.')
+      +row(botSvg(58),'🤖 The Bot Garage','Build YOUR robot: head, eyes, body, wheels or legs, colors, a name. Then give it abilities: DIG for treasure and COOK real recipes.')
+      +row('<span style="font-size:40px">🎲</span>','👑 Heroic Probability','Probability now goes past 12, all the way to 20.')
+      +'<div class="sub center">Every step is on the 📋 TO DO list.</div>'
+      +'<button class="btn wide" onclick="closeModal();botHub()">🤖 Build my robot</button>'
+      +'<button class="btn wide ghost" onclick="closeModal();skyHub()">🔭 Visit Vega</button>'
+      +'<button class="btn wide ghost small" onclick="closeModal()">Later</button>'; }});
+
+  /* guides (first visit + the ? How to play) */
+  try{ var G=window.__news&&window.__news.G; if(G){
+    G['scr-bot']={who:['cit','ada'],t:'The Bot Garage',s:['Build your own robot: tap Head, Eyes, Body, Moves, Antenna and Paint, and pick what you like. Type a name and tap Save name.','Abilities are tools for its arms. Install Dig (a shovel) or Cook (a whisk), then tap Go.','Every job your robot finishes counts. 10 jobs unlocks GOLD paint; Vega’s Star Quest unlocks the Star Antenna.']};
+    G['scr-sky']={who:['cit','vega'],t:'The Starlight Dome',s:['The Star Organ: tap any pipe to hear it. Short pipes play high, long pipes play low. Each pipe is a telescope pointed at a planet, in order from the Sun.','Play for Vega: she asks for 3 things to play. Sky Shows: guess first, then use the slider or tap to make it happen.','Each show ends with a quick check and goes in your Star Log. The Star Quest on your To-Do list walks you through all of it.']};
+    G['dig']={who:['cit','ada'],t:'Dig for treasure',s:['Each clue is a grid point like (4, 2). The FIRST number is how far ACROSS, the SECOND is how far UP.','Tap that square. Your robot drives there and digs.','Wrong square? Just dirt, and a hint. Find all ten kinds of treasure for your collection.']};
+    G['cook']={who:['cit','ada'],t:'Cook with your robot',s:['Pick a dish. Every dish has 3 steps: how much, measure, timer.','How much: recipes are for a few people, so multiply for more.','Measure with cups (two 1/4 cups make 1/2), then add the cooking minutes to the start time.']};
+    G['starq']={who:['cit','vega'],t:'Vega’s Star Quest',s:['Five steps, one at a time. Your To-Do list always shows the step you are on.','Play for Vega, watch the Sky Shows, then answer 20 sky questions right.','The prize: the Pocket Telescope, and a Star Antenna for your robot.']};
+  } }catch(e){}
+
+  /* To-Do rows */
+  (window.TODO_EXTRA=window.TODO_EXTRA||[]).push(function(sec){ var out=[], v=V();
+    if(sec==='quests'){ var b=v.bot, mods=Object.keys(b.mods).length;
+      if(!b.name||mods<2)out.push({ic:botSvg(40),t:'Build your robot',s:!b.name?'Go to the Bot Garage on Starlight Row. Pick its look, then type a name and tap Save name.':'Install '+(b.mods.dig?'':'Dig')+(mods===0?' and ':'')+(b.mods.cook?'':'Cook')+' in the Abilities box, then tap Go.',btn:'Go',go:function(){ botHub(); },key:'bot',top:true});
+      if(v.sq.step<SQ.length){ var st=SQ[v.sq.step]; out.push({ic:vegaSvg(40),t:'Vega’s Star Quest',s:'Step '+(v.sq.step+1)+' of '+SQ.length+': '+st.t+(st.prog?' ('+st.prog(v)+')':'')+'. '+st.how,btn:'Go',go:function(){ sqGo(); },key:'starq',top:true}); }
+      var fn=Object.keys(v.dig.found).length; if(b.mods.dig&&fn<FINDS.length)out.push({ic:'⛏️',t:'Treasure collection: '+fn+' of '+FINDS.length,s:'Dig with your robot to find every kind of treasure.',btn:'Go',go:function(){ digStart(); },key:'finds',quiet:true});
+      var dn=Object.keys(v.cook.dishes).length; if(b.mods.cook&&dn<DISHES.length)out.push({ic:'📖',t:'Cookbook: '+dn+' of '+DISHES.length+' dishes',s:'Cook every dish once with your robot.',btn:'Go',go:function(){ cookStart(); },key:'cookbook',quiet:true});
+      if(!goldOK()&&v.jobs>0)out.push({ic:'★',t:'Gold paint: '+v.jobs+' of 10 robot jobs',s:'Every dig and every dish counts.',btn:'Go',go:function(){ botHub(); },key:'gold',quiet:true}); }
+    if(sec==='dailies'){ var rj=v.dig.day===dk()||v.cook.day===dk(), sk=Object.keys(SHOWS).some(function(k){ return v.sky.day[k]===dk(); })||v.sky.organDay===dk();
+      out.push({ic:botSvg(40),t:'A robot job a day',s:rj?'Done today.':'Dig for treasure or cook a dish with '+(v.bot.name?esc(v.bot.name):'your robot')+'.',btn:'Go',go:function(){ botHub(); },done:rj,key:'botday'});
+      out.push({ic:vegaSvg(40),t:'Something from the sky',s:sk?'Done today. It is in your Star Log.':'Play for Vega or watch a Sky Show.',btn:'Go',go:function(){ skyHub(); },done:sk,key:'skyday'}); }
+    return out; });
+  try{ if(window.__todo){ var D=__todo.DEST2SCR; if(D){ D.sky='scr-sky'; D.bot='scr-bot'; }
+    var NR=__todo.NEWS_ROWS; if(NR&&!NR.some(function(r){ return r.t==='The Bot Garage'; })){
+      NR.unshift({v:'v1.54',t:'Vega’s Starlight Dome',s:'The Star Organ with telescope pipes, four Sky Shows, and the Star Quest.',go:function(){ skyHub(); },how:'scr-sky'});
+      NR.unshift({v:'v1.54',t:'The Bot Garage',s:'Build and name your own robot. Install Dig and Cook, then put it to work.',go:function(){ botHub(); },how:'scr-bot'}); } } }catch(e){}
+
+  /* Grown-Ups corner */
+  (function(){ var _og=window.openGrown; if(typeof _og!=='function')return; window.openGrown=function(){ var r=_og.apply(this,arguments); try{ var body=document.getElementById('gwBody'); if(!body)return r; var v=V();
+      var tile=function(k,val){ return '<div class="card" style="flex:1 1 100px;padding:8px 10px;text-align:center;margin:0"><div class="sub" style="margin:0">'+k+'</div><b style="font-size:18px">'+val+'</b></div>'; };
+      body.insertAdjacentHTML('afterbegin','<div class="card" style="text-align:left;margin:8px 0"><b>✨ Starlight Row (v1.54, Garrett’s ideas)</b>'
+        +'<div class="row" style="gap:6px;flex-wrap:wrap;margin:6px 0">'+tile('Robot',v.bot.name?esc(v.bot.name):'not named')+tile('Robot jobs',v.jobs)+tile('Digs / dishes',v.dig.runs+' / '+v.cook.total)+tile('Sky shows',showsN()+'/4')+tile('Space & Sky',L('space'))+tile('Star Quest',Math.min(v.sq.step+1,SQ.length)+'/'+SQ.length+(v.sq.done?' ✓':''))+'</div>'
+        +'<div class="sub" style="margin:4px 0 0">Bot Garage abilities practice real skills: Dig = coordinates and relative moves on a grid (Ohio 5.G.1-2), Cook = scaling a recipe (ratio), measuring cups (fractions), oven timers (elapsed time). Starlight Dome: day and night, moon phases, the solar system, seasons (Ohio Science gr 1-5), and pitch vs pipe length (sound). Only quick checks and first tries move levels; predictions are never graded. Probability now has Pro bands to Lvl 20 (chance as a fraction, expected counts, listing outcomes, two dice, fair games).</div></div>'); }catch(e){} return r; }; })();
+
+  window.__v54={V:V,botSvg:botSvg,botArt:botArt,FINDS:FINDS,DISHES:DISHES,scaleQ:scaleQ,measQ:measQ,timeQ:timeQ,digClue:digClue,PLANETS:PLANETS,SPACE:SPACE,SHOWS:SHOWS,SQ:SQ,sqCheck:sqCheck,moonPath:moonPath,phaseName:phaseName,PGENS:PGENS,PLES:PLES,probAdded:probAdded,jobDone:jobDone,showsN:showsN,FR:FR,frName:frName,
+    setDG:function(o){ DG=o; },getDG:function(){ return DG; },getCK:function(){ return CK; },getOG:function(){ return OG; }};
 })();
 </script>
 </body>
