@@ -5,10 +5,19 @@ uploaded against what the last chat thought it shipped. Full build notes stay in
 (in the NOTES zip, never uploaded).
 
 ## Current
-- **v1.55 · Oct 24 2026** (sw cache `measureup-v1-55`). Contains v1.51 through v1.54. Live URL: https://motbuchanan.github.io/gameshelf/measureup/
+- **v1.56 · Oct 24 2026** (sw cache `measureup-v1-56`). Contains v1.51 through v1.55. Live URL: https://motbuchanan.github.io/gameshelf/measureup/
 - Files in the repo folder: `index.html`, `sw.js`, `manifest.json`, `ROADMAP.md` (this file, new in v1.51).
 
 ## What shipped lately
+- **v1.56 Ai Co. Helper Bots + the Candy Bank (Oct 24), Garrett's ideas.** His robot company AI CO. ("for the ai
+  corporation"): two helper abilities, DISHES (load the rack in rows x columns, share cups equally with remainders,
+  dishwasher timer) and CLEAN UP (sort a messy room into bins, then read the robot's bar graph, line plot, median/mean).
+  The AI CO. JOB BOARD: 3 neighbor problems a day (2-part jobs after 5), the design loop: read the problem, pick the
+  right ability (wrong tools explained), do it, customer review, pick an improvement for the Idea Notebook. Company
+  levels Startup -> Garage Helpers -> Neighborhood Favorite -> Town-Wide -> Legendary. ELLY'S CANDY BANK for Mot and
+  Garrett's real deal: real candy = 10% of ALL candy collected (spent candy still counts); lifetime tally, bag, real
+  earned, given/owed (grown-up marks given, percent and tally editable). More candy until Nov 7 for Ai Co. jobs, robot
+  jobs, Coach's Pick and every 5 right answers. COUNT YOUR HAUL from Halloween night: graph the real candy bag.
 - **v1.55 Robot abilities 2 + Constellation Connect (Oct 24).** Bot Garage: PAINT (pick a color; area by squares or
   rows x columns, perimeter all the way around, cans = area / coverage rounded UP; L-shaped rooms at the top tier) and
   LIFT (read a dial scale with unlabeled ticks, add a load against what the robot can carry, pounds and ounces). The
@@ -55,11 +64,11 @@ uploaded against what the last chat thought it shipped. Full build notes stay in
 - One fixed plot of land, camera-driven; no pointer capture; three currencies; crash-proof art; the red error box stays.
 
 ## Open queue (in order)
-1. Deploy v1.55 (includes v1.51-v1.54). Device check: news card, install Paint and Lift, one paint job, one lift job,
-   one constellation, design one.
-2. Grown-ups report in about a week: Coordinates, Area, Perimeter, Measurement should move; check what else is near 12.
-3. v1.56 WORDS + CODE: Word Hoard depth, Robot Workshop chapters 6-7 with Garrett's own robot as a second bot, Grammar.
-   Pro bands from the report (likely Odd & Even, Doubling & Halving, Fractions follow-ups).
-4. v1.57 LIFE SKILLS: History wing, Money & Life skills (a robot Shop ability: budgets, change, unit prices).
-5. Ideas parked: a robot Garden ability (plant needs, measuring growth), Vega's planet postcards (distances, big numbers).
+1. Deploy v1.56 (includes v1.51-v1.55). Device check: both news cards, the Candy Bank numbers (fix the all-time total
+   in Grown-ups if the estimate is off), install Dishes + Clean Up, one Ai Co. job end to end.
+2. Halloween night (Oct 31): Count Your Haul with the real bag; Grand Finals + Monster Bash open by themselves.
+3. Grown-ups report in about a week: Rows & Columns, Line Plots, Mean & Median, Coordinates, Area should move.
+4. v1.57 WORDS + CODE: Word Hoard depth, Robot Workshop chapters 6-7 with Garrett's robot, Grammar; Ai Co. upgrades from
+   the Idea Notebook (build the ideas he picks as real robot parts).
+5. v1.58 LIFE SKILLS: History wing, Money & Life skills (Ai Co. pricing jobs, a robot Shop ability).
 6. Tuning after play: Pro proof forceL bands, Pro Soundcheck batch size (11) and maxQ (4), tier toast, To-Do row set.
