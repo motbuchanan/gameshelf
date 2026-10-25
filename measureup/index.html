@@ -928,14 +928,14 @@ svg .charg{will-change:transform}
 <div id="toast"></div>
 <button id="homeBtn" onclick="goHome()" aria-label="Back to Garage">🏠</button>
 <button id="ellyBtn" onclick="openEllyHelp()" aria-label="Ask Elly for help"></button>
-<div id="vbadge">v1.57 · Oct 24</div>
+<div id="vbadge">v1.58 · Oct 25</div>
 
 <script>
 'use strict';
 /* ============ UTILS ============ */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const VERSION='v1.57 · Oct 24';
+const VERSION='v1.58 · Oct 25';
 const RM=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -19551,6 +19551,7 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
     {id:'da',   n:'Data & Graphs', e:'📊', base:2, c:['graph','lineplot','stats']},
     {id:'cs',   n:'Coding & Logic', e:'🤖', base:2, c:['code']}, /* v1.50: QG.code is registered by the Robot Workshop block */
     {id:'sci',  n:'Science', e:'🔬', base:2, c:['sci','space']}, /* v1.52: QG.sci (Science Lab block); v1.54: QG.space (Starlight Dome) */
+    {id:'wd',   n:'Words & Grammar', e:'📝', base:2, c:['gram']}, /* v1.58: QG.gram (The Daily Squawk) */
     {id:'mu',   n:'Music', e:'🎵', base:2, c:['conduct']}
   ];
   /* any concept registered later lands in a catch-all strand */
@@ -21323,47 +21324,57 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
   var DIRS={U:[0,-1],D:[0,1],L:[-1,0],R:[1,0]};
   var ARROW={U:'↑',D:'↓',L:'←',R:'→'};
   var DNAME={U:'up',D:'down',L:'left',R:'right'};
+  var PAINT={r:{nm:'red',col:'#ff5d5d',dk:'#a83242'},b:{nm:'blue',col:'#4aa3ff',dk:'#2a5fb0'}}; /* v1.58 colored floor tiles for IF cards */
 
   /* notation: "R R U"  "REP3[R U]"  "GO R"   -> AST [{t:'R'},{t:'REP',n:3,body:[{t:'R'},{t:'U'}]},{t:'GO',d:'R'}] */
   function parseProg(s){ var out=[]; s=String(s||'').trim(); var i=0;
     while(i<s.length){ var c=s[i];
       if(c===' '){ i++; continue; }
-      if(s.substr(i,3)==='REP'){ var m=/^REP(\d)\[([^\]]*)\]/.exec(s.substr(i)); if(!m)break; var body=parseProg(m[2]).filter(function(x){ return x.t!=='REP'; }); out.push({t:'REP',n:Math.max(2,Math.min(5,+m[1])),body:body}); i+=m[0].length; continue; }
+      if(s.substr(i,3)==='REP'){ var m=/^REP(\d)\[([^\]]*)\]/.exec(s.substr(i)); if(!m)break; var body=parseProg(m[2]).filter(function(x){ return x.t!=='REP'; }); out.push({t:'REP',n:Math.max(2,Math.min(9,+m[1])),body:body}); i+=m[0].length; continue; }
       if(s.substr(i,2)==='GO'){ var d=s[i+3]; if(DIRS[d]){ out.push({t:'GO',d:d}); i+=4; continue; } i+=2; continue; }
+      /* v1.58: IF cards ("IFrD" = if on a red tile, step down) and the function card F */
+      if(s.substr(i,2)==='IF'){ var ic=s[i+2], idd=s[i+3]; if(PAINT[ic]&&DIRS[idd]){ out.push({t:'IF',c:ic,d:idd}); i+=4; continue; } i+=2; continue; }
+      if(c==='F'){ out.push({t:'F'}); i++; continue; }
       if(DIRS[c]){ out.push({t:c}); i++; continue; }
       i++; }
     return out; }
-  function progStr(p){ return (p||[]).map(function(it){ if(it.t==='REP')return 'REP'+it.n+'['+progStr(it.body)+']'; if(it.t==='GO')return 'GO '+it.d; return it.t; }).join(' '); }
+  /* "main | fn": a program plus its function (the named move) */
+  function parseFull(s){ var parts=String(s||'').split('|'); return {prog:parseProg(parts[0]),fn:parseProg(parts[1]||'').filter(function(x){ return x.t!=='REP'&&x.t!=='F'; })}; }
+  function progStr(p){ return (p||[]).map(function(it){ if(it.t==='REP')return 'REP'+it.n+'['+progStr(it.body)+']'; if(it.t==='GO')return 'GO '+it.d; if(it.t==='IF')return 'IF'+it.c+it.d; return it.t; }).join(' '); }
   function countCards(p){ var n=0; (p||[]).forEach(function(it){ n++; if(it.t==='REP')n+=countCards(it.body); }); return n; }
   function cloneProg(p){ return JSON.parse(JSON.stringify(p||[])); }
 
   /* level object: {w,h,tiles:[[ch]],sx,sy,gx,gy,bolts:[[x,y]]} from map rows. S start, G pad, # crate, o bolt, . floor */
   function levelFromMap(rows){ var h=rows.length, w=0; rows.forEach(function(r){ if(r.length>w)w=r.length; });
-    var L={w:w,h:h,tiles:[],sx:0,sy:0,gx:w-1,gy:h-1,bolts:[]};
-    for(var y=0;y<h;y++){ var row=[]; for(var x=0;x<w;x++){ var ch=rows[y][x]||'.'; if(ch==='S'){ L.sx=x; L.sy=y; ch='.'; } else if(ch==='G'){ L.gx=x; L.gy=y; ch='.'; } else if(ch==='o'){ L.bolts.push([x,y]); ch='.'; } else if(ch!=='#')ch='.'; row.push(ch); } L.tiles.push(row); }
+    var L={w:w,h:h,tiles:[],sx:0,sy:0,gx:w-1,gy:h-1,bolts:[],paint:{}};
+    for(var y=0;y<h;y++){ var row=[]; for(var x=0;x<w;x++){ var ch=rows[y][x]||'.'; if(PAINT[ch]){ L.paint[x+','+y]=ch; ch='.'; } if(ch==='S'){ L.sx=x; L.sy=y; ch='.'; } else if(ch==='G'){ L.gx=x; L.gy=y; ch='.'; } else if(ch==='o'){ L.bolts.push([x,y]); ch='.'; } else if(ch!=='#')ch='.'; row.push(ch); } L.tiles.push(row); }
     return L; }
-  function mapFromLevel(L){ var rows=[]; for(var y=0;y<L.h;y++){ var s=''; for(var x=0;x<L.w;x++){ var ch=L.tiles[y][x]==='#'?'#':'.'; if(x===L.sx&&y===L.sy)ch='S'; else if(x===L.gx&&y===L.gy)ch='G'; else if(L.bolts.some(function(b){ return b[0]===x&&b[1]===y; }))ch='o'; s+=ch; } rows.push(s); } return rows; }
+  function mapFromLevel(L){ var rows=[]; for(var y=0;y<L.h;y++){ var s=''; for(var x=0;x<L.w;x++){ var ch=L.tiles[y][x]==='#'?'#':'.'; if(x===L.sx&&y===L.sy)ch='S'; else if(x===L.gx&&y===L.gy)ch='G'; else if(L.bolts.some(function(b){ return b[0]===x&&b[1]===y; }))ch='o'; else if(L.paint&&L.paint[x+','+y])ch=L.paint[x+','+y]; s+=ch; } rows.push(s); } return rows; }
+  function paintAt(L,x,y){ return (L.paint&&L.paint[x+','+y])||''; }
   function wallAt(L,x,y){ return x<0||y<0||x>=L.w||y>=L.h||L.tiles[y][x]==='#'; }
 
   /* flatten a program into single moves; each move remembers the card path that made it (for highlighting) */
-  function flatten(p){ var out=[];
+  function flatten(p,fn){ var out=[];
+    function one(b,path,k,via){ if(b.t==='GO')out.push({go:b.d,path:path,k:k,via:via}); else if(b.t==='IF')out.push({iff:b.c,d:b.d,path:path,k:k,via:via}); else if(b.t==='F'){ (fn||[]).forEach(function(f,j){ if(f.t!=='F'&&f.t!=='REP')one(f,['f',j],k,path); }); } else out.push({d:b.t,path:path,k:k,via:via}); }
     (p||[]).forEach(function(it,i){
-      if(it.t==='REP'){ for(var k=0;k<it.n;k++)it.body.forEach(function(b,j){ if(b.t==='GO')out.push({go:b.d,path:[i,j],k:k}); else out.push({d:b.t,path:[i,j],k:k}); }); }
-      else if(it.t==='GO')out.push({go:it.d,path:[i]});
-      else out.push({d:it.t,path:[i]}); });
+      if(it.t==='REP'){ for(var k=0;k<it.n;k++)it.body.forEach(function(b,j){ one(b,[i,j],k); }); }
+      else one(it,[i]); });
     return out; }
 
-  /* run it. steps: {x,y,ev:'move'|'bolt'|'bump'|'stay',path,k}; ok only if Beep ENDS on the pad holding every bolt */
-  function simulate(L,prog){ var x=L.sx,y=L.sy, got={}, steps=[], flat=flatten(prog), total=0, LIMIT=160;
+  /* run it. steps: {x,y,ev:'move'|'bolt'|'bump'|'stay'|'skip',path,k,via}; ok only if Beep ENDS on the pad holding every bolt.
+     fn = the function body (v1.58 F card). IF steps only move when the robot is standing on that color. */
+  function simulate(L,prog,fn){ var x=L.sx,y=L.sy, got={}, steps=[], flat=flatten(prog,fn), total=0, LIMIT=160;
     function boltKey(ax,ay){ return ax+','+ay; } var want={}; L.bolts.forEach(function(b){ want[boltKey(b[0],b[1])]=1; });
-    function step(d,path,k){ var v=DIRS[d], nx=x+v[0], ny=y+v[1];
-      if(wallAt(L,nx,ny)){ steps.push({x:x,y:y,ev:'bump',d:d,path:path,k:k}); return false; }
+    function step(d,path,k,via){ var v=DIRS[d], nx=x+v[0], ny=y+v[1];
+      if(wallAt(L,nx,ny)){ steps.push({x:x,y:y,ev:'bump',d:d,path:path,k:k,via:via}); return false; }
       x=nx; y=ny; var ev='move'; if(want[boltKey(x,y)]&&!got[boltKey(x,y)]){ got[boltKey(x,y)]=1; ev='bolt'; }
-      steps.push({x:x,y:y,ev:ev,d:d,path:path,k:k}); return true; }
+      steps.push({x:x,y:y,ev:ev,d:d,path:path,k:k,via:via}); return true; }
     for(var i=0;i<flat.length;i++){ var f=flat[i];
-      if(f.go){ var moved=0; while(!wallAt(L,x+DIRS[f.go][0],y+DIRS[f.go][1])){ step(f.go,f.path,f.k); moved++; total++; if(total>LIMIT)break; }
-        if(!moved)steps.push({x:x,y:y,ev:'stay',d:f.go,path:f.path,k:f.k}); }
-      else { total++; if(!step(f.d,f.path,f.k))return {ok:false,reason:'bump',steps:steps,x:x,y:y,got:Object.keys(got).length,bolts:L.bolts.length,at:f.path}; }
+      if(f.go){ var moved=0; while(!wallAt(L,x+DIRS[f.go][0],y+DIRS[f.go][1])){ step(f.go,f.path,f.k,f.via); moved++; total++; if(total>LIMIT)break; }
+        if(!moved)steps.push({x:x,y:y,ev:'stay',d:f.go,path:f.path,k:f.k,via:f.via}); }
+      else if(f.iff){ if(paintAt(L,x,y)===f.iff){ total++; if(!step(f.d,f.path,f.k,f.via))return {ok:false,reason:'bump',steps:steps,x:x,y:y,got:Object.keys(got).length,bolts:L.bolts.length,at:f.path}; }
+        else steps.push({x:x,y:y,ev:'skip',d:f.d,path:f.path,k:f.k,via:f.via,c:f.iff}); }
+      else { total++; if(!step(f.d,f.path,f.k,f.via))return {ok:false,reason:'bump',steps:steps,x:x,y:y,got:Object.keys(got).length,bolts:L.bolts.length,at:f.path}; }
       if(total>LIMIT)return {ok:false,reason:'long',steps:steps,x:x,y:y,got:Object.keys(got).length,bolts:L.bolts.length}; }
     var all=Object.keys(got).length===L.bolts.length, onPad=(x===L.gx&&y===L.gy);
     return {ok:all&&onPad,reason:(!all?'bolts':!onPad?'miss':'ok'),steps:steps,x:x,y:y,got:Object.keys(got).length,bolts:L.bolts.length}; }
@@ -21405,7 +21416,7 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
   var CHBY={}; CHAPTERS.forEach(function(c){ CHBY[c.id]=c; });
 
   var LV=[];
-  function lv(ch,t,map,sol,slots,hint,fix){ var L=levelFromMap(map); var sp=parseProg(sol); L.id=ch+'_'+(LV.filter(function(x){ return x.ch===ch; }).length+1); L.ch=ch; L.t=t; L.map=map; L.sol=sol; L.par=countCards(sp); L.slots=slots||0; L.hint=hint||''; if(fix)L.fix=fix; LV.push(L); return L; }
+  function lv(ch,t,map,sol,slots,hint,fix){ var L=levelFromMap(map); var sp=parseFull(sol); L.id=ch+'_'+(LV.filter(function(x){ return x.ch===ch; }).length+1); L.ch=ch; L.t=t; L.map=map; L.sol=sol; L.par=countCards(sp.prog)+countCards(sp.fn); L.slots=slots||0; L.hint=hint||''; if(fix)L.fix=fix; LV.push(L); return L; }
 
   /* ---- chapter 1: STEPS (arrows only) ---- */
   lv('steps','First Roll',      ['S..G'],                 'R R R',       0,'Beep needs to go right 3 times. Count the squares!');
@@ -21524,7 +21535,9 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
     var rn5=Ri(3,5), b5=[{t:pickD(ds)},{t:pickD(ds)},{t:pickD(ds)}], tot5=rn5*3+2; var ch5={}; ch5[tot5]=1; var list5=[tot5]; var g5=0; while(list5.length<4&&g5++<30){ var c5=pickD([rn5*3,rn5+3+2,tot5+1,tot5-1,rn5*2+2,tot5+3]); if(c5>0&&!ch5[c5]){ ch5[c5]=1; list5.push(c5); } }
     return {q:'→ ↓ then Repeat '+rn5+' [ '+b5.map(function(b){ return ARROW[b.t]; }).join(' ')+' ]. How many steps in all? (2 + '+rn5+' x 3)',choices:shuf(list5).map(String),a:String(tot5)}; }
 
-  var CORE={DIRS:DIRS,ARROW:ARROW,DNAME:DNAME,parseProg:parseProg,progStr:progStr,countCards:countCards,cloneProg:cloneProg,levelFromMap:levelFromMap,mapFromLevel:mapFromLevel,wallAt:wallAt,flatten:flatten,simulate:simulate,reachable:reachable,compress:compress,CHAPTERS:CHAPTERS,CHBY:CHBY,LV:LV,LVBY:LVBY,levelsOf:levelsOf,starsFor:starsFor,genTrack:genTrack,codeQ:codeQ,qGrid:qGrid,rng:rng,hsh:hsh};
+  /* v1.58: later chapters add levels through this (keeps LVBY in step) */
+  function addLevel(ch,t,map,sol,slots,hint,extra){ var L=lv(ch,t,map,sol,slots,hint); if(extra)for(var k in extra)L[k]=extra[k]; LVBY[L.id]=L; return L; }
+  var CORE={addLevel:addLevel,DIRS:DIRS,ARROW:ARROW,DNAME:DNAME,PAINT:PAINT,paintAt:paintAt,parseFull:parseFull,parseProg:parseProg,progStr:progStr,countCards:countCards,cloneProg:cloneProg,levelFromMap:levelFromMap,mapFromLevel:mapFromLevel,wallAt:wallAt,flatten:flatten,simulate:simulate,reachable:reachable,compress:compress,CHAPTERS:CHAPTERS,CHBY:CHBY,LV:LV,LVBY:LVBY,levelsOf:levelsOf,starsFor:starsFor,genTrack:genTrack,codeQ:codeQ,qGrid:qGrid,rng:rng,hsh:hsh};
   G_.__rbCore=CORE;
   if(typeof document==='undefined')return;
 
@@ -21669,30 +21682,50 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
   function boltSvg(sz){ return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 44 44"><path d="M22 6 l14 8 v16 l-14 8 l-14 -8 v-16 Z" fill="#ffd158"/><path d="M22 10 l10.5 6 v12 l-10.5 6 l-10.5 -6 v-12 Z" fill="#e0a92c"/><circle cx="22" cy="22" r="5.5" fill="#1d1636"/><circle cx="19" cy="18" r="1.6" fill="#fff6c8"/></svg>'; }
   function padSvg(sz){ return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 44 44"><rect x="5" y="9" width="34" height="26" rx="6" fill="#163a6a" stroke="#7ad9ff" stroke-width="2"/><path d="M24 12 L15 24 h7 l-2 9 l9 -13 h-7 Z" fill="#7dff8a"/></svg>'; }
   function crateSvg(sz){ return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 44 44"><rect x="4" y="6" width="36" height="34" rx="4" fill="#8a5630"/><rect x="4" y="6" width="36" height="34" rx="4" fill="none" stroke="#5a3a22" stroke-width="3"/><path d="M4 23 H40 M22 6 V40" stroke="#5a3a22" stroke-width="2.5"/><circle cx="13" cy="14" r="1.6" fill="#3a2416"/><circle cx="31" cy="14" r="1.6" fill="#3a2416"/><circle cx="13" cy="32" r="1.6" fill="#3a2416"/><circle cx="31" cy="32" r="1.6" fill="#3a2416"/></svg>'; }
-  function cardGlyph(it){ if(it.t==='GO')return '<span class="g">GO</span><span class="a">'+CORE.ARROW[it.d]+'</span>'; return '<span class="a">'+CORE.ARROW[it.t]+'</span>'; }
-  function cardWord(it){ if(it.t==='GO')return 'GO '+CORE.DNAME[it.d]; if(it.t==='REP')return 'Repeat x'+it.n; return CORE.DNAME[it.t]; }
+  /* v1.58: the robot on the board (his own robot in chapters 6-7, Beep everywhere else), the named move, IF cards */
+  function mineOn(){ try{ return !!(P&&P.L&&P.L.mine&&window.RB_MINE&&window.RB_MINE.ok()); }catch(e){ return false; } }
+  function botPic(sz,pose){ if(mineOn()){ try{ var s=window.RB_MINE.svg(sz,pose); if(s)return s; }catch(e){} } return nkSvg('beep',sz); }
+  function botNm(){ if(mineOn()){ try{ return window.RB_MINE.name(); }catch(e){} } return 'Beep'; }
+  function fnName(){ try{ return (window.RB_MINE&&window.RB_MINE.fnName())||'My Move'; }catch(e){ return 'My Move'; } }
+  function pShape(c){ return c==='r'?'●':'■'; }
+  function cardGlyph(it){ if(it.t==='GO')return '<span class="g">GO</span><span class="a">'+CORE.ARROW[it.d]+'</span>';
+    if(it.t==='F')return '<span class="a" style="font-size:24px">⭐</span><span class="g fnm">'+esc(fnName().slice(0,8))+'</span>';
+    if(it.t==='IF'){ var pc=CORE.PAINT[it.c]||CORE.PAINT.r; return '<span class="g">IF</span><span class="ifc" data-k="c" style="background:'+pc.col+'">'+pShape(it.c)+'</span><span class="a ifd" data-k="d">'+CORE.ARROW[it.d]+'</span>'; }
+    return '<span class="a">'+CORE.ARROW[it.t]+'</span>'; }
+  function cardWord(it){ if(it.t==='GO')return 'GO '+CORE.DNAME[it.d]; if(it.t==='REP')return 'Repeat x'+it.n; if(it.t==='F')return '⭐ '+fnName(); if(it.t==='IF')return 'IF '+CORE.PAINT[it.c].nm+' then '+CORE.DNAME[it.d]; return CORE.DNAME[it.t]; }
 
   function rbBlocks(){ var L=P.L; if(L.blocks)return L.blocks; var c=CORE.CHBY[L.ch]; return c?c.blocks:['U','D','L','R','REP','GO']; }
-  function cards(){ return CORE.countCards(P.prog); }
-  function full(){ return P.L.slots>0&&cards()>=P.L.slots; }
+  function hasF(){ return rbBlocks().indexOf('F')>=0; }
+  function cards(){ return CORE.countCards(P.prog)+CORE.countCards(P.fn||[]); }
+  function mainN(){ return CORE.countCards(P.prog); }
+  function full(){ if(P.target==='f')return P.L.fslots>0&&CORE.countCards(P.fn||[])>=P.L.fslots; return P.L.slots>0&&(hasF()?mainN():cards())>=P.L.slots; }
   function tileSize(){ var L=P.L; var avail=Math.min(window.innerWidth,520)-44; var ts=Math.floor(avail/L.w); var cap=(L.w*L.h<=12)?84:(L.w<=6&&L.h<=4)?72:64; return Math.max(34,Math.min(cap,ts)); }
 
-  function say(txt,who){ var el=document.getElementById('rbSay'); if(!el)return; who=who||'ada'; el.innerHTML='<div class="rb-who">'+nkSvg(who,44)+'</div><div class="rb-txt"><b>'+(who==='beep'?'Beep':'Ada')+':</b> '+txt+'</div>'; }
+  function say(txt,who){ var el=document.getElementById('rbSay'); if(!el)return; who=who||'ada'; if(who==='beep'&&mineOn())who='mine'; el.innerHTML='<div class="rb-who">'+(who==='mine'?botPic(44):nkSvg(who,44))+'</div><div class="rb-txt"><b>'+(who==='mine'?esc(botNm()):who==='beep'?'Beep':'Ada')+':</b> '+txt+'</div>'; }
 
   function drawBoard(){ var L=P.L, ts=tileSize(); var b=document.getElementById('rbBoard'); if(!b)return;
     b.style.setProperty('--ts',ts+'px'); b.style.width=(L.w*ts+8)+'px'; b.style.height=(L.h*ts+8)+'px';
     var html='';
-    for(var y=0;y<L.h;y++)for(var x=0;x<L.w;x++){ var cls='rb-tile'; var inner=''; if(L.tiles[y][x]==='#'){ cls+=' crate'; inner=crateSvg(Math.round(ts*0.9)); } if(x===L.gx&&y===L.gy){ cls+=' pad'; inner=padSvg(Math.round(ts*0.9)); }
+    for(var y=0;y<L.h;y++)for(var x=0;x<L.w;x++){ var cls='rb-tile'; var inner=''; if(L.tiles[y][x]==='#'){ cls+=' crate'; inner=crateSvg(Math.round(ts*0.9)); } if(x===L.gx&&y===L.gy){ cls+=' pad'; inner=padSvg(Math.round(ts*0.9)); } var pc=CORE.paintAt(L,x,y), tb=''; if(pc&&L.tiles[y][x]!=='#'){ cls+=' paint'; tb='background:'+(pc==='r'?'#4a1d2c':'#16305a')+';'; inner='<span class="rb-pmark" style="background:'+CORE.PAINT[pc].col+';border-color:'+CORE.PAINT[pc].dk+'">'+pShape(pc)+'</span>'+inner; }
       if(x===L.sx&&y===L.sy)cls+=' start';
-      html+='<div class="'+cls+'" style="left:'+(4+x*ts)+'px;top:'+(4+y*ts)+'px">'+inner+'</div>'; }
+      html+='<div class="'+cls+'" style="'+(tb||'')+'left:'+(4+x*ts)+'px;top:'+(4+y*ts)+'px">'+inner+'</div>'; }
     L.bolts.forEach(function(bt,i){ html+='<div class="rb-bolt" data-i="'+i+'" style="left:'+(4+bt[0]*ts)+'px;top:'+(4+bt[1]*ts)+'px">'+boltSvg(Math.round(ts*0.7))+'</div>'; });
-    html+='<div class="rb-bot" id="rbBot" style="left:'+(4+L.sx*ts)+'px;top:'+(4+L.sy*ts)+'px">'+nkSvg('beep',Math.round(ts*0.92))+'</div>';
+    html+='<div class="rb-bot" id="rbBot" style="left:'+(4+L.sx*ts)+'px;top:'+(4+L.sy*ts)+'px">'+botPic(Math.round(ts*0.92))+'</div>';
     b.innerHTML=html; }
   function botTo(x,y,anim){ var bot=document.getElementById('rbBot'); if(!bot)return; var ts=tileSize(); bot.style.transition=anim?('left '+(anim)+'ms linear, top '+(anim)+'ms linear'):'none'; bot.style.left=(4+x*ts)+'px'; bot.style.top=(4+y*ts)+'px'; }
-  function resetBoard(){ var L=P.L; botTo(L.sx,L.sy,0); var bot=document.getElementById('rbBot'); if(bot){ bot.className='rb-bot'; } document.querySelectorAll('#rbBoard .rb-bolt').forEach(function(e){ e.classList.remove('got'); }); document.querySelectorAll('#rbStrip .rb-card, #rbStrip .rb-rep').forEach(function(e){ e.classList.remove('cur','bad'); }); }
+  function resetBoard(){ var L=P.L; botTo(L.sx,L.sy,0); var bot=document.getElementById('rbBot'); if(bot){ bot.className='rb-bot'; } document.querySelectorAll('#rbBoard .rb-bolt').forEach(function(e){ e.classList.remove('got'); }); document.querySelectorAll('#rbStrip .rb-card, #rbStrip .rb-rep, #rbFn .rb-card').forEach(function(e){ e.classList.remove('cur','bad','skip'); }); }
 
   function pathEq(a,b){ return !!a&&!!b&&a.length===b.length&&a.every(function(v,i){ return v===b[i]; }); }
-  function cardHTML(it,path,inRep){ var sel=pathEq(P.sel,path); var cls='rb-card'+(it.t==='GO'?' go':'')+(sel?' sel':''); return '<div class="'+cls+'" data-path="'+path.join('.')+'" onclick="event.stopPropagation();'+cb(function(){ tapCard(path); })+'">'+cardGlyph(it)+(sel?'<i class="x">✕</i>':'')+'</div>'; }
+  function cardHTML(it,path,inRep){ var sel=pathEq(P.sel,path); var cls='rb-card'+(it.t==='GO'?' go':'')+(it.t==='F'?' fn':'')+(it.t==='IF'?' iff':'')+(sel?' sel':'');
+    var click=it.t==='IF'?'rbIfTap(event,\''+cbKey(function(){ tapCard(path); })+'\',\''+cbKey(function(){ cycleIf(path,'c'); })+'\',\''+cbKey(function(){ cycleIf(path,'d'); })+'\')':cb(function(){ tapCard(path); });
+    return '<div class="'+cls+'" data-path="'+path.join('.')+'" onclick="event.stopPropagation();'+click+'">'+cardGlyph(it)+(sel?'<i class="x">✕</i>':'')+'</div>'; }
+  function cbKey(fn){ var k='c'+(++CBN); CB[k]=fn; return k; }
+  window.rbIfTap=function(ev,a,b,c){ var t=ev&&ev.target, el=t&&t.closest?t.closest('[data-k]'):null, k=el?el.getAttribute('data-k'):''; window.rbCB(k==='c'?b:k==='d'?c:a); };
+  function cycleIf(path,k){ if(P.running)return; var it=getAt(path); if(!it||it.t!=='IF')return; tap(); if(k==='c')it.c=it.c==='r'?'b':'r'; else { var o=['U','R','D','L']; it.d=o[(o.indexOf(it.d)+1)%4]; } tone2(500,0.07,'square',0.1); P.sel=null; drawStrip(); }
+  function fnHTML(){ var tg=(P.target==='f'), fs=P.L.fslots||0, n=CORE.countCards(P.fn||[]);
+    var h='<div class="rb-fnbox'+(tg?' tgt':'')+'" onclick="event.stopPropagation();'+cb(function(){ if(P.running)return; P.target='f'; P.sel=null; drawStrip(); })+'"><div class="rb-fn-h"><span>⭐ <b>'+esc(fnName())+'</b> =</span><span class="rb-fn-n">'+n+(fs?' / '+fs:'')+' cards</span><button class="rb-fn-ed" onclick="event.stopPropagation();'+cb(function(){ try{ window.RB_MINE.rename(function(){ drawStrip(); }); }catch(e){} })+'">✏️ name it</button></div><div class="rb-fn-b">';
+    (P.fn||[]).forEach(function(b,j){ h+=cardHTML(b,['f',j]); }); if(tg)h+=slotHTML('f'); else if(!(P.fn||[]).length)h+='<span class="rb-empty">tap here, then add the cards for the move</span>';
+    return h+'</div></div>'; }
   function slotHTML(where){ return '<div class="rb-slot" onclick="event.stopPropagation();'+cb(function(){ P.target=where; P.sel=null; drawStrip(); })+'">+</div>'; }
   function drawStrip(){ var st=document.getElementById('rbStrip'), ct=document.getElementById('rbCount'); if(!st)return; var html='';
     P.prog.forEach(function(it,i){
@@ -21703,42 +21736,51 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
     if(P.target===null||P.target===undefined)html+=slotHTML(null);
     if(!P.prog.length)html+='<div class="rb-empty big">Tap arrow cards to tell Beep what to do.</div>';
     st.innerHTML=html; st.onclick=function(ev){ if(ev.target===st){ P.target=null; P.sel=null; drawStrip(); } };
-    if(ct){ var n=cards(); ct.textContent=P.L.slots>0?('cards: '+n+' / '+P.L.slots):('cards: '+n); ct.style.color=(P.L.slots>0&&n>=P.L.slots)?'#ffd158':''; }
+    var fb=document.getElementById('rbFn'); if(fb)fb.innerHTML=hasF()?fnHTML():'';
+    if(ct){ var n=hasF()?mainN():cards(); ct.textContent=P.L.slots>0?('cards: '+n+' / '+P.L.slots):('cards: '+n); ct.style.color=(P.L.slots>0&&n>=P.L.slots)?'#ffd158':''; }
     drawPal(); }
   function drawPal(){ var pal=document.getElementById('rbPal'); if(!pal)return; var bl=rbBlocks(); var isFull=full(); var selSingle=!!(P.sel&&(P.sel.length===2||(P.prog[P.sel[0]]&&P.prog[P.sel[0]].t!=='REP')));
-    var html='<div class="rb-pal-row">';
+    var html='', selIt=getAt(P.sel);
+    if(selIt&&selIt.t==='IF'){ var sp=P.sel.slice(), pc=CORE.PAINT[selIt.c]; html+='<div class="rb-pal-lbl">This IF card: '+esc(cardWord(selIt))+'</div><div class="rb-pal-row rb-ifbar"><button class="btn" onclick="'+cb(function(){ cycleIf(sp,'c'); P.sel=sp; drawStrip(); })+'">🎨 Color: '+pc.nm+'</button><button class="btn" onclick="'+cb(function(){ cycleIf(sp,'d'); P.sel=sp; drawStrip(); })+'">↻ Arrow: '+CORE.ARROW[selIt.d]+'</button></div>'; }
+    html+='<div class="rb-pal-row">';
     ['U','L','D','R'].forEach(function(d){ if(bl.indexOf(d)<0)return; var dis=isFull&&!selSingle; html+='<button class="rb-pcard'+(dis?' dis':'')+'" onclick="'+cb(function(){ addCard({t:d}); })+'"><span class="a">'+CORE.ARROW[d]+'</span><span class="w">'+CORE.DNAME[d]+'</span></button>'; });
     if(bl.indexOf('REP')>=0){ html+='<button class="rb-pcard rep'+((isFull)?' dis':'')+'" onclick="'+cb(function(){ addRep(); })+'"><span class="a">🔁</span><span class="w">Repeat</span></button>'; }
     html+='</div>';
     if(bl.indexOf('GO')>=0){ html+='<div class="rb-pal-lbl">GO = roll that way until a wall</div><div class="rb-pal-row">'; ['U','L','D','R'].forEach(function(d){ var dis=isFull&&!selSingle; html+='<button class="rb-pcard go'+(dis?' dis':'')+'" onclick="'+cb(function(){ addCard({t:'GO',d:d}); })+'"><span class="g">GO</span><span class="a">'+CORE.ARROW[d]+'</span></button>'; }); html+='</div>'; }
+    if(bl.indexOf('F')>=0){ html+='<div class="rb-pal-lbl">⭐ = do your whole move</div><div class="rb-pal-row"><button class="rb-pcard fn'+(isFull&&!selSingle?' dis':'')+'" onclick="'+cb(function(){ if(P.target==='f'){ tst('A move cannot use itself. Put the ⭐ card on the main strip.'); bad(); return; } addCard({t:'F'}); })+'"><span class="a" style="font-size:24px">⭐</span><span class="w">'+esc(fnName().slice(0,9))+'</span></button></div>'; }
+    if(bl.indexOf('IF')>=0){ html+='<div class="rb-pal-lbl">IF = step that way ONLY when standing on that color. Tap the color or the arrow on a strip card to change it.</div><div class="rb-pal-row">'; ['r','b'].forEach(function(c){ var pc=CORE.PAINT[c]; html+='<button class="rb-pcard iff'+(isFull&&!selSingle?' dis':'')+'" onclick="'+cb(function(){ addCard({t:'IF',c:c,d:c==='r'?'D':'U'}); })+'"><span class="g">IF</span><span class="ifc" style="background:'+pc.col+'">'+pShape(c)+'</span><span class="w">'+pc.nm+'</span></button>'; }); html+='</div>'; }
     pal.innerHTML=html; }
 
-  function getAt(path){ if(!path)return null; var it=P.prog[path[0]]; if(!it)return null; if(path.length===2)return it.t==='REP'?it.body[path[1]]:null; return it; }
-  function setAt(path,v){ if(path.length===2){ P.prog[path[0]].body[path[1]]=v; } else P.prog[path[0]]=v; }
-  function delAt(path){ if(path.length===2){ P.prog[path[0]].body.splice(path[1],1); } else { P.prog.splice(path[0],1); if(P.target===path[0])P.target=null; else if(typeof P.target==='number'&&P.target>path[0])P.target--; } }
+  function getAt(path){ if(!path)return null; if(path[0]==='f')return (P.fn||[])[path[1]]||null; var it=P.prog[path[0]]; if(!it)return null; if(path.length===2)return it.t==='REP'?it.body[path[1]]:null; return it; }
+  function setAt(path,v){ if(path[0]==='f'){ if(v.t==='F'||v.t==='REP')return; P.fn[path[1]]=v; return; } if(path.length===2){ P.prog[path[0]].body[path[1]]=v; } else P.prog[path[0]]=v; }
+  function delAt(path){ if(path[0]==='f'){ P.fn.splice(path[1],1); return; } if(path.length===2){ P.prog[path[0]].body.splice(path[1],1); } else { P.prog.splice(path[0],1); if(P.target===path[0])P.target=null; else if(typeof P.target==='number'&&P.target>path[0])P.target--; } }
   function tapCard(path){ if(P.running)return; tap(); if(pathEq(P.sel,path)){ delAt(path); P.sel=null; drawStrip(); return; } P.sel=path; drawStrip(); }
-  function cycleRep(i){ if(P.running)return; tap(); var it=P.prog[i]; if(!it||it.t!=='REP')return; it.n=it.n>=5?2:it.n+1; tone2(440+it.n*60,0.08,'square',0.12); drawStrip(); }
+  function cycleRep(i){ if(P.running)return; tap(); var it=P.prog[i]; if(!it||it.t!=='REP')return; it.n=it.n>=(P.L.repMax||5)?2:it.n+1; tone2(440+it.n*60,0.08,'square',0.12); drawStrip(); }
   function addCard(c){ if(P.running)return; var cur=getAt(P.sel);
     if(cur&&cur.t!=='REP'){ setAt(P.sel,c); P.sel=null; tap(); drawStrip(); return; }
-    if(full()){ tst('No more card slots! Use a Repeat or GO to do more with fewer cards.'); bad(); return; }
-    tap(); if(typeof P.target==='number'&&P.prog[P.target]&&P.prog[P.target].t==='REP')P.prog[P.target].body.push(c); else { P.target=null; P.prog.push(c); } P.sel=null; drawStrip(); }
-  function addRep(){ if(P.running)return; if(full()){ tst('No more card slots!'); bad(); return; } tap(); P.prog.push({t:'REP',n:2,body:[]}); P.target=P.prog.length-1; P.sel=null; drawStrip(); }
-  window.rbClear=function(){ if(!P||P.running)return; tap(); P.prog=[]; P.sel=null; P.target=null; resetBoard(); drawStrip(); say('Cleared. Fresh start!'); };
+    if(full()){ tst(slotMsg()); bad(); return; }
+    tap(); if(P.target==='f'){ if(c.t==='F')return; P.fn.push(c); } else if(typeof P.target==='number'&&P.prog[P.target]&&P.prog[P.target].t==='REP')P.prog[P.target].body.push(c); else { P.target=null; P.prog.push(c); } P.sel=null; drawStrip(); }
+  function slotMsg(){ if(P.target==='f')return 'Your ⭐ move only holds '+P.L.fslots+' card'+(P.L.fslots===1?'':'s')+'. Tap a card in it to swap or remove it.'; var bl=rbBlocks(), tools=[]; if(bl.indexOf('F')>=0)tools.push('your ⭐ move'); if(bl.indexOf('REP')>=0)tools.push('a Repeat'); if(bl.indexOf('GO')>=0)tools.push('GO'); return 'No more card slots!'+(tools.length?' Use '+tools.join(' or ')+' to do more with fewer cards.':''); }
+  function addRep(){ if(P.running)return; if(P.target==='f')P.target=null; if(full()){ tst(slotMsg()); bad(); return; } tap(); P.prog.push({t:'REP',n:2,body:[]}); P.target=P.prog.length-1; P.sel=null; drawStrip(); }
+  window.rbClear=function(){ if(!P||P.running)return; tap(); P.prog=[]; P.fn=[]; P.sel=null; P.target=null; resetBoard(); drawStrip(); say('Cleared. Fresh start!'); };
   window.rbReset=function(){ if(!P)return; if(P.running){ stopRun(); } tap(); resetBoard(); say('Beep is back at the start. Same cards. Run it again or change a card.'); };
 
   /* ---------- running ---------- */
-  function hiCard(path,on,badc){ document.querySelectorAll('#rbStrip .cur').forEach(function(e){ e.classList.remove('cur'); }); if(!on||!path)return; var el=document.querySelector('#rbStrip [data-path="'+path.join('.')+'"]'); if(el){ el.classList.add('cur'); if(badc)el.classList.add('bad'); } if(path.length===2){ var rep=document.querySelector('#rbStrip .rb-rep[data-path="'+path[0]+'"]'); if(rep)rep.classList.add('cur'); } }
+  function hiOne(path,badc,skip){ var root=path[0]==='f'?'#rbFn':'#rbStrip'; var el=document.querySelector(root+' [data-path="'+path.join('.')+'"]'); if(el){ el.classList.add('cur'); if(badc)el.classList.add('bad'); if(skip)el.classList.add('skip'); } if(path.length===2&&path[0]!=='f'){ var rep=document.querySelector('#rbStrip .rb-rep[data-path="'+path[0]+'"]'); if(rep)rep.classList.add('cur'); } }
+  function hiCard(path,on,badc,via,skip){ document.querySelectorAll('#rbStrip .cur, #rbFn .cur').forEach(function(e){ e.classList.remove('cur'); }); document.querySelectorAll('#rbStrip .skip, #rbFn .skip').forEach(function(e){ e.classList.remove('skip'); }); if(!on||!path)return; hiOne(path,badc,skip); if(via)hiOne(via,false); }
   function stopRun(){ if(P&&P.timer){ clearTimeout(P.timer); P.timer=null; } if(P)P.running=false; var rb=document.getElementById('rbRun'); if(rb)rb.innerHTML='▶ RUN'; document.querySelectorAll('#rbPal .rb-pcard').forEach(function(b){ b.classList.remove('lock'); }); }
   window.rbRun=function(){ if(!P)return; if(P.running){ stopRun(); resetBoard(); say('Stopped. Change a card and run again.'); return; }
     if(!P.prog.length){ say('Put some cards on the strip first. Beep is waiting!'); bad(); return; }
     var hasEmptyRep=P.prog.some(function(it){ return it.t==='REP'&&!it.body.length; }); if(hasEmptyRep){ say('A Repeat card is empty. Tap inside it and add the cards to repeat.'); bad(); return; }
+    var usesF=P.prog.some(function(it){ return it.t==='F'||(it.t==='REP'&&it.body.some(function(b){ return b.t==='F'; })); }); if(usesF&&!(P.fn||[]).length){ say('Your ⭐ '+esc(fnName())+' move is empty. Tap the ⭐ box and put the move\u2019s cards in it.'); bad(); return; }
     tap(); resetBoard(); P.sel=null; drawStrip(); P.running=true; RB().runs++; sv(); var rb=document.getElementById('rbRun'); if(rb)rb.innerHTML='⏹ STOP'; document.querySelectorAll('#rbPal .rb-pcard').forEach(function(b){ b.classList.add('lock'); });
-    say('Running...','beep'); var res=CORE.simulate(P.L,P.prog); var steps=res.steps, i=0; var bot=document.getElementById('rbBot');
+    say('Running...','beep'); var res=CORE.simulate(P.L,P.prog,P.fn||[]); var steps=res.steps, i=0; var bot=document.getElementById('rbBot');
     function next(){ if(!P||!P.running)return; if(i>=steps.length){ finish(res); return; } var s=steps[i++]; var srcIt=getAt(s.path); var ms=(srcIt&&srcIt.t==='GO')?GO_MS:STEP_MS;
-      hiCard(s.path,true,s.ev==='bump');
+      hiCard(s.path,true,s.ev==='bump',s.via,s.ev==='skip');
       if(bot){ bot.classList.toggle('face-L',s.d==='L'); bot.classList.toggle('face-R',s.d!=='L'); }
       if(s.ev==='bump'){ if(bot)bot.classList.add('bump'); tone2(110,0.25,'square',0.25); tone2(90,0.3,'sawtooth',0.15,0.05); P.timer=setTimeout(function(){ finish(res); },520); return; }
       if(s.ev==='stay'){ tone2(220,0.08,'triangle',0.1); P.timer=setTimeout(next,260); return; }
+      if(s.ev==='skip'){ tone2(260,0.06,'sine',0.08); P.timer=setTimeout(next,240); return; }
       botTo(s.x,s.y,ms); tone2(s.ev==='bolt'?660:330+((s.x+s.y)%4)*40,0.07,'triangle',0.12);
       if(s.ev==='bolt'){ P.L.bolts.forEach(function(bt,bi){ if(bt[0]===s.x&&bt[1]===s.y){ var el=document.querySelector('#rbBoard .rb-bolt[data-i="'+bi+'"]'); if(el)setTimeout(function(){ el.classList.add('got'); },ms*0.6); } }); tone2(880,0.12,'triangle',0.16,0.08); }
       P.timer=setTimeout(next,ms+40); }
@@ -21747,20 +21789,22 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
     if(res.ok){ win(); return; }
     P.fails=(P.fails||0)+1; var r=RB(); r.fails[P.L.id]=(r.fails[P.L.id]||0)+1; sv(); bad();
     var nm=cardWord(getAt(res.at)||{t:'R'}); var msg='';
-    if(res.reason==='bump'){ var n=(res.at&&res.at.length===2)?('card '+(res.at[1]+1)+' inside the Repeat'):('card '+((res.at&&res.at[0])+1)); msg='BUMP! Beep hit something on <b>'+n+'</b> ('+nm+'). Change that card or the one before it.'; }
-    else if(res.reason==='bolts')msg='Beep '+(res.x===P.L.gx&&res.y===P.L.gy?'reached the pad but':'')+' left <b>'+(res.bolts-res.got)+' bolt'+(res.bolts-res.got===1?'':'s')+'</b> behind. Beep needs every bolt.';
-    else if(res.reason==='long')msg='Whoa, that is a LOT of steps. Beep got tired. Try fewer loops.';
-    else msg='Beep stopped, but not on the charging pad. Count the squares from where Beep stopped to the pad.';
+    var bn=esc(botNm()), ch67=mineOn()||hasF()||rbBlocks().indexOf('IF')>=0;
+    if(res.reason==='bump'){ var n=(res.at&&res.at[0]==='f')?('card '+(res.at[1]+1)+' of your ⭐ move'):(res.at&&res.at.length===2)?('card '+(res.at[1]+1)+' inside the Repeat'):('card '+((res.at&&res.at[0])+1)); msg='BUMP! '+bn+' hit something on <b>'+n+'</b> ('+esc(nm)+'). Change that card or the one before it.'; }
+    else if(res.reason==='bolts')msg=bn+' '+(res.x===P.L.gx&&res.y===P.L.gy?'reached the pad but':'')+' left <b>'+(res.bolts-res.got)+' bolt'+(res.bolts-res.got===1?'':'s')+'</b> behind. '+(ch67?'Every bolt counts.':'Beep needs every bolt.');
+    else if(res.reason==='long')msg='Whoa, that is a LOT of steps. '+bn+' got tired. Try fewer loops.';
+    else msg=ch67?(bn+' stopped, but not on the charging pad. Count the squares from where it stopped to the pad.'):'Beep stopped, but not on the charging pad. Count the squares from where Beep stopped to the pad.';
     say(msg+(P.fails>=2&&P.L.hint?' <button class="btn small ghost" style="margin:6px 0 0" onclick="rbHint()">💡 Hint</button>':'')+(P.fails>=4&&P.L.sol&&P.mode!=='test'?' <button class="btn small ghost" style="margin:6px 0 0" onclick="rbShow()">👀 Show me</button>':''));
     var bot=document.getElementById('rbBot'); if(bot)bot.classList.add('sad'); }
-  window.rbHint=function(){ if(!P)return; tap(); P.hints=(P.hints||0)+1; var L=P.L; var sol=CORE.parseProg(L.sol||'');
+  window.rbHint=function(){ if(!P)return; tap(); P.hints=(P.hints||0)+1; var L=P.L; var full=CORE.parseFull(L.sol||''), sol=full.prog;
     if(P.hints===1&&L.hint){ say('💡 '+esc(L.hint)); return; }
+    if(full.fn.length&&P.hints===2){ say('💡 Make your ⭐ move: <b>'+full.fn.map(cardWord).map(esc).join(', ')+'</b>. Then use the ⭐ card on the main strip.'); return; }
     if(sol.length){ var k=Math.min(sol.length,P.hints<=2?1:2); var words=sol.slice(0,k).map(function(it){ return '<b>'+(it.t==='REP'?'Repeat x'+it.n+' [ '+it.body.map(cardWord).join(', ')+' ]':cardWord(it))+'</b>'; }).join(', then '); say('💡 Start with '+words+'. '+(k<sol.length?'Then work out the rest.':'That is the whole plan!')); return; }
     say('💡 Count the squares to the pad. Which way first?'); };
-  window.rbShow=function(){ if(!P||!P.L.sol)return; tap(); P.prog=CORE.parseProg(P.L.sol); P.sel=null; P.target=null; P.shown=true; resetBoard(); drawStrip(); say('Watch how Ada does it. Then try the next one yourself!'); setTimeout(function(){ window.rbRun(); },500); };
+  window.rbShow=function(){ if(!P||!P.L.sol)return; tap(); var fu=CORE.parseFull(P.L.sol); P.prog=fu.prog; P.fn=fu.fn; P.sel=null; P.target=null; P.shown=true; resetBoard(); drawStrip(); say('Watch how Ada does it. Then try the next one yourself!'); setTimeout(function(){ window.rbRun(); },500); };
 
   /* ---------- winning ---------- */
-  function win(){ var r=RB(), L=P.L, n=cards(), stars=P.shown?1:CORE.starsFor(L,n); party(40); fan(); good(); say(SAY_OK[Math.floor(Math.random()*SAY_OK.length)],'beep');
+  function win(){ var r=RB(), L=P.L, n=cards(), stars=P.shown?1:CORE.starsFor(L,n); party(40); fan(); good(); say(mineOn()?(function(){ try{ return esc(window.RB_MINE.cheer()); }catch(e){ return 'Charged up!'; } })():SAY_OK[Math.floor(Math.random()*SAY_OK.length)],'beep');
     var bot=document.getElementById('rbBot'); if(bot)bot.classList.add('happy');
     var first=false, better=false, xp=false, extra='';
     if(P.mode==='level'){ var d=r.done[L.id]; first=!d; if(!d||stars>d.stars||n<d.n){ if(d)better=stars>d.stars; r.done[L.id]={stars:Math.max(stars,d?d.stars:0),n:Math.min(n,d?d.n:999),shown:!!(P.shown&&!d),d:dk()}; }
@@ -21775,7 +21819,7 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
   function winModal(stars,n,extra,first){ var L=P.L; var nextL=null; if(P.mode==='level'){ var list=CORE.levelsOf(L.ch); var i=list.indexOf(L); nextL=list[i+1]||null; }
     var tip=stars===3?'Fewest cards possible. That is a clean program!':stars===2?'Solved! Can you do it with fewer cards? Fewer cards = 3 stars.':'Solved! Ada’s way used '+L.par+' card'+(L.par===1?'':'s')+'. Try again for more stars whenever you like.';
     if(P.shown)tip='Ada showed you this one. Try the next level on your own!';
-    var html='<div class="center">'+nkSvg('beep',90)+'<h2 style="margin:4px 0 0">'+(P.mode==='track'?'Track done!':P.mode==='test'?'It works!':esc(L.t)+' done!')+'</h2><div>'+starStr(stars)+'</div><div class="sub" style="margin:0">'+n+' card'+(n===1?'':'s')+' · '+esc(tip)+'</div></div>'
+    var html='<div class="center">'+botPic(90)+'<h2 style="margin:4px 0 0">'+(P.mode==='track'?'Track done!':P.mode==='test'?'It works!':esc(L.t)+' done!')+'</h2><div>'+starStr(stars)+'</div><div class="sub" style="margin:0">'+n+' card'+(n===1?'':'s')+' · '+esc(tip)+'</div></div>'
       +(extra?'<div class="speak" style="text-align:center">'+esc(extra)+'</div>':'');
     if(P.mode==='level'){ html+=(nextL?'<button class="btn wide" onclick="'+cb(function(){ closeModal(); window.rbPlay(nextL.id); })+'">▶ Next: '+esc(nextL.t)+'</button>':'')+'<button class="btn wide'+(nextL?' ghost':'')+'" onclick="'+cb(function(){ closeModal(); window.rbHub(); })+'">🔧 Back to the Workshop</button>'; }
     else if(P.mode==='track'||P.mode==='mytrack'){ html+='<button class="btn wide" onclick="'+cb(function(){ closeModal(); window.rbTrack(); })+'">🏁 Back to the Test Track</button>'; }
@@ -21787,8 +21831,8 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
   function chDone(ch){ return CORE.levelsOf(ch).every(function(L){ return !!RB().done[L.id]; }); }
   function chapterCheck(ch){ var r=RB(); if(!chDone(ch)||r.chdone[ch])return; r.chdone[ch]=dk(); sv(); var C=CORE.CHBY[ch];
     try{ if(window.__cc&&typeof window.__cc.addPacks==='function')window.__cc.addPacks(1,'Chapter '+C.n+' done'); }catch(e){} notes(40); coins(20);
-    var allDone=CORE.CHAPTERS.every(function(c){ return chDone(c.id); }); var trophy=false; if(allDone&&!(S.inv&&S.inv.rb_trophy)){ S.inv=S.inv||{}; S.inv.rb_trophy=1; trophy=true; try{ if(window.__cc&&typeof window.__cc.addPacks==='function')window.__cc.addPacks(3,'Master Mechanic'); }catch(e){} sv(); }
-    var showIt=function(){ party(60); fan(); modal('<div class="center">'+nkSvg('ada',96)+'<h2 style="margin:4px 0 0">'+C.ic+' Chapter '+C.n+': '+esc(C.nm)+' complete!</h2></div><div class="speak" style="text-align:left"><b>Ada:</b> “'+esc(C.done)+'”</div><div class="sub center">+1 card pack · +40 notes · +20 coins</div>'
+    var allDone=CORE.CHAPTERS.filter(function(c){ return c.n<=5; }).every(function(c){ return chDone(c.id); }); var trophy=false; if(allDone&&!(S.inv&&S.inv.rb_trophy)){ S.inv=S.inv||{}; S.inv.rb_trophy=1; trophy=true; try{ if(window.__cc&&typeof window.__cc.addPacks==='function')window.__cc.addPacks(3,'Master Mechanic'); }catch(e){} sv(); }
+    var showIt=function(){ party(60); fan(); modal('<div class="center">'+nkSvg('ada',96)+'<h2 style="margin:4px 0 0">'+C.ic+' Chapter '+C.n+': '+esc(C.nm)+' complete!</h2></div><div class="speak" style="text-align:left"><b>Ada:</b> “'+esc(typeof C.done==='function'?C.done():C.done)+'”</div><div class="sub center">+1 card pack · +40 notes · +20 coins</div>'
       +(trophy?'<div class="center">'+(typeof itemArt==='function'?itemArt('rb_trophy',84):'')+'<h3 style="margin:2px 0">Master Mechanic Trophy!</h3><div class="sub">Every job in the Workshop, done. It is in your Stuff: put it in your apartment. +3 card packs.</div></div>':'')
       +'<button class="btn wide" onclick="'+cb(function(){ closeModal(); if(ch==='steps'&&!RB().beep)setTimeout(beepMovesIn,300); })+'">'+(ch==='steps'&&!RB().beep?'Who is that at the door?':'Yes!')+'</button>'); };
     var t0=Date.now(); (function wait(){ if(modalOn()&&Date.now()-t0<8000){ setTimeout(wait,400); return; } showIt(); })(); }
@@ -21803,8 +21847,9 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
   /* ---------- open a puzzle ---------- */
   function levelFor(lid,opts){ if(opts&&opts.L)return opts.L; return CORE.LVBY[lid]||null; }
   window.rbPlay=function(lid,opts){ opts=opts||{}; var L=levelFor(lid,opts); if(!L)return; tap(); try{ closeModal(); }catch(e){}
-    var C=CORE.CHBY[L.ch]; if(C&&!RB().lesson[L.ch]){ lesson(L.ch,function(){ window.rbPlay(lid,opts); }); return; }
-    P={L:L,prog:L.fix?CORE.parseProg(L.fix):[],sel:null,target:null,running:false,fails:0,hints:0,shown:false,mode:opts.mode||'level',timer:null};
+    var C=CORE.CHBY[L.ch]; var lk=C&&typeof C.lock==='function'?C.lock():''; if(lk){ tst(lk); return; }
+    if(C&&!RB().lesson[L.ch]){ lesson(L.ch,function(){ window.rbPlay(lid,opts); }); return; }
+    P={L:L,prog:L.fix?CORE.parseProg(L.fix):[],fn:[],sel:null,target:null,running:false,fails:0,hints:0,shown:false,mode:opts.mode||'level',timer:null};
     scr('scr-rblv','rblScore','rblBody','Program Beep with the cards on the right, then tap RUN. Beep has to end on the charging pad with every bolt.');
     var body=document.getElementById('rblBody'), sc=document.getElementById('rblScore'); if(!body)return;
     var title=P.mode==='track'?'Today’s Test Track':P.mode==='test'?'Test your track':P.mode==='mytrack'?esc(L.t):(C?'Ch. '+C.n+' · '+esc(L.t):esc(L.t));
@@ -21812,16 +21857,18 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
     body.innerHTML='<div class="rb-wrap"><div class="rb-left"><div class="rb-say" id="rbSay"></div><div class="rb-board" id="rbBoard"></div>'
       +'<div class="rb-ctl"><button class="btn" id="rbRun" onclick="rbRun()">▶ RUN</button><button class="btn ghost small" onclick="rbReset()">↺ Reset</button><button class="btn ghost small" onclick="rbClear()">🗑 Clear</button><button class="btn ghost small" onclick="rbHint()">💡 Hint</button></div>'
       +'<div class="rb-legend"><span>'+boltSvg(18)+' bolt: pick them ALL up</span><span>'+padSvg(18)+' charging pad: END here</span><span>'+crateSvg(18)+' crate: do not bump</span></div></div>'
-      +'<div class="rb-right"><div class="rb-strip-h"><b>Beep’s cards</b><span id="rbCount"></span></div><div class="rb-strip" id="rbStrip"></div><div class="rb-pal-lbl">Tap a card to add it. Tap a card on the strip to change or remove it.</div><div class="rb-pal" id="rbPal"></div>'
+      +'<div class="rb-right"><div class="rb-strip-h"><b>'+esc(botNm())+'’s cards</b><span id="rbCount"></span></div><div class="rb-strip" id="rbStrip"></div><div id="rbFn"></div><div class="rb-pal-lbl">Tap a card to add it. Tap a card on the strip to change or remove it.</div><div class="rb-pal" id="rbPal"></div>'
       +(P.mode==='level'?'<div class="rb-back"><button class="btn ghost small" onclick="rbHub()">🔧 Workshop</button></div>':P.mode==='test'?'<div class="rb-back"><button class="btn ghost small" onclick="rbBuild()">🛠 Back to building</button></div>':'<div class="rb-back"><button class="btn ghost small" onclick="rbTrack()">🏁 Test Track</button></div>')+'</div></div>';
     drawBoard(); drawStrip();
     var intro=L.fix?'This one has a BUG. Run it and watch where Beep goes wrong, then fix the card.':(P.mode==='track'?'A brand-new track for today. '+esc(L.hint||''):P.mode==='test'?'Solve your own track to save it. If Beep can do it, it is a real level!':(L.slots?'Only <b>'+L.slots+' card slot'+(L.slots===1?'':'s')+'</b> on this one. ':'')+'Get every bolt and end on the pad.');
-    say(intro); };
+    if(L.intro)intro=L.intro+(L.slots?' Main strip: <b>'+L.slots+' card'+(L.slots===1?'':'s')+'</b>.':'')+(L.fslots?' Your ⭐ move: <b>'+L.fslots+'</b>.':'');
+    say(intro,mineOn()?'mine':'ada'); };
   function lesson(ch,then){ var C=CORE.CHBY[ch]; if(!C)return; RB().lesson[ch]=true; sv();
     modal('<div class="center">'+nkSvg('ada',90)+'<h2 style="margin:4px 0 0">'+C.ic+' Chapter '+C.n+': '+esc(C.nm)+'</h2></div>'
-      +'<div class="card" style="text-align:left">'+C.lesson.map(function(x,i){ return '<div style="display:flex;gap:10px;align-items:flex-start;padding:6px 0;'+(i?'border-top:1px solid #2b2350':'')+'"><b style="flex:none;width:24px;height:24px;border-radius:50%;background:#ffd158;color:#1d1636;display:flex;align-items:center;justify-content:center">'+(i+1)+'</b><span style="font-size:15px;line-height:1.35">'+esc(x)+'</span></div>'; }).join('')+'</div>'
+      +'<div class="card" style="text-align:left">'+(typeof C.lesson==='function'?C.lesson():C.lesson).map(function(x,i){ return '<div style="display:flex;gap:10px;align-items:flex-start;padding:6px 0;'+(i?'border-top:1px solid #2b2350':'')+'"><b style="flex:none;width:24px;height:24px;border-radius:50%;background:#ffd158;color:#1d1636;display:flex;align-items:center;justify-content:center">'+(i+1)+'</b><span style="font-size:15px;line-height:1.35">'+esc(x)+'</span></div>'; }).join('')+'</div>'
       +(ch==='loops'?'<div class="rb-demo">'+'<div class="rb-card"><span class="a">→</span></div><div class="rb-card"><span class="a">→</span></div><div class="rb-card"><span class="a">→</span></div><div class="rb-card"><span class="a">→</span></div><b style="font-size:22px;margin:0 6px">=</b><div class="rb-rep"><div class="rb-rep-h"><span class="rl">Repeat</span><span class="rn">x4</span></div><div class="rb-rep-b"><div class="rb-card"><span class="a">→</span></div></div></div></div>':'')
       +(ch==='until'?'<div class="rb-demo"><div class="rb-card go"><span class="g">GO</span><span class="a">→</span></div><b style="font-size:15px;margin:0 6px">= roll right, right, right... until a wall</b></div>':'')
+      +(C.demo?(typeof C.demo==='function'?C.demo():C.demo):'')
       +'<button class="btn wide" onclick="'+cb(function(){ closeModal(); if(then)then(); })+'">Let’s go!</button>'); }
   window.rbLesson=function(ch){ if(!CORE.CHBY[ch])return; tap(); lesson(ch,null); };
 
@@ -21837,10 +21884,13 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
       +'<div class="speak" style="margin:0;text-align:left;font-size:14px"><b>Ada:</b> “'+esc(n===0?'Welcome! This is Beep. Beep only does exactly what the cards say. Give Beep a plan and watch it roll.':n<8?'Good start. Beep is learning to trust your cards.':n<CORE.LV.length?'Beep says you are the best programmer in town. Beep says that about everyone, but this time it is true.':'Every job done. Master Mechanic! Beep is very proud and a little smug.')+'”</div></div></div>';
     html+='<div class="cc-row" style="margin:8px 0"><button class="btn" onclick="rbTrack()">🏁 Test Track'+(dailyDone()?'':' <b style="background:#ff5d5d;border-radius:8px;padding:0 6px;font-size:13px">new!</b>')+'</button><button class="btn" onclick="rbBuild()">🛠 Build a Track</button><button class="btn ghost" onclick="'+cb(function(){ try{ openBuilding('loft'); }catch(e){} })+'">🏠 The Robot Loft</button></div>';
     CORE.CHAPTERS.forEach(function(C){ var list=CORE.levelsOf(C.id); var done=list.filter(function(L){ return !!r.done[L.id]; }).length; var nextL=list.filter(function(L){ return !r.done[L.id]; })[0];
-      html+='<div class="rb-ch" style="--c:'+C.col+'"><div class="rb-ch-h"><span class="ic">'+C.ic+'</span><div class="tx"><b>Chapter '+C.n+': '+esc(C.nm)+'</b><div class="sub" style="text-align:left;margin:0">'+done+' of '+list.length+' done'+(done===list.length?' · complete! ✓':'')+'</div></div><button class="btn ghost small" style="margin:0" onclick="rbLesson(\''+C.id+'\')">📖 Lesson</button></div><div class="rb-lvs">';
+      html+='<div class="rb-ch" style="--c:'+C.col+'"><div class="rb-ch-h"><span class="ic">'+C.ic+'</span><div class="tx"><b>Chapter '+C.n+': '+esc(C.nm)+'</b><div class="sub" style="text-align:left;margin:0">'+done+' of '+list.length+' done'+(done===list.length?' · complete! ✓':'')+'</div></div><button class="btn ghost small" style="margin:0" onclick="rbLesson(\''+C.id+'\')">📖 Lesson</button></div>';
+      var lk=typeof C.lock==='function'?C.lock():''; if(lk){ html+='<div class="sub" style="text-align:left;margin:8px 0 2px">🔒 '+esc(lk)+'</div></div>'; return; }
+      if(C.sub)html+='<div class="sub" style="text-align:left;margin:6px 0 0">'+(typeof C.sub==='function'?C.sub():C.sub)+'</div>';
+      html+='<div class="rb-lvs">';
       list.forEach(function(L,i){ var d=r.done[L.id]; html+='<button class="rb-lv'+(d?' done':'')+(nextL===L?' next':'')+'" onclick="rbPlay(\''+L.id+'\')"><b>'+(i+1)+'</b><span class="st">'+(d?miniStars(d.stars):(nextL===L?'<em>NEXT</em>':''))+'</span><span class="nm">'+esc(L.t)+'</span></button>'; });
       html+='</div></div>'; });
-    html+='<div class="card" style="text-align:left;font-size:14px"><b>How the Workshop works</b><div class="sub" style="text-align:left;margin:4px 0 0">★ Solve a level for 1 star. Fewer cards = more stars (3 stars = Ada’s card count).<br>🎵 Every first solve pays notes and coins and raises your Coding & Logic level. Finish a chapter for a card pack.<br>🤖 Finish Chapter 1 and Beep moves into town. Finish all 5 for the Master Mechanic Trophy.<br>🏁 The Test Track has a brand-new puzzle every day. Build a Track lets you design your own.</div></div>';
+    html+='<div class="card" style="text-align:left;font-size:14px"><b>How the Workshop works</b><div class="sub" style="text-align:left;margin:4px 0 0">★ Solve a level for 1 star. Fewer cards = more stars (3 stars = Ada’s card count).<br>🎵 Every first solve pays notes and coins and raises your Coding & Logic level. Finish a chapter for a card pack.<br>🤖 Finish Chapter 1 and Beep moves into town. Finish Chapters 1 to 5 for the Master Mechanic Trophy. Chapters 6 and 7 star YOUR own robot from the Bot Garage.<br>🏁 The Test Track has a brand-new puzzle every day. Build a Track lets you design your own.</div></div>';
     body.innerHTML=html; }
 
   /* =====================================================================================================
@@ -21911,7 +21961,7 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
 
   /* ---------- first-visit guides (v1.48 table) ---------- */
   try{ var G=window.__news&&window.__news.G; if(G){
-    G['scr-rb']={who:['cit','ada'],t:'The Robot Workshop',s:['Five chapters, eight jobs each. Tap a job to start. The one marked NEXT is a good place to go.','Each chapter starts with a short lesson from Ada. Tap Lesson any time to read it again.','Stars: solve it for 1 star. Fewer cards = more stars. 3 stars = Ada’s card count.','The Test Track has a new puzzle every day, and Build a Track lets you make your own. Ada and Beep live upstairs in the Robot Loft (the house button).']};
+    G['scr-rb']={who:['cit','ada'],t:'The Robot Workshop',s:['Seven chapters, eight jobs each. Tap a job to start. The one marked NEXT is a good place to go.','Each chapter starts with a short lesson from Ada. Tap Lesson any time to read it again.','Stars: solve it for 1 star. Fewer cards = more stars. 3 stars = Ada’s card count.','The Test Track has a new puzzle every day, and Build a Track lets you make your own. Ada and Beep live upstairs in the Robot Loft (the house button).']};
     G['scr-rblv']={who:['cit','beep'],t:'How to program Beep',s:['Tap arrow cards on the right. They line up on Beep’s strip, in order.','Tap RUN. Beep does each card, one at a time. Beep must END on the charging pad with every bolt.','Tap a card on the strip to pick it: tap an arrow to swap it, or tap it again to remove it.','A Repeat card does the cards inside it again and again. Tap x2 to change the count. GO rolls until a wall.']};
     G['scr-rbtrack']={who:['cit','beep'],t:'Beep’s Test Track',s:['Every day there is a brand-new track. Run it for notes, coins and a higher Coding level.','The tracks get bigger as your Coding & Logic level grows.','Tracks you build yourself are kept here. Play them again or remove them.']};
     G['scr-rbbuild']={who:['cit','beep'],t:'Build a Track',s:['Pick a tool on the right, then tap squares on the board: crates, bolts, a Start and a Pad.','Beep must be able to reach every bolt and the pad. Beep will tell you if it is walled in.','Tap Test it and solve your own track. If Beep can do it, it is real and Beep remembers it.']}; } }catch(e){}
@@ -25323,6 +25373,640 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
       body.insertAdjacentHTML('afterbegin','<div class="card" style="text-align:left;margin:8px 0"><b>💡 Invention Bench (v1.57)</b><div class="sub" style="margin:4px 0">Built: '+(bl.length?esc(bl.map(function(i){ return i.nm+(i.custom?' (his own idea)':''); }).join(', ')):'none yet')+'. Ready to build: '+rd.length+'.</div>'
         +'<div class="sub" style="margin:4px 0 0">Each build is three steps: multiplication (bolts for the parts, Ohio 3.OA.3), equal shares (cutting a bar, 3.OA.2 / 4.OA.3), measurement (feet, inches, yards, 4.MD.1). Ideas he types himself become custom parts. Trailer, Metal Detector and Timer Screen change the jobs: bigger Lift loads, a taxicab-distance hint in Dig, a clock face on the Dishes timer.</div></div>'); }catch(e){} return r; }; })();
   window.__v57={V:V,PARTS:PARTS,ideas:ideas,ready:ready,built:built,shownIds:shownIds,buildSteps:buildSteps,partArt:partArt,has:has,getBJ:function(){ return BJ; }};
+})();
+</script>
+<script>
+/* ================= v1.58 · WORDS + CODE: STORY STREET, THE WORD LAB, ROBOT CHAPTERS 6-7 (Oct 24 2026) =================
+   Mot: "Build 1.58" (the plan: a deeper Word Hoard, Robot Workshop chapters 6-7 with his own robot, and Grammar).
+     1. ROBOT WORKSHOP CHAPTERS 6-7 star HIS robot from the Bot Garage (Beep stands in if it is gone).
+        Chapter 6 FUNCTIONS: teach the robot a named move in the ⭐ box, then one ⭐ card runs the whole move
+        (Ohio CS ATP.M.3.a, ATP.CS.3.a: decompose, reuse). He can name the move himself.
+        Chapter 7 IF THIS: red ● and blue ■ floor tiles; IF cards only fire on their color, so one loop turns at the
+        right places by itself (conditionals, ATP.CS.3.a). Engine support lives in src150 (parseFull, F, IF, paint).
+        Every level is solved by test-v158, and a brute-force search proves no level fits its card limit without the
+        new card.
+     2. THE WORD HOARD gets 3 new chests (More Roots, Synonyms & Antonyms, Context Clues: 24 gems) and BIBI'S WORD LAB:
+        Root Builder (roots + affixes make words, L.4.4b), Analogy Link (A is to B as C is to ?, L.4.5/L.5.5), Shade Ladder
+        (order words weakest to strongest, L.3.5c).
+     3. GRAMMAR is a real concept ('gram', Words & Grammar strand) taught by MAC, a macaw who edits THE DAILY SQUAWK on the
+        new STORY STREET. Four desks: Word Detective (parts of speech), Proofreader (capitals + end marks), Verb Press
+        (past tense, agreement, future), Silly Front Page (pick the right part of speech, then read the silly paper).
+        Mac's Press Pass quest walks him through all four.
+   Every new screen: MU_NEWS card (seen158), G guides, a teach card before first use, To-Do rows, Grown-Ups card.
+   State: S.v58. Debug: window.__v58. No em dashes, no Unicode 13+ emoji, literal hex in SVG attributes. */
+(function(){
+  if(typeof document==='undefined')return;
+  if(typeof QG==='undefined'||typeof CONCEPT_NAMES==='undefined'||typeof S==='undefined')return;
+  try{ DEF.flags.seen158=false; }catch(e){}
+  var ART=window.TOWN_ART||{}, BYID=window.TOWN_BYID||{}, ITEMS=window.TOWN_ITEMS||[];
+  var W54=window.__v54, RBC=window.__rbCore;
+
+  /* ---------- helpers ---------- */
+  function dk(d){ d=d||new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
+  function sv(){ try{ if(typeof save==='function')save(); }catch(e){} }
+  function tap(){ try{ if(typeof sTap==='function')sTap(); }catch(e){} }
+  function tst(m){ try{ if(typeof toast==='function')toast(m); }catch(e){} }
+  function good(){ try{ sCorrect(1); }catch(e){} }
+  function bad(){ try{ sWrong(); }catch(e){} }
+  function party(n){ try{ confetti(n||30); }catch(e){} }
+  function fan(){ try{ sFanfare(); }catch(e){} }
+  function notes(n){ try{ addNotes(n); }catch(e){} }
+  function coins(n){ try{ if(window.addCoins)window.addCoins(n); }catch(e){} }
+  function packs(n,why){ try{ if(window.__cc&&__cc.addPacks)__cc.addPacks(n,why); }catch(e){} }
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function modalOn(){ var m=document.getElementById('modal'); return !!(m&&m.classList.contains('on')); }
+  function adj(c,ok){ try{ if(c&&CONCEPT_NAMES[c]&&typeof adjust==='function')adjust(c,!!ok,false,false); }catch(e){} }
+  function L(c){ try{ return Math.max(1,Math.floor(lvlOf(c))); }catch(e){ return 1; } }
+  function R(a,b){ return a+Math.floor(Math.random()*(b-a+1)); }
+  function pk(a){ return a[Math.floor(Math.random()*a.length)]; }
+  function shuf(a){ a=a.slice(); for(var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=a[i]; a[i]=a[j]; a[j]=t; } return a; }
+  function uniq4(ans,wrongs){ var out=[String(ans)]; wrongs.forEach(function(w){ w=String(w); if(out.length<4&&out.indexOf(w)<0&&w&&!/NaN|undefined|Infinity/.test(w))out.push(w); }); return shuf(out); }
+  var CB=[]; function cb(fn){ CB.push(fn); if(CB.length>3000)CB=CB.slice(-1500); return '__v58cb('+(CB.length-1)+')'; }
+  window.__v58cb=function(i){ try{ var f=CB[i]; if(f)f(); }catch(e){ try{ __muErr('v158',e); }catch(_){} } };
+  function scr(id,scoreId,bodyId,hint){ try{ zScr(id,scoreId,bodyId,hint); }catch(e){} try{ show(id); }catch(e){} var s=document.getElementById(id); if(s)s.scrollTop=0; }
+  function onScr(id){ var e=document.querySelector('.scr.on'); return !!(e&&e.id===id); }
+  function meet(id){ try{ if(!S.friends)S.friends={met:{}}; if(!S.friends.met)S.friends.met={}; if(!S.friends.met[id]){ S.friends.met[id]=true; sv(); } }catch(e){} }
+  function fr(id,n){ try{ if(typeof frAdd==='function')frAdd(id,n); }catch(e){} }
+  function busyNow(){ try{ if(modalOn())return true; var sc=document.querySelector('.scr.on'); if(sc&&sc.id==='scr-quiz')return true; if(window.__pl&&__pl.run&&__pl.run())return true; }catch(e){} return false; }
+  function whenFree(fn,first){ setTimeout(function go(){ if(busyNow()){ setTimeout(go,2000); return; } try{ fn(); }catch(e){} },first==null?1300:first); }
+  function bibi(sz){ try{ if(typeof memberSVG==='function')return memberSVG('bibi',sz); }catch(e){} return '<span style="font-size:'+Math.round(sz*.6)+'px">📚</span>'; }
+  function ada(sz){ try{ var s=citSvg('ada',sz); if(s)return s; }catch(e){} return '<span style="font-size:'+Math.round(sz*.6)+'px">🦝</span>'; }
+  /* a numbered teach card (same look as the Workshop lessons) */
+  function teachList(lines){ return '<div class="card" style="text-align:left">'+lines.map(function(x,i){ return '<div style="display:flex;gap:10px;align-items:flex-start;padding:6px 0;'+(i?'border-top:1px solid #2b2350':'')+'"><b style="flex:none;width:24px;height:24px;border-radius:50%;background:#ffd158;color:#1d1636;display:flex;align-items:center;justify-content:center">'+(i+1)+'</b><span style="font-size:15px;line-height:1.35;text-align:left">'+x+'</span></div>'; }).join('')+'</div>'; }
+
+  /* ---------- state ---------- */
+  function V(){ if(!S.v58||typeof S.v58!=='object')S.v58={}; var v=S.v58;
+    if(typeof v.fn!=='string')v.fn='';
+    if(!v.lab||typeof v.lab!=='object')v.lab={}; var l=v.lab; ['right','total','rounds','paid'].forEach(function(k){ if(typeof l[k]!=='number')l[k]=0; }); if(typeof l.day!=='string')l.day=''; if(!l.best||typeof l.best!=='object')l.best={}; if(!l.seen||typeof l.seen!=='object')l.seen={}; if(!l.played||typeof l.played!=='object')l.played={};
+    if(!v.gram||typeof v.gram!=='object')v.gram={}; var g=v.gram; ['right','total','rounds','paid'].forEach(function(k){ if(typeof g[k]!=='number')g[k]=0; }); if(typeof g.day!=='string')g.day=''; ['desk','seen','best'].forEach(function(k){ if(!g[k]||typeof g[k]!=='object')g[k]={}; }); if(!Array.isArray(g.front))g.front=[];
+    if(!v.pp||typeof v.pp!=='object')v.pp={}; if(typeof v.pp.step!=='number')v.pp.step=0; if(!v.pp.got||typeof v.pp.got!=='object'){ v.pp.got={}; ['visit','detect','proof','verb','front'].slice(0,v.pp.step).forEach(function(k){ v.pp.got[k]=1; }); } if(typeof v.pp.done!=='string')v.pp.done='';
+    if(!v.seen||typeof v.seen!=='object')v.seen={};
+    return v; }
+  (function(){ if(typeof load==='function'){ var _l=load; window.load=load=function(){ var r=_l.apply(this,arguments); try{ V(); }catch(e){} return r; }; } })();
+  try{ V(); }catch(e){}
+
+  /* =====================================================================================================
+     ROBOT WORKSHOP CHAPTERS 6-7: his own robot drives
+     ===================================================================================================== */
+  function myBot(){ try{ return W54.V().bot; }catch(e){ return null; } }
+  function myName(){ var b=myBot(); return (b&&b.name)||'Your robot'; }
+  function cleanName(t){ return String(t||'').replace(/[<>"&]/g,'').replace(/\s+/g,' ').trim().slice(0,14); }
+  var CHEERS=['Move done! I like this move.','Function complete. Beep-boop, that was smooth.','I did the whole move from ONE card!','Every bolt, zero bumps. Teach me another!','I checked the color and made the right turn!'];
+  window.RB_MINE={
+    ok:function(){ return !!(W54&&typeof W54.botSvg==='function'); },
+    name:function(){ return myName(); },
+    svg:function(sz,pose){ try{ return W54.botSvg(sz,null,pose); }catch(e){ return ''; } },
+    fnName:function(){ return V().fn||'My Move'; },
+    cheer:function(){ return pk(CHEERS); },
+    rename:function(then){ var cur=V().fn||'';
+      modal('<div class="center">'+(window.RB_MINE.svg(80)||'')+'<h2 style="margin:4px 0">⭐ Name your move</h2></div><div class="speak"><b>Ada:</b> “Programmers give every function a name that says what it does. Like hop, zigzag or grab. What is yours?”</div>'
+        +'<div class="v54nm" style="margin:8px 0"><input id="v58fn" maxlength="14" placeholder="My Move" value="'+esc(cur)+'"><button class="btn" onclick="'+cb(function(){ var el=document.getElementById('v58fn'); V().fn=cleanName(el&&el.value); sv(); closeModal(); tst('⭐ Your move is called '+(V().fn||'My Move')+'.'); try{ if(then)then(); }catch(e){} })+'">Save name</button></div>'
+        +'<div class="sub center">Up to 14 letters. You can change it any time with the ✏️ button.</div><button class="btn wide ghost" onclick="closeModal()">Cancel</button>'); }
+  };
+  function chDone(id){ try{ return !!(window.__rb&&__rb.chDone(id)); }catch(e){ return false; } }
+  var FN_DEMO='<div class="rb-demo"><div class="rb-fnbox" style="cursor:default"><div class="rb-fn-h"><span>⭐ <b>My Move</b> =</span></div><div class="rb-fn-b"><div class="rb-card"><span class="a">→</span></div><div class="rb-card"><span class="a">→</span></div><div class="rb-card"><span class="a">↓</span></div></div></div></div>'
+    +'<div class="rb-demo"><div class="rb-card fn"><span class="a" style="font-size:24px">⭐</span><span class="g fnm">My Move</span></div><div class="rb-card fn"><span class="a" style="font-size:24px">⭐</span><span class="g fnm">My Move</span></div><b style="font-size:15px;margin:0 6px">= → → ↓ → → ↓</b></div>';
+  var IF_DEMO='<div class="rb-demo"><span class="rb-pmark big" style="background:#ff5d5d;border-color:#a83242">●</span><b style="font-size:15px">red tile</b><span class="rb-pmark big" style="background:#4aa3ff;border-color:#2a5fb0">■</span><b style="font-size:15px">blue tile</b></div>'
+    +'<div class="rb-demo"><div class="rb-rep"><div class="rb-rep-h"><span class="rl">Repeat</span><span class="rn">x6</span></div><div class="rb-rep-b"><div class="rb-card"><span class="a">→</span></div><div class="rb-card iff"><span class="g">IF</span><span class="ifc" style="background:#ff5d5d">●</span><span class="a ifd">↓</span></div></div></div><b style="font-size:14px;margin:0 6px">= roll right, and step down<br>ONLY on red tiles</b></div>';
+  var CH6={id:'fn',n:6,nm:'Functions',ic:'⭐',col:'#ff8a1e',blocks:['U','D','L','R','F'],
+    lesson:function(){ return ['Meet '+myName()+'! In Chapters 6 and 7 YOUR robot from the Bot Garage does the driving.','Teach it a MOVE: tap the ⭐ box and put cards in it. That is the move’s recipe.','Now ONE ⭐ card on the main strip does the WHOLE move. Use it again and again, even with other cards in between.','A named move you can reuse is called a FUNCTION. Fix the move once and it is fixed everywhere. Tap ✏️ to give it a name.']; },
+    demo:FN_DEMO,
+    sub:function(){ return '⭐ Starring '+esc(myName())+'. Teach it a move once, use it again and again.'; },
+    lock:function(){ return chDone('loops')?'':'Finish Chapter 2: Loops to open Functions.'; },
+    done:function(){ return 'Chapter 6 done! You taught '+myName()+' a move and reused it. Real programmers do this all day. They call it a FUNCTION, and they give it a good name.'; }};
+  var CH7={id:'iff',n:7,nm:'If This',ic:'🚦',col:'#4aa3ff',blocks:['U','D','L','R','REP','IF'],
+    lesson:function(){ return ['Some floor tiles are painted: red ● and blue ■.','The IF card checks the tile '+myName()+' is standing on. IF red ↓ means: if I am on red, step down. If not, skip it and keep going.','Put IF cards inside a Repeat and the SAME loop turns at the right places by itself. A program that decides is using a CONDITIONAL.','Tap the color or the arrow on an IF card in the strip to change it.']; },
+    demo:IF_DEMO,
+    sub:function(){ return '🚦 Starring '+esc(myName())+'. One loop, smart turns.'; },
+    lock:function(){ return chDone('until')?'':'Finish Chapter 3: Go! to open If This.'; },
+    done:function(){ return 'Chapter 7 done! Your loops make decisions now: IF this, THEN that. Every robot, game and app is full of them.'; }};
+  function addCh(C){ if(!RBC||RBC.CHBY[C.id])return; RBC.CHAPTERS.push(C); RBC.CHBY[C.id]=C; }
+  addCh(CH6); addCh(CH7);
+  var A4=['U','D','L','R','F'], A4G=['U','D','L','R','GO','F'], I4=['U','D','L','R','REP','IF'], I4G=['U','D','L','R','REP','GO','IF'];
+  /* [chapter, title, map, solution ("main | move"), main slots, move slots, blocks, hint, intro] */
+  var NEWLV=[
+   ['fn','Teach a Move',['S...G'],'F F | R R',2,2,A4,'Put → → in the ⭐ box. Then put two ⭐ cards on the main strip.','Only 2 cards fit on the main strip. Teach the ⭐ move first!'],
+   ['fn','Staircase',['S.###','#..##','##..#','###..','####G'],'F F F F | R D',4,2,A4,'One step of the stairs is → then ↓. That is your move. Use it 4 times.','A staircase is the same little move again and again.'],
+   ['fn','Hop the Crates',['........','S.#..#.G'],'R F R F R | U R R D',5,4,A4,'A hop over one crate: up, right, right, down. Make that your move. Roll right between hops.','Teach a HOP, then hop twice.'],
+   ['fn','Bolt Dips',['S.....G','#o#o#o#'],'F F F | R D U R',3,4,A4,'Each dip: right, down for the bolt, back up, right. Do it 3 times.','Three bolts, three dips, one move.'],
+   ['fn','Big Hump',['.......','.#.#.#.','S#.#.#G'],'F F F | U U R R D D',3,6,A4,'Over one tall wall: up, up, right, right, down, down.','The walls are two tall. Your move has room for 6 cards.'],
+   ['fn','Sweep',['S.o...','.....o','o.....','.....o','G.....'],'F F | GO R D GO L D',2,4,A4G,'Sweep one pair of rows: GO right, down, GO left, down. Do it twice.','GO cards work inside a move too!'],
+   ['fn','Bumpy Road',['.o.o###','S....##','####..#','####..G'],'F F D D F | U R D R',5,4,A4,'The bump is: up, right, down, right. Bump, bump, drop down two, bump.','Same bump, two different places.'],
+   ['fn','The Long Hall',['S..o...','......o','.o.....','.......','...o...','......o','G......'],'F F F | GO R D GO L D',3,4,A4G,'Sweep two rows with one move, three times.','A big hall and only 3 main cards.'],
+   ['iff','First IF',['S.r#','##.G'],'REP3[R IFrD]',3,0,I4,'Repeat 3 [ →, IF red ↓ ]. Roll right; when you land on red, step down.','Only 3 cards! Use a Repeat with an IF inside.'],
+   ['iff','Red Means Down',['Sr#####','#.r####','##..r##','####..G'],'REP6[R IFrD]',3,0,I4,'Every red tile means: step down. Repeat 6 [ →, IF red ↓ ].','The stairs are not even. Let the IF decide.'],
+   ['iff','Blue Means Up',['#####.G','###..b#','##.b###','S.b####'],'REP6[R IFbU]',3,0,I4,'Blue tiles mean go UP this time. Repeat 6 [ →, IF blue ↑ ].','Uphill! Change the IF card to blue and up.'],
+   ['iff','Two Colors',['Sr###.G','#.r#.b#','##..b##'],'REP6[R IFrD IFbU]',4,0,I4,'Two IF cards in one loop: IF red ↓ and IF blue ↑.','Red goes down, blue goes up.'],
+   ['iff','Bolt Road',['Sr######','#.or####','###.r###','####o.r#','######oG'],'REP7[R IFrD]',3,0,I4,'The bolts are on the road. Just follow the reds: Repeat 7 [ →, IF red ↓ ].','Four bolts on a long road.'],
+   ['iff','Turn Signals',['#S#','#r.','##.','#.b','.b#','.##','rG#'],'REP6[D IFrR IFbL]',4,0,I4,'Going DOWN this time. Red means step right, blue means step left.','Down the road: red turns right, blue turns left.'],
+   ['iff','GO and Check',['S.r#..r#','##..b#.G'],'REP4[GO R IFrD IFbU]',4,0,I4G,'Repeat 4 [ GO →, IF red ↓, IF blue ↑ ]. GO rolls to the wall, then the color picks the turn.','GO and IF together.'],
+   ['iff','The Grand Road',['S#or##','..b.r#','.b##oG'],'GO D REP5[R IFbU IFrD]',5,0,I4G,'GO down first. Then Repeat 5 [ →, IF blue ↑, IF red ↓ ].','Everything you know, one road.']
+  ];
+  if(RBC&&!RBC.LVBY.fn_1){ NEWLV.forEach(function(a){ RBC.addLevel(a[0],a[1],a[2],a[3],a[4],a[7],{fslots:a[5],blocks:a[6],intro:a[8],mine:true,repMax:a[0]==='iff'?9:5}); }); }
+  try{ if(window.RB_NEWCOMERS){} }catch(e){}
+  /* jump straight to chapter 6 (used by the news card + To-Do) */
+  window.v58Robot=function(){ tap(); try{ closeModal(); }catch(e){} try{ window.rbHub(); }catch(e){} setTimeout(function(){ try{ var el=document.querySelector('.rb-ch[style*="#ff8a1e"]'); if(el&&el.scrollIntoView)el.scrollIntoView({block:'center'}); }catch(e){} },350); };
+  function rbNext(ch){ try{ var r=__rb.RB(); var list=RBC.levelsOf(ch); var nx=list.filter(function(Lv){ return !r.done[Lv.id]; })[0]; return {done:list.length-list.filter(function(Lv){ return !r.done[Lv.id]; }).length,total:list.length,next:nx}; }catch(e){ return {done:0,total:8,next:null}; } }
+
+  /* ---------- robot CSS (the ⭐ box, IF cards, painted tiles) ---------- */
+  (function(){ if(document.getElementById('v58rb-css'))return; var st=document.createElement('style'); st.id='v58rb-css'; st.textContent=
+     '.rb-fnbox{margin:8px 0 0;border:2px solid #ff8a1e;border-radius:14px;background:#2a1a0e;padding:6px;cursor:pointer}.rb-fnbox.tgt{border-color:#ffd158;box-shadow:0 0 12px #ffd15866}'
+    +'.rb-fn-h{display:flex;align-items:center;gap:8px;color:#ffd9b0;font-size:13px;font-weight:800;padding:0 4px 4px;flex-wrap:wrap}.rb-fn-h b{color:#ffd158;overflow-wrap:anywhere}.rb-fn-n{margin-left:auto;font-size:12px;color:#ffb070}'
+    +'.rb-fn-ed{appearance:none;border:1px solid #ff8a1e;background:#3a2410;color:#ffd9b0;border-radius:10px;font-size:12px;font-weight:800;padding:3px 8px;cursor:pointer}'
+    +'.rb-fn-b{display:flex;flex-wrap:wrap;gap:6px;min-height:58px;padding:4px;border-radius:10px;background:#1c1208;align-items:center}'
+    +'.rb-card.fn,.rb-pcard.fn{background:linear-gradient(180deg,#ffa94d,#e0700f);box-shadow:0 4px 0 #8a3f05;color:#1d1636}.rb-card .fnm{font-size:8.5px;letter-spacing:0;margin:1px 0 0;max-width:50px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}'
+    +'.rb-ifbar .btn{margin:0;flex:1 1 140px;min-height:52px;font-size:16px}.rb-card.iff{width:76px}.rb-card.iff .ifc{width:26px;height:26px;font-size:14px}.rb-card.iff .ifd{font-size:24px;padding:0 2px}.rb-card.iff,.rb-pcard.iff{background:linear-gradient(180deg,#5a6b8f,#3a4868);box-shadow:0 4px 0 #222c44;color:#fff;flex-direction:row;gap:2px;padding:0 2px}.rb-card.iff .g,.rb-pcard.iff .g{margin:0;font-size:10px}.rb-card.iff .a{font-size:20px}'
+    +'.rb-pcard.iff{flex-direction:column}.ifc{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:5px;color:#fff;font-size:11px;border:1px solid #1d1636;text-shadow:0 1px 0 #0006}.rb-card.iff .ifc{cursor:pointer}.rb-card.iff .ifd{cursor:pointer;border-bottom:2px dotted #ffffff88}'
+    +'.rb-card.skip{box-shadow:0 0 0 3px #8f97a8,0 0 10px #8f97a8;opacity:.75}'
+    +'.rb-tile.paint{background:#1d1a3a}.rb-pmark{position:absolute;left:3px;top:3px;width:16px;height:16px;border-radius:5px;border:2px solid;color:#fff;font-size:9px;display:flex;align-items:center;justify-content:center;z-index:1}.rb-tile.paint::after{content:"";position:absolute;inset:3px;border-radius:6px;opacity:.38;pointer-events:none}'
+    +'.rb-pmark.big{position:static;width:30px;height:30px;font-size:16px}';
+    document.head.appendChild(st); })();
+
+  /* =====================================================================================================
+     THE WORD HOARD: 3 new chests (24 gems) + BIBI'S WORD LAB (Root Builder, Analogy Link, Shade Ladder)
+     ===================================================================================================== */
+  var NEWTRACKS=[
+   {id:'roots2',name:'More Roots',kn:'Moss',color:'#46c46a',std:'Ohio L.4.4b · Greek & Latin roots',blurb:'Science words are built from roots.',
+    keeper:{body:'round',col:'#46c46a',eyes:'sleepy',extra:'antenna'},
+    gems:[
+     {w:'geo',teach:'means EARTH. Like geography and geology.',q:'What does the root "geo" mean?',opts:['earth','light','heat','sound'],a:'earth'},
+     {w:'photo',teach:'means LIGHT. A photograph is drawn with light.',q:'What does "photo" mean?',opts:['light','earth','small','self'],a:'light'},
+     {w:'phon',teach:'means SOUND. Like telephone and phonics.',q:'What does "phon" mean?',opts:['sound','heat','earth','measure'],a:'sound'},
+     {w:'therm',teach:'means HEAT. A thermos keeps soup hot.',q:'What does "therm" mean?',opts:['heat','sound','light','small'],a:'heat'},
+     {w:'micro',teach:'means SMALL. A microscope shows tiny things.',q:'What does "micro" mean?',opts:['small','far','earth','heat'],a:'small'},
+     {w:'scope',teach:'means a tool for SEEING. Like telescope and microscope.',q:'What does "scope" mean?',opts:['see','hear','carry','build'],a:'see'},
+     {w:'meter',teach:'means MEASURE. A thermometer measures heat.',q:'What does "meter" mean?',opts:['measure','light','self','sound'],a:'measure'},
+     {w:'auto',teach:'means SELF. An autograph is writing your own name.',q:'What does "auto" mean?',opts:['self','far','life','small'],a:'self'}
+    ]},
+   {id:'syn',name:'Synonyms & Antonyms',kn:'Twin',color:'#ff5d8a',std:'Ohio L.4.5c · synonyms and antonyms',blurb:'Same meaning, or the opposite?',
+    keeper:{body:'blob',col:'#ff5d8a',eyes:'dot',extra:'ears'},
+    gems:[
+     {w:'brave',teach:'A SYNONYM means the SAME. brave = bold = fearless.',q:'Which is a SYNONYM for brave?',opts:['bold','scared','tiny','slow'],a:'bold'},
+     {w:'ancient',teach:'ancient means very, very old. Its ANTONYM (the opposite) is modern.',q:'Which is the ANTONYM of ancient?',opts:['modern','old','huge','dusty'],a:'modern'},
+     {w:'rapid',teach:'rapid means fast. A SYNONYM is quick.',q:'Which is a SYNONYM for rapid?',opts:['quick','sleepy','loud','calm'],a:'quick'},
+     {w:'generous',teach:'generous means happy to share. Its ANTONYM is selfish.',q:'Which is the ANTONYM of generous?',opts:['selfish','kind','rich','helpful'],a:'selfish'},
+     {w:'enormous',teach:'enormous means very big. A SYNONYM is huge.',q:'Which is a SYNONYM for enormous?',opts:['huge','tiny','heavy','round'],a:'huge'},
+     {w:'timid',teach:'timid means shy and a little scared. Its ANTONYM is confident.',q:'Which is the ANTONYM of timid?',opts:['confident','shy','quiet','nervous'],a:'confident'},
+     {w:'repair',teach:'repair means to make it work again. A SYNONYM is fix.',q:'Which is a SYNONYM for repair?',opts:['fix','break','paint','buy'],a:'fix'},
+     {w:'expand',teach:'expand means to get bigger. Its ANTONYM is shrink.',q:'Which is the ANTONYM of expand?',opts:['shrink','grow','stretch','swell'],a:'shrink'}
+    ]},
+   {id:'clue',name:'Context Clues',kn:'Clue',color:'#ffc83a',std:'Ohio L.4.4a · context clues',blurb:'The sentence tells you the word.',
+    keeper:{body:'bean',col:'#e0a92c',eyes:'happy',extra:'horns'},
+    gems:[
+     {w:'drenched',teach:'"My coat was drenched, so I hung it up to drip." DRIP is the clue: drenched means SOAKED.',q:'"My coat was drenched, so I hung it up to drip." Drenched means...',opts:['soaked','torn','warm','lost'],a:'soaked'},
+     {w:'famished',teach:'"I skipped lunch, so by dinner I was famished." Skipped lunch is the clue: VERY HUNGRY.',q:'"I skipped lunch, so by dinner I was famished." Famished means...',opts:['very hungry','very sleepy','very angry','very full'],a:'very hungry'},
+     {w:'fragile',teach:'"Carry it gently. The glass inside is fragile." Gently is the clue: EASY TO BREAK.',q:'"Carry it gently. The glass inside is fragile." Fragile means...',opts:['easy to break','very heavy','shiny','brand new'],a:'easy to break'},
+     {w:'reluctant',teach:'"He was reluctant to jump in the cold pool and stood there for ten minutes." NOT WANTING TO.',q:'"He was reluctant to jump in and stood there for ten minutes." Reluctant means...',opts:['not wanting to','excited to','able to','about to'],a:'not wanting to'},
+     {w:'peculiar',teach:'"A cat that barks is very peculiar." Cats do not bark, so peculiar means STRANGE.',q:'"A cat that barks is very peculiar." Peculiar means...',opts:['strange','normal','loud','furry'],a:'strange'},
+     {w:'abundant',teach:'"Apples were abundant: every tree was covered and the baskets overflowed." MORE THAN ENOUGH.',q:'"Every tree was covered and the baskets overflowed. Apples were abundant." Abundant means...',opts:['more than enough','very few','rotten','expensive'],a:'more than enough'},
+     {w:'conceal',teach:'"She tried to conceal the present behind her back." Behind her back is the clue: HIDE.',q:'"She tried to conceal the present behind her back." Conceal means...',opts:['hide','open','wrap','buy'],a:'hide'},
+     {w:'drowsy',teach:'"The warm room made me so drowsy I started to yawn." Yawn is the clue: SLEEPY.',q:'"The warm room made me so drowsy I started to yawn." Drowsy means...',opts:['sleepy','hungry','chilly','bouncy'],a:'sleepy'}
+    ]}
+  ];
+  var hoardAdded=0;
+  try{ if(typeof WORD_TRACKS!=='undefined'&&typeof HOARD_BY!=='undefined'){ NEWTRACKS.forEach(function(t){ if(HOARD_BY[t.id])return; WORD_TRACKS.push(t); HOARD_BY[t.id]=t; hoardAdded++; }); } }catch(e){}
+  /* their keepers join the Card Club like the first five did */
+  try{ var CX=window.__cc; if(CX&&CX.CARDS&&CX.SETS&&CX.POOL){ var hs=CX.SETS.filter(function(s){ return (s.ids||[]).some(function(id){ return /^kn_/.test(id); }); })[0];
+    NEWTRACKS.forEach(function(t){ var id='kn_'+t.id; if(CX.CARDS[id])return; var base=null; for(var k in CX.CARDS){ if(/^kn_/.test(k)){ base=CX.CARDS[k]; break; } } if(!base)return;
+      var c={}; for(var q in base)c[q]=base[q]; c.id=id; c.nm=function(){ return t.kn; }; c.sub=function(){ return 'Keeper of '+t.name; }; c.draw=function(mid,sz){ try{ return creatureSVG(t.keeper,sz); }catch(e){ return ''; } }; c.mid=id;
+      CX.CARDS[id]=c; CX.POOL.push(id); if(hs&&hs.ids.indexOf(id)<0)hs.ids.push(id); }); } }catch(e){}
+
+  /* ---------- ROOT BUILDER: real words made from hoard roots and affixes ---------- */
+  var RW=[
+   {w:'telescope',p:[['tele','far'],['scope','see']],m:'a tool for seeing far away'},
+   {w:'microscope',p:[['micro','small'],['scope','see']],m:'a tool for seeing tiny things'},
+   {w:'telephone',p:[['tele','far'],['phon','sound']],m:'sends your voice far away'},
+   {w:'microphone',p:[['micro','small'],['phon','sound']],m:'makes a small sound bigger'},
+   {w:'thermometer',p:[['therm','heat'],['meter','measure']],m:'measures how hot something is'},
+   {w:'photograph',p:[['photo','light'],['graph','write or draw']],m:'a picture made with light'},
+   {w:'autograph',p:[['auto','self'],['graph','write']],m:'your own name, written by you'},
+   {w:'biography',p:[['bio','life'],['graph','write']],m:'the written story of a person’s life'},
+   {w:'geography',p:[['geo','earth'],['graph','write or draw']],m:'the study and maps of the Earth'},
+   {w:'telegraph',p:[['tele','far'],['graph','write']],m:'sends written messages far away'},
+   {w:'portable',p:[['port','carry'],['able','can be']],m:'can be carried'},
+   {w:'audible',p:[['aud','hear'],['ible','can be']],m:'loud enough to be heard'},
+   {w:'predict',p:[['pre','before'],['dict','say']],m:'to say what will happen before it happens'},
+   {w:'unkind',p:[['un','not'],['kind','kind']],m:'not kind'},
+   {w:'rebuild',p:[['re','again'],['build','build']],m:'to build again'},
+   {w:'preheat',p:[['pre','before'],['heat','heat']],m:'to heat before you start'},
+   {w:'dislike',p:[['dis','opposite of'],['like','like']],m:'the opposite of like'},
+   {w:'helpless',p:[['help','help'],['less','without']],m:'without help'},
+   {w:'careful',p:[['care','care'],['ful','full of']],m:'full of care'},
+   {w:'painter',p:[['paint','paint'],['er','one who']],m:'one who paints'},
+   {w:'fearless',p:[['fear','fear'],['less','without']],m:'without fear'},
+   {w:'retell',p:[['re','again'],['tell','tell']],m:'to tell again'}
+  ];
+  var RWBY={}; RW.forEach(function(x){ RWBY[x.w]=x; });
+  function partStr(x){ return x.p.map(function(p){ return p[0]; }).join(' + '); }
+  function rootQ(){ var x=pk(RW), k=R(0,2), others=shuf(RW.filter(function(y){ return y.w!==x.w; }));
+    if(k===0){ /* parts -> word */
+      return {kind:'root',q:x.p.map(function(p){ return '<b>'+p[0]+'</b> ('+p[1]+')'; }).join(' + ')+' = ?',choices:uniq4(x.w,others.map(function(y){ return y.w; })),a:x.w,why:x.w+' = '+partStr(x)+': '+x.m+'.'}; }
+    if(k===1){ /* word -> parts: wrong answers swap one real part */
+      var wr=[]; others.forEach(function(y){ if(wr.length>=6)return; var a=[x.p[0][0],y.p[1][0]].join(' + '), b=[y.p[0][0],x.p[1][0]].join(' + '); [a,b].forEach(function(z){ if(z!==partStr(x)&&!RW.some(function(r){ return partStr(r)===z; })&&wr.indexOf(z)<0)wr.push(z); }); });
+      return {kind:'root',q:'Which two parts build <b>'+x.w+'</b>?',choices:uniq4(partStr(x),wr),a:partStr(x),why:x.w+' = '+partStr(x)+' ('+x.p.map(function(p){ return p[0]+' = '+p[1]; }).join(', ')+').'}; }
+    /* word -> meaning */
+    return {kind:'root',q:'<b>'+x.w+'</b> is '+partStr(x)+'. What does it mean?',choices:uniq4(x.m,others.map(function(y){ return y.m; })),a:x.m,why:x.p.map(function(p){ return p[0]+' = '+p[1]; }).join(', ')+'. So '+x.w+' means '+x.m+'.'}; }
+
+  /* ---------- ANALOGY LINK: A is to B as C is to ? ---------- */
+  var REL=[
+   {id:'opp',nm:'opposites',say:function(a,b){ return a+' is the OPPOSITE of '+b; },pairs:[['hot','cold'],['up','down'],['big','small'],['happy','sad'],['fast','slow'],['light','dark'],['open','closed'],['wet','dry'],['full','empty'],['loud','quiet'],['early','late'],['sweet','sour']]},
+   {id:'same',nm:'same meaning',say:function(a,b){ return a+' means the SAME as '+b; },pairs:[['big','large'],['small','tiny'],['fast','quick'],['happy','glad'],['shout','yell'],['start','begin'],['end','finish'],['smart','clever'],['scared','afraid'],['angry','mad']]},
+   {id:'baby',nm:'animal and baby',say:function(a,b){ return 'a baby '+a+' is a '+b; },pairs:[['dog','puppy'],['cat','kitten'],['cow','calf'],['sheep','lamb'],['horse','foal'],['frog','tadpole'],['bear','cub'],['duck','duckling'],['kangaroo','joey'],['butterfly','caterpillar']]},
+   {id:'tool',nm:'tool and job',say:function(a,b){ return 'you use a '+a+' to '+b; },pairs:[['broom','sweep'],['pen','write'],['shovel','dig'],['oven','bake'],['needle','sew'],['eraser','erase'],['paintbrush','paint'],['scissors','cut'],['spoon','stir'],['key','unlock']]},
+   {id:'part',nm:'part and whole',say:function(a,b){ return 'a '+a+' is part of a '+b; },pairs:[['page','book'],['petal','flower'],['wheel','car'],['finger','hand'],['toe','foot'],['branch','tree'],['player','team'],['key','keyboard'],['wing','bird'],['room','house']]},
+   {id:'home',nm:'animal and home',say:function(a,b){ return 'a '+a+' lives in a '+b; },pairs:[['bee','hive'],['bird','nest'],['bear','den'],['spider','web'],['horse','stable'],['rabbit','burrow'],['fish','pond'],['ant','anthill']]}
+  ];
+  function linkQ(lv){ var pool=lv<2?REL.slice(0,3):REL; var r=pk(pool), two=shuf(r.pairs).slice(0,2), A=two[0], Cc=two[1];
+    /* wrong answers: other B-side words from the same family (never the answer, never A or B), plus the classic mistake (C's own family word) */
+    var wr=shuf(r.pairs.filter(function(p){ return p[1]!==Cc[1]&&p[0]!==Cc[0]; }).map(function(p){ return p[1]; })).filter(function(w){ return w!==A[1]&&w!==Cc[0]; });
+    var other=REL.filter(function(x){ return x!==r; }).map(function(x){ return x.pairs.filter(function(p){ return p[0]===Cc[0]; })[0]; }).filter(Boolean).map(function(p){ return p[1]; }).filter(function(w){ return w!==Cc[1]; });
+    var ch=uniq4(Cc[1],other.concat(wr));
+    return {kind:'link',q:'<b>'+A[0]+'</b> is to <b>'+A[1]+'</b> as <b>'+Cc[0]+'</b> is to <b>?</b>',choices:ch,a:Cc[1],why:'They are '+r.nm+'. '+r.say(A[0],A[1])+', and '+r.say(Cc[0],Cc[1])+'.'}; }
+
+  /* ---------- SHADE LADDER: tap the words from weakest to strongest ---------- */
+  var LADDERS=[
+   {by:'quietest to loudest',w:['whisper','talk','shout','scream']},
+   {by:'slowest to fastest',w:['walk','jog','run','sprint']},
+   {by:'lightest rain to heaviest',w:['mist','drizzle','rain','downpour']},
+   {by:'gentlest wind to strongest',w:['breeze','wind','gale','hurricane']},
+   {by:'smallest to biggest',w:['pebble','rock','boulder']},
+   {by:'least wet to most wet',w:['damp','wet','soaked']},
+   {by:'least scared to most scared',w:['nervous','scared','terrified']},
+   {by:'least angry to most angry',w:['annoyed','angry','furious']},
+   {by:'least to most',w:['like','love','adore']},
+   {by:'dimmest to brightest',w:['dim','bright','dazzling']},
+   {by:'smallest to biggest',w:['village','town','city']},
+   {by:'shortest time to longest',w:['minute','hour','day','week']},
+   {by:'smallest drink to biggest',w:['sip','drink','gulp']},
+   {by:'coolest to coldest',w:['cool','cold','freezing']},
+   {by:'smallest to biggest',w:['tiny','small','big','huge']},
+   {by:'least happy to happiest',w:['okay','happy','thrilled']}
+  ];
+  function ladderQ(){ var l=pk(LADDERS); return {kind:'ladder',by:l.by,order:l.w.slice(),tiles:(function(){ var s=shuf(l.w); var g=0; while(s.join()===l.w.join()&&g++<9)s=shuf(l.w); return s; })(),why:l.w.join(' → ')+' ('+l.by+').'}; }
+
+  var GAMES={
+   root:{nm:'Root Builder',ic:'🧱',col:'#46c46a',make:function(){ return rootQ(); },
+     teach:['Big words are built from small parts. Each ROOT or affix has a meaning.','<b>tele</b> means far and <b>scope</b> means see. So a <b>telescope</b> is a tool for seeing far away.','Put the meanings together and you can crack words you have never seen!']},
+   link:{nm:'Analogy Link',ic:'🔗',col:'#ff5d8a',make:function(){ return linkQ(V().lab.rounds); },
+     teach:['An ANALOGY is a word puzzle about how two words go together.','<b>hot</b> is to <b>cold</b> as <b>up</b> is to <b>?</b> Hot and cold are opposites, so the answer is the opposite of up: <b>down</b>.','First say how the first pair goes together. Then make the second pair go together the SAME way.']},
+   ladder:{nm:'Shade Ladder',ic:'📶',col:'#c58dff',make:function(){ return ladderQ(); },
+     teach:['Some words mean almost the same thing, but one is STRONGER. Whisper, talk, shout, scream are all about how loud.','Tap the words in order, from the weakest to the strongest. They climb up the ladder.','Picking the exact right shade makes your writing sharp: "furious" says more than "mad".']}
+  };
+  var LB=null; /* the live lab round */
+  window.wlabHub=function(){ tap(); try{ closeModal(); }catch(e){} meet('bibi'); scr('scr-wlab','wlScore','wlBody','Bibi’s Word Lab. Three word games that grow your hoard brain: Root Builder, Analogy Link and Shade Ladder.'); wlRender(); };
+  function labToday(){ var l=V().lab; return l.day===dk()?l.paid:0; }
+  function wlRender(){ var body=document.getElementById('wlBody'), sc=document.getElementById('wlScore'); if(!body)return; var l=V().lab; if(sc)sc.textContent='🧪 '+l.right+' right · '+l.rounds+' rounds';
+    var html='<div class="v58hero"><div>'+bibi(76)+'</div><div style="flex:1;min-width:0"><h2 style="margin:0">🧪 Bibi’s Word Lab</h2><div class="sub" style="text-align:left;margin:2px 0 4px">Five questions a round. The first 3 rounds each day pay +12 notes and +5 coins.</div>'
+      +'<div class="speak" style="margin:0;text-align:left;font-size:14px"><b>Bibi:</b> “'+(l.rounds?'Back in the lab! Pick a game.':'Words are made of parts, they link up in patterns, and some are stronger than others. Let us poke them and see!')+'”</div></div></div>';
+    Object.keys(GAMES).forEach(function(k){ var g=GAMES[k], b=l.best[k]; html+='<div class="v58row" style="border-left-color:'+g.col+'"><span class="ic">'+g.ic+'</span><div class="tx"><b>'+g.nm+'</b><div class="sub" style="margin:0;text-align:left">'+(k==='root'?'Roots + affixes build words. tele + scope = telescope.':k==='link'?'A is to B as C is to ?':'Order words from weakest to strongest.')+(b!=null?' · best '+b+'/5':'')+'</div></div><button class="btn small" style="margin:0" onclick="'+cb(function(){ labStart(k); })+'">Play</button></div>'; });
+    html+='<div class="sub center" style="margin-top:8px">Today: '+labToday()+' of 3 paid rounds. More words to collect are in the <a href="#" onclick="'+cb(function(){ try{ openHoard(); }catch(e){} })+';return false" style="color:#ffd158">Word Hoard</a>.</div>';
+    body.innerHTML=html; }
+  function labStart(k){ tap(); var v=V(); if(!v.lab.seen[k]){ v.lab.seen[k]=1; sv(); var g=GAMES[k];
+      modal('<div class="center">'+bibi(70)+'<h2 style="margin:4px 0">'+g.ic+' '+g.nm+'</h2></div>'+teachList(g.teach)+'<button class="btn wide" onclick="'+cb(function(){ closeModal(); labStart(k); })+'">Let’s play!</button>'); return; }
+    var qs=[], seen={}; for(var t=0;t<40&&qs.length<5;t++){ var q=GAMES[k].make(); var key=q.q||q.order.join(); if(seen[key])continue; seen[key]=1; qs.push(q); }
+    try{ GD=null; }catch(e){} LB={k:k,qs:qs,i:0,right:0,tok:Math.random()}; labStep(); }
+  function labStep(){ if(!LB)return; var my=LB; var q=LB.qs[LB.i]; if(!q){ labEnd(); return; } var g=GAMES[LB.k];
+    var head='<div class="center v58labq"><div class="sub" style="margin:0">'+g.ic+' '+g.nm+' · '+(LB.i+1)+' of '+LB.qs.length+'</div></div>';
+    if(q.kind==='ladder'){ var got=[], miss=false;
+      var draw=function(){ var html=head+'<div class="card center"><b>Tap the words in order:</b><div style="font-size:16px;font-weight:800;color:#ffd158;margin-top:2px">'+esc(q.by)+'</div></div>'
+          +'<div class="v58ladder">'+q.order.map(function(w,i){ return '<div class="rung'+(got[i]?' on':'')+'">'+(got[i]?esc(got[i]):'<span class="sub" style="margin:0">'+(i===0?'weakest':i===q.order.length-1?'strongest':'')+'</span>')+'</div>'; }).reverse().join('')+'</div>'
+          +'<div class="v54ans">'+q.tiles.map(function(w){ var used=got.indexOf(w)>=0; return '<button class="v58lt" data-w="'+esc(w)+'"'+(used?' disabled style="opacity:.3"':'')+'>'+esc(w)+'</button>'; }).join('')+'</div><div class="jammsg" id="j58Msg" style="min-height:22px"></div>';
+        modal(html);
+        document.querySelectorAll('.v58lt').forEach(function(b){ b.addEventListener('click',function(){ if(LB!==my||b.disabled)return; var w=b.getAttribute('data-w'), want=q.order[got.length];
+          if(w===want){ got.push(w); tap(); if(got.length===q.order.length){ var ok=!miss; labMark(ok); draw(); var m=document.getElementById('j58Msg'); if(m)m.innerHTML=(ok?'✅ Perfect ladder!':'✅ Finished. ')+' '+esc(q.why); setTimeout(function(){ if(LB!==my||!document.querySelector('#mbox .v58labq'))return; LB.i++; labStep(); },ok?1500:2600); return; } draw(); }
+          else { miss=true; bad(); try{ punch(b); }catch(e){} var m2=document.getElementById('j58Msg'); if(m2)m2.textContent='Not yet. Which one is weaker than '+w+'?'; } }); }); };
+      draw(); return; }
+    modal(head+'<div class="card center" style="font-size:17px;line-height:1.45">'+q.q+'</div><div class="v54ans">'+q.choices.map(function(c){ return '<button class="v58ab" data-v="'+esc(c)+'">'+esc(c)+'</button>'; }).join('')+'</div><div class="jammsg" id="j58Msg" style="min-height:22px"></div>');
+    var done=false; document.querySelectorAll('.v58ab').forEach(function(b){ b.addEventListener('click',function(){ if(done||LB!==my)return; done=true; var ok=b.getAttribute('data-v')===q.a; labMark(ok);
+      document.querySelectorAll('.v58ab').forEach(function(x){ if(x.getAttribute('data-v')===q.a){ x.style.background='#2f8f52'; x.style.borderColor='#7dff8a'; } }); if(!ok){ b.style.borderColor='#ff5d5d'; try{ punch(b); }catch(e){} }
+      var m=document.getElementById('j58Msg'); if(m)m.innerHTML=(ok?'✅ ':'The answer is <b>'+esc(q.a)+'</b>. ')+esc(q.why);
+      setTimeout(function(){ if(LB!==my||!document.querySelector('#mbox .v58labq'))return; LB.i++; labStep(); },ok?1700:3000); }); }); }
+  function labMark(ok){ var l=V().lab; l.total++; if(ok){ l.right++; LB.right++; good(); } else bad(); sv(); }
+  function labEnd(){ var v=V(), l=v.lab, k=LB.k, r=LB.right, n=LB.qs.length; LB=null; l.rounds++; l.played[k]=(l.played[k]||0)+1; if(l.best[k]==null||r>l.best[k])l.best[k]=r;
+    if(l.day!==dk()){ l.day=dk(); l.paid=0; } var pay=l.paid<3; if(pay){ l.paid++; notes(12); coins(5); } else notes(3);
+    fr('bibi',1); sv(); if(r===n)party(30);
+    modal('<div class="center">'+bibi(80)+'<h2 style="margin:4px 0">'+GAMES[k].ic+' '+r+' of '+n+' right!</h2><div class="sub">'+(pay?'+12 notes, +5 coins':'+3 notes (the 3 paid rounds are done for today)')+'</div></div>'
+      +'<div class="speak"><b>Bibi:</b> “'+(r===n?'Every single one. Your word-dragon is showing off.':r>=3?'Strong work. Words are starting to make sense from the inside out.':'Tricky ones! Play again and they will start to click.')+'”</div>'
+      +'<button class="btn wide" onclick="'+cb(function(){ closeModal(); labStart(k); })+'">Play again</button><button class="btn wide ghost" onclick="'+cb(function(){ closeModal(); wlRender(); })+'">Back to the lab</button>');
+    try{ if(typeof window.__v58pp==='function')window.__v58pp('lab'); }catch(e){} }
+  /* a Word Lab card + the new-chest note at the top of the Word Hoard vault */
+  (function(){ if(typeof renderHoard!=='function')return; var _rh=renderHoard; window.renderHoard=renderHoard=function(){ var r=_rh.apply(this,arguments); try{ if(typeof HOARD_VIEW!=='undefined'&&HOARD_VIEW)return r; var body=document.getElementById('hoardBody'); if(!body||body.querySelector('.v58lab'))return r;
+      var d=document.createElement('div'); d.className='hd-wotd v58lab'; d.style.borderColor='#46c46a'; d.innerHTML='<div style="font-size:26px">🧪</div><div><div style="font-weight:800">Bibi’s Word Lab</div><div class="sub" style="text-align:left;margin:0">Root Builder · Analogy Link · Shade Ladder</div></div>';
+      d.addEventListener('click',function(){ window.wlabHub(); }); var w=body.querySelector('.hd-wotd'); if(w&&w.nextSibling)body.insertBefore(d,w.nextSibling); else body.appendChild(d); }catch(e){} return r; }; })();
+
+  /* =====================================================================================================
+     GRAMMAR: MAC and THE DAILY SQUAWK (concept 'gram')
+     ===================================================================================================== */
+  var MAC={id:'mac',name:'Mac',title:'Newspaper Editor',job:'Editor of The Daily Squawk',place:'The Daily Squawk',col:'#e8433a',st:'Florida',wing:'words',
+    bio:'Mac is a scarlet macaw who repeats everything he hears, so he became a newspaper editor: he reads every sentence twice. He runs The Daily Squawk on Story Street, where no capital letter goes missing and every sentence ends with the right mark.',
+    lines:['A noun is a thing. A verb is a doing. A squawk is a very loud verb.','Every sentence needs an ending: a period, a question mark, or an exclamation mark!','My dream: a front page with zero mistakes. Then I will frame it.'],
+    likes:['newspapers','big words'],been:['the Everglades','a rocket launch at Cape Canaveral'],
+    clues:['Rockets launch to space from Cape Canaveral in my state.','The Everglades, a giant swamp full of alligators, is in my state.','My capital is Tallahassee, in the Sunshine State.']};
+  function macArt(){ return '<ellipse cx="50" cy="96" rx="20" ry="3" fill="#00000033"/>'
+    +'<path d="M44 80 L38 97 L46 92 Z M56 80 L62 97 L54 92 Z" fill="#3a8bd9"/><path d="M50 78 L50 98" stroke="#ffd158" stroke-width="4"/>'
+    +'<ellipse cx="50" cy="62" rx="20" ry="24" fill="#e8433a"/>'
+    +'<path d="M30 54 Q18 70 26 86 Q34 80 38 66 Z" fill="#ffd158"/><path d="M28 70 Q22 80 27 88 Q32 84 34 74 Z" fill="#3a8bd9"/>'
+    +'<path d="M70 54 Q82 70 74 86 Q66 80 62 66 Z" fill="#ffd158"/><path d="M72 70 Q78 80 73 88 Q68 84 66 74 Z" fill="#3a8bd9"/>'
+    +'<path d="M76 66 L88 52" stroke="#ffd158" stroke-width="3" stroke-linecap="round"/><rect x="84" y="40" width="5" height="14" rx="1" fill="#ffd158" transform="rotate(40 86 47)"/><path d="M90 38 l3 -2 l-1 4 Z" fill="#2b2350"/>'
+    +'<rect x="38" y="64" width="24" height="16" rx="2" fill="#f4f0ff"/><path d="M41 68 H59 M41 72 H55 M41 76 H58" stroke="#8f97a8" stroke-width="1.6"/><rect x="41" y="65.5" width="8" height="2" fill="#2b2350"/>'
+    +'<circle cx="50" cy="36" r="19" fill="#e8433a"/><ellipse cx="44" cy="35" rx="8" ry="7" fill="#f4f0ff"/><circle cx="44" cy="35" r="3.6" fill="#1d1636"/><circle cx="45.2" cy="33.8" r="1.2" fill="#ffffff"/>'
+    +'<path d="M54 30 Q70 28 70 42 Q68 52 60 50 Q64 44 58 40 Z" fill="#f4f0ff"/><path d="M60 50 Q64 46 62 42" stroke="#1d1636" stroke-width="2" fill="none"/><path d="M56 44 Q60 46 58 49" fill="#2b2350"/>'
+    +'<path d="M31 24 Q50 10 69 24 L64 28 Q50 20 36 28 Z" fill="#46c46a"/><path d="M36 28 Q50 20 64 28" stroke="#2f8f52" stroke-width="2" fill="none"/>'
+    +'<path d="M48 18 Q44 8 50 4 Q52 10 54 16" fill="#e8433a"/>'; }
+  function macSvg(sz){ return '<svg width="'+(sz||60)+'" height="'+(sz||60)+'" viewBox="0 0 100 100">'+macArt()+'</svg>'; }
+  window.v58Mac=macSvg;
+  (function(){
+    var _cn=window.citName; if(typeof _cn==='function'){ window.citName=citName=function(id){ if(id==='mac')return MAC.name; return _cn.apply(this,arguments); }; }
+    var _cs=window.citSvg; if(typeof _cs==='function'){ window.citSvg=citSvg=function(id,sz){ if(id==='mac')return macSvg(sz); return _cs.apply(this,arguments); }; }
+    var _os=window.opSvg; if(typeof _os==='function'){ window.opSvg=opSvg=function(id,sz){ if(id==='mac')return macSvg(sz); return _os.apply(this,arguments); }; }
+    var _cj=window.citJob; if(typeof _cj==='function'){ window.citJob=citJob=function(id){ if(id==='mac')return {job:MAC.job,place:MAC.place,wing:MAC.wing}; return _cj.apply(this,arguments); }; }
+    var _ck=window.citKind; if(typeof _ck==='function'){ window.citKind=citKind=function(id){ if(id==='mac')return 'extra'; return _ck.apply(this,arguments); }; }
+    var _cf=window.citFacts; if(typeof _cf==='function'){ window.citFacts=citFacts=function(id){ if(id!=='mac')return _cf.apply(this,arguments); var n=MAC;
+      return [{k:'job',t:n.job,via:'always'},{k:'hook',t:n.bio,via:'talk'},{k:'likes',t:'Into '+n.likes.join(' and ')+'.',via:'talk'},{k:'dream',t:'“'+n.lines[2]+'”',via:'talk'},{k:'home',t:'Home state: '+n.st+'. Lives in the Press Loft.',via:'wow'}]; }; }
+    var _fl=window.friendsList; if(typeof _fl==='function'){ window.friendsList=friendsList=function(){ var out=_fl.apply(this,arguments); try{ out.forEach(function(p){ if(p.id==='mac')p.svg=function(sz){ return macSvg(sz); }; }); }catch(e){} return out; }; }
+    if(typeof MEMBER_JOB==='object'&&MEMBER_JOB)MEMBER_JOB.mac={job:MAC.job,place:MAC.place,wing:MAC.wing};
+    try{ if(window.NB_TASTE_FORCE)NB_TASTE_FORCE.mac='cool'; }catch(e){}
+  })();
+  function macIn(){ var n=MAC;
+    if(typeof CITIZENS_EXTRA!=='undefined'&&!CITIZENS_EXTRA.some(function(e){ return e.id==='mac'; }))
+      CITIZENS_EXTRA.push({id:'mac',name:n.name,title:n.title,job:n.job,place:n.place,wing:n.wing,cfg:{body:'round',col:n.col,eyes:'happy',extra:'none',acc:'none',name:''},bio:n.bio,lines:n.lines,v58:true});
+    if(typeof MEMBER_HOME!=='undefined'&&!MEMBER_HOME.mac)MEMBER_HOME.mac={st:n.st,been:n.been,likes:n.likes,hook:n.bio,clues:n.clues,manor:true}; }
+  macIn();
+  (function(){ if(typeof load==='function'){ var _l=load; window.load=load=function(){ var r=_l.apply(this,arguments); try{ macIn(); }catch(e){} return r; }; } })();
+  try{ if(typeof window.NB_ADD_BUILDING==='function')window.NB_ADD_BUILDING({id:'pressloft',nm:'The Press Loft',region:'Story Street',part:-1,col:'#e8433a',tg:'NEWS',host:'mac',blurb:'Upstairs from The Daily Squawk. The printing press downstairs rumbles all night, and Mac sleeps right through it.',ids:function(){ return ['mac']; }}); }catch(e){}
+  function addItem(o){ BYID[o.id]=o; if(ITEMS.indexOf(o)>=0)return; var ti=-1; for(var i=0;i<ITEMS.length;i++){ if(ITEMS[i].cat==='theme'){ ti=i; break; } } if(ti<0)ITEMS.push(o); else ITEMS.splice(ti,0,o); }
+  try{ (window.KEEPSAKES||[]).forEach(function(t){ var iid='ks_'+t.k+'_mac'; if(BYID[iid])return; var o={id:iid,name:t.name+'Mac',cat:'keepsake',zone:t.zone,style:t.style,p:{},grp:'keepsake',keepsake:true,who:'mac'};
+    addItem(o); try{ Object.defineProperty(ART,iid,{configurable:true,enumerable:false,get:function(){ var v=''; try{ v=t.draw('mac'); }catch(e){} Object.defineProperty(ART,iid,{value:v,configurable:true,writable:true}); return v; }}); }catch(e){} }); }catch(e){}
+  ART.v58_press='<rect x="8" y="8" width="28" height="30" rx="3" fill="#f4f0ff" stroke="#e8433a" stroke-width="2"/><rect x="8" y="8" width="28" height="8" rx="2" fill="#e8433a"/><text x="22" y="14.5" font-size="6" font-weight="900" fill="#ffffff" text-anchor="middle" font-family="system-ui,sans-serif">PRESS</text><circle cx="22" cy="24" r="5" fill="#ffd158"/><path d="M14 32 H30 M14 35 H26" stroke="#8f97a8" stroke-width="1.5"/><path d="M16 8 L22 2 L28 8" stroke="#3a8bd9" stroke-width="2" fill="none"/>';
+  addItem({id:'v58_press',name:'Daily Squawk Press Pass',cat:'keepsake',zone:'wall',style:'cool',p:{},grp:'keepsake',keepsake:true});
+  try{ var CX=window.__cc; if(CX&&CX.CARDS&&CX.SETS&&CX.POOL&&!CX.CARDS.mac){
+    CX.CARDS.mac={id:'mac',kind:'crew',band:'ideas',bandNm:'Bright Ideas',mid:'mac',mname:'Mac',draw:function(mid,sz){ return macSvg(sz); },skill:'gram',tier:2,slot:5,nm:function(){ return 'Mac'; },sub:function(){ return 'Editor · The Daily Squawk'; }};
+    CX.POOL.push('mac'); var set=CX.SETS.filter(function(s){ return s.id==='ideas'; })[0]; if(set&&set.ids.indexOf('mac')<0){ set.ids.push('mac'); set.sub='Big Jobs, Labs, the Starlight Dome, The Daily Squawk'; } } }catch(e){}
+
+  /* ---------- GRAMMAR is a real concept ---------- */
+  try{ if(!CONCEPT_NAMES.gram)CONCEPT_NAMES.gram='Grammar'; if(DEF&&DEF.skills&&!DEF.skills.gram)DEF.skills.gram=1; if(S.skills&&!S.skills.gram)S.skills.gram=1; }catch(e){}
+
+  /* ---------- word banks ---------- */
+  var POSN={N:'NOUN',V:'VERB',A:'ADJECTIVE',D:'ADVERB',P:'PRONOUN'};
+  var POSH={N:'a person, place or thing',V:'an action word, something you DO',A:'a describing word: what kind, how many, which one',D:'tells HOW, WHEN or WHERE something is done (often ends in -ly)',P:'stands in for a noun: I, you, he, she, it, we, they'};
+  var WL={N:['castle','pencil','dragon','garden','kitten','rocket','city','banana','planet','bridge','teacher','river'],
+    V:['jumped','sang','threw','swam','laughed','climbed','whispered','sneezed','flew','dug','giggled','wobbled'],
+    A:['tiny','noisy','fluffy','sticky','huge','shiny','grumpy','gentle','spicy','muddy','sleepy','silly'],
+    D:['quickly','loudly','gently','slowly','happily','quietly','bravely','carefully','suddenly','sadly','neatly','softly']};
+  /* tagged sentences: N noun, V verb, A adjective, D adverb, P pronoun, x other */
+  var TS=['The|x hungry|A dog|N chased|V a|x red|A ball|N','Mac|N quickly|D wrote|V a|x silly|A story|N','She|P sang|V loudly|D at|x the|x party|N','The|x robots|N danced|V happily|D in|x the|x kitchen|N',
+    'The|x old|A owl|N slept|V in|x the|x barn|N','We|P built|V a|x tall|A tower|N','Beep|N rolled|V slowly|D across|x the|x bumpy|A floor|N','They|P ate|V warm|A pancakes|N',
+    'A|x sleepy|A cat|N yawned|V and|x stretched|V','He|P carefully|D painted|V the|x fence|N','The|x giant|A whale|N swam|V gracefully|D','Vega|N played|V a|x beautiful|A song|N',
+    'It|P snowed|V softly|D on|x Tuesday|N','My|x little|A sister|N giggled|V loudly|D','The|x busy|A bees|N buzzed|V around|x the|x flowers|N','I|P gently|D held|V the|x tiny|A bird|N',
+    'Ada|N fixed|V the|x broken|A robot|N','Garrett|N quickly|D solved|V the|x hard|A puzzle|N','You|P found|V a|x shiny|A bolt|N','The|x brave|A firefighters|N climbed|V the|x ladder|N'].map(function(s){ return s.split(' ').map(function(t){ var p=t.split('|'); return {w:p[0],t:p[1]}; }); });
+  function sentText(toks){ return toks.map(function(t){ return t.w; }).join(' ')+'.'; }
+  /* capitals: correct sentences; every word that starts with a capital letter must be found */
+  var PROOF=['On Monday Garrett and Mac flew to Akron.','Did Beep roll to Columbus on Friday?','My friend Vega lives in Arizona.','In July we went to Lake Erie.','Watch out for the giant robot!','Ada and I fixed the robot on Tuesday.',
+    'Does Bibi come from Tennessee?','Wow, we saw fireworks in Cleveland, Ohio!','Is Halloween in October?','Every Saturday Ada and Beep go to the park.','Can Vega see Mars from Arizona?','My birthday is in December.',
+    'Hooray, Garrett won the contest!','Mac and Bibi visited Texas in June.'];
+  function proofItem(s){ var end=s.slice(-1), words=s.slice(0,-1).split(' '); return {end:end,words:words.map(function(w){ return {low:w.toLowerCase(),cap:w,need:/^[A-Z]/.test(w)}; }),src:s}; }
+  var ENDS=[{m:'.',nm:'period',ex:'tells something'},{m:'?',nm:'question mark',ex:'asks something'},{m:'!',nm:'exclamation mark',ex:'shows strong feeling'}];
+  var ENDQS=['Where is my hat','Can robots dance','Why is the sky blue','Do you have a pencil','Is it time for lunch','What did Mac write','How many bolts are left','Who fixed the robot'];
+  var ENDT=['I like apple pie','The bus is late today','My cat sleeps on the couch','We planted tomatoes','Ada fixed the robot','The library opens at nine','Beep rolled to the park','Mac reads the paper'];
+  var ENDX=['Wow, that rocket is fast','Hooray, we won the game','Yikes, a spider is on my arm','Ouch, I stubbed my toe'];
+  var PROPER=['monday','friday','saturday','july','october','december','ohio','texas','akron','columbus','garrett','vega'], COMMON=['apple','school','river','puppy','city','month','teacher','robot','state','holiday','planet','bridge'];
+  var PLUR=[['child','children',['childs','childrens']],['mouse','mice',['mouses','mices']],['foot','feet',['foots','feets']],['tooth','teeth',['tooths','teeths']],['goose','geese',['gooses','geeses']],['man','men',['mans','mens']],['wolf','wolves',['wolfs','wolfes']],['leaf','leaves',['leafs','leafes']],['knife','knives',['knifes','knifs']],
+    ['box','boxes',['boxs','boxies']],['bus','buses',['buss','busies']],['baby','babies',['babys','babyes']],['puppy','puppies',['puppys','puppyes']],['fox','foxes',['foxs','foxies']]];
+  var CONTR=[['do not','don’t',['dont’','do’nt']],['I will','I’ll',['Il’l','Iwill’']],['they are','they’re',['their','there']],['let us','let’s',['lets','let’us']],['it is','it’s',['its','it’is']],['we have','we’ve',['wev’e','weave']],['she is','she’s',['shes’','she’is']],['you are','you’re',['your','you’are']]];
+  var COMP=[['big','bigger','biggest',['biger','bigest']],['fast','faster','fastest',['fastter','more fast']],['happy','happier','happiest',['happyer','more happier']],['good','better','best',['gooder','goodest']],['bad','worse','worst',['badder','baddest']],['tall','taller','tallest',['more tall','talest']],['funny','funnier','funniest',['funnyer','more funnier']]];
+  /* verbs: base, past, s-form, ing, a typical wrong past, an object phrase */
+  var VB=[['run','ran','runs','running','runned','to the park'],['eat','ate','eats','eating','eated','a big sandwich'],['go','went','goes','going','goed','to the library'],['sing','sang','sings','singing','singed','a loud song'],['swim','swam','swims','swimming','swimmed','across the pond'],
+    ['catch','caught','catches','catching','catched','the ball'],['think','thought','thinks','thinking','thinked','about robots'],['bring','brought','brings','bringing','bringed','snacks'],['fly','flew','flies','flying','flyed','over the city'],['write','wrote','writes','writing','writed','a letter'],
+    ['ride','rode','rides','riding','rided','a bike'],['draw','drew','draws','drawing','drawed','a dragon'],['buy','bought','buys','buying','buyed','new shoes'],['make','made','makes','making','maked','a cake'],['see','saw','sees','seeing','seed','a shooting star'],
+    ['take','took','takes','taking','taked','a nap'],['throw','threw','throws','throwing','throwed','the frisbee'],['find','found','finds','finding','finded','a shiny bolt'],
+    ['jump','jumped','jumps','jumping','jumpt','over the puddle'],['hop','hopped','hops','hopping','hoped','down the path'],['cry','cried','cries','crying','cryed','at the sad movie'],['bake','baked','bakes','baking','bakked','cookies'],['play','played','plays','playing','plaied','tag'],
+    ['carry','carried','carries','carrying','carryed','the box'],['stop','stopped','stops','stopping','stoped','at the corner'],['clap','clapped','claps','clapping','claped','for the band']];
+  var SING=['Beep','My dog','Mac','The robot','Ada','The baby'], PLURS=['The two cats','The robots','My friends','The bees','Ada and Beep','The kids'];
+  var IRR=VB.slice(0,18), REG=VB.slice(18);
+
+  /* ---------- the generators (each returns {q,choices,a,why}) ---------- */
+  function posWordQ(t){ var others=['N','V','A','D'].filter(function(x){ return x!==t; }); var ans=pk(WL[t]);
+    return {q:'Which word is '+(t==='A'||t==='D'?'an ':'a ')+POSN[t]+'?',choices:shuf([ans].concat(others.map(function(o){ return pk(WL[o]); }))),a:ans,why:'A '+POSN[t].toLowerCase()+' is '+POSH[t]+'. '+ans+' is one.'}; }
+  function posSentQ(allowed){ for(var g=0;g<60;g++){ var s=pk(TS), t=pk(allowed), hits=s.filter(function(x){ return x.t===t; }); if(hits.length!==1)continue;
+      var wr=shuf(s.filter(function(x){ return x.t!==t&&x.t!=='x'; }).map(function(x){ return x.w; })); if(wr.length<2)continue;
+      return {q:'"'+sentText(s)+'" Which word is the '+POSN[t]+'?',choices:uniq4(hits[0].w,wr),a:hits[0].w,why:hits[0].w+' is the '+POSN[t].toLowerCase()+': '+POSH[t]+'.'}; }
+    return posWordQ('N'); }
+  function capQ(){ var p=pk(PROPER), c=shuf(COMMON).slice(0,3); var P2=p.charAt(0).toUpperCase()+p.slice(1);
+    return {q:'Which word ALWAYS needs a capital letter?',choices:shuf([p].concat(c)),a:p,why:P2+' is a name (days, months, places and people). Names always start with a capital letter.'}; }
+  function endQ(){ if(Math.random()<.65){ var q=pk(ENDQS); return {q:'Which sentence needs a QUESTION MARK ( ? ) at the end?',choices:shuf([q].concat(shuf(ENDT).slice(0,3))),a:q,why:'"'+q+'?" asks something, so it ends with a question mark. The others tell something.'}; }
+    var x=pk(ENDX); return {q:'Which sentence shows STRONG FEELING and needs an exclamation mark ( ! )?',choices:shuf([x].concat(shuf(ENDT).slice(0,2),[pk(ENDQS)])),a:x,why:'"'+x+'!" starts with a word that shows strong feeling, so it gets an exclamation mark.'}; }
+  function plurQ(){ var p=pk(PLUR); return {q:'One '+p[0]+', two ___',choices:uniq4(p[1],p[2].concat([p[0]])),a:p[1],why:'More than one '+p[0]+' is '+p[1]+'.'}; }
+  function pastQ(irr){ var v=pk(irr?IRR:REG), s=pk(SING.concat(PLURS));
+    return {q:'Yesterday, '+s.replace(/^The /,'the ').replace(/^My /,'my ')+' ___ '+v[5]+'. ('+v[0]+')',choices:uniq4(v[1],[v[4],v[2],v[3]]),a:v[1],why:'Yesterday means the past. The past of '+v[0]+' is '+v[1]+'.'}; }
+  function agreeQ(){ var v=pk(VB), one=Math.random()<.5, s=one?pk(SING):pk(PLURS), a=one?v[2]:v[0];
+    return {q:'Every day, '+s.replace(/^The /,'the ').replace(/^My /,'my ')+' ___ '+v[5]+'. ('+v[0]+')',choices:shuf([v[0],v[2],v[3]]),a:a,why:one?(s+' is ONE, so the verb gets an -s: '+v[2]+'.'):(s+' is MORE than one, so no -s: '+v[0]+'.')}; }
+  function futQ(){ var v=pk(VB), s=pk(SING.concat(PLURS));
+    return {q:'Tomorrow, '+s.replace(/^The /,'the ').replace(/^My /,'my ')+' ___ '+v[5]+'. ('+v[0]+')',choices:uniq4('will '+v[0],[v[1],v[2],v[3]]),a:'will '+v[0],why:'Tomorrow is the future, so we say will '+v[0]+'.'}; }
+  function contrQ(){ var c=pk(CONTR); return {q:'Which is the short way to write "'+c[0]+'"?',choices:uniq4(c[1],c[2].concat([c[0].replace(' ','')])),a:c[1],why:c[0]+' = '+c[1]+'. The apostrophe ( ’ ) takes the place of the missing letters.'}; }
+  function compQ(){ var c=pk(COMP), sup=Math.random()<.5; var a=sup?c[2]:c[1];
+    return {q:sup?'Of ALL the robots, Beep is the ___ . ('+c[0]+')':'Beep is ___ than Ada’s old robot. ('+c[0]+')',choices:uniq4(a,[sup?c[1]:c[2]].concat(c[3])),a:a,why:sup?('Comparing three or more uses -est (or a special word): '+c[2]+'.'):('Comparing two uses -er (or a special word): '+c[1]+'.')}; }
+  function commaQ(){ var lists=[['apples','pears','grapes'],['Ada','Beep','Mac'],['red','blue','green'],['socks','shoes','a hat'],['pizza','tacos','salad']]; var l=pk(lists), st=pk(['I packed','We saw','Bibi likes','Mac bought']);
+    var right=st+' '+l[0]+', '+l[1]+', and '+l[2]+'.', w1=st+', '+l[0]+' '+l[1]+' and, '+l[2]+'.', w2=st+' '+l[0]+' '+l[1]+' '+l[2]+'.', w3=st+' '+l[0]+', '+l[1]+','+' and, '+l[2]+'.';
+    return {q:'Which sentence uses commas the right way?',choices:uniq4(right,[w1,w2,w3]),a:right,why:'Mac\u2019s paper puts a comma after each item in a list, even the one before "and": '+right}; }
+  function posses(){ var o=pk([['dog','bone'],['robot','battery'],['teacher','desk'],['bird','nest'],['Mac','newspaper']]); var a='the '+o[0]+'’s '+o[1];
+    if(o[0]==='Mac')a='Mac’s '+o[1]; return {q:'How do you write: the '+o[1]+' that belongs to '+(o[0]==='Mac'?'Mac':'the '+o[0])+'?',choices:uniq4(a,[a.replace('’s','s'),a.replace('’s','s’'),a.replace('’s','’')]),a:a,why:'Add ’s to show that something belongs to one owner: '+a+'.'}; }
+  function gramQ(Lv){ Lv=Math.max(1,Math.floor(Lv||1));
+    if(Lv<=2)return Math.random()<.5?posWordQ(pk(['N','V'])):posSentQ(['N','V']);
+    if(Lv<=4)return pk([function(){ return posSentQ(['N','V','A']); },function(){ return posWordQ('A'); },capQ])();
+    if(Lv<=6)return pk([endQ,plurQ,capQ,function(){ return posSentQ(['N','V','A']); }])();
+    if(Lv<=8)return pk([function(){ return pastQ(true); },function(){ return posSentQ(['A','D']); },function(){ return posWordQ('D'); },plurQ])();
+    if(Lv<=10)return pk([agreeQ,function(){ return posSentQ(['P','D']); },contrQ,futQ,function(){ return pastQ(Math.random()<.5); }])();
+    return pk([compQ,commaQ,posses,contrQ,agreeQ])(); }
+  try{ if(typeof QG.gram!=='function')QG.gram=function(Lv){ return gramQ(Lv); }; }catch(e){}
+
+  /* ---------- the four desks ---------- */
+  var DESKS={
+   detect:{nm:'Word Detective',ic:'🔍',col:'#ffd158',sub:'Find the nouns, verbs and more in real sentences.',
+     teach:['Every word has a JOB in a sentence. That job is its <b>part of speech</b>.','<b>NOUN</b>: a person, place or thing (dog, Mac, kitchen). <b>VERB</b>: an action (jumped, sang). <b>ADJECTIVE</b>: describes a noun (tiny, red).','Later: <b>ADVERB</b> tells how (quickly, loudly) and <b>PRONOUN</b> stands in for a noun (she, they). Tap EVERY word that does the job, then tap Check.']},
+   proof:{nm:'Proofreader',ic:'✏️',col:'#7ad9ff',sub:'Fix the capitals, then pick the end mark.',
+     teach:['The printing press lost every capital letter! Tap each word that needs one.','Capitals go on the FIRST word of a sentence, on names of people and places, days and months, and on the word I.','Then pick the end mark: a <b>period</b> tells, a <b>question mark</b> asks, an <b>exclamation mark</b> shows strong feeling.']},
+   verb:{nm:'Verb Press',ic:'⏱️',col:'#ff8a1e',sub:'Past, present and future: pick the right verb.',
+     teach:['Verbs change with TIME. Yesterday I jumped. Every day I jump. Tomorrow I will jump.','Some verbs are rule-breakers: run becomes ran, not "runned". Go becomes went.','Now, ONE thing gets an -s: Beep runs. MORE than one does not: the robots run.']},
+   front:{nm:'Silly Front Page',ic:'📰',col:'#ff7ad9',sub:'Mac needs words for a silly story. Pick the right kind!',
+     teach:['Mac is writing a front page and needs words. He asks for a NOUN, a VERB, an ADJECTIVE...','Each time you get four word cards. Only ONE is the kind he asked for. Pick it!','When every blank is filled, the silly paper prints. You can read it again in the archive.']}
+  };
+  var FRONT=[
+   {b:['A','N','V','D','PN'],h:'A {0} {1} {2} DOWN MAIN STREET',t:'Today a {0} {1} {2} {3} down Main Street. People cheered and threw {4}. "Best news all week!" squawked Mac.'},
+   {b:['N','A','PN','V','D'],h:'VEGA FINDS A {1} {0} IN SPACE',t:'Vega spotted a {1} {0} through her telescope. It was covered in {2}. When it saw her, it {3} {4} and floated away.'},
+   {b:['PN','V','A','N','D'],h:'IT IS RAINING {0}!',t:'This morning {0} fell from the sky. Ada {1} outside holding a {2} {3}. "Stay inside!" Mac squawked {4}.'},
+   {b:['A','N','PN','V','D'],h:'ROBOT BAKE-OFF ENDS WITH A {1}',t:'Beep baked a {0} cake shaped like a {1}. The judges sprinkled {2} on top. Then the whole cake {3} {4} off the table!'},
+   {b:['N','V','D','A','PN'],h:'THE MAYOR’S {0} GOES MISSING',t:'On Tuesday the mayor’s {0} {1} {2} out the window. It was last seen near the {3} bridge, eating {4}.'},
+   {b:['A','PN','N','V','D'],h:'A {0} PARADE FOR GARRETT',t:'The whole town came out for a {0} parade. Kids waved {1}, a giant {2} led the band, and the drummer {3} {4} all the way to the Square.'}
+  ];
+  var FW={N:['robot','pickle','wizard','sock','dragon','cupcake','llama','tuba','rocket','teapot'],PN:['pickles','robots','kittens','bubbles','tacos','dinosaurs','socks','pancakes'],A:['sparkly','stinky','gigantic','wobbly','grumpy','fluffy','slimy','purple'],V:['sneezed','wobbled','danced','exploded','giggled','bounced','tiptoed','zoomed'],D:['loudly','sneakily','wildly','gently','proudly','clumsily','happily','slowly']};
+  var FWN={N:'a NOUN (a thing)',PN:'a PLURAL NOUN (more than one thing)',A:'an ADJECTIVE (a describing word)',V:'a VERB (an action, already done)',D:'an ADVERB (how it was done)'};
+  function frontChips(p,used){ var pool=FW[p].filter(function(w){ return used.indexOf(w)<0; }); var ans=pk(pool.length?pool:FW[p]); var others=shuf(Object.keys(FW).filter(function(k){ return k!==p&&!(p==='N'&&k==='PN')&&!(p==='PN'&&k==='N'); })).slice(0,3);
+    return {a:ans,cards:shuf([{w:ans,p:p}].concat(others.map(function(k){ return {w:pk(FW[k]),p:k}; })))}; }
+  function fillT(s,words,hl){ return s.replace(/\{(\d)\}/g,function(m,i){ var w=words[+i]||'___'; return hl?'<span class="v58hl">'+esc(w)+'</span>':esc(w); }); }
+
+  var GD=null; /* the live desk round */
+  function gToday(){ var g=V().gram; return g.day===dk(); }
+  function deskDoneToday(k){ return V().gram.desk[k]===dk(); }
+  window.squawkHub=function(){ tap(); try{ closeModal(); }catch(e){} meet('mac'); scr('scr-squawk','sqScore','sqBody','The Daily Squawk. Mac’s newspaper. Four desks, four kinds of grammar: parts of speech, capitals and end marks, verbs, and a silly front page.'); sqRender();
+    try{ if(typeof window.__v58pp==='function')window.__v58pp('visit'); }catch(e){} };
+  function sqRender(){ var body=document.getElementById('sqBody'), sc=document.getElementById('sqScore'); if(!body)return; var g=V().gram; if(sc)sc.textContent='📰 Grammar Lvl '+L('gram')+' · '+g.rounds+' rounds';
+    var html='<div class="v58hero"><div>'+macSvg(84)+'</div><div style="flex:1;min-width:0"><h2 style="margin:0">📰 The Daily Squawk</h2><div class="sub" style="text-align:left;margin:2px 0 4px">Grammar · Lvl '+L('gram')+' · Mac’s newspaper on Story Street</div>'
+      +'<div class="speak" style="margin:0;text-align:left;font-size:14px"><b>Mac:</b> “'+(g.rounds?pk(MAC.lines):'SQUAWK! Welcome to the paper. Every desk here fixes a different kind of word problem. Pick one!')+'”</div></div></div>';
+    Object.keys(DESKS).forEach(function(k){ var d=DESKS[k]; html+='<div class="v58row" style="border-left-color:'+d.col+'"><span class="ic">'+d.ic+'</span><div class="tx"><b>'+d.nm+'</b><div class="sub" style="margin:0;text-align:left">'+d.sub+(deskDoneToday(k)?' · done today ✓':'')+'</div></div><button class="btn small" style="margin:0" onclick="'+cb(function(){ deskStart(k); })+'">Go</button></div>'; });
+    if(g.front.length){ html+='<div class="card" style="text-align:left"><b>🗞️ Front page archive</b>'; g.front.slice().reverse().slice(0,3).forEach(function(f,i){ html+='<div class="v58mini" onclick="'+cb(function(){ showFront(f,false); })+'"><b>'+esc(f.h)+'</b><span class="sub" style="margin:0">'+esc(f.d)+'</span></div>'; }); html+='</div>'; }
+    html+='<div class="sub center">The first 3 rounds each day: +10 notes. First round at each desk each day: +5 coins. Right answers raise your Grammar level.</div>';
+    body.innerHTML=html; }
+  function deskStart(k){ tap(); var v=V(); if(!v.gram.seen[k]){ v.gram.seen[k]=1; sv(); var d=DESKS[k];
+      modal('<div class="center">'+macSvg(70)+'<h2 style="margin:4px 0">'+d.ic+' '+d.nm+'</h2></div>'+teachList(d.teach)+'<button class="btn wide" onclick="'+cb(function(){ closeModal(); deskStart(k); })+'">Start!</button>'); return; }
+    var lv=L('gram'); try{ LB=null; }catch(e){} GD={k:k,i:0,right:0,n:0,tok:Math.random(),items:[]};
+    if(k==='detect'){ var allow=lv<4?['N','V']:lv<7?['N','V','A']:['N','V','A','D','P']; var ss=shuf(TS); for(var i=0;i<ss.length&&GD.items.length<5;i++){ var t=pk(allow.filter(function(a){ return ss[i].some(function(x){ return x.t===a; }); })); if(t)GD.items.push({s:ss[i],t:t}); } }
+    else if(k==='proof'){ GD.items=shuf(PROOF).slice(0,4).map(proofItem); }
+    else if(k==='verb'){ var mk=lv<4?[function(){ return pastQ(false); },agreeQ]:lv<8?[function(){ return pastQ(true); },agreeQ,futQ]:[function(){ return pastQ(true); },agreeQ,futQ,compQ,contrQ]; var seen={}; for(var t2=0;t2<40&&GD.items.length<6;t2++){ var q=pk(mk)(); if(seen[q.q])continue; seen[q.q]=1; GD.items.push(q); } }
+    else if(k==='front'){ var T=pk(FRONT); GD.items=[{T:T,words:[],j:0}]; }
+    GD.n=k==='front'?GD.items[0].T.b.length:GD.items.length; deskStep(); }
+  function deskHead(){ var d=DESKS[GD.k]; return '<div class="center v58desk"><div class="sub" style="margin:0">'+d.ic+' '+d.nm+' · '+(Math.min(GD.i,GD.n-1)+1)+' of '+GD.n+'</div></div>'; }
+  function mark(ok){ var g=V().gram; g.total++; if(ok){ g.right++; GD.right++; good(); } else bad(); adj('gram',ok); sv(); }
+  function nextIn(my,ms){ setTimeout(function(){ if(GD!==my||!document.getElementById('j58Msg')||!document.querySelector('#mbox .v58desk'))return; GD.i++; deskStep(); },ms); }
+  function deskStep(){ if(!GD)return; GD.lock=false; var my=GD, k=GD.k;
+    if(k==='front')return frontStep();
+    var it=GD.items[GD.i]; if(!it){ deskEnd(); return; }
+    if(k==='detect'){ var sel={};
+      modal(deskHead()+'<div class="card center"><b>Tap every '+POSN[it.t]+'</b><div class="sub" style="margin:2px 0 0">'+POSN[it.t].charAt(0)+POSN[it.t].slice(1).toLowerCase()+' = '+POSH[it.t]+'</div></div>'
+        +'<div class="v58sent">'+it.s.map(function(x,i){ return '<button class="v58w" data-i="'+i+'">'+esc(x.w)+'</button>'; }).join('')+'<span class="v58end">.</span></div><button class="btn wide" id="v58chk">Check</button><div class="jammsg" id="j58Msg" style="min-height:22px"></div>');
+      document.querySelectorAll('.v58w').forEach(function(b){ b.addEventListener('click',function(){ if(GD!==my||my.lock)return; var i=+b.getAttribute('data-i'); sel[i]=!sel[i]; b.classList.toggle('on',!!sel[i]); tap(); }); });
+      document.getElementById('v58chk').addEventListener('click',function(){ if(GD!==my||my.lock)return; var want=it.s.map(function(x){ return x.t===it.t; }); var picked=want.map(function(w,i){ return !!sel[i]; });
+        if(!picked.some(Boolean)){ var m0=document.getElementById('j58Msg'); if(m0)m0.textContent='Tap at least one word first.'; return; }
+        my.lock=true; var ok=want.every(function(w,i){ return w===picked[i]; }); mark(ok);
+        document.querySelectorAll('.v58w').forEach(function(b){ var i=+b.getAttribute('data-i'); if(want[i])b.classList.add('ok'); else if(sel[i])b.classList.add('no'); });
+        var hits=it.s.filter(function(x){ return x.t===it.t; }).map(function(x){ return x.w; });
+        var m=document.getElementById('j58Msg'); if(m)m.innerHTML=(ok?'✅ Got them all! ':'The '+POSN[it.t].toLowerCase()+(hits.length>1?'s are ':' is ')+'<b>'+esc(hits.join(', '))+'</b>. ')+(ok?'':'Green = the right words.');
+        nextIn(my,ok?1500:3000); });
+      return; }
+    if(k==='proof'){ var on={}, endm='';
+      var draw=function(){ var show=it.words.map(function(w,i){ return on[i]?w.low.charAt(0).toUpperCase()+w.low.slice(1):w.low; });
+        modal(deskHead()+'<div class="card center"><b>Tap each word that needs a CAPITAL letter. Then pick the end mark.</b></div>'
+          +'<div class="v58sent proof">'+show.map(function(w,i){ return '<button class="v58w'+(on[i]?' on':'')+'" data-i="'+i+'">'+esc(w)+'</button>'; }).join('')+'<span class="v58end">'+(endm||'_')+'</span></div>'
+          +'<div class="v58ends">'+ENDS.map(function(e){ return '<button class="v58e'+(endm===e.m?' on':'')+'" data-m="'+e.m+'"><b>'+e.m+'</b><span>'+e.nm+'</span></button>'; }).join('')+'</div><button class="btn wide" id="v58chk">Check</button><div class="jammsg" id="j58Msg" style="min-height:22px"></div>');
+        document.querySelectorAll('.v58w').forEach(function(b){ b.addEventListener('click',function(){ if(GD!==my||my.lock)return; var i=+b.getAttribute('data-i'); on[i]=!on[i]; tap(); draw(); }); });
+        document.querySelectorAll('.v58e').forEach(function(b){ b.addEventListener('click',function(){ if(GD!==my||my.lock)return; endm=b.getAttribute('data-m'); tap(); draw(); }); });
+        document.getElementById('v58chk').addEventListener('click',function(){ if(GD!==my||my.lock)return; var m0=document.getElementById('j58Msg'); if(!endm){ if(m0)m0.textContent='Pick an end mark: . ? or !'; return; }
+          my.lock=true; var capsOK=it.words.every(function(w,i){ return !!on[i]===w.need; }), endOK=it.end==='?'?endm==='?':endm!=='?', ok=capsOK&&endOK; mark(ok);
+          var note=(endOK&&endm!==it.end)?(' (Mac used '+it.end+(it.end==='!'?' to show the excitement':' because it just tells something')+'. Yours works too.)'):'';
+          var m=document.getElementById('j58Msg'); if(m)m.innerHTML=(ok?'✅ Front-page ready! ':'Mac’s fix: ')+'<b>'+esc(it.src)+'</b>'+(ok?note:(!capsOK?' (check the capitals)':'')+(!endOK?(it.end==='?'?' (it asks something, so it ends with ?)':' (it tells something, so it does not end with ?)'):''));
+          nextIn(my,ok?1700:3400); }); };
+      draw(); return; }
+    /* verb: multiple choice */
+    modal(deskHead()+'<div class="card center" style="font-size:17px;line-height:1.45">'+esc(it.q)+'</div><div class="v54ans">'+it.choices.map(function(c){ return '<button class="v58ab" data-v="'+esc(c)+'">'+esc(c)+'</button>'; }).join('')+'</div><div class="jammsg" id="j58Msg" style="min-height:22px"></div>');
+    var done=false; document.querySelectorAll('.v58ab').forEach(function(b){ b.addEventListener('click',function(){ if(done||GD!==my)return; done=true; var ok=b.getAttribute('data-v')===it.a; mark(ok);
+      document.querySelectorAll('.v58ab').forEach(function(x){ if(x.getAttribute('data-v')===it.a){ x.style.background='#2f8f52'; x.style.borderColor='#7dff8a'; } }); if(!ok){ b.style.borderColor='#ff5d5d'; try{ punch(b); }catch(e){} }
+      var m=document.getElementById('j58Msg'); if(m)m.innerHTML=(ok?'✅ ':'It is <b>'+esc(it.a)+'</b>. ')+esc(it.why); nextIn(my,ok?1600:3000); }); }); }
+  function frontStep(){ var my=GD, F=GD.items[0], T=F.T; if(F.j>=T.b.length){ frontDone(); return; } GD.i=F.j; var p=T.b[F.j], c=frontChips(p,F.words), first=true, lock=false;
+    modal(deskHead()+'<div class="center">'+macSvg(54)+'</div><div class="speak"><b>Mac:</b> “I need '+FWN[p]+'!”</div><div class="v54ans">'+c.cards.map(function(x,i){ return '<button class="v58ab" data-i="'+i+'">'+esc(x.w)+'</button>'; }).join('')+'</div><div class="jammsg" id="j58Msg" style="min-height:22px"></div>');
+    document.querySelectorAll('.v58ab').forEach(function(b){ b.addEventListener('click',function(){ if(GD!==my||lock)return; var x=c.cards[+b.getAttribute('data-i')]; var m=document.getElementById('j58Msg');
+      if(x.p===p){ lock=true; if(first)mark(true); else good(); b.style.background='#2f8f52'; b.style.borderColor='#7dff8a'; F.words.push(x.w); if(m)m.innerHTML='✅ <b>'+esc(x.w)+'</b> is '+FWN[p].split(' (')[0]+'.'; setTimeout(function(){ if(GD!==my||!document.getElementById('j58Msg')||!document.querySelector('#mbox .v58desk'))return; F.j++; frontStep(); },1000); }
+      else { if(first){ first=false; mark(false); } else bad(); b.disabled=true; b.style.opacity='.35'; if(m)m.innerHTML='<b>'+esc(x.w)+'</b> is '+FWN[x.p].split(' (')[0]+'. Mac needs '+FWN[p]+'.'; } }); }); }
+  function frontDone(){ var F=GD.items[0], T=F.T, g=V().gram; var page={h:fillT(T.h,F.words.map(function(w){ return w.toUpperCase(); }),false).replace(/&amp;/g,'&'),t:T.t,words:F.words.slice(),hi:FRONT.indexOf(T),d:dk()};
+    g.front.push(page); if(g.front.length>8)g.front=g.front.slice(-8); sv(); deskEnd(page); }
+  function showFront(f,fresh){ var T=FRONT[f.hi]||FRONT[0];
+    modal('<div class="v58paper"><div class="mast">THE DAILY SQUAWK</div><div class="dl">Story Street · '+esc(f.d)+' · one coin</div><h2>'+esc(f.h)+'</h2><p>'+fillT(T.t,f.words,true)+'</p><div class="by">by Mac and Garrett</div></div>'
+      +(fresh?'<div class="sub center">Saved to the front page archive at The Daily Squawk.</div>':'')+'<button class="btn wide" onclick="'+cb(function(){ closeModal(); sqRender(); })+'">'+(fresh?'Back to the newsroom':'Close')+'</button>'); }
+  function deskEnd(page){ var g=V().gram, k=GD.k, r=GD.right, n=GD.n; GD=null; g.rounds++; if(g.best[k]==null||r>g.best[k])g.best[k]=r; var first=g.desk[k]!==dk(); g.desk[k]=dk(); if(g.day!==dk()){ g.day=dk(); g.paid=0; } var pay=g.paid<3; if(pay)g.paid++;
+    notes(pay?10:3); if(first)coins(5); fr('mac',1); sv(); if(r===n)party(30);
+    try{ if(typeof window.__v58pp==='function')window.__v58pp(k); }catch(e){}
+    if(page){ party(24); showFront(page,true); return; }
+    modal('<div class="center">'+macSvg(84)+'<h2 style="margin:4px 0">'+DESKS[k].ic+' '+r+' of '+n+' right!</h2><div class="sub">'+(pay?'+10 notes':'+3 notes (the 3 full-pay rounds are done for today)')+(first?', +5 coins':'')+'</div></div>'
+      +'<div class="speak"><b>Mac:</b> “'+(r===n?'Perfect! Not one mistake. Stop the presses!':r>=n-1?'Nearly perfect. This paper is in good hands.':'SQUAWK! Tricky ones. Read the fixes and try again.')+'”</div>'
+      +'<button class="btn wide" onclick="'+cb(function(){ closeModal(); deskStart(k); })+'">Another round</button><button class="btn wide ghost" onclick="'+cb(function(){ closeModal(); sqRender(); })+'">Back to the newsroom</button>'); }
+
+  /* ---------- MAC'S PRESS PASS quest ---------- */
+  var PP=[{k:'visit',t:'Meet Mac',how:'Go to The Daily Squawk on Story Street.'},{k:'detect',t:'Word Detective',how:'Do one Word Detective round.'},{k:'proof',t:'Proofreader',how:'Do one Proofreader round.'},{k:'verb',t:'Verb Press',how:'Do one Verb Press round.'},{k:'front',t:'Silly Front Page',how:'Print one Silly Front Page.'}];
+  function ppNext(){ var g=V().pp.got||{}; for(var i=0;i<PP.length;i++)if(!g[PP[i].k])return i; return PP.length; }
+  window.__v58pp=function(k){ var v=V(), pp=v.pp; if(pp.step>=PP.length)return; if(!PP.some(function(s){ return s.k===k; }))return; pp.got=pp.got||{}; if(pp.got[k])return; pp.got[k]=1; pp.step=Object.keys(pp.got).length; sv();
+    if(pp.step>=PP.length){ pp.done=dk(); S.inv=S.inv||{}; S.inv.v58_press=(S.inv.v58_press||0)+1; notes(40); packs(2,'Press Pass'); fr('mac',3); sv();
+      whenFree(function(){ party(50); fan(); modal('<div class="center">'+macSvg(96)+'<h2 style="margin:4px 0">📰 Press Pass earned!</h2></div><div class="center">'+(typeof itemArt==='function'?itemArt('v58_press',80):'')+'</div><div class="speak"><b>Mac:</b> “You worked every desk at The Daily Squawk. You are an official reporter now. Wear it proudly!”</div><div class="sub center">The Press Pass is in your Stuff. +40 notes, +2 card packs.</div><button class="btn wide" onclick="closeModal()">SQUAWK!</button>'); }); }
+    else tst('📰 Press Pass: '+pp.step+' of '+PP.length+' done!'); };
+  window.v58ppGo=function(){ var pp=V().pp; var st=PP[Math.min(ppNext(),PP.length-1)]; if(st.k==='visit'||pp.step>=PP.length){ window.squawkHub(); return; } window.squawkHub(); setTimeout(function(){ deskStart(st.k); },400); };
+
+  /* ================= WIRING ================= */
+  (function(){ if(document.getElementById('v58-css'))return; var st=document.createElement('style'); st.id='v58-css'; st.textContent=
+     '.v58hero{display:flex;gap:12px;align-items:center;background:var(--panel);border:1px solid #362a66;border-radius:var(--r);padding:12px;margin:6px 0}'
+    +'.v58row{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid #362a66;border-left:6px solid #ffd158;border-radius:14px;padding:10px 12px;margin:8px 0}.v58row .ic{font-size:28px;flex:none}.v58row .tx{flex:1;min-width:0;text-align:left}'
+    +'.v58ab,.v58lt{font-size:16px;font-weight:900;padding:12px 8px;border-radius:12px;background:#2b2350;color:#f4f0ff;border:2px solid #3a2f6e;min-height:54px;line-height:1.25;overflow-wrap:anywhere}.v58ab:active,.v58lt:active{transform:scale(.97)}'
+    +'.v58ladder{display:flex;flex-direction:column;gap:5px;margin:8px auto;max-width:260px;border-left:6px solid #8a7ac8;border-right:6px solid #8a7ac8;padding:4px 10px}.v58ladder .rung{min-height:34px;border-radius:10px;background:#1b1830;border:2px dashed #3a2f6e;display:flex;align-items:center;justify-content:center;font-weight:900}.v58ladder .rung.on{border:2px solid #c58dff;background:#2b2350;color:#ffd158}'
+    +'.v58sent{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;align-items:center;margin:10px 0;padding:10px;background:#f4f0ff;border-radius:12px}.v58w{font-size:17px;font-weight:800;padding:8px 10px;border-radius:10px;border:2px solid #c9c2e6;background:#ffffff;color:#1d1636;min-height:44px}'
+    +'.v58w.on{background:#ffd158;border-color:#e0a92c}.v58w.ok{background:#7dff8a;border-color:#2f8f52}.v58w.no{background:#ffb3b3;border-color:#ff5d5d}.v58end{font-size:24px;font-weight:900;color:#1d1636;min-width:14px}'
+    +'.v58ends{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:6px 0}.v58e{border-radius:12px;border:2px solid #3a2f6e;background:#1b1830;color:#f4f0ff;padding:6px 2px;display:flex;flex-direction:column;align-items:center;min-height:54px}.v58e b{font-size:24px;line-height:1}.v58e span{font-size:11px;font-weight:800}.v58e.on{border-color:#ffd158;background:#2b2350}'
+    +'.v58paper{background:#f6f1e3;color:#1d1636;border-radius:6px;padding:12px 14px;margin:6px 0;box-shadow:0 6px 18px #0008;font-family:Georgia,serif;text-align:left}.v58paper .mast{font-weight:900;font-size:26px;letter-spacing:1px;text-align:center;border-bottom:3px double #1d1636;padding-bottom:4px}.v58paper .dl{font-size:11px;text-align:center;border-bottom:1px solid #1d1636;padding:3px 0;margin-bottom:8px;font-family:system-ui,sans-serif}'
+    +'.v58paper h2{font-size:20px;line-height:1.2;margin:4px 0 8px;text-transform:uppercase;overflow-wrap:anywhere}.v58paper p{font-size:16px;line-height:1.5;margin:0}.v58paper .by{font-size:12px;font-style:italic;margin-top:8px;text-align:right}.v58hl{background:#ffd15899;border-radius:4px;padding:0 3px;font-weight:700}'
+    +'.v58mini{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:7px 0;border-top:1px solid #2b2350;cursor:pointer}.v58mini b{font-size:13px;overflow-wrap:anywhere}'
+    +'@media (max-width:420px){.v58sent{gap:4px;padding:8px}.v58w{font-size:15px;padding:6px 8px}}';
+    document.head.appendChild(st); })();
+
+  /* the map: STORY STREET after STARLIGHT ROW */
+  function hoardN(){ try{ return hoardCount(); }catch(e){ return 0; } }
+  (function(){ var _tp=townPlan; window.townPlan=townPlan=function(){ var rows=_tp.apply(this,arguments);
+    try{ if(!rows.some(function(r){ return r.name==='STORY STREET'; })){ var v=V();
+      rows.push({y:5040,name:'STORY STREET',sub:'grammar · word games',color:'#e8433a',slots:[
+        {col:'#e8433a',tg:'GRAMMAR',nm:'The Daily Squawk',host:'mac',v58:'mac',prog:v.pp.step>=5?'Press Pass ✓':'Grammar Lvl '+L('gram'),go:'squawk'},
+        {col:'#46c46a',tg:'WORDS',nm:'Word Lab',host:'bibi',v58:'bibi',prog:hoardN()+' words hoarded',go:'wlab'}]}); } }catch(e){ try{ __muErr('townPlan(v158)',e); }catch(_){} }
+    return rows; }; })();
+  (function(){ var _tf=window.townFacade; if(typeof _tf!=='function')return; window.townFacade=townFacade=function(v){ var html=_tf.apply(this,arguments);
+    try{ if(v&&v.v58)html=html.replace(/<div class="tw-host">[\s\S]*?<\/div>/,'<div class="tw-host">'+(v.v58==='mac'?macSvg(60):bibi(60))+'</div>'); }catch(e){}
+    return html; }; })();
+  (function(){ var _tg=townGo; window.townGo=townGo=function(dest){ if(dest==='squawk'){ window.squawkHub(); return; } if(dest==='wlab'){ window.wlabHub(); return; } return _tg.apply(this,arguments); }; })();
+  (function(){ var _cj=window.coachJam; if(typeof _cj!=='function')return; window.coachJam=function(c){ if(c==='gram'){ tap(); try{ closeModal(); }catch(e){} window.squawkHub(); return; } return _cj.apply(this,arguments); }; })();
+
+  /* What's New */
+  (window.MU_NEWS=window.MU_NEWS||[]).push({flag:'seen158',pri:2,when:function(){ return !!(S.stats&&S.stats.answers>0); },html:function(){
+    var row=function(art,t,s,go){ return '<div class="card" style="text-align:left;display:flex;gap:10px;align-items:center">'+art+'<div style="flex:1;min-width:0"><b>'+t+'</b><div class="sub" style="margin:2px 0 0;text-align:left">'+s+'</div></div></div>'; };
+    return '<div class="center"><h2 style="margin:4px 0">📚 Words and Code!</h2><div class="sub">A new street at the very bottom of the map: STORY STREET.</div></div>'
+      +row(macSvg(58),'📰 Mac’s Daily Squawk','A new subject: GRAMMAR. Mac the macaw runs the newspaper. Find nouns and verbs, fix capitals, pick the right verb, and print a silly front page.')
+      +row(window.RB_MINE.svg(58)||ada(58),'🤖 Robot Workshop Chapters 6 and 7','YOUR robot from the Bot Garage stars in two new chapters. Functions: teach it a named move. If This: IF cards that turn on colored tiles.')
+      +row(bibi(58),'🧪 Bibi’s Word Lab + 3 new chests','Root Builder, Analogy Link and Shade Ladder. The Word Hoard has 3 new chests: More Roots, Synonyms & Antonyms, Context Clues.')
+      +'<div class="sub center">Every step is on the 📋 TO DO list.</div>'
+      +'<button class="btn wide" onclick="closeModal();squawkHub()">📰 Visit Mac</button>'
+      +'<button class="btn wide ghost" onclick="closeModal();v58Robot()">🤖 Robot Chapters 6 and 7</button>'
+      +'<button class="btn wide ghost" onclick="closeModal();wlabHub()">🧪 The Word Lab</button>'
+      +'<button class="btn wide ghost small" onclick="closeModal()">Later</button>'; }});
+
+  /* guides (first visit + the ? How to play buttons) */
+  try{ var G=window.__news&&window.__news.G; if(G){
+    G['scr-squawk']={who:['cit','mac'],t:'The Daily Squawk',s:['Four desks. Each one is a kind of grammar. Mac shows you how before your first round at each desk.','Word Detective: tap every word that is a noun (or verb, adjective...). Proofreader: tap the words that need capitals, then pick the end mark.','Verb Press: pick the right verb for the time. Silly Front Page: pick the kind of word Mac asks for, then read the silly paper. Right answers raise your Grammar level.']};
+    G['scr-wlab']={who:['member','bibi'],t:'Bibi’s Word Lab',s:['Three word games, five questions a round. Bibi teaches each one before your first round.','Root Builder: word parts have meanings. Analogy Link: make the second pair match the first. Shade Ladder: tap the words from weakest to strongest.','The first 3 rounds each day pay +12 notes and +5 coins.']};
+    G['pressp']={who:['cit','mac'],t:'Mac’s Press Pass',s:['Five steps, in any order. The To-Do list always shows what is left.','Meet Mac, then do one round at each desk: Word Detective, Proofreader, Verb Press, and print a Silly Front Page.','The prize: an official Press Pass for your wall, +40 notes and 2 card packs.']};
+    G['rbfn']={who:['cit','ada'],t:'Chapter 6: Functions',s:['Your own robot from the Bot Garage drives in Chapters 6 and 7.','Tap the ⭐ box and put the move’s cards in it. Then put ⭐ cards on the main strip. Each ⭐ does the whole move.','The main strip and the ⭐ box each have a card limit. Tap ✏️ name it to give your move a name.']};
+    G['rbif']={who:['cit','ada'],t:'Chapter 7: If This',s:['Some tiles are painted red ● or blue ■.','An IF card only moves your robot when it is standing on that color. Otherwise it is skipped.','Put IF cards inside a Repeat. Tap the color or the arrow on an IF card in the strip to change it.']};
+  } }catch(e){}
+
+  /* To-Do rows */
+  (window.TODO_EXTRA=window.TODO_EXTRA||[]).push(function(sec){ var out=[], v=V();
+    if(sec==='quests'){
+      if(v.pp.step<PP.length){ var st=PP[ppNext()]; out.push({ic:macSvg(40),t:'Mac’s Press Pass',s:v.pp.step+' of '+PP.length+' done. Next: '+st.t+'. '+st.how+' (any order)',btn:'Go',go:function(){ v58ppGo(); },key:'pressp',top:true}); }
+      [['fn',CH6],['iff',CH7]].forEach(function(p){ var C=p[1], lk=C.lock(), n=rbNext(p[0]); if(n.done>=n.total)return;
+        if(lk){ out.push({ic:C.ic,t:'Robot Chapter '+C.n+': '+C.nm,s:lk,btn:'Go',go:function(){ try{ rbHub(); }catch(e){} },key:'rb'+p[0],quiet:true}); return; }
+        out.push({ic:window.RB_MINE.svg(40)||C.ic,t:'Robot Chapter '+C.n+': '+C.nm+' ('+n.done+'/'+n.total+')',s:(n.done?'Next':'Start with')+': '+(n.next?n.next.t:'')+'. '+(p[0]==='fn'?'Teach '+myName()+' a move with the ⭐ box.':'IF cards turn on colored tiles.'),btn:'Go',go:function(){ try{ if(n.next)rbPlay(n.next.id); else rbHub(); }catch(e){} },key:'rb'+p[0],top:n.done===0}); });
+      var tot=0, got=0; NEWTRACKS.forEach(function(t){ tot+=t.gems.length; try{ got+=trackGot(t); }catch(e){} }); if(got<tot)out.push({ic:'💎',t:'New Word Hoard chests: '+got+' of '+tot+' gems',s:'More Roots, Synonyms & Antonyms, Context Clues. Open them in the Word Hoard.',btn:'Go',go:function(){ try{ openHoard(); }catch(e){} },key:'hoard158',quiet:true}); }
+    if(sec==='dailies'){ var gd=Object.keys(DESKS).some(function(k){ return deskDoneToday(k); }), ld=v.lab.day===dk()&&v.lab.paid>0;
+      out.push({ic:macSvg(40),t:'Words today',s:(gd||ld)?'Done today.':'One round at The Daily Squawk or the Word Lab.',btn:'Go',go:function(){ window.squawkHub(); },done:gd||ld,key:'words158'}); }
+    return out; });
+  try{ if(window.__todo){ var D=__todo.DEST2SCR; if(D){ D.squawk='scr-squawk'; D.wlab='scr-wlab'; }
+    var NR=__todo.NEWS_ROWS; if(NR&&!NR.some(function(r){ return r.t==='The Daily Squawk'; })){
+      NR.unshift({v:'v1.58',t:'Bibi’s Word Lab',s:'Root Builder, Analogy Link, Shade Ladder, and 3 new Word Hoard chests.',go:function(){ window.wlabHub(); },how:'scr-wlab'});
+      NR.unshift({v:'v1.58',t:'Robot Chapters 6 and 7',s:'Your own robot stars: Functions (a named move) and If This (IF cards on colored tiles).',go:function(){ window.v58Robot(); },how:'rbfn'});
+      NR.unshift({v:'v1.58',t:'The Daily Squawk',s:'Grammar with Mac: parts of speech, capitals, verbs, a silly front page.',go:function(){ window.squawkHub(); },how:'scr-squawk'}); } } }catch(e){}
+
+  /* Grown-Ups corner */
+  (function(){ var _og=window.openGrown; if(typeof _og!=='function')return; window.openGrown=function(){ var r=_og.apply(this,arguments); try{ var body=document.getElementById('gwBody'); if(!body)return r; var v=V(), g=v.gram, l=v.lab;
+      var tile=function(k,val){ return '<div class="card" style="flex:1 1 100px;padding:8px 10px;text-align:center;margin:0"><div class="sub" style="margin:0">'+k+'</div><b style="font-size:18px">'+val+'</b></div>'; };
+      var c6=rbNext('fn'), c7=rbNext('iff'), tot=0, got=0; NEWTRACKS.forEach(function(t){ tot+=t.gems.length; try{ got+=trackGot(t); }catch(e){} });
+      body.insertAdjacentHTML('afterbegin','<div class="card" style="text-align:left;margin:8px 0"><b>📚 Words + Code (v1.58)</b>'
+        +'<div class="row" style="gap:6px;flex-wrap:wrap;margin:6px 0">'+tile('Grammar',L('gram'))+tile('Grammar answers',g.right+'/'+g.total)+tile('Press Pass',Math.min(v.pp.step,5)+'/5'+(v.pp.step>=5?' ✓':''))+tile('Robot ch 6 / 7',c6.done+'/8 · '+c7.done+'/8')+tile('Word Lab',l.right+'/'+l.total)+tile('New gems',got+'/'+tot)+'</div>'
+        +'<div class="sub" style="margin:4px 0 0">Grammar (new concept, placed by the Soundcheck): parts of speech in real sentences (Ohio L.3.1a), capitals for names, places, days and the first word (L.2.2a, L.1.2a), end marks (L.1.2b), regular and irregular past tense (L.3.1d), subject-verb agreement (L.3.1f), simple future (L.3.1e), plural nouns (L.3.1b), comparatives (L.3.1g), contractions and possessives (L.2.2c), commas in a series (L.3.2). Robot Workshop: Chapter 6 = functions, decomposing a task and reusing a named procedure (Ohio CS ATP.M.3.a, ATP.CS.3.a); Chapter 7 = conditionals inside loops (ATP.CS.3.a). Word Lab: Greek and Latin roots and affixes (L.4.4b), analogies and word relationships (L.4.5, L.5.5c), shades of meaning (L.3.5c). New chests: roots (L.4.4b), synonyms and antonyms (L.4.5c), context clues (L.4.4a).</div></div>'); }catch(e){} return r; }; })();
+
+  window.__v58={V:V,gramQ:gramQ,posWordQ:posWordQ,posSentQ:posSentQ,capQ:capQ,endQ:endQ,plurQ:plurQ,pastQ:pastQ,agreeQ:agreeQ,futQ:futQ,contrQ:contrQ,compQ:compQ,commaQ:commaQ,posses:posses,
+    TS:TS,PROOF:PROOF,proofItem:proofItem,FRONT:FRONT,FW:FW,frontChips:frontChips,DESKS:DESKS,PP:PP,ppNext:ppNext,deskStart:deskStart,getGD:function(){ return GD; },
+    RW:RW,rootQ:rootQ,REL:REL,linkQ:linkQ,LADDERS:LADDERS,ladderQ:ladderQ,GAMES:GAMES,labStart:labStart,getLB:function(){ return LB; },NEWTRACKS:NEWTRACKS,hoardAdded:hoardAdded,
+    NEWLV:NEWLV,CH6:CH6,CH7:CH7,rbNext:rbNext,macSvg:macSvg,MAC:MAC};
 })();
 </script>
 </body>

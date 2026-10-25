@@ -5,10 +5,19 @@ uploaded against what the last chat thought it shipped. Full build notes stay in
 (in the NOTES zip, never uploaded).
 
 ## Current
-- **v1.57 · Oct 24 2026** (sw cache `measureup-v1-57`). Contains v1.51 through v1.56. Live URL: https://motbuchanan.github.io/gameshelf/measureup/
+- **v1.58 · Oct 25 2026** (sw cache `measureup-v1-58`). Contains v1.51 through v1.57. Live URL: https://motbuchanan.github.io/gameshelf/measureup/
 - Files in the repo folder: `index.html`, `sw.js`, `manifest.json`, `ROADMAP.md` (this file, new in v1.51).
 
 ## What shipped lately
+- **v1.58 Words + Code (Oct 24).** STORY STREET, a new row at the bottom of the map.
+  THE DAILY SQUAWK: a new subject, GRAMMAR (concept `gram`, its own Words & Grammar strand, placed by the Soundcheck), taught by
+  MAC the macaw. Four desks: Word Detective (tap every noun / verb / adjective / adverb / pronoun in a real sentence),
+  Proofreader (tap the words that need capitals, pick the end mark), Verb Press (past tense incl. rule-breakers, agreement,
+  future), Silly Front Page (pick the right part of speech, then the silly paper prints and is archived). Mac's 5-step Press
+  Pass quest (a Press Pass keepsake, +2 packs). ROBOT WORKSHOP CHAPTERS 6-7 star HIS robot from the Bot Garage: Functions (a
+  named ⭐ move he builds once and reuses; he can name it) and If This (IF cards on red and blue tiles inside Repeats).
+  16 levels, each proven to need the new card. BIBI'S WORD LAB (Root Builder, Analogy Link, Shade Ladder) and 3 new Word
+  Hoard chests (More Roots, Synonyms & Antonyms, Context Clues: 64 gems now).
 - **v1.57 The Invention Bench (Oct 24).** The Idea Notebook comes to life: every idea Garrett picks after an Ai Co. job
   becomes a blueprint at Ada's Invention Bench. He builds it in 3 steps (count the bolts = multiplication, cut the bar into
   equal pieces = division, measure the frame = feet / yards / inches) and the part goes ON his robot (show up to 4).
@@ -70,10 +79,10 @@ uploaded against what the last chat thought it shipped. Full build notes stay in
 - One fixed plot of land, camera-driven; no pointer capture; three currencies; crash-proof art; the red error box stays.
 
 ## Open queue (in order)
-1. Deploy v1.57 (includes v1.51-v1.56). Device check: both news cards, the Candy Bank numbers (fix the all-time total
+1. Deploy v1.58 (includes v1.51-v1.57). Device check: both news cards, the Candy Bank numbers (fix the all-time total
    in Grown-ups if the estimate is off), install Dishes + Clean Up, one Ai Co. job end to end.
 2. Halloween night (Oct 31): Count Your Haul with the real bag; Grand Finals + Monster Bash open by themselves.
 3. Grown-ups report in about a week: Rows & Columns, Line Plots, Mean & Median, Coordinates, Area should move.
-4. v1.58 WORDS + CODE: Word Hoard depth, Robot Workshop chapters 6-7 with Garrett's robot, Grammar.
+4. Device check for v1.58: one Daily Squawk desk, Robot Chapter 6 level 1 with his robot, one Word Lab round.
 5. v1.59 LIFE SKILLS: History wing, Money & Life skills (Ai Co. pricing jobs, a robot Shop ability).
 6. Tuning after play: Pro proof forceL bands, Pro Soundcheck batch size (11) and maxQ (4), tier toast, To-Do row set.
