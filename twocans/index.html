@@ -447,8 +447,8 @@ header .dot{width:46px;height:46px;font-size:22px}
 
 <script src="config.js"></script>
 <script type="module">
-const VERSION = 'v0.17';
-const VDATE = 'Oct 21 2026';
+const VERSION = 'v0.18';
+const VDATE = 'Oct 25 2026';
 const FB_VER = '10.12.2';
 const ROOM = 'main';
 
@@ -708,7 +708,7 @@ function denied(){
 }
 function onUser(u){
   stopListening();
-  if (!u){ me = null; myUid = null; show('scrLogin'); $('pwStep').classList.add('hidden'); $('whoStep').classList.remove('hidden'); renderWho(); return; }
+  if (!u){ store.set(UNSENT_K, null); me = null; myUid = null; show('scrLogin'); $('pwStep').classList.add('hidden'); $('whoStep').classList.remove('hidden'); renderWho(); return; }
   const p = personByEmail(u.email);
   if (!p){ denied(); return; }
   me = p; myUid = u.uid;
@@ -723,6 +723,12 @@ function onUser(u){
   const onErr = err => { if (err && String(err.code).includes('permission')) denied(); else toast('Lost connection. It will catch up.'); };
   unsubs.push(B.listen(list => { const prev = msgs; msgs = list; render(prev); }, onErr));
   unsubs.push(B.onSeen(m => { seenMap = m; renderSeen(); }, onErr));
+  const left = unsentList();
+  if (left.length){
+    unsentSave([]);
+    if (!txt.value){ txt.value = left.map(x => x.text).join('\n').slice(0, 4000); autoGrow(); canSend(); updateTyping(); }
+    toast('This did not send before the app closed. Tap Send to try again.', 5000);
+  }
 }
 
 /* ---------- rendering ---------- */
@@ -936,7 +942,14 @@ txt.addEventListener('focus', () => { updateTyping(); setTimeout(() => { if (sti
 txt.addEventListener('blur', updateTyping);
 $('sendBtn').onclick = sendNow;
 let sending = false;
-async function sendNow(){
+// Words not yet confirmed by the server are kept on this device (text only, never
+// pictures or voice) so a dropped Wi-Fi plus a closed app does not lose them.
+// Removed the moment the server confirms, and on sign out.
+const UNSENT_K = DEMO ? 'tc.demo.unsent' : 'tc.unsent';
+let unsentSeq = 0;
+function unsentList(){ const v = store.get(UNSENT_K, null); return (v && v.uid === myUid && Array.isArray(v.items)) ? v.items : []; }
+function unsentSave(items){ store.set(UNSENT_K, items.length ? { uid: myUid, items } : null); }
+function sendNow(){
   const text = txt.value.trim().slice(0, 4000);
   const img = pendingImg ? pendingImg.data : '';
   const aud = pendingAud || '';
@@ -944,13 +957,26 @@ async function sendNow(){
   sending = true;
   txt.value = ''; autoGrow(); clearAttach(); pendingAud = null; canSend(); toggleEmoji(false); updateTyping();
   sndSend(); stickBottom = true;
-  try { await B.send({ text, img, aud }); }
-  catch(e){
+  const k = Date.now() + '-' + (++unsentSeq);
+  if (text) unsentSave(unsentList().concat([{ k, text }]));
+  const done = () => { clearTimeout(slow); if (text) unsentSave(unsentList().filter(x => x.k !== k)); };
+  // The server only answers once it is back online; say so instead of going quiet.
+  const slow = setTimeout(() => toast('Waiting for the Wi-Fi. It will send when it is back, so keep Two Cans open.', 4500), 8000);
+  let p;
+  try { p = B.send({ text, img, aud }); } catch(e){ p = Promise.reject(e); }
+  Promise.resolve(p).then(done, () => {
+    done();
     toast('That one did not send. Check the Wi-Fi and try again.', 4000);
-    if (text && !txt.value){ txt.value = text; autoGrow(); canSend(); }
-  }
-  sending = false;
+    if (text && !txt.value){ txt.value = text; autoGrow(); }
+    if (img && !pendingImg){ pendingImg = { data: img }; $('attach').classList.remove('hidden'); $('attachImg').src = img; $('attachInfo').textContent = 'Add words if you want, then send.'; }
+    if (aud && !pendingAud) pendingAud = aud;
+    canSend(); updateTyping();
+  });
+  // The send is queued the moment it is handed over (offline too), so Send works
+  // again right away. The short gap only stops one tap sending twice.
+  setTimeout(() => { sending = false; }, 300);
 }
+window.addEventListener('offline', () => { if (me) toast('No Wi-Fi right now. Messages will send when it is back.', 4000); });
 // Emoji picker. All glyphs are older (<= 2018) so they render on every iPad.
 // Garrett can also tap the emoji key on the iPad keyboard for the full set.
 const EMOJI = {
@@ -1383,10 +1409,10 @@ function renderGame(g){
   const myTurn = g.status==='playing' && g.turn===me.name;
   let st;
   if (g.type==='guess'){
-    if (g.status==='won') st = g.winner===me.name ? 'You guessed it — you win!' : g.winner+' guessed your character';
+    if (g.status==='won') st = g.winner===me.name ? 'You guessed it, you win!' : g.winner+' guessed your character';
     else st = 'Ask questions in the chat, then guess';
   } else if (g.type==='chess'){
-    if (g.status==='won') st = g.winner===me.name ? 'Checkmate — you win!' : 'Checkmate — '+g.winner+' wins';
+    if (g.status==='won') st = g.winner===me.name ? 'Checkmate, you win!' : 'Checkmate. '+g.winner+' wins';
     else if (g.status==='draw') st = 'Draw';
     else st = myTurn ? 'Your move' : 'Waiting for '+g.turn;
   } else if (g.status==='won'){
@@ -1579,7 +1605,7 @@ function renderCheckers(g, myTurn){
   wrap.appendChild(grid);
   if (g.status==='playing' && myTurn){
     const hint=document.createElement('div'); hint.className='ckHint';
-    hint.textContent = chain>=0 ? 'Keep jumping!' : (must ? 'You must jump' : 'You play '+(myColor==='r'?'red':'blue')+' — tap a piece, then where to go');
+    hint.textContent = chain>=0 ? 'Keep jumping!' : (must ? 'You must jump' : 'You play '+(myColor==='r'?'red':'blue')+'. Tap a piece, then where to go');
     wrap.appendChild(hint);
   }
   return wrap;
@@ -1749,7 +1775,7 @@ async function resetBoard(g){
   try { await B.gameSet(g.id, upd); } catch(e){ toast('Could not save. Try again.'); }
 }
 function confirmGuess(g,i){
-  openSheet('Guess '+GW_CHARS[i].n+'?', [{ label:'Yes — '+GW_CHARS[i].n+' is my guess', fn:()=>makeGuess(g,i) }]);
+  openSheet('Guess '+GW_CHARS[i].n+'?', [{ label:'Yes, '+GW_CHARS[i].n+' is my guess', fn:()=>makeGuess(g,i) }]);
   gwGuessMode=false; renderGame(gCur);
 }
 async function makeGuess(g,i){
@@ -1758,7 +1784,7 @@ async function makeGuess(g,i){
   const upd={ status:'won', winner: correct ? me.name : other.name, guessBy:me.name, guessIdx:i, correct };
   try {
     await B.gameSet(g.id, upd);
-    B.send({ text: me.name+(correct ? ' guessed '+GW_CHARS[i].n+' and won Guess Who!' : ' guessed '+GW_CHARS[i].n+' — wrong! '+other.name+' wins Guess Who.'), img:'', aud:'' }).catch(()=>{});
+    B.send({ text: me.name+(correct ? ' guessed '+GW_CHARS[i].n+' and won Guess Who!' : ' guessed '+GW_CHARS[i].n+'. Wrong! '+other.name+' wins Guess Who.'), img:'', aud:'' }).catch(()=>{});
     sndSend();
   } catch(e){ toast('That guess did not save. Try again.'); }
 }
@@ -1955,7 +1981,7 @@ function renderChess(g, myTurn){
   wrap.appendChild(grid);
   if (live){
     const hint=document.createElement('div'); hint.className='chHint';
-    hint.textContent = checkSq>=0 ? 'You’re in check — get out of it' : ('You play '+(amWhite?'white':'black')+' — tap a piece');
+    hint.textContent = checkSq>=0 ? 'You’re in check: get out of it' : ('You play '+(amWhite?'white':'black')+'. Tap a piece');
     wrap.appendChild(hint);
   }
   return wrap;
@@ -2019,7 +2045,8 @@ if ('serviceWorker' in navigator && location.protocol === 'https:'){
     await B.init();
   } catch(e){
     show('scrSetup');
-    document.querySelector('#scrSetup .sub').textContent = 'Could not reach the message service. Check the internet and reload.';
+    document.querySelector('#scrSetup .sub').textContent = 'Could not reach the message service. Check the internet, then tap Try again.';
+    if (!$('retryBtn')){ const rb = document.createElement('button'); rb.id = 'retryBtn'; rb.className = 'big'; rb.textContent = 'Try again'; rb.style.margin = '6px auto 14px'; rb.onclick = () => location.reload(); document.querySelector('#scrSetup .sub').after(rb); }
     showDiag('stopped: ' + ((e && e.message) || 'error').slice(0, 60));
     return;
   }
