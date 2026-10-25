@@ -1,10 +1,11 @@
-const CACHE='measureup-v1-58';
+const CACHE='measureup-v1-59';
+// Delete ONLY old measureup-* caches: the shelf and other apps share this origin's cache storage.
 const CORE=['./','./index.html','./manifest.json'];
 self.addEventListener('install',e=>{
   e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting()));
 });
 self.addEventListener('activate',e=>{
-  e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));
+  e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k.startsWith('measureup-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));
 });
 self.addEventListener('fetch',e=>{
   if(e.request.method!=='GET')return;
