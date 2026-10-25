@@ -9,7 +9,7 @@
   body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:#1b120b;color:#e6ddd0;
     background-image:radial-gradient(ellipse at 50% -10%,#2a1c10,#1b120b 70%);min-height:100vh;}
   #bar{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#15100c;border-bottom:1px solid #3a2a1a;}
-  #bar a{color:#e6ddd0;text-decoration:none;font-size:13px;border:1px solid #6e5f50;background:#2a241e;border-radius:999px;padding:6px 12px;}
+  #bar a{color:#e6ddd0;text-decoration:none;font-size:13px;border:1px solid #6e5f50;background:#2a241e;border-radius:999px;padding:10px 14px;}
   #title{font-weight:800;font-size:17px;}
   #prog{margin-left:auto;font-size:13px;color:#c9ab85;font-weight:700;}
   #wrap{max-width:520px;margin:0 auto;padding:12px;}
@@ -37,6 +37,7 @@
   #tools button{flex:1;font-family:inherit;font-weight:700;font-size:15px;padding:12px 0;border-radius:10px;
     border:1px solid #6e5f50;background:#2a241e;color:#e6ddd0;cursor:pointer;}
   #tools button.on{background:#f4c542;color:#2a1c0c;border-color:#b8860b;}
+  #tools button,#pager button,#msg,#label{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;}
   #tools button:active{transform:translateY(1px);}
   .ov{position:fixed;inset:0;background:rgba(16,12,8,.95);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:60;text-align:center;padding:22px;}
   .ov.show{display:flex;}
@@ -63,7 +64,7 @@
 <div class="ov" id="overlay"><div style="font-size:48px;">&#127881;</div><h1 id="ovTitle">Picture done!</h1><p id="ovText"></p>
   <button class="act" id="ovBtn">Next puzzle</button>
   <a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #6e5f50;background:#2a241e;color:#e6ddd0;text-decoration:none;">Back to shelf</a></div>
-<script src="gamenight.js?v=12"></script>
+<script src="gamenight.js?v=13"></script>
 <script src="sfx.js?v=5"></script>
 <script>
 const PUZZLES=[
@@ -90,8 +91,9 @@ const gridEl=document.getElementById("grid"),colCEl=document.getElementById("col
 
 let pi=0, N=5, sol=[], state=[], mode="fill"; // state: 0 empty,1 fill,2 mark
 
-function loadAll(){try{return JSON.parse(localStorage.getItem(PKEY))||{};}catch(e){return{};}}
-function saveAll(o){try{localStorage.setItem(PKEY,JSON.stringify(o));}catch(e){}}
+let memAll=null; // in-memory copy for visits where storage is blocked
+function loadAll(){try{return JSON.parse(localStorage.getItem(PKEY))||{};}catch(e){return memAll?JSON.parse(JSON.stringify(memAll)):{};}}
+function saveAll(o){try{localStorage.setItem(PKEY,JSON.stringify(o));}catch(e){memAll=JSON.parse(JSON.stringify(o));}}
 function runs(arr){const out=[];let c=0;for(const v of arr){if(v){c++;}else if(c){out.push(c);c=0;}}if(c)out.push(c);return out.length?out:[0];}
 function cur(){return PUZZLES[pi];}
 function save(){const a=loadAll();a.pi=pi;a.st=a.st||{};a.st[cur().id]=state.join("");a.s=a.s||{};if(isWon())a.s[cur().id]=true;saveAll(a);}
@@ -142,10 +144,11 @@ function render(){
   msgEl.textContent="Fill the squares that match the number clues.";
 }
 function tap(i){
+  const was=isWon();
   if(mode==="fill")state[i]=state[i]===1?0:1;
   else state[i]=state[i]===2?0:2;
   S("tap");save();render();
-  if(isWon())win();
+  if(!was&&isWon())win();
 }
 function win(){
   S("win");

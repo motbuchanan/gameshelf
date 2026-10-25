@@ -6,7 +6,7 @@
   body{font-family:system-ui,sans-serif;color:#22303a;min-height:100vh;display:flex;flex-direction:column;align-items:center;
     background:repeating-linear-gradient(#f2f6f8 0 27px,#d8e4ec 27px 28px);}
   #bar{width:100%;max-width:620px;display:flex;align-items:center;gap:10px;padding:12px 14px;background:#f2f6f8;border-bottom:2px solid #c44;}
-  #bar a{color:#3a566e;text-decoration:none;font-size:14px;border:1.5px solid #9ab4c8;border-radius:999px;padding:6px 12px;background:#fff;}
+  #bar a{color:#3a566e;text-decoration:none;font-size:14px;border:1.5px solid #9ab4c8;border-radius:999px;padding:10px 16px;background:#fff;}
   #title{font-weight:800;font-size:20px;flex:1;}
   #wrap{width:min(96vw,620px);padding:10px 16px 40px;}
   h2{font-size:14px;letter-spacing:1.5px;text-transform:uppercase;color:#7a5a2e;margin:20px 0 8px;
@@ -27,14 +27,15 @@
 </style></head><body>
 <div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">&#128211; The Record Book</div></div>
 <div id="wrap">
-  <h2>Leaderboard &mdash; all games</h2>
+  <h2>Leaderboard: all games</h2>
   <div class="lb" id="lb"></div>
   <h2>Game by game</h2>
   <div id="byGame"></div>
-  <div class="note">Counts come from games finished on this device (friendly games don't count, just like the stats screens).
-    Charts, win-streak graphs, and head-to-head diagrams are planned for a future edition of this book. &#128200;</div>
+  <div class="note">Counts come from games finished on this device, plus the rest of your household if this device is synced.
+    Friendly games, games against the computer, solo play and ties don't count as wins, just like the stats screens.</div>
 </div>
-<script src="gamenight.js?v=12"></script>
+<script src="gamenight.js?v=13"></script>
+<script src="achievements.js"></script>
 <script>
 const TITLES={chess_games:"Chess",scrabble_games:"Scrabble",bridge_games:"Bridge Builders",sorry_games:"Sorry!",trouble_games:"Trouble",
  guesswho_games:"Guess Who",checkers_games:"Checkers",ur_games:"Royal Game of Ur",c4_games:"Connect 4",
@@ -42,26 +43,36 @@ const TITLES={chess_games:"Chess",scrabble_games:"Scrabble",bridge_games:"Bridge
  gofish_games:"Go Fish",war_games:"War",farkle_games:"Farkle",reversi_games:"Reversi",morris_games:"Nine Men's Morris",
  gomoku_games:"Gomoku",uttt_games:"Ultimate TTT",hex_games:"Hex",dots_games:"Dots & Boxes",sl_games:"Snakes & Ladders",
  sb_games:"Shut the Box",cc_games:"Chinese Checkers",cb_games:"Codebreaker",knuckle_games:"Knucklebones",pig_games:"Pig",paddleduel_games:"Paddle Duel",
- blackjack_games:"Blackjack",solitaire_games:"Solitaire",memory_games:"Memory",gin_games:"Gin Rummy",oldmaid_games:"Old Maid",onecardleft_games:"One Card Left!"};
+ blackjack_games:"Blackjack",solitaire_games:"Solitaire",memory_games:"Memory",gin_games:"Gin Rummy",oldmaid_games:"Old Maid",onecardleft_games:"One Card Left!",
+ snakearcade_games:"Snake",brickbreak_games:"Brick Break",blocks_games:"Blocks",thumbstack_games:"Thumbstack",stardefender_games:"Star Defender",
+ minesweeper_games:"Minesweeper",gemmatch_games:"Gem Match",craps_games:"Craps",liarsdice_games:"Liar's Dice",
+ marble_arcade_games:"Marble Arcade",ks_games:"Knight School",puff_games:"Puff Collection",bloodstream_games:"Bloodstream"};
+function titleOf(k){return TITLES[k]||(window.Achievements&&Achievements.nameFor?Achievements.nameFor(k):k);}
+function esc(x){return String(x==null?"":x).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+const SKIP={tie:1,draw:1,"(draw)":1,Computer:1,You:1};
+function isWin(r){if(!r||!r.winner||r.draw||r.solo||typeof r.winner!=="string")return false;
+  if(window.GN&&GN._realWinner)return GN._realWinner(r.winner);
+  return !SKIP[r.winner]&&!/^Computer( \d+)?$/.test(r.winner);}
 function loadAll(){const per={},wins={},games=0;
   let total=0;
   const keys=(window.GN&&Array.isArray(GN.GAME_KEYS)?GN.GAME_KEYS:Object.keys(TITLES));
   const seen=new Set([...keys,...Object.keys(TITLES)]);
-  for(const k of seen){let list=[];try{list=JSON.parse(localStorage.getItem(k))||[];}catch(e){}
+  for(const k of seen){let list=[];
+    if(window.GN&&GN.readGames)list=GN.readGames(k);else{try{list=JSON.parse(localStorage.getItem(k))||[];}catch(e){}}
     if(!Array.isArray(list))continue;
     const hh=list.filter(r=>!(r&&r.vsComputer)); // Record Book is head-to-head; vs-Computer games are tagged out
     if(!hh.length)continue;
     per[k]={n:hh.length,wins:{}};total+=hh.length;
-    for(const r of hh){if(r&&r.winner){wins[r.winner]=(wins[r.winner]||0)+1;
+    for(const r of hh){if(isWin(r)){wins[r.winner]=(wins[r.winner]||0)+1;
       per[k].wins[r.winner]=(per[k].wins[r.winner]||0)+1;}}}
   return{per,wins,total};}
 const{per,wins,total}=loadAll();
 const lb=document.getElementById("lb");
 const names=Object.entries(wins).sort((a,b)=>b[1]-a[1]);
-if(!names.length)lb.innerHTML='<div class="empty">No finished games on this device yet &mdash; the book is waiting for its first entry. Go make history.</div>';
+if(!names.length)lb.innerHTML='<div class="empty">No finished games on this device yet. The book is waiting for its first entry. Go make history.</div>';
 else{const max=names[0][1];
   names.forEach(([n,w],i)=>{const row=document.createElement("div");row.className="lbRow";
-    row.innerHTML='<span class="rank">'+(i+1)+'</span><span class="nm">'+n+'</span>'+
+    row.innerHTML='<span class="rank">'+(i+1)+'</span><span class="nm">'+esc(n)+'</span>'+
       '<span class="bar" style="width:'+Math.max(4,Math.round(140*w/max))+'px"></span>'+
       '<span class="w">'+w+' win'+(w===1?'':'s')+'</span>';
     lb.appendChild(row);});}
@@ -70,6 +81,6 @@ const rows=Object.entries(per).sort((a,b)=>b[1].n-a[1].n);
 if(!rows.length)bg.innerHTML='<div class="empty">Play anything and it shows up here.</div>';
 else{let h='<table><tr><th>Game</th><th class="num">Played</th><th>Top winner</th></tr>';
   for(const[k,v]of rows){const top=Object.entries(v.wins).sort((a,b)=>b[1]-a[1])[0];
-    h+='<tr><td>'+(TITLES[k]||k)+'</td><td class="num">'+v.n+'</td><td>'+(top?(top[0]+' ('+top[1]+')'):'&mdash;')+'</td></tr>';}
+    h+='<tr><td>'+esc(titleOf(k))+'</td><td class="num">'+v.n+'</td><td>'+(top?(esc(top[0])+' ('+top[1]+')'):'-')+'</td></tr>';}
   h+='</table>';bg.innerHTML=h;}
 </script></body></html>

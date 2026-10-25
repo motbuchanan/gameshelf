@@ -1,7 +1,12 @@
-/* Game Night shared runtime — players, coin flip, global ledger, stats overlay.
+/* Game Night shared runtime: players, coin flip, global ledger, stats overlay.
    Storage is seam-isolated for the Firebase swap. */
 (function(){
 const GN={};window.GN=GN;
+/* folder this runtime lives in, when a page in a subfolder loads it as ../gamenight.js.
+   Empty for pages beside it, so their links and the service worker behave exactly as before. */
+GN.base=(function(){try{const cs=document.currentScript;if(!cs||!cs.src)return"";
+  const d=cs.src.replace(/[?#].*$/,"").replace(/[^\/]*$/,""),pd=location.href.replace(/[?#].*$/,"").replace(/[^\/]*$/,"");
+  return d===pd?"":d;}catch(e){return"";}})();
 
 /* ---------- players ---------- */
 const PALETTE=[
@@ -88,18 +93,22 @@ GN.cubeDie=function(size){cubeCSSOnce();
   show(1);
   return{el:wrap,show,tumble,setBust:function(b){wrap.classList.toggle("gnCubeBust",!!b);}};};
 const PKEY="gn_players",PAIRKEY="gn_lastpair";
+/* in-memory copies used only when storage is blocked, so a visit still keeps its data */
+let _pMem=null,_profMem=null,_ownerMem=null,_pairMem=null;const _recMem={};
+function escH(x){return String(x==null?"":x).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+GN.esc=escH;
 function defaultPlayers(){return[
   {name:"Player 1",...PALETTE[0]},
   {name:"Player 2",...PALETTE[1]}];}
-function pload(){try{const l=JSON.parse(localStorage.getItem(PKEY));return(l&&l.length)?l:defaultPlayers();}catch(e){return defaultPlayers();}}
-function psave(l){try{localStorage.setItem(PKEY,JSON.stringify(l));}catch(e){}}
-/* ---------- PLAYER PROFILES (foundation — see PROFILES_SPEC.md) ---------- */
+function pload(){try{const l=JSON.parse(localStorage.getItem(PKEY));return(l&&l.length)?l:defaultPlayers();}catch(e){return(_pMem&&_pMem.length)?_pMem:defaultPlayers();}}
+function psave(l){try{localStorage.setItem(PKEY,JSON.stringify(l));}catch(e){_pMem=l;}}
+/* ---------- PLAYER PROFILES (foundation, see PROFILES_SPEC.md) ---------- */
 const PROFKEY="gn_profiles",OWNERKEY="gn_owner";
 function newId(){return "p_"+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
-function profSave(l){try{localStorage.setItem(PROFKEY,JSON.stringify(l));}catch(e){}
+function profSave(l){try{localStorage.setItem(PROFKEY,JSON.stringify(l));}catch(e){_profMem=l;}
   try{psave(l.map(p=>({name:p.name,color:p.color,light:p.light,dark:p.dark})));}catch(e){} } // mirror name/color into legacy roster (sync continuity until Phase 5)
 function profLoad(){
-  try{const l=JSON.parse(localStorage.getItem(PROFKEY));if(l&&l.length)return l;}catch(e){}
+  try{const l=JSON.parse(localStorage.getItem(PROFKEY));if(l&&l.length)return l;}catch(e){if(_profMem&&_profMem.length)return _profMem;}
   const seed=pload().map(p=>({id:newId(),name:p.name,color:p.color,light:p.light,dark:p.dark,avatar:{kind:"color"},prefs:{},stats:{}}));
   profSave(seed);return seed;
 }
@@ -482,8 +491,13 @@ GN.profiles={
   list:function(){return profLoad();},
   get:function(id){return profLoad().find(p=>p.id===id)||null;},
   byName:function(n){n=(n||"").toLowerCase();return profLoad().find(p=>p.name.toLowerCase()===n)||null;},
-  add:function(name,pal){name=(name||"").trim();if(!name)return null;const l=profLoad();
-    const ex=l.find(p=>p.name.toLowerCase()===name.toLowerCase());if(ex)return ex;
+  /* name taken by another profile (case-insensitive)? exceptId skips the profile being edited */
+  nameTaken:function(name,exceptId){const n=(name||"").trim().toLowerCase();if(!n)return false;
+    return profLoad().some(p=>p.id!==exceptId&&p.name.toLowerCase()===n);},
+  /* add(name,pal,{strict:true}) returns false when the name is already taken instead of handing back that player.
+     Without strict (GN.addPlayer) the existing player comes back, as games expect. */
+  add:function(name,pal,opts){name=(name||"").trim();if(!name)return null;const l=profLoad();
+    const ex=l.find(p=>p.name.toLowerCase()===name.toLowerCase());if(ex)return(opts&&opts.strict)?false:ex;
     const used=new Set(l.map(p=>p.color));const c=pal||PALETTE.find(x=>!used.has(x.color))||PALETTE[l.length%PALETTE.length];
     const p={id:newId(),name:name,color:c.color,light:c.light,dark:c.dark,avatar:{kind:"color"},prefs:{},stats:{}};
     l.push(p);profSave(l);mirrorProfiles(l);return p;},
@@ -491,10 +505,10 @@ GN.profiles={
   recolor:function(id,pal){const l=profLoad();const p=l.find(x=>x.id===id);if(!p||!pal)return null;p.color=pal.color;p.light=pal.light;p.dark=pal.dark;profSave(l);mirrorProfiles(l);return p;},
   setAvatar:function(id,av){const l=profLoad();const p=l.find(x=>x.id===id);if(!p)return null;p.avatar=av||{kind:"color"};profSave(l);mirrorProfiles(l);return p;},
   remove:function(id){let l=profLoad();if(l.length<=1)return false;l=l.filter(p=>p.id!==id);profSave(l);mirrorProfiles(l);
-    try{if(localStorage.getItem(OWNERKEY)===id)localStorage.removeItem(OWNERKEY);}catch(e){}return true;},
-  owner:function(){try{const id=localStorage.getItem(OWNERKEY);if(id){const p=this.get(id);if(p)return p;}}catch(e){}return null;},
+    if(_ownerMem===id)_ownerMem=null;try{if(localStorage.getItem(OWNERKEY)===id)localStorage.removeItem(OWNERKEY);}catch(e){}return true;},
+  owner:function(){let id=null;try{id=localStorage.getItem(OWNERKEY);}catch(e){id=_ownerMem;}if(id){const p=this.get(id);if(p)return p;}return null;},
   needsOwner:function(){return !this.owner();},
-  setOwner:function(id){try{localStorage.setItem(OWNERKEY,id);}catch(e){}applyOwnerPrefs();return this.owner();},
+  setOwner:function(id){try{localStorage.setItem(OWNERKEY,id);}catch(e){_ownerMem=id;}applyOwnerPrefs();return this.owner();},
   pref:function(k,d){const o=this.owner();return(o&&o.prefs&&(k in o.prefs))?o.prefs[k]:d;},
   setPref:function(k,v){const o=this.owner();if(!o)return;const l=profLoad();const p=l.find(x=>x.id===o.id);if(!p)return;p.prefs=p.prefs||{};p.prefs[k]=v;profSave(l);mirrorProfiles(l);applyOwnerPrefs();},
   bump:function(idOrName,gameKey,delta){const l=profLoad();const p=l.find(x=>x.id===idOrName)||l.find(x=>x.name.toLowerCase()===(idOrName||"").toLowerCase());if(!p)return;
@@ -663,19 +677,19 @@ GN.avatarSets=function(){const order=[],map={};GN.AVATARS.forEach(a=>{if(!map[a.
 GN.avatarInner=function(p,size){const av=(p&&p.avatar)||{kind:"color"};
   if(av.kind==="photo"&&av.photo)return '<img src="'+av.photo+'" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit;">';
   if(av.kind==="icon"&&av.icon){const ic=GN.AVATARS.find(a=>a.id===av.icon);if(ic)return '<svg viewBox="0 0 100 100" style="width:80%;height:80%;display:block;">'+ic.svg+'</svg>';}
-  return (p&&p.name?p.name:"?").trim().charAt(0).toUpperCase();
+  return escH((p&&p.name?p.name:"?").trim().charAt(0).toUpperCase());
 };
 GN.tokenHTML=function(p,size){size=size||40;
   return '<span class="gnTok" style="flex:none;width:'+size+'px;height:'+size+'px;border-radius:50%;display:inline-flex;'
     +'align-items:center;justify-content:center;overflow:hidden;color:#fff;font-weight:800;font-size:'+Math.round(size*0.42)+'px;'
     +'box-shadow:0 1px 3px rgba(0,0,0,.35) inset;background:radial-gradient(circle at 35% 30%,'+p.light+','+p.color+' 62%,'+p.dark+');">'
     +GN.avatarInner(p,size)+'</span>';};
-GN.lastPair=function(){try{const pr=JSON.parse(localStorage.getItem(PAIRKEY));
+GN.lastPair=function(){try{let pr;try{pr=JSON.parse(localStorage.getItem(PAIRKEY));}catch(e){pr=_pairMem;}
     if(pr&&pr.length===2){const l=pload();
       const a=l.find(p=>p.name===pr[0]),b=l.find(p=>p.name===pr[1]);
       if(a&&b)return[a,b];}}catch(e){}
   const l=pload();return[l[0],l[1]];};
-function savePair(a,b){try{localStorage.setItem(PAIRKEY,JSON.stringify([a.name,b.name]));}catch(e){}}
+function savePair(a,b){_pairMem=[a.name,b.name];try{localStorage.setItem(PAIRKEY,JSON.stringify([a.name,b.name]));}catch(e){}}
 
 /* ---------- global ledger (dynamic player names; seam for Firebase) ---------- */
 const GKEY="gn_global";let _gmem=null;
@@ -701,6 +715,7 @@ GN.g={
   addSentHome(n){const g=gload();g.sentHome+=(n||1);gsave(g);
     mirror(()=>_db.doc("households/"+_hh+"/state/global").update({sentHome:FV().increment(n||1)}));},
   addResult(winner,loser,durMs){const g=gload();
+    if(!realWinner(winner))winner=null; // ties, draws and computer seats are games, not wins
     if(winner)g.wins[winner]=(g.wins[winner]||0)+1;
     g.games++;g.timeMs+=(durMs||0);gsave(g);
     mirror(()=>{const u={games:FV().increment(1),timeMs:FV().increment(durMs||0)};
@@ -710,29 +725,36 @@ GN.g={
 
 GN.friendly=false;
 GN._vsComputer=false;
+GN._botNames=[];
+/* a name that can hold a win: not a tie/draw marker, not a computer seat, not a placeholder */
+function realWinner(w){if(!w||typeof w!=="string")return false;
+  if(_BADW[w]||_BADW[w.toLowerCase()])return false;
+  if(/^Computer( \d+)?$/.test(w))return false;
+  return (GN._botNames||[]).indexOf(w)<0;}
+GN._realWinner=realWinner;
 GN.recordGame=function(key,rec){
   GN._inPlay=false;
   if(GN.friendly)return; // friendly games leave no trace
 
   if(GN._vsComputer)rec=Object.assign({},rec,{vsComputer:true});
-  let l=[];try{l=JSON.parse(localStorage.getItem(key))||[];}catch(e){}
+  const l=GN.readGames(key);
   l.push(rec);
-  try{localStorage.setItem(key,JSON.stringify(l));}catch(e){}
+  try{localStorage.setItem(key,JSON.stringify(l));}catch(e){_recMem[key]=l;} // storage blocked: keep it for this visit
   mirror(()=>_db.doc("households/"+_hh+"/records/"+key).set({list:FV().arrayUnion(rec)},{merge:true}));
   if(!rec.vsComputer){ // vs-Computer games are recorded + tagged, but kept out of the head-to-head tallies
-    GN.g.addResult(rec.winner,rec.loser,rec.durationMs);
+    GN.g.addResult(rec.draw?null:rec.winner,rec.loser,rec.durationMs);
     try{GN._award(key,rec);}catch(e){}
   }};
 
 /* feed the per-player achievements engine + show a ceremony for new badges */
-var _BADW={tie:1,"(draw)":1,Computer:1,You:1};
+var _BADW={tie:1,"(draw)":1,draw:1,Computer:1,You:1};
 GN._award=function(key,rec){
   var A=GN.achievements||(typeof window!=="undefined"&&window.Achievements);if(!A)return;
   var players=(rec.players&&rec.players.length)?rec.players.slice()
     :(GN._participants&&GN._participants.length)?GN._participants.slice():[];
   if(!players.length){if(rec.winner&&typeof rec.winner==="string"&&!_BADW[rec.winner])players.push(rec.winner);
     if(rec.loser&&!_BADW[rec.loser])players.push(rec.loser);}
-  var winner=(rec.winner&&!_BADW[rec.winner]&&players.indexOf(rec.winner)>=0)?rec.winner:null;
+  var winner=(!rec.draw&&realWinner(rec.winner)&&players.indexOf(rec.winner)>=0)?rec.winner:null;
   var metric=A.metricFromRec?A.metricFromRec(key,rec):null;
   var fired=A.applyResult({gameKey:key,players:players,winner:winner,metric:metric,metricPlayer:players[0]});
   if(fired&&fired.length)GN._ceremony(fired);
@@ -754,7 +776,7 @@ GN._ceremony=function(list){
       m.style.cssText="width:46px;height:46px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-weight:900;color:#fff;font-size:16px;border:2px solid rgba(255,255,255,.55);box-shadow:inset 0 -3px 6px rgba(0,0,0,.3);background:"+(COL[Math.min(b.tier,5)]||"#888")+";";
       m.textContent=(b.tier===b.tiers)?"\u2605":b.tier;
       var tx=document.createElement("div");tx.style.cssText="text-align:left;color:#fff;";
-      tx.innerHTML='<div style="font-weight:800;font-size:15px;">'+b.name+'</div><div style="font-size:12.5px;color:#cfe0ec;">'+(b.leveledUp?"Leveled up to ":"")+b.tierName+'</div>';
+      tx.innerHTML='<div style="font-weight:800;font-size:15px;">'+escH(b.name)+'</div><div style="font-size:12.5px;color:#cfe0ec;">'+(b.leveledUp?"Leveled up to ":"")+b.tierName+'</div>';
       row.appendChild(m);row.appendChild(tx);ov.appendChild(row);
     });
     var btn=document.createElement("button");btn.textContent="Nice!";
@@ -769,13 +791,16 @@ GN._ceremony=function(list){
 /* GN.soloStart(done,opts) -> "who's playing?" for solo games.
    Sets GN._participants + GN.friendly, then done(name,{friendly}). */
 GN.soloStart=function(done,opts){
-  try{injectCSS();}catch(e){}opts=opts||{};GN._inPlay=false;
+  try{injectCSS();}catch(e){}opts=opts||{};GN._inPlay=false;GN._botNames=[];
   var players=GN.players(),sel=null;
   try{var last=localStorage.getItem("gn_solo_player");if(last)sel=players.filter(function(p){return p.name===last;})[0];}catch(e){}
   if(!sel&&GN.profiles&&GN.profiles.owner){var o=GN.profiles.owner();if(o)sel=players.filter(function(p){return p.name===o.name;})[0];}
   if(!sel)sel=players[0];
   var friendly=false;
   var ov=document.createElement("div");ov.className="gnOv";
+  var sback=document.createElement("a");sback.href=GN.base+"index.html";sback.textContent="\u2329 Shelf";
+  sback.style.cssText="position:absolute;top:14px;left:14px;color:#cfe6d8;border:1px solid #3a5a47;border-radius:999px;padding:9px 16px;text-decoration:none;font-size:14px;z-index:2;";
+  ov.appendChild(sback);
   var t=document.createElement("div");t.className="gnTitle";t.textContent=opts.title||"Who\u2019s playing?";ov.appendChild(t);
   var seats=document.createElement("div");seats.className="gnSeats";
   seats.style.flexWrap="wrap";seats.style.justifyContent="center";seats.style.maxWidth="430px";ov.appendChild(seats);
@@ -783,14 +808,14 @@ GN.soloStart=function(done,opts){
     var b=document.createElement("button");b.className="gnSeat";b.style.minWidth="0";
     b.style.display="inline-flex";b.style.alignItems="center";b.style.gap="8px";
     b.style.outline=(sel&&p.name===sel.name)?"3px solid #f4c542":"none";
-    b.innerHTML=(GN.tokenHTML?GN.tokenHTML(p,24):"")+"<span>"+p.name+"</span>";
+    b.innerHTML=(GN.tokenHTML?GN.tokenHTML(p,24):"")+"<span>"+escH(p.name)+"</span>";
     b.onclick=function(){sel=p;drawSeats();};seats.appendChild(b);});}
   drawSeats();
   if(opts.allowFriendly!==false){
     var fr=document.createElement("button");fr.className="gnAdd";fr.style.color="#cfe6d8";
     fr.textContent="\u2713 Counts for the record";
     fr.onclick=function(){friendly=!friendly;
-      fr.textContent=friendly?"\u26a0 Just for fun \u2014 won\u2019t be saved":"\u2713 Counts for the record";
+      fr.textContent=friendly?"\u26a0 Just for fun: won\u2019t be saved":"\u2713 Counts for the record";
       fr.style.color=friendly?"#f4c542":"#cfe6d8";};
     ov.appendChild(fr);
   }
@@ -804,15 +829,22 @@ GN.soloStart=function(done,opts){
 /* small "Player: X" badge that re-opens the picker when tapped */
 GN.whoBadge=function(el,name,onChange){
   if(!el)return;var p=GN.players().filter(function(x){return x.name===name;})[0]||{name:name||"Player",color:"#888"};
-  el.innerHTML=(GN.tokenHTML?GN.tokenHTML(p,20):"")+"<span style=\"margin-left:6px\">"+p.name+"</span>";
+  el.innerHTML=(GN.tokenHTML?GN.tokenHTML(p,20):"")+"<span style=\"margin-left:6px\">"+escH(p.name)+"</span>";
   el.style.display="inline-flex";el.style.alignItems="center";el.onclick=onChange||null;el.style.cursor=onChange?"pointer":"default";
 };
-GN.readGames=function(key){try{return JSON.parse(localStorage.getItem(key))||[];}catch(e){return[];}};
+GN.readGames=function(key){let l=null;
+  try{l=JSON.parse(localStorage.getItem(key));}catch(e){return _recMem[key]?_recMem[key].slice():[];}
+  return Array.isArray(l)?l:[];};
 
 /* ---------- shared CSS ---------- */
 const css=`
-.gnOv{position:fixed;inset:0;z-index:80;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
-  padding:26px;text-align:center;background:rgba(7,12,9,.92);font-family:system-ui,sans-serif;color:#e8f0e4;}
+.gnOv{position:fixed;inset:0;z-index:80;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:16px;
+  padding:26px;text-align:center;background:rgba(7,12,9,.92);font-family:system-ui,sans-serif;color:#e8f0e4;
+  overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;}
+/* centered when it fits, scrolls from the top when it does not (tall sheets in phone landscape) */
+.gnOv::before,.gnOv::after,.gnCtr::before,.gnCtr::after{content:"";flex:1 1 0px;min-height:0;}
+.gnOv>*,.gnCtr>*{flex-shrink:0;}
+@media (max-height:520px){.gnOv{gap:8px;padding:14px 20px;}.gnTitle{font-size:20px;}.gnAdd{min-height:36px;padding:8px 12px;}}
 .gnTitle{font-size:23px;font-weight:800;}
 .gnBtn{font-family:inherit;font-size:16px;font-weight:bold;padding:10px 20px;border-radius:10px;border:none;
   color:#1c2b16;background:#b0d235;cursor:pointer;box-shadow:0 4px 0 #7e9a1f,0 5px 10px rgba(0,0,0,.4);}
@@ -823,7 +855,8 @@ const css=`
   box-shadow:0 6px 14px rgba(0,0,0,.45),inset 0 2px 0 rgba(255,255,255,.25);}
 .gnSeat small{display:block;font-weight:400;font-size:11px;opacity:.85;margin-top:2px;}
 .gnVs{color:#7d9a88;font-weight:700;}
-.gnAdd{background:none;border:none;color:#9fbdac;font-size:13px;text-decoration:underline;cursor:pointer;font-family:inherit;}
+.gnAdd{background:none;border:none;color:#9fbdac;font-size:13px;text-decoration:underline;cursor:pointer;font-family:inherit;
+  padding:10px 12px;min-height:40px;}
 .gnScene{perspective:700px;width:140px;height:140px;}
 .gnCoin{position:relative;width:120px;height:120px;margin:10px;transform-style:preserve-3d;}
 .gnFace{position:absolute;inset:0;border-radius:50%;backface-visibility:hidden;display:flex;align-items:center;justify-content:center;
@@ -860,10 +893,10 @@ function injectCSS(){if(document.getElementById("gnCSS"))return;
 
 /* ---------- match start: who's playing? + coin flip ---------- */
 /* GN.matchStart(done) -> done({a,b,first}) where a,b,first are player objects */
-GN.matchStart=function(done,opts){injectCSS();GN._inPlay=false;opts=opts||{};
+GN.matchStart=function(done,opts){injectCSS();GN._inPlay=false;GN._botNames=[];opts=opts||{};
   let[a,b]=GN.lastPair();
   const ov=document.createElement("div");ov.className="gnOv";
-  const back=document.createElement("a");back.href="index.html";back.textContent="\u2329 Shelf";
+  const back=document.createElement("a");back.href=GN.base+"index.html";back.textContent="\u2329 Shelf";
   back.style.cssText="position:absolute;top:14px;left:14px;color:#cfe6d8;border:1px solid #3a5a47;"+
     "border-radius:999px;padding:7px 14px;text-decoration:none;font-size:14px;z-index:2;";
   ov.appendChild(back);
@@ -889,7 +922,7 @@ GN.matchStart=function(done,opts){injectCSS();GN._inPlay=false;opts=opts||{};
   const CPU={name:"Computer",color:"#6b7280",light:"#9aa3af",dark:"#3f454d"};
   const origB=b;
   if(opts.solo||opts.bot){
-    const modeRow=document.createElement("div");
+    const modeRow=document.createElement("div");modeRow.id="gnMode";
     modeRow.style.cssText="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:2px 0 4px;";
     const btns={};
     function mk(label,key){const btn=document.createElement("button");btn.textContent=label;
@@ -899,8 +932,8 @@ GN.matchStart=function(done,opts){injectCSS();GN._inPlay=false;opts=opts||{};
     mk("2 players","2p");
     if(opts.bot)mk("vs Computer","cpu");
     const wantDiff=opts.bot&&!opts.botSimple;
-    const diffRow=document.createElement("div");
-    diffRow.style.cssText="display:none;gap:8px;justify-content:center;margin:0 0 6px;";
+    const diffRow=document.createElement("div");diffRow.id="gnDiff";
+    diffRow.style.cssText="display:none;gap:8px;justify-content:center;margin:0 0 6px;";diffRow.dataset.want=wantDiff?"1":"";
     const diffBtns={};
     [["Easy","easy"],["Medium","medium"],["Hard","hard"]].forEach(function(pair){
       const d=document.createElement("button");d.textContent=pair[0];
@@ -931,12 +964,13 @@ GN.matchStart=function(done,opts){injectCSS();GN._inPlay=false;opts=opts||{};
     for(let k=1;k<=l.length;k++){const c=l[(i+k)%l.length];if(c.name!==other.name)return c;}return cur;}
   eA.onclick=()=>{a=cycle(a,b);refresh();};
   eB.onclick=()=>{if(mode==="cpu")return;b=cycle(b,a);refresh();};
-  function gnHideChrome(){[ov.querySelector(".gnSeats"),ov.querySelector("#gnNew"),ov.querySelector("#gnFr"),ov.querySelector("#gnRecolor"),go].forEach(e=>{if(e)e.style.display="none";});}
+  function gnHideChrome(){[ov.querySelector(".gnSeats"),ov.querySelector("#gnNew"),ov.querySelector("#gnFr"),ov.querySelector("#gnRecolor"),ov.querySelector("#gnMode"),ov.querySelector("#gnDiff"),go].forEach(e=>{if(e)e.style.display="none";});}
   function applyChrome(){const isCpu=mode==="cpu",isSolo=mode==="1p";
     if(eB)eB.style.display=isSolo?"none":"";
     const vs=ov.querySelector(".gnVs");if(vs)vs.style.display=isSolo?"none":"";
     const frB=ov.querySelector("#gnFr");if(frB)frB.style.display="";}
-  function gnShowChrome(){[[".gnSeats",""],["#gnNew",""],["#gnRecolor",""]].forEach(m=>{const e=ov.querySelector(m[0]);if(e)e.style.display=m[1];});go.style.display="";const fr=ov.querySelector("#gnFr");if(fr)fr.style.display="";applyChrome();}
+  function gnShowChrome(){[[".gnSeats",""],["#gnNew",""],["#gnRecolor",""],["#gnMode","flex"]].forEach(m=>{const e=ov.querySelector(m[0]);if(e)e.style.display=m[1];});go.style.display="";const fr=ov.querySelector("#gnFr");if(fr)fr.style.display="";
+    const dr=ov.querySelector("#gnDiff");if(dr)dr.style.display=(mode==="cpu"&&dr.dataset.want)?"flex":"none";applyChrome();}
   function openColorGrid(labelName,ownerName,onPick){
     gnHideChrome();
     const oldTitle=title.textContent;title.textContent="Pick "+labelName+"'s color";
@@ -982,14 +1016,15 @@ GN.matchStart=function(done,opts){injectCSS();GN._inPlay=false;opts=opts||{};
       go.parentNode.insertBefore(list,go);};})();
   let friendly=false;const fr=ov.querySelector("#gnFr");
   fr.onclick=()=>{friendly=!friendly;
-    fr.textContent=friendly?"\u26a0 Friendly game \u2014 not recorded":"\u2713 Counts for the record";
+    fr.textContent=friendly?"\u26a0 Friendly game: not recorded":"\u2713 Counts for the record";
     fr.style.color=friendly?"#f4c542":"#cfe6d8";};
   refresh();
   go.onclick=function(){
     if(go.disabled)return;
     if(mode==="1p"){GN.friendly=friendly;GN._vsComputer=false;ov.remove();GN._inPlay=true;GN._participants=[a.name];done({a,b:null,first:a,solo:true,friendly});return;}
     if(mode!=="cpu")savePair(a,b);
-    eA.disabled=true;eB.disabled=true;ov.querySelector("#gnNew").style.display="none";
+    eA.disabled=true;eB.disabled=true;
+    ["#gnNew","#gnRecolor","#gnFr","#gnMode","#gnDiff"].forEach(q=>{const e=ov.querySelector(q);if(e)e.style.display="none";}); // choices are locked once the coin is in the air
     ov.querySelector(".gnSeats").style.display="none";scene.style.display="";
     title.textContent="Who goes first?";go.style.visibility="hidden";
     coin.innerHTML="";
@@ -1051,7 +1086,7 @@ GN.partyStart=function(done,opts){injectCSS();GN._inPlay=false;opts=opts||{};
   seats=freshSeats(count);normalize();
 
   const ov=document.createElement("div");ov.className="gnOv";
-  const back=document.createElement("a");back.href="index.html";back.textContent="\u2329 Shelf";
+  const back=document.createElement("a");back.href=GN.base+"index.html";back.textContent="\u2329 Shelf";
   back.style.cssText="position:absolute;top:14px;left:14px;color:#cfe6d8;border:1px solid #3a5a47;border-radius:999px;padding:7px 14px;text-decoration:none;font-size:14px;z-index:2;";
   ov.appendChild(back);
   ov.innerHTML+='<div class="gnTitle" id="pT">Who\u2019s playing?</div>';
@@ -1104,7 +1139,7 @@ GN.partyStart=function(done,opts){injectCSS();GN._inPlay=false;opts=opts||{};
   const frP=document.createElement("button");
   frP.style.cssText="margin:8px auto 2px;background:none;border:none;color:#cfe6d8;font-size:13px;cursor:pointer;font-family:inherit;text-decoration:underline;";
   frP.textContent="\u2713 Counts for the record";
-  frP.onclick=function(){recordOn=!recordOn;frP.textContent=recordOn?"\u2713 Counts for the record":"\u26a0 Just for fun \u2014 won\u2019t be saved";frP.style.color=recordOn?"#cfe6d8":"#f4c542";};
+  frP.onclick=function(){recordOn=!recordOn;frP.textContent=recordOn?"\u2713 Counts for the record":"\u26a0 Just for fun: won\u2019t be saved";frP.style.color=recordOn?"#cfe6d8":"#f4c542";};
   ov.appendChild(frP);
   const go=document.createElement("button");go.className="gnBtn";go.textContent="Start";
   ov.appendChild(go);
@@ -1121,8 +1156,8 @@ GN.partyStart=function(done,opts){injectCSS();GN._inPlay=false;opts=opts||{};
     const used=new Set(seats.filter((s,j)=>j!==i&&s.kind==="human").map(s=>s.name));
     const avail=GN.players().filter(h=>!used.has(h.name));
     const sheet=document.createElement("div");
-    sheet.style.cssText="position:fixed;inset:0;z-index:3;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:rgba(10,16,12,.85);padding:20px;overflow:auto;";
-    const t=document.createElement("div");t.className="gnTitle";t.style.fontSize="20px";t.textContent="Seat "+(i+1)+" \u2014 who?";sheet.appendChild(t);
+    sheet.className="gnCtr";sheet.style.cssText="position:fixed;inset:0;z-index:3;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:8px;background:rgba(10,16,12,.85);padding:20px;overflow-y:auto;";
+    const t=document.createElement("div");t.className="gnTitle";t.style.fontSize="20px";t.textContent="Seat "+(i+1)+": who?";sheet.appendChild(t);
     avail.forEach(h=>{const b=mkRow(h.name,h.color,h.light,h.dark);
       b.onclick=()=>{seats[i]={kind:"human",name:h.name,color:h.color,light:h.light,dark:h.dark,bot:null};normalize();sheet.remove();render();};
       sheet.appendChild(b);});
@@ -1141,7 +1176,7 @@ GN.partyStart=function(done,opts){injectCSS();GN._inPlay=false;opts=opts||{};
       const row=document.createElement("span");row.style.cssText="display:inline-flex;align-items:center;gap:8px;justify-content:center;";
       row.innerHTML=GN.tokenHTML({name:s.name||"?",color:s.color,light:s.light,dark:s.dark,avatar:s.kind==="cpu"?{kind:"color"}:(s.avatar||{kind:"color"})},28);
       const lab=document.createElement("span");lab.textContent=seatLabel(s);row.appendChild(lab);btn.appendChild(row);
-      const sm=document.createElement("small");sm.textContent=s.kind==="cpu"?"computer \u2014 tap to change":"tap to change";btn.appendChild(sm);
+      const sm=document.createElement("small");sm.textContent=s.kind==="cpu"?"computer \u00b7 tap to change":"tap to change";btn.appendChild(sm);
       btn.onclick=()=>openChooser(i);slist.appendChild(btn);});
     const humans=seats.filter(s=>s.kind==="human").length;
     go.disabled=humans<1;go.style.opacity=humans<1?".5":"";go.textContent=humans<1?"Add a person":"Start";
@@ -1160,7 +1195,7 @@ GN.partyStart=function(done,opts){injectCSS();GN._inPlay=false;opts=opts||{};
       hi(cur);
       if(t>=minT&&cur===first){clearInterval(iv);
         const f=out[first];title.textContent=f.name+" goes first!";title.style.color=f.color;
-        GN.friendly=!recordOn;GN._vsComputer=false;
+        GN.friendly=!recordOn;GN._vsComputer=out.some(s=>s.bot);GN._botNames=out.filter(s=>s.bot).map(s=>s.name);
         setTimeout(()=>{ov.remove();GN._inPlay=true;GN._participants=out.filter(s=>!s.bot).map(s=>s.name);done({seats:out,first:first,friendly:!recordOn,rules:Object.assign({},togVals)});},700);
         return;}
       cur=(cur+1)%count;t++;
@@ -1170,7 +1205,7 @@ GN.partyStart=function(done,opts){injectCSS();GN._inPlay=false;opts=opts||{};
 };
 
 /* ---------- stats overlay ---------- */
-/* GN.openStats({title,key,specials:[{label,of:(recs,name)=>num}]}) — h2h is the last pairing */
+/* GN.openStats({title,key,specials:[{label,of:(recs,name)=>num}]}): h2h is the last pairing */
 GN.openStats=function(cfg){injectCSS();
   const old=document.getElementById("gnStats");if(old)old.remove();
   const allRecs=GN.readGames(cfg.key);
@@ -1181,15 +1216,15 @@ GN.openStats=function(cfg){injectCSS();
   let m=0,k=0,dur=0;for(const r of recs){if(r.winner===pa.name)m++;else if(r.winner===pb.name)k++;dur+=r.durationMs||0;}
   let streak=0,who=null;
   for(let i=recs.length-1;i>=0;i--){const w=recs[i].winner;if(!w)break;if(who===null){who=w;streak=1;}else if(w===who)streak++;else break;}
-  const fmt=ms=>{if(!ms)return"\u2014";const s=Math.round(ms/1000),mn=Math.floor(s/60);return mn?(mn+"m "+(s%60)+"s"):(s+"s");};
-  function row(label,va,vb){const tot=(va+vb)||1,p=Math.round(va/tot*100);
-    return '<div class="gnRow"><div class="l">'+label+'</div><div class="bar"><span style="width:'+p+'%;background:'+pa.color+'"></span><span style="width:'+(100-p)+'%;background:'+pb.color+'"></span></div><div class="v">'+va+" / "+vb+'</div></div>';}
+  const fmt=ms=>{if(!ms)return"-";const s=Math.round(ms/1000),mn=Math.floor(s/60);return mn?(mn+"m "+(s%60)+"s"):(s+"s");};
+  function row(label,va,vb){const tot=(va+vb)||1,p=Math.round(va/tot*100),none=!(va+vb);
+    return '<div class="gnRow"><div class="l">'+label+'</div><div class="bar">'+(none?'':'<span style="width:'+p+'%;background:'+pa.color+'"></span><span style="width:'+(100-p)+'%;background:'+pb.color+'"></span>')+'</div><div class="v">'+va+" / "+vb+'</div></div>';}
   const wrap=document.createElement("div");wrap.className="gnStats";wrap.id="gnStats";
-  let h='<h1>'+cfg.title+' \u2014 Stats</h1>';
-  h+='<div class="gnH2H"><span style="color:'+pa.color+'"><span class="big">'+m+'</span> '+pa.name+'</span><span style="color:#7d9a88">vs</span><span style="color:'+pb.color+'">'+pb.name+' <span class="big">'+k+'</span></span></div>';
-  h+='<div class="gnMeta">'+recs.length+' game'+(recs.length===1?"":"s")+' recorded \u00b7 avg '+fmt(recs.length?dur/recs.length:0)+(who?' \u00b7 '+who+' on a '+streak+'-game streak':'')+'</div>';
+  let h='<h1>'+cfg.title+': Stats</h1>';
+  h+='<div class="gnH2H"><span style="color:'+pa.color+'"><span class="big">'+m+'</span> '+escH(pa.name)+'</span><span style="color:#7d9a88">vs</span><span style="color:'+pb.color+'">'+escH(pb.name)+' <span class="big">'+k+'</span></span></div>';
+  h+='<div class="gnMeta">'+recs.length+' game'+(recs.length===1?"":"s")+' recorded \u00b7 avg '+fmt(recs.length?dur/recs.length:0)+(who?' \u00b7 '+escH(who)+' on a '+streak+'-game streak':'')+'</div>';
   if(vsAI.length){var _won=vsAI.filter(r=>r.winner&&!/^Computer/.test(r.winner)).length;
-    h+='<div class="gnMeta">Plus '+vsAI.length+' vs Computer \u2014 you won '+_won+' (not counted for the record)</div>';}
+    h+='<div class="gnMeta">Plus '+vsAI.length+' vs Computer: you won '+_won+' (not counted for the record)</div>';}
   if(cfg.specials&&recs.length){h+='<div class="gnSec">This game</div>';
     for(const s of cfg.specials)h+=row(s.label,s.of(recs,pa.name),s.of(recs,pb.name));}
   const g=GN.g.read();
@@ -1197,8 +1232,8 @@ GN.openStats=function(cfg){injectCSS();
   h+=row("All-game wins",g.wins[pa.name]||0,g.wins[pb.name]||0);
   h+=row("Coin flips won",g.flips.won[pa.name]||0,g.flips.won[pb.name]||0);
   const others=Object.keys(g.wins).filter(n=>n!==pa.name&&n!==pb.name&&g.wins[n]>0);
-  if(others.length)h+='<div class="gnMeta">Other players: '+others.map(n=>n+" "+g.wins[n]).join(" \u00b7 ")+'</div>';
-  h+='<div class="gnMeta">'+g.games+' games \u00b7 '+g.flips.n+' coin flips'+(g.flips.streak.who?' \u00b7 '+g.flips.streak.who+' has won '+g.flips.streak.len+' flip'+(g.flips.streak.len>1?'s':'')+' running':'')+'</div>';
+  if(others.length)h+='<div class="gnMeta">Other players: '+others.map(n=>escH(n)+" "+g.wins[n]).join(" \u00b7 ")+'</div>';
+  h+='<div class="gnMeta">'+g.games+' games \u00b7 '+g.flips.n+' coin flips'+(g.flips.streak.who?' \u00b7 '+escH(g.flips.streak.who)+' has won '+g.flips.streak.len+' flip'+(g.flips.streak.len>1?'s':'')+' running':'')+'</div>';
   h+='<div class="gnMeta">'+g.dice.rolled+' dice rolled \u00b7 '+g.dice.sixes+' sixes \u00b7 '+g.dice.doubles+' doubles \u00b7 '+g.sentHome+' pieces sent home</div>';
   h+='<button class="gnBtn" id="gnX" style="margin-top:10px;">Close</button>';
   wrap.innerHTML=h;document.body.appendChild(wrap);
@@ -1237,7 +1272,7 @@ function hhId(code){let h=5381;for(let i=0;i<code.length;i++)h=((h<<5)+h+code.ch
 function loadScript(u){return new Promise((res,rej)=>{const s=document.createElement("script");
   s.src=u;s.onload=res;s.onerror=rej;document.head.appendChild(s);});}
 // PWA: register the service worker (network-first; see sw.js).
-if("serviceWorker" in navigator){try{navigator.serviceWorker.register("sw.js");}catch(e){}}
+if("serviceWorker" in navigator){try{navigator.serviceWorker.register(GN.base+"sw.js");}catch(e){}}
 const GAME_KEYS=["marble_arcade_games","chess_games","ur_games","sorry_games","checkers_games","c4_games","trouble_games","mancala_games",
   "dom_games","yahtzee_games","bs_games","cc_games","bg_games",
   "war_games","sb_games","sl_games","uttt_games",
@@ -1247,7 +1282,8 @@ const GAME_KEYS=["marble_arcade_games","chess_games","ur_games","sorry_games","c
   "blackjack_games","solitaire_games","memory_games","gin_games","oldmaid_games",
   "onecardleft_games",
   "snakearcade_games","brickbreak_games","blocks_games","thumbstack_games","stardefender_games",
-  "minesweeper_games","gemmatch_games","craps_games","liarsdice_games","ks_games"];
+  "minesweeper_games","gemmatch_games","craps_games","liarsdice_games","ks_games",
+  "puff_games","bloodstream_games"];
 GN.GAME_KEYS=GAME_KEYS;
 /* ---- pinch zoom + pan for dense boards ----
    GN.pinchZoom(boardEl): wraps the board; pinch to zoom (1x-3x), drag to pan when
@@ -1338,6 +1374,22 @@ gnSync.disable=function(){try{localStorage.removeItem("gn_sync_hh");}catch(e){}_
 gnSync.resetCloud=function(){if(!_fbReady)return;
   _db.doc("households/"+_hh+"/state/global").set(blank());
   for(const k of GAME_KEYS)_db.doc("households/"+_hh+"/records/"+k).set({list:[]});};
+/* pushLocal(): make THIS device's data the household copy (whole-list set, not merge).
+   Used by backup.html after a restore; otherwise the live listeners would pull the old
+   cloud copy back over the restored data on reload. Resolves true when the cloud took it. */
+gnSync.pushLocal=function(timeoutMs){
+  /* the timeout covers the whole push, sign-in included, so the page can never hang */
+  return Promise.race([gnPushLocal(),new Promise(r=>setTimeout(()=>r(false),timeoutMs||8000))]);};
+async function gnPushLocal(){
+  let hh=null;try{hh=localStorage.getItem("gn_sync_hh");}catch(e){}
+  if(!hh||typeof window==="undefined")return false;
+  try{const db=await ensureFB();if(!db)return false;_hh=hh;
+    const w=[db.doc("households/"+hh+"/state/global").set(gload())];
+    for(const k of GAME_KEYS)w.push(db.doc("households/"+hh+"/records/"+k).set({list:GN.readGames(k)}));
+    w.push(db.doc("households/"+hh+"/state/players").set({list:pload()}));
+    w.push(db.doc("households/"+hh+"/state/profiles").set({list:profLoad()}));
+    return await Promise.all(w).then(()=>true,()=>false);
+  }catch(e){return false;}}
 GN.sync=gnSync;
 async function bootSync(){
   let hh=null;try{hh=localStorage.getItem("gn_sync_hh");}catch(e){}
@@ -1425,7 +1477,7 @@ if(typeof window!=="undefined")setTimeout(bootSync,0);
 GN.openRules=function(cfg){injectCSS();
   const old=document.getElementById("gnRules");if(old)old.remove();
   const wrap=document.createElement("div");wrap.className="gnStats";wrap.id="gnRules";
-  let h='<h1>'+cfg.title+' \u2014 How to play</h1>';
+  let h='<h1>'+cfg.title+': How to play</h1>';
   for(const s of cfg.sections){
     h+='<div class="gnSec">'+s.h+'</div>';
     if(s.svg)h+='<div class="gnIll">'+s.svg+'</div>';
@@ -1524,7 +1576,7 @@ try{injectCSS();}catch(e){}
 })();
 
 /* auto-load the achievements engine on every page that uses the runtime */
-try{if(typeof document!=="undefined"&&typeof window!=="undefined"&&!window.Achievements){var _gnA=document.createElement("script");_gnA.src="achievements.js";_gnA.async=true;document.head.appendChild(_gnA);}}catch(e){}
+try{if(typeof document!=="undefined"&&typeof window!=="undefined"&&!window.Achievements){var _gnA=document.createElement("script");_gnA.src=((window.GN&&window.GN.base)||"")+"achievements.js";_gnA.async=true;document.head.appendChild(_gnA);}}catch(e){}
 
 /* once-a-day automatic local snapshot of all game data (silent fallback if no manual backup) */
 try{(function(){

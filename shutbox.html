@@ -10,7 +10,7 @@
   body{font-family:system-ui,sans-serif;color:#e8f0e4;overflow:hidden;display:flex;flex-direction:column;
     background:radial-gradient(120% 80% at 50% 20%,#1f3327 0%,#0c1410 70%);}
   #bar{display:flex;align-items:center;gap:10px;padding:12px 14px;}
-  #bar a{color:#cfe6d8;text-decoration:none;font-size:14px;border:1px solid #3a5a47;border-radius:999px;padding:6px 12px;}
+  #bar a{color:#cfe6d8;text-decoration:none;font-size:14px;border:1px solid #3a5a47;border-radius:999px;padding:9px 14px;}
   #title{font-weight:800;font-size:19px;}
   #turnWrap{margin-left:auto;display:flex;align-items:center;gap:8px;}
   #dot{width:16px;height:16px;border-radius:50%;}
@@ -67,7 +67,7 @@
 </div>
 <div class="ov" id="overlay"><div id="confetti"></div><div style="font-size:54px;">&#128230;</div><h1 id="ovTitle"></h1><p id="ovText"></p>
   <button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
-<script src="gamenight.js?v=12"></script>
+<script src="gamenight.js?v=13"></script>
 <script src="sfx.js?v=5"></script>
 <script>
 const KEY="sb_games";
@@ -97,7 +97,7 @@ function newGame(){phase="over";
     const names=solo?[m.a.name]:[m.a.name,m.b.name];for(const n of names){GS.shut[n]=0;GS.left[n]=0;}
     startRound();},{solo:true});}
 function startRound(){tiles=[1,2,3,4,5,6,7,8,9];sel.clear();dice=[];need=0;phase="roll";
-  setMessage(P[turn].name+" \u2014 roll to open your round.");
+  setMessage(P[turn].name+": roll to open your round.");
   render();}
 function setMessage(t){document.getElementById("msg").textContent=t;}
 function render(){const pc=P[turn];
@@ -115,14 +115,14 @@ function render(){const pc=P[turn];
         if(sel.has(n))sel.delete(n);else sel.add(n);render();});}
     tl.appendChild(b);}
   const cs=ensureCubes();
-  cs[0].el.style.visibility=dice.length>=1?"visible":"hidden";
-  cs[1].el.style.visibility=dice.length>=2?"visible":"hidden";
+  cs[0].el.style.opacity=dice.length>=1?"1":"0";
+  cs[1].el.style.opacity=dice.length>=2?"1":"0";
   if(dice[0])cs[0].show(dice[0]);
   if(dice[1])cs[1].show(dice[1]);
   const cur=[...sel].reduce((a,b)=>a+b,0);
   document.getElementById("sums").textContent=phase==="pick"?("Need "+need+" \u00b7 selected "+(cur||0)):"";
   if(solo){
-    document.getElementById("score").textContent="Lowest leftover wins \u2014 go for zero."+(roundScore.A!==null?(" \u00b7 left "+roundScore.A):"");
+    document.getElementById("score").textContent="Lowest leftover wins. Go for zero."+(roundScore.A!==null?(" \u00b7 left "+roundScore.A):"");
   }else{
     const recs=GN.readGames(KEY);let a=0,b=0;
     for(const r of recs){if(r.winner===P.A.name)a++;else if(r.winner===P.B.name)b++;}
@@ -131,11 +131,11 @@ function render(){const pc=P[turn];
   }
   document.getElementById("rollBtn").disabled=phase!=="roll"||rolling;
   document.getElementById("shutBtn").disabled=!(phase==="pick"&&cur===need);}
-function roll(){S("dice");if(phase!=="roll"||rolling)return;rolling=true;render();
+function roll(){if(phase!=="roll"||rolling)return;S("dice");rolling=true;render();
   const useOne=tiles.length&&Math.max(...tiles)<=6&&[7,8,9].every(t=>!tiles.includes(t));
   const cs=ensureCubes();
-  cs[0].el.style.visibility="visible";
-  cs[1].el.style.visibility=useOne?"hidden":"visible";
+  cs[0].el.style.opacity="1";
+  cs[1].el.style.opacity=useOne?"0":"1";
   const a=1+Math.floor(Math.random()*6),b=useOne?0:1+Math.floor(Math.random()*6);
   let landed=0;const want=useOne?1:2;
   const after=()=>{if(++landed<want)return;rolling=false;
@@ -143,11 +143,11 @@ function roll(){S("dice");if(phase!=="roll"||rolling)return;rolling=true;render(
       if(!GN.friendly)GN.g.addDice(dice);
       if(!anyCombo(tiles,need)){
         const left=tiles.reduce((x,y)=>x+y,0);
-        setMessage("Rolled "+need+" \u2014 no tiles make it. "+P[turn].name+" is stuck with "+left+".");
+        setMessage("Rolled "+need+": no tiles make it. "+P[turn].name+" is stuck with "+left+".");
         phase="over";render();
         setTimeout(()=>endRound(left),1100);return;}
       phase="pick";sel.clear();
-      setMessage("Rolled "+need+" \u2014 tap tiles that add up to it.");
+      setMessage("Rolled "+need+": tap tiles that add up to it.");
       render();};
   cs[0].tumble(a,{duration:620,hop:40},after);
   if(!useOne)setTimeout(()=>cs[1].tumble(b,{duration:620,hop:40},after),90);}
@@ -157,7 +157,7 @@ function shut(){const cur=[...sel].reduce((a,b)=>a+b,0);
   GS.shut[P[turn].name]+=sel.size;sel.clear();dice=[];
   if(!tiles.length){setMessage(P[turn].name+" SHUT THE BOX!");phase="over";render();
     setTimeout(()=>endRound(0),900);return;}
-  phase="roll";setMessage("Tiles down. Roll again \u2014 "+tiles.reduce((a,b)=>a+b,0)+" left on the lid.");
+  phase="roll";setMessage("Tiles down. Roll again: "+tiles.reduce((a,b)=>a+b,0)+" left on the lid.");
   render();}
 function endRound(left){roundScore[turn]=left;GS.left[P[turn].name]+=left;
   if(left===0){finish(turn,true);return;}
@@ -169,7 +169,7 @@ function endRound(left){roundScore[turn]=left;GS.left[P[turn].name]+=left;
 function finish(w,shutout){phase="over";
   if(solo){const left=roundScore.A;
     document.getElementById("ovTitle").textContent=shutout?(P.A.name+" shut the box!"):"Round over";
-    document.getElementById("ovText").textContent=shutout?"Every tile down \u2014 the perfect round.":(P.A.name+" left "+left+" on the lid. Lower is better \u2014 go for zero!");
+    document.getElementById("ovText").textContent=shutout?"Every tile down: the perfect round.":(P.A.name+" left "+left+" on the lid. Lower is better. Go for zero!");
     if(shutout){const box=document.getElementById("confetti"),cols=[P.A.main,P.A.light,"#f4c542","#fff"];
       for(let i=0;i<60;i++){const d=document.createElement("div");d.className="cf";d.style.left=Math.random()*100+"%";
         d.style.background=cols[i%cols.length];d.style.animationDuration=(2.2+Math.random()*1.8)+"s";
@@ -183,7 +183,7 @@ function finish(w,shutout){phase="over";
   GN.recordGame(KEY,rec);
   document.getElementById("ovTitle").textContent=w?(shutout?P[w].name+" shut the box!":P[w].name+" wins!"):"Dead even!";
   document.getElementById("ovText").textContent=shutout?"Every tile down. The perfect round.":
-    (w?(P.A.name+" left "+roundScore.A+" \u00b7 "+P.B.name+" left "+(roundScore.B===null?"\u2014":roundScore.B)):"Both left "+roundScore.A+".");
+    (w?(P.A.name+" left "+roundScore.A+" \u00b7 "+P.B.name+" left "+(roundScore.B===null?"-":roundScore.B)):"Both left "+roundScore.A+".");
   if(w){const box=document.getElementById("confetti"),cols=[P[w].main,P[w].light,"#f4c542","#fff"];
     for(let i=0;i<60;i++){const d=document.createElement("div");d.className="cf";d.style.left=Math.random()*100+"%";
       d.style.background=cols[i%cols.length];d.style.animationDuration=(2.2+Math.random()*1.8)+"s";
@@ -194,13 +194,13 @@ document.getElementById("shutBtn").addEventListener("click",shut);
 document.getElementById("newBtn").addEventListener("click",newGame);
 document.getElementById("ovBtn").addEventListener("click",newGame);
 GN.rulesButton(document.getElementById("foot"),{title:"Shut the Box",sections:[
- {h:"Goal",t:"Flip down tiles 1\u20139 to match your dice. Lowest leftover total wins the round \u2014 shut them ALL and you've Shut the Box."},
- {h:"Your turn",t:"Roll two dice, then flip down any set of OPEN tiles that adds up exactly to the roll. Keep rolling and flipping until no combination of open tiles matches a roll \u2014 then your round ends and your score is the sum of what's still open.",
+ {h:"Goal",t:"Flip down tiles 1\u20139 to match your dice. Lowest leftover total wins the round. Shut them ALL and you've Shut the Box."},
+ {h:"Your turn",t:"Roll two dice, then flip down any set of OPEN tiles that adds up exactly to the roll. Keep rolling and flipping until no combination of open tiles matches a roll. Then your round ends and your score is the sum of what's still open.",
   ex:"Roll 9 with everything open: flip 9, or 8+1, or 7+2, or 6+3, or 5+4, or 6+2+1\u2026 your pick. Flexibility now prevents dead rolls later."},
- {h:"One die",t:"Once tiles 7, 8 and 9 are all down, you may roll a single die \u2014 the button appears. Small targets, small dice."},
- {h:"Strategy",t:"Spend BIG tiles early \u2014 they're the hardest to shed and the most expensive to be stuck with. Keep little tiles around for awkward rolls: a lone open 1 and 2 can absorb a 3.",
+ {h:"One die",t:"Once tiles 7, 8 and 9 are all down, the game rolls just one die for you. Small targets, small dice."},
+ {h:"Strategy",t:"Spend BIG tiles early: they're the hardest to shed and the most expensive to be stuck with. Keep little tiles around for awkward rolls: a lone open 1 and 2 can absorb a 3.",
   ex:"Roll 8: taking the 8 keeps maximum flexibility; taking 5+3 keeps the dangerous 8 alive. Take the 8."},
- {h:"The round",t:"Both players take a full turn from the same fresh box; lower leftover total takes the round. A perfect shut-out ends it in glory \u2014 the stats remember every box you shut."}]});
+ {h:"The round",t:"Both players take a full turn from the same fresh box; lower leftover total takes the round. A perfect shut-out ends it in glory, and the stats remember every box you shut."}]});
 GN.statsButton(document.getElementById("foot"),{title:"Shut the Box",key:KEY,specials:[
  {label:"Boxes shut",of:(r,n)=>r.filter(x=>x.shutBox===n).length},
  {label:"Tiles flipped",of:(r,n)=>r.reduce((a,x)=>a+((x.shut&&x.shut[n])||0),0)},

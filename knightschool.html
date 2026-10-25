@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<title>Knight School &mdash; learn &amp; play chess</title><!-- CLOSET FORK: title -->
+<title>Knight School: learn &amp; play chess</title><!-- CLOSET FORK: title -->
 <style>
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
   body{font-family:system-ui,sans-serif;color:#ece6da;min-height:100vh;display:flex;flex-direction:column;align-items:center;
@@ -107,7 +107,7 @@
 .sq:nth-child(3n)::before{background-position:63% 12%}
 .sq:nth-child(5n)::before{background-position:12% 78%}
 .sq:nth-child(7n)::before{background-position:84% 33%}
-/* square bevel — light from upper-left, matching piece seat shadows */
+/* square bevel - light from upper-left, matching piece seat shadows */
 .fin-satin .sq{box-shadow:inset 1px 1px 0 rgba(255,255,255,.10),inset -1px -1px 0 rgba(0,0,0,.14)}
 .fin-wood  .sq{box-shadow:inset 1.5px 1.5px 1px rgba(255,255,255,.14),inset -1.5px -1.5px 1.5px rgba(0,0,0,.24)}
 /* board depth + frame character */
@@ -164,10 +164,10 @@
   <button class="act" id="lsClose">Close</button></div>
 <!-- CLOSET FORK: learn bar -->
 <div class="ov" id="promoOv"><h1>Promote to&hellip;</h1><div class="pickRow" id="promoRow"></div></div>
-<div class="ov" id="lvOv"><h1>vs Computer</h1><p>The computer plays Black. Pick a level &mdash; 1 learns with you, 10 means business.</p>
+<div class="ov" id="lvOv"><h1>vs Computer</h1><p>The computer plays Black. Pick a level - 1 learns with you, 10 means business.</p>
   <div id="lvGrid"></div>
   <div id="thinkWrap"><div class="thinkHd">Thinking time</div><div id="thinkRow"></div>
-  <p class="thinkNote">How long the computer ponders each move &mdash; <b>at any level</b>. <b>Patient</b> lets it search deeper and play noticeably stronger; <b>Quick</b> is snappier and a touch weaker. Same personality, more (or less) thinking.</p></div>
+  <p class="thinkNote">How long the computer ponders each move - <b>at any level</b>. <b>Patient</b> lets it search deeper and play noticeably stronger; <b>Quick</b> is snappier and a touch weaker. Same personality, more (or less) thinking.</p></div>
   <button class="act ghost" id="lvOff">Two players (off)</button></div>
 <div class="ov" id="thOv"><h1>Board &amp; pieces</h1><div id="thGrid">
   <div class="thLabel">Board material</div><div class="swRow" id="swB"></div>
@@ -176,8 +176,15 @@
 <div class="ov" id="overlay"><div style="font-size:50px;">&#9812;</div><h1 id="ovTitle"></h1><p id="ovText"></p><div id="ovRecap"></div>
   <button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #6e5f50;background:#2a241e;color:#e6ddd0;text-decoration:none;">Back to shelf</a><!-- CLOSET FORK: backlink --></div>
 <script>
+/* Storage guard: every read/write goes through ksLS so a blocked localStorage
+   (private mode, SecurityError) falls back to memory for this visit. */
+var ksLS=(function(){var mem={};
+  return{get:function(k){try{return localStorage.getItem(k);}catch(e){return Object.prototype.hasOwnProperty.call(mem,k)?mem[k]:null;}},
+    set:function(k,v){try{localStorage.setItem(k,v);}catch(e){mem[k]=String(v);}}};})();
+</script>
+<script>
 /* ============================================================
-   CLOSET FORK — GN shim (replaces gamenight.js)
+   CLOSET FORK - GN shim (replaces gamenight.js)
    This block makes chess run standalone for the Closet.
    TO MERGE BACK TO THE SHELF: delete this whole script block
    and restore the original gamenight.js script tag.
@@ -212,17 +219,17 @@ window.GN=(function(){
     return {ov,c,close:()=>ov.remove()};
   }
   G.lastPair=function(){
-    try{const p=JSON.parse(localStorage.getItem("ks_pair")||"null");if(p)return[p.a,p.b];}catch(e){}
+    try{const p=JSON.parse(ksLS.get("ks_pair")||"null");if(p)return[p.a,p.b];}catch(e){}
     return [{name:"You"},{name:"Player 2"}];
   };
   /* GN.matchStart(done) -> done({a,b,first,friendly}) */
   G.matchStart=function(done,opts){
     const pair=G.lastPair(),pa=pair[0],pb=pair[1];
     const m=card(
-      "<h2>Knight School</h2><p>Learn chess from square one \u2014 or jump straight into a game.</p>"+
+      "<h2>Knight School</h2><p>Learn chess from square one - or jump straight into a game.</p>"+
       "<button class='gnBtn' id='gnLearn'>\ud83d\udcd6 Learn</button>"+
       "<button class='gnBtn sec' id='gnVsBot'>Play the Computer</button>"+
-      "<button class='gnBtn sec' id='gnPass'>Pass &amp; Play \u2014 two people</button>"
+      "<button class='gnBtn sec' id='gnPass'>Pass &amp; Play: two people</button>"
     );
     m.c.querySelector("#gnLearn").addEventListener("click",function(){
       m.close();
@@ -247,8 +254,8 @@ window.GN=(function(){
       const start=function(flip){
         const a={name:m.c.querySelector("#gnA").value.trim()||"Player 1"};
         const b={name:m.c.querySelector("#gnB").value.trim()||"Player 2"};
-        try{localStorage.setItem("ks_pair",JSON.stringify({a:a,b:b}));}catch(e){}
-        try{localStorage.setItem("ks_bot_level","0");}catch(e){}
+        try{ksLS.set("ks_pair",JSON.stringify({a:a,b:b}));}catch(e){}
+        try{ksLS.set("ks_bot_level","0");}catch(e){}
         const first=flip?(Math.random()<0.5?a:b):a;
         m.close();done({a:a,b:b,first:first,friendly:false});
       };
@@ -257,8 +264,8 @@ window.GN=(function(){
     });
   };
   G.recordGame=function(key,rec){
-    try{const a=JSON.parse(localStorage.getItem(key)||"[]");a.push(rec);
-      localStorage.setItem(key,JSON.stringify(a));}catch(e){}
+    try{const a=JSON.parse(ksLS.get(key)||"[]");a.push(rec);
+      ksLS.set(key,JSON.stringify(a));}catch(e){}
   };
   G.confirmEnd=function(msg,onEnd){
     const old=document.getElementById("gnConf");if(old)old.remove();
@@ -284,7 +291,7 @@ window.GN=(function(){
   G.statsButton=function(el,cfg){
     const b=document.createElement("button");b.className="act";b.textContent="Stats";
     b.addEventListener("click",function(){
-      let recs=[];try{recs=JSON.parse(localStorage.getItem(cfg.key)||"[]");}catch(e){}
+      let recs=[];try{recs=JSON.parse(ksLS.get(cfg.key)||"[]");}catch(e){}
       const seen={};const names=[];
       recs.forEach(function(r){[r.winner,r.loser].forEach(function(n){
         if(n&&n!=="(draw)"&&!seen[n]){seen[n]=1;names.push(n);}});});
@@ -310,13 +317,13 @@ window.GN=(function(){
 
 <script>
 /* CLOSET FORK: sfx.js inlined (v=5), tag strings neutralized. To merge back: delete this block, restore the original sfx tag. */
-/* sfx.js — Game Shelf sound effects. Pure Web Audio synthesis: no files, no copyright.
+/* sfx.js - Game Shelf sound effects. Pure Web Audio synthesis: no files, no copyright.
    Usage: [script src=sfx.js] after gamenight.js, then GNS.play("pop") etc.
    GNS.button(container) adds a mute toggle (persisted). All sounds tunable below. */
 (function(){
   "use strict";
   var ctx=null, muted=false;
-  try{muted=localStorage.getItem("gn_muted")==="1";}catch(e){}
+  try{muted=ksLS.get("gn_muted")==="1";}catch(e){}
   function ac(){if(!ctx){var AC=window.AudioContext||window.webkitAudioContext;if(!AC)return null;ctx=new AC();}
     if(ctx.state==="suspended")ctx.resume();return ctx;}
   function env(g,t0,a,peak,d){g.gain.setValueAtTime(0,t0);g.gain.linearRampToValueAtTime(peak,t0+a);
@@ -376,7 +383,7 @@ window.GN=(function(){
     play:function(name,delayMs,opt){if(muted)return;var c=ac();if(!c||!S[name])return;
       S[name](c.currentTime+((delayMs||0)/1000),opt);},
     muted:function(){return muted;},
-    setMuted:function(m){muted=!!m;try{localStorage.setItem("gn_muted",muted?"1":"0");}catch(e){}},
+    setMuted:function(m){muted=!!m;try{ksLS.set("gn_muted",muted?"1":"0");}catch(e){}},
     button:function(container){var b=document.createElement("button");
       b.className="act ghost";
       function paint(){b.textContent=muted?"\uD83D\uDD07 Sound":"\uD83D\uDD0A Sound";}
@@ -393,7 +400,7 @@ window.GN=(function(){
 
 </script>
 <script>
-/* Chess engine core — 0x88 board. White pawns move toward rank index 0. */
+/* Chess engine core - 0x88 board. White pawns move toward rank index 0. */
 </script>
 <script src="chess-engine.js"></script>
 <script>
@@ -643,7 +650,7 @@ function pieceSVG(p){const w=CH.isW(p);
   let body="";
   switch(p.toLowerCase()){
 
-  case "p": /* PAWN — ball head, ring collar, waisted stem, flared skirt */
+  case "p": /* PAWN - ball head, ring collar, waisted stem, flared skirt */
     body=
       '<path d="M39 71 Q40 58 45 51 L55 51 Q60 58 61 71 Z" '+F+'/>'+
       '<path d="M41 51 Q37 49 37 45 Q37 40 44 39 L56 39 Q63 40 63 45 Q63 49 59 51 Z" '+F+'/>'+
@@ -651,7 +658,7 @@ function pieceSVG(p){const w=CH.isW(p);
       gleam(45,22,4.4,3,-24);
     break;
 
-  case "r": /* ROOK — crenellated battlement, cap ring, tapered tower, masonry */
+  case "r": /* ROOK - crenellated battlement, cap ring, tapered tower, masonry */
     body=
       '<path d="M36 34 L33 71 L67 71 L64 34 Z" '+F+'/>'+
       '<path d="M31 28 L69 28 L67 34 L33 34 Z" '+F+'/>'+
@@ -661,7 +668,7 @@ function pieceSVG(p){const w=CH.isW(p);
       gleam(42,20,3.4,4.6,0);
     break;
 
-  case "n": /* KNIGHT — arched neck, scalloped mane, ears, eye, nostril, jaw */
+  case "n": /* KNIGHT - arched neck, scalloped mane, ears, eye, nostril, jaw */
     body=
       '<path d="M37 71 Q33 58 37 47 Q28 45 25.5 37.5 Q24.5 32.5 29 31.5 L31 31 Q34 24 40 19 Q45 14.5 52 13 L51 8.5 Q55.5 9.5 57.5 13 L60 10 Q63.5 11.5 64 16 Q71 22 73 33 Q75.5 52 68 71 Z" '+F+'/>'+
       '<path d="M63 22 Q68 27 68 34 Q71 41 67.5 48 Q70 56 65.5 64" '+D+' opacity=".6"/>'+ /* mane scallops */
@@ -672,7 +679,7 @@ function pieceSVG(p){const w=CH.isW(p);
       gleam(56,21,4.2,2.8,-30);
     break;
 
-  case "b": /* BISHOP — ball finial, mitre with diagonal cut, double collar, robe */
+  case "b": /* BISHOP - ball finial, mitre with diagonal cut, double collar, robe */
     body=
       '<path d="M40 71 Q40 63 44 60 L56 60 Q60 63 60 71 Z" '+F+'/>'+
       '<path d="M41 54 L59 54 L61 60 L39 60 Z" '+F+'/>'+
@@ -682,7 +689,7 @@ function pieceSVG(p){const w=CH.isW(p);
       gleam(45,27,3.4,5.4,24);
     break;
 
-  case "q": /* QUEEN v2 — coronet with pearls on an orb head, choker, full gown */
+  case "q": /* QUEEN v2 - coronet with pearls on an orb head, choker, full gown */
     body=
       '<path d="M36 71 Q38 54 44 48 L56 48 Q62 54 64 71 Z" '+F+'/>'+
       '<path d="M42 48 Q39 46 39 43 L61 43 Q61 46 58 48 Z" '+F+'/>'+
@@ -693,7 +700,7 @@ function pieceSVG(p){const w=CH.isW(p);
       gleam(45,36,3.2,3.6,20);
     break;
 
-  case "k": /* KING — cross, arched crown, orb collar, broad robe */
+  case "k": /* KING - cross, arched crown, orb collar, broad robe */
     body=
       '<path d="M37 71 Q38 54 44 47 L56 47 Q62 54 63 71 Z" '+F+'/>'+
       '<path d="M42 47 Q39 45 39 42 L61 42 Q61 45 58 47 Z" '+F+'/>'+
@@ -717,33 +724,33 @@ const PIECE_THEMES=[
  {id:"maple",pw1:"#ecd2a0",pw2:"#c8a468",pws:"#6a4a22",pb1:"#7a5230",pb2:"#46280f",pbs:"#1e0f04"},
  {id:"frost",pw1:"#f2f8fc",pw2:"#c2d4e2",pws:"#48637a",pb1:"#3c628c",pb2:"#1d3a5c",pbs:"#0c1a2c"},
  {id:"rose",pw1:"#f4dcd8",pw2:"#d8aaa2",pws:"#7a4a42",pb1:"#5c5662",pb2:"#332f3c",pbs:"#16141c"}];
-let themeB=localStorage.getItem("ks_theme_b")||"walnut";
-let themeP=localStorage.getItem("ks_theme_p")||"ivory";
+let themeB=ksLS.get("ks_theme_b")||"walnut";
+let themeP=ksLS.get("ks_theme_p")||"ivory";
 /* ===== CLOSET FORK: board finishes ===== */
 const FINISHES=[{id:"clean",label:"Clean"},{id:"satin",label:"Satin"},{id:"wood",label:"Woodshop"}];
-let finishId=localStorage.getItem("ks_finish")||"satin";
+let finishId=ksLS.get("ks_finish")||"satin";
 function applyFinish(){const fr=document.getElementById("frame");
   fr.classList.remove("fin-satin","fin-wood");
   if(finishId==="satin")fr.classList.add("fin-satin");
   if(finishId==="wood")fr.classList.add("fin-wood");
-  localStorage.setItem("ks_finish",finishId);}
+  ksLS.set("ks_finish",finishId);}
 function applyTheme(){applyFinish();const b=BOARD_THEMES.find(t=>t.id===themeB)||BOARD_THEMES[0];
   const p=PIECE_THEMES.find(t=>t.id===themeP)||PIECE_THEMES[0];
   const r=document.documentElement.style;
   r.setProperty("--lt",b.lt);r.setProperty("--dk",b.dk);r.setProperty("--fr1",b.fr1);r.setProperty("--fr2",b.fr2);
   r.setProperty("--bg1",b.bg1);r.setProperty("--bg2",b.bg2);
   for(const k of["pw1","pw2","pws","pb1","pb2","pbs"])r.setProperty("--"+k,p[k]);
-  localStorage.setItem("ks_theme_b",themeB);localStorage.setItem("ks_theme_p",themeP);
+  ksLS.set("ks_theme_b",themeB);ksLS.set("ks_theme_p",themeP);
   if(st)render();}
 /* ---------- state ---------- */
 let P={w:{name:"White"},b:{name:"Black"}};
 let st=null,sel=-1,legalNow=[],lastMv=null,phase="over",GS=null;
-let botLevel=+(localStorage.getItem("ks_bot_level")||0),botBusy=false,botKey="";
-let thinkPref=localStorage.getItem("ks_think")||"normal";
+let botLevel=+(ksLS.get("ks_bot_level")||0),botBusy=false,botKey="";
+let thinkPref=ksLS.get("ks_think")||"normal";
 const THINK={quick:{msMult:0.45,depthBonus:0,label:"Quick"},normal:{msMult:1,depthBonus:0,label:"Normal"},patient:{msMult:2.2,depthBonus:1,label:"Patient"}};
 function thinkOpts(){return THINK[thinkPref]||THINK.normal;}
 let coach=false,hintShown=null,pendingPromo=null,lastHintMove=null;
-const TVMODE=localStorage.getItem("shelf_tv")==="1";
+const TVMODE=ksLS.get("shelf_tv")==="1";
 const boardEl=document.getElementById("board");
 const RM=window.matchMedia&&window.matchMedia("(prefers-reduced-motion:reduce)").matches;
 let flyLayer=null,noSlide=false,drag=null,suppressClick=false;
@@ -928,7 +935,7 @@ function commit(m,silentCoach){
       const best=a[0], drop=best.score-mine.score, walksIntoMate=mine.score<=-90000;
       if(walksIntoMate||drop>180){
         const why=walksIntoMate?"that move lets your opponent force checkmate":"that move may lose material";
-        GN.confirmEnd("\u{1F393} Coach: "+why+" \u2014 a stronger move is "+CH.alg(best.m.from)+"\u2192"+CH.alg(best.m.to)+" ("+describe(best.m,st)+"). Play your move anyway?",
+        GN.confirmEnd("\u{1F393} Coach: "+why+" - a stronger move is "+CH.alg(best.m.from)+"\u2192"+CH.alg(best.m.to)+" ("+describe(best.m,st)+"). Play your move anyway?",
           ()=>doCommit(m));
         const c=document.getElementById("gnConf");
         if(c){c.querySelector("#gnKeep").textContent="Take another look";
@@ -963,10 +970,10 @@ function recapHTML(){
   for(let i=0;i<t.length;i++){const d=t[i].evalW-prev;prev=t[i].evalW;sw.push({i,e:t[i],delta:d,mag:Math.abs(d)});}
   const RECAP_MIN=60; // centipawns; ignore swings smaller than this
   const top=sw.filter(x=>x.mag>=RECAP_MIN).sort((a,b)=>b.mag-a.mag).slice(0,3).sort((a,b)=>a.i-b.i);
-  if(!top.length)return '<div style="font-weight:700;margin-bottom:4px;">A close one</div>An even game \u2014 no single move ran away with it.';
+  if(!top.length)return '<div style="font-weight:700;margin-bottom:4px;">A close one</div>An even game - no single move ran away with it.';
   const rows=top.map(function(x){
     const e=x.e,toward=x.delta>0?"White":"Black",pawns=(x.mag/100).toFixed(1);
-    return '<div style="margin:4px 0;"><b>Move '+e.n+' \u00b7 '+escH(e.name)+':</b> '+CH.alg(e.from)+'\u2192'+CH.alg(e.to)+' \u2014 '+escH(e.desc)+'. Swung ~'+pawns+' toward '+toward+'.</div>';
+    return '<div style="margin:4px 0;"><b>Move '+e.n+' \u00b7 '+escH(e.name)+':</b> '+CH.alg(e.from)+'\u2192'+CH.alg(e.to)+' - '+escH(e.desc)+'. Swung ~'+pawns+' toward '+toward+'.</div>';
   }).join("");
   return '<div style="font-weight:700;margin-bottom:6px;">3 moves that decided it</div>'+rows;
 }
@@ -975,7 +982,7 @@ function finish(stat){phase="over";
   if(stat==="mate"){winner=st.turn==="w"?"b":"w";
     title=P[winner].name+" wins!";text="Checkmate in "+GS.moves+" moves.";S("fanfare");}
   else{title="Drawn game.";
-    text=stat==="stale"?"Stalemate \u2014 no legal moves, no check.":
+    text=stat==="stale"?"Stalemate - no legal moves, no check.":
       stat==="rep"?"Threefold repetition.":stat==="fifty"?"Fifty quiet moves.":"Not enough material to mate.";
     S("womp");}
   const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
@@ -987,7 +994,7 @@ function finish(stat){phase="over";
   const rh=recapHTML(),rEl=document.getElementById("ovRecap");
   rEl.innerHTML=rh;rEl.classList.toggle("show",!!rh);
   document.getElementById("overlay").classList.add("show");}
-/* ===== CLOSET FORK: LEARN — lesson engine + Tier 1 content =====
+/* ===== CLOSET FORK: LEARN - lesson engine + Tier 1 content =====
    Lessons run on the real board. Steps show a sentence, set a position
    (FEN, kings always present), and either wait for a specific move
    (task) or let the learner fiddle (sandbox) before tapping Next.
@@ -996,115 +1003,115 @@ const LEARN={active:false,target:-1,lesson:null,step:0,stash:null,solved:false};
 const lsAlg=a=>(8-(+a[1]))*16+(a.charCodeAt(0)-97); /* local: algToSq lives in the engine closure */
 
 const LESSONS=[
- {id:"pawn",tier:1,title:"The Pawn — little soldier",steps:[
+ {id:"pawn",tier:1,title:"The Pawn: little soldier",steps:[
   {say:"This is a pawn. Pawns walk straight ahead, one square at a time. Walk this one forward to the star.",
    fen:"k7/8/8/8/8/8/4P3/7K w - - 0 1",task:{from:"e2",to:"e3"},target:"e3",
    oops:"Straight ahead, just one square."},
   {say:"A pawn that hasn't moved yet gets one big first step: two squares. Take the big step.",
    fen:"k7/8/8/8/8/8/3P4/7K w - - 0 1",task:{from:"d2",to:"d4"},target:"d4",
-   oops:"Two squares forward \u2014 only allowed on a pawn's very first move."},
+   oops:"Two squares forward - only allowed on a pawn's very first move."},
   {say:"Pawns capture differently than they walk: one square diagonally forward. Take the black pawn!",
    fen:"k7/8/8/3p4/4P3/8/8/7K w - - 0 1",task:{from:"e4",to:"d5"},target:"d5",
    oops:"Diagonal! Pawns only capture on the slant."},
-  {say:"But straight ahead? Pawns can never capture forward. Tap your pawn \u2014 see how it has no moves at all? It's stuck. Then tap Next.",
+  {say:"But straight ahead? Pawns can never capture forward. Tap your pawn - see how it has no moves at all? It's stuck. Then tap Next.",
    fen:"k7/8/8/4p3/4P3/8/8/7K w - - 0 1",sandbox:true},
-  {say:"Here's the pawn's secret: reach the far side of the board and it gets promoted \u2014 it can turn into a queen! March it to the last square and pick.",
+  {say:"Here's the pawn's secret: reach the far side of the board and it gets promoted - it can turn into a queen! March it to the last square and pick.",
    fen:"8/4P3/7k/8/8/8/8/7K w - - 0 1",task:{from:"e7",to:"e8"},target:"e8",
    oops:"All the way to the last row."},
   {say:"Pawns are small, but every single one is a future queen. That's why good players guard them.",done:true}
  ]},
- {id:"knight",tier:1,title:"The Knight — the jumper",steps:[
+ {id:"knight",tier:1,title:"The Knight: the jumper",steps:[
   {say:"The knight moves in an L shape: two squares one way, then one square sideways. Hop to the star.",
    fen:"k7/8/8/8/8/8/8/K5N1 w - - 0 1",task:{from:"g1",to:"f3"},target:"f3",
-   oops:"Two up, one over \u2014 an L."},
-  {say:"Knights are the only piece that can JUMP over others. This knight is completely fenced in \u2014 and it doesn't care. Jump out!",
+   oops:"Two up, one over - an L."},
+  {say:"Knights are the only piece that can JUMP over others. This knight is completely fenced in - and it doesn't care. Jump out!",
    fen:"k7/8/8/2PPP3/2PNP3/2PPP3/8/K7 w - - 0 1",task:{from:"d4"},
-   oops:"Use the knight \u2014 walls mean nothing to it."},
+   oops:"Use the knight - walls mean nothing to it."},
   {say:"From the middle of the board a knight has eight landing spots. Find the L that lands on the star.",
    fen:"k7/8/8/8/3N4/8/8/K7 w - - 0 1",task:{from:"d4",to:"b5"},target:"b5",
    oops:"Two squares left, one square up."},
-  {say:"Knights love crowded boards, and they're famous for attacking two things at once \u2014 the fork. You'll learn forks in a later tier.",done:true}
+  {say:"Knights love crowded boards, and they're famous for attacking two things at once - the fork. You'll learn forks in a later tier.",done:true}
  ]},
- {id:"bishop",tier:1,title:"The Bishop — diagonal runner",steps:[
-  {say:"Bishops slide along diagonals \u2014 as far as they like. Slide to the star.",
+ {id:"bishop",tier:1,title:"The Bishop: diagonal runner",steps:[
+  {say:"Bishops slide along diagonals - as far as they like. Slide to the star.",
    fen:"k7/8/8/8/8/8/8/K1B5 w - - 0 1",task:{from:"c1",to:"g5"},target:"g5",
    oops:"Stay on the slanted road."},
-  {say:"A bishop keeps its square color forever. This one lives on light squares \u2014 it can never, ever touch a dark one. Slide it anywhere and check the color it lands on.",
+  {say:"A bishop keeps its square color forever. This one lives on light squares - it can never, ever touch a dark one. Slide it anywhere and check the color it lands on.",
    fen:"k7/8/8/8/8/8/8/K4B2 w - - 0 1",task:{from:"f1"},
-   oops:"Move the bishop \u2014 any diagonal you like."},
-  {say:"Bishops can't jump. A piece in the road ends the trip \u2014 unless it's an enemy you can capture. Take the pawn blocking the diagonal.",
+   oops:"Move the bishop - any diagonal you like."},
+  {say:"Bishops can't jump. A piece in the road ends the trip - unless it's an enemy you can capture. Take the pawn blocking the diagonal.",
    fen:"k7/8/8/8/5p2/8/8/K1B5 w - - 0 1",task:{from:"c1",to:"f4"},target:"f4",
    oops:"Slide up the diagonal until you hit the pawn."},
-  {say:"Two bishops together cover both colors \u2014 one of the great teams in chess.",done:true}
+  {say:"Two bishops together cover both colors - one of the great teams in chess.",done:true}
  ]},
- {id:"rook",tier:1,title:"The Rook — the tower",steps:[
-  {say:"Rooks drive in straight lines \u2014 up, down, or across, any distance. Drive to the star.",
+ {id:"rook",tier:1,title:"The Rook: the tower",steps:[
+  {say:"Rooks drive in straight lines - up, down, or across, any distance. Drive to the star.",
    fen:"7k/8/8/8/8/8/8/R6K w - - 0 1",task:{from:"a1",to:"a6"},target:"a6",
-   oops:"Straight lines only \u2014 no slants."},
+   oops:"Straight lines only - no slants."},
   {say:"On an open road a rook is fast and dangerous. Take the pawn straight across.",
    fen:"7k/8/8/8/R4p2/8/8/7K w - - 0 1",task:{from:"a4",to:"f4"},target:"f4",
    oops:"Drive straight across the rank."},
-  {say:"Your rook's road is blocked by its own pawn \u2014 rooks hate that. Sidestep onto the open file next door.",
+  {say:"Your rook's road is blocked by its own pawn - rooks hate that. Sidestep onto the open file next door.",
    fen:"7k/8/8/8/8/8/P7/R6K w - - 0 1",task:{from:"a1",to:"b1"},target:"b1",
    oops:"One step sideways, onto the open road."},
-  {say:"Rooks start in the corners half-asleep. Open files wake them up \u2014 and in the endgame they run the show.",done:true}
+  {say:"Rooks start in the corners half-asleep. Open files wake them up - and in the endgame they run the show.",done:true}
  ]},
- {id:"queen",tier:1,title:"The Queen — the everything piece",steps:[
-  {say:"The queen moves like a rook AND a bishop \u2014 straight or diagonal, any distance. Glide straight to the star.",
+ {id:"queen",tier:1,title:"The Queen: the everything piece",steps:[
+  {say:"The queen moves like a rook AND a bishop - straight or diagonal, any distance. Glide straight to the star.",
    fen:"7k/8/8/8/8/8/8/3Q3K w - - 0 1",task:{from:"d1",to:"d5"},target:"d5",
    oops:"Straight up the board."},
   {say:"Now the bishop side of her: take the far pawn on the diagonal.",
    fen:"k7/8/8/4Q3/8/8/7p/K7 w - - 0 1",task:{from:"e5",to:"h2"},target:"h2",
    oops:"Down the slant, all the way."},
-  {say:"Powerful \u2014 but precious. Lose your queen early and the whole game gets hard. Good players don't rush her out first. Try a few moves, then tap Next.",
+  {say:"Powerful - but precious. Lose your queen early and the whole game gets hard. Good players don't rush her out first. Try a few moves, then tap Next.",
    fen:"7k/8/8/8/8/8/8/3Q3K w - - 0 1",sandbox:true},
   {say:"Rook plus bishop in one piece. Treat her well.",done:true}
  ]},
- {id:"king",tier:1,title:"The King — the whole game",steps:[
-  {say:"The king steps one square in any direction \u2014 slow, but he can go anywhere. Step to the star.",
+ {id:"king",tier:1,title:"The King: the whole game",steps:[
+  {say:"The king steps one square in any direction - slow, but he can go anywhere. Step to the star.",
    fen:"k7/8/8/8/8/8/8/4K3 w - - 0 1",task:{from:"e1",to:"e2"},target:"e2",
    oops:"Just one small step."},
-  {say:"That pawn is attacking your king \u2014 that's called check! The king can fight back when it's safe. Capture it.",
+  {say:"That pawn is attacking your king - that's called check! The king can fight back when it's safe. Capture it.",
    fen:"k7/8/8/8/8/3p4/4K3/8 w - - 0 1",task:{from:"e2",to:"d3"},target:"d3",
-   oops:"Take the pawn \u2014 one diagonal step."},
-  {say:"The one rule above all: a king may never step into danger. Tap your king and look \u2014 the two squares near the black rook aren't offered. The game protects him automatically. Step anywhere safe.",
+   oops:"Take the pawn - one diagonal step."},
+  {say:"The one rule above all: a king may never step into danger. Tap your king and look - the two squares near the black rook aren't offered. The game protects him automatically. Step anywhere safe.",
    fen:"k4r2/8/8/8/8/8/8/4K3 w - - 0 1",task:{from:"e1"},
    oops:"Pick any of the safe squares the dots show."},
-  {say:"Checkmate means the king is trapped with nowhere safe to go \u2014 that ends the game. Everything in chess is really about him.",done:true}
+  {say:"Checkmate means the king is trapped with nowhere safe to go - that ends the game. Everything in chess is really about him.",done:true}
  ]},
- {id:"castle",tier:2,title:"Castling \u2014 the king's dodge",steps:[
+ {id:"castle",tier:2,title:"Castling: the king's dodge",steps:[
   {say:"Sometimes the king and a rook move together in one turn. It's called castling, and it tucks your king somewhere safe. You need a clear path between them. Tap the king.",
    fen:"4k3/8/8/8/8/8/8/4K2R w K - 0 1",sandbox:true},
-  {say:"To castle, move the KING two squares toward the rook. Do it \u2014 the rook jumps to the other side all by itself.",
+  {say:"To castle, move the KING two squares toward the rook. Do it - the rook jumps to the other side all by itself.",
    fen:"4k3/8/8/8/8/8/8/4K2R w K - 0 1",task:{from:"e1",to:"g1"},target:"g1",
    oops:"Move the king two squares toward the rook, to g1."},
   {say:"See how the rook hopped over? King safe in the corner, rook ready in the middle. That's the whole trick.",
    fen:"4k3/8/8/8/8/8/8/5RK1 w - - 0 1",sandbox:true},
   {say:"One rule: you can't castle out of, through, or into check, and neither piece may have moved yet. But when it's legal, it's one of the best moves in chess.",done:true}
  ]},
- {id:"enpass",tier:2,title:"En passant \u2014 the sneaky capture",steps:[
+ {id:"enpass",tier:2,title:"En passant: the sneaky capture",steps:[
   {say:"This one surprises everyone. A black pawn just took its big two-square step, landing right beside your pawn. For this one turn only, you can capture it as if it had moved just one square.",
    fen:"7k/8/8/3pP3/8/8/8/7K w - d6 0 1",task:{from:"e5",to:"d6"},target:"d6",
-   oops:"Capture diagonally forward to d6 \u2014 the empty square the black pawn skipped over."},
-  {say:"Your pawn slides diagonally into the empty square and the black pawn vanishes. In passing \u2014 that's what \u201cen passant\u201d means.",
+   oops:"Capture diagonally forward to d6 - the empty square the black pawn skipped over."},
+  {say:"Your pawn slides diagonally into the empty square and the black pawn vanishes. In passing - that's what \u201cen passant\u201d means.",
    fen:"7k/8/3P4/8/8/8/8/7K w - - 0 1",sandbox:true},
   {say:"The catch: you can only do it the very next turn. Wait one move and the chance is gone forever.",done:true}
  ]},
- {id:"promo",tier:2,title:"Promotion \u2014 pick your prize",steps:[
+ {id:"promo",tier:2,title:"Promotion: pick your prize",steps:[
   {say:"When a pawn reaches the far row it must turn into a bigger piece. Almost always you pick the queen. March this pawn home.",
    fen:"8/3P3k/8/8/8/8/8/7K w - - 0 1",task:{from:"d7",to:"d8"},target:"d8",
    oops:"One square forward to d8, the last row."},
-  {say:"You usually pick a queen because it's the strongest. But once in a while a knight is smarter \u2014 a knight can jump and fork in ways a queen can't. Just something to remember.",
+  {say:"You usually pick a queen because it's the strongest. But once in a while a knight is smarter - a knight can jump and fork in ways a queen can't. Just something to remember.",
    fen:"3Q3k/8/8/8/8/8/8/7K w - - 0 1",sandbox:true},
   {say:"Every pawn is a queen waiting to happen. Now you know how to cash one in.",done:true}
  ]},
- {id:"stale",tier:2,title:"Stalemate \u2014 the sneaky draw",steps:[
-  {say:"Careful with this one. The black king isn't in check \u2014 but wherever it tries to go, it would walk into danger, so it has NO legal moves. That's stalemate, and it's a DRAW, not a win.",
+ {id:"stale",tier:2,title:"Stalemate: the sneaky draw",steps:[
+  {say:"Careful with this one. The black king isn't in check - but wherever it tries to go, it would walk into danger, so it has NO legal moves. That's stalemate, and it's a DRAW, not a win.",
    fen:"7k/5Q2/6K1/8/8/8/8/8 b - - 0 1",sandbox:true},
   {say:"When you're winning big, watch out: trapping the enemy king with no safe square but no check throws away the whole game. Leave the king one square to breathe until you're ready for checkmate.",done:true}
  ]},
  {id:"values",tier:4,title:"What pieces are worth",steps:[
-  {say:"Pieces have rough values. A pawn is 1. A knight or bishop is about 3. A rook is 5. The queen is a mighty 9. The king is priceless \u2014 lose it and the game's over.",
+  {say:"Pieces have rough values. A pawn is 1. A knight or bishop is about 3. A rook is 5. The queen is a mighty 9. The king is priceless - lose it and the game's over.",
    fen:"4k3/8/8/8/8/8/8/4K3 w - - 0 1",sandbox:true},
   {say:"Here you can grab a whole rook for free with your bishop. Rook is worth 5, so take it!",
    fen:"7k/8/8/8/8/2r5/8/B6K w - - 0 1",task:{from:"a1",to:"c3"},target:"c3",
@@ -1114,21 +1121,21 @@ const LESSONS=[
  {id:"trades",tier:4,title:"Fair trades, silly trades",steps:[
   {say:"A trade is swapping a piece for one of the enemy's. Trading your bishop (3) for their queen (9)? Wonderful. Take the queen.",
    fen:"7k/8/8/5q2/8/3B4/8/7K w - - 0 1",task:{from:"d3",to:"f5"},target:"f5",
-   oops:"Bishop takes queen on f5 \u2014 follow the diagonal."},
+   oops:"Bishop takes queen on f5 - follow the diagonal."},
   {say:"That's a great trade: you gave 3, you got 9. Before every capture, ask: what do I give, what do I get?",
    fen:"7k/8/8/5B2/8/8/8/7K w - - 0 1",sandbox:true},
   {say:"Good players trade when it wins material or when they're ahead and want fewer pieces on the board.",done:true}
  ]},
  {id:"hang",tier:4,title:"Don't hang your pieces",steps:[
-  {say:"A piece is \u201changing\u201d when the enemy can take it for free. Your knight is about to be grabbed by that pawn \u2014 move it somewhere safe.",
+  {say:"A piece is \u201changing\u201d when the enemy can take it for free. Your knight is about to be grabbed by that pawn - move it somewhere safe.",
    fen:"7k/8/8/8/3p4/8/4N3/7K w - - 0 1",task:{from:"e2",to:"g3"},target:"g3",
-   oops:"Hop the knight to safety \u2014 g3 works. Anywhere the pawn can't reach."},
+   oops:"Hop the knight to safety - g3 works. Anywhere the pawn can't reach."},
   {say:"Before you let go of a piece, glance around: can anything capture it for free next turn? That one habit wins more games than any fancy trick.",done:true}
  ]},
  {id:"develop",tier:4,title:"Wake up your pieces",steps:[
   {say:"At the start, your pieces are asleep on the back row. \u201cDeveloping\u201d means bringing them out. Jump a knight toward the middle.",
    fen:"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",task:{from:"g1",to:"f3"},target:"f3",
-   oops:"Knight from g1 to f3 \u2014 out toward the center."},
+   oops:"Knight from g1 to f3 - out toward the center."},
   {say:"Knights and bishops out early, castle your king to safety, and don't move the same piece twice for no reason. Do that and you'll already be playing like a club player.",done:true}
  ]},
  {id:"threats",tier:6,title:"Seeing threats",steps:[
@@ -1137,16 +1144,16 @@ const LESSONS=[
    oops:"Slide the bishop off the c-file so the rook can't reach it. e3 is safe."},
   {say:"Half of chess is just noticing threats before they land. Every turn, look at what your opponent wants. Then stop it.",done:true}
  ]},
- {id:"fork",tier:5,title:"The fork \u2014 two at once",steps:[
+ {id:"fork",tier:5,title:"The fork: two at once",steps:[
   {say:"A fork attacks two pieces on the same move. Knights are the champion forkers. Jump your knight to hit the king AND the rook at the same time.",
    fen:"r6k/8/8/4N3/8/8/8/7K w - - 0 1",task:{from:"e5",to:"g6"},target:"g6",
-   oops:"Find the square that checks the king and eyes the rook too \u2014 g6."},
+   oops:"Find the square that checks the king and eyes the rook too - g6."},
   {say:"The king must escape check, so next turn you grab the rook for free. That's a fork: make one threat they can't answer without losing the other.",
    fen:"r6k/8/6N1/8/8/8/8/7K b - - 0 1",sandbox:true},
-  {say:"Whenever your knight can hit two things at once, look hard \u2014 forks win pieces out of nowhere.",done:true}
+  {say:"Whenever your knight can hit two things at once, look hard - forks win pieces out of nowhere.",done:true}
  ]},
- {id:"pin",tier:5,title:"The pin \u2014 stuck in place",steps:[
-  {say:"A pin freezes a piece because moving it would expose something worse behind it. Aim your bishop down the diagonal at that knight \u2014 the king is right behind it.",
+ {id:"pin",tier:5,title:"The pin: stuck in place",steps:[
+  {say:"A pin freezes a piece because moving it would expose something worse behind it. Aim your bishop down the diagonal at that knight - the king is right behind it.",
    fen:"6k1/5n2/8/8/2B5/8/8/7K w - - 0 1",task:{from:"c4",to:"e6"},target:"e6",
    oops:"Line the bishop up on the knight with the king behind it. e6 does it."},
   {say:"Now the knight is pinned: if it moves, the king is in check, which isn't allowed. So it's stuck, and you can pile on and win it.",
@@ -1156,59 +1163,59 @@ const LESSONS=[
  {id:"counting",tier:6,title:"Counting attackers",steps:[
   {say:"Before grabbing a piece, count. How many of your pieces attack that square, and how many of theirs defend it? Your rook and bishop both hit this pawn, and only one piece guards it. Take it with the rook.",
    fen:"7k/8/8/8/8/2p5/2R5/B6K w - - 0 1",task:{from:"c2",to:"c3"},target:"c3",
-   oops:"Rook takes the pawn on c3 \u2014 you have two attackers to their one defender."},
+   oops:"Rook takes the pawn on c3 - you have two attackers to their one defender."},
   {say:"Two attackers beat one defender, so the capture wins. Counting attackers and defenders keeps you from throwing pieces away. Do it every time.",done:true}
  ]},
  {id:"mateqk",tier:7,title:"Checkmate with a queen",steps:[
   {say:"Time to finish games. A lone king can be checkmated by a queen with your king's help. Bring the queen in close to trap the black king on the edge. Deliver mate.",
    fen:"7k/5Q2/6K1/8/8/8/8/8 w - - 0 1",task:{from:"f7",to:"g7"},target:"g7",
-   oops:"Queen to g7 \u2014 right next to the enemy king, guarded by your own king. That's mate."},
+   oops:"Queen to g7 - right next to the enemy king, guarded by your own king. That's mate."},
   {say:"Checkmate! The queen gives check, the black king has no escape, and your king guards the queen so it can't be taken. Queen plus king is the easiest mate to learn.",done:true}
  ]},
  {id:"materk",tier:7,title:"Checkmate with a rook",steps:[
   {say:"A rook can mate too, but it needs your king marching up to help box the enemy in. The black king is trapped on the back row. Slide the rook across to give check with no escape.",
    fen:"6k1/8/6K1/8/8/8/8/R7 w - - 0 1",task:{from:"a1",to:"a8"},target:"a8",
-   oops:"Rook to a8 delivers check along the back row \u2014 and your king covers the escape squares."},
-  {say:"Mate! The rook checks along the edge and your king takes away the squares in front. The rook mate is a must-know \u2014 it turns an extra rook into a win every time.",done:true}
+   oops:"Rook to a8 delivers check along the back row - and your king covers the escape squares."},
+  {say:"Mate! The rook checks along the edge and your king takes away the squares in front. The rook mate is a must-know - it turns an extra rook into a win every time.",done:true}
  ]},
  {id:"queenrace",tier:7,title:"Racing a pawn home",steps:[
   {say:"An extra pawn wins games if you can promote it. Escort this one to the last row and make a queen. March it forward.",
    fen:"8/2P4k/8/8/8/8/8/6K1 w - - 0 1",task:{from:"c7",to:"c8"},target:"c8",
-   oops:"Push the pawn to c8 \u2014 the far row \u2014 and it becomes a queen."},
+   oops:"Push the pawn to c8 - the far row - and it becomes a queen."},
   {say:"A new queen out of a pawn usually ends the game. When you're ahead, trade pieces, keep pawns, and run one home.",done:true}
  ]},
  {id:"openrules",tier:9,title:"How to start a game",steps:[
   {say:"A quick refresher on good openings. First move: grab the center with a pawn. Push the king's pawn two squares.",
    fen:"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",task:{from:"e2",to:"e4"},target:"e4",
-   oops:"Push the e-pawn two squares to e4 \u2014 straight for the center."},
+   oops:"Push the e-pawn two squares to e4 - straight for the center."},
   {say:"Now develop a piece toward the middle. Bring a knight out.",
    fen:"rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 1",task:{from:"g1",to:"f3"},target:"f3",
-   oops:"Knight to f3 \u2014 out and pointing at the center."},
+   oops:"Knight to f3 - out and pointing at the center."},
   {say:"Center, then knights and bishops, then castle your king safe. Do those three things and you've survived every opening.",done:true}
  ]},
  {id:"develop2",tier:9,title:"Get everybody out",steps:[
-  {say:"A good opening wakes up ALL your pieces, not just one. You've pushed a center pawn already \u2014 now bring a bishop into the game.",
+  {say:"A good opening wakes up ALL your pieces, not just one. You've pushed a center pawn already - now bring a bishop into the game.",
    fen:"rnbqk1nr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 0 1",task:{from:"f1",to:"c4"},target:"c4",
    oops:"Bishop out to c4, aiming at the center and the enemy's weak spot."},
   {say:"Knight and bishop both out, eyeing the middle. Three or four quick developing moves like this and your army is ready. Lazy pieces lose games.",done:true}
  ]},
  {id:"castleopen",tier:9,title:"Castle early",steps:[
-  {say:"Once your knight and bishop are out, tuck your king away. You're all set up \u2014 castle now.",
+  {say:"Once your knight and bishop are out, tuck your king away. You're all set up - castle now.",
    fen:"rnbqk2r/pppp1ppp/5n2/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 1",task:{from:"e1",to:"g1"},target:"g1",
-   oops:"King two squares toward the rook, e1 to g1 \u2014 castle to safety."},
+   oops:"King two squares toward the rook, e1 to g1 - castle to safety."},
   {say:"Center, develop, castle: do those three and you'll leave the opening in good shape almost every game. That's all the opening theory a beginner needs.",done:true}
  ]},
  {id:"endrules",tier:8,title:"Rules of thumb for endings",steps:[
-  {say:"When few pieces are left, the rules change. Now the king becomes a fighter \u2014 march it toward the action instead of hiding. Step your king up the board.",
+  {say:"When few pieces are left, the rules change. Now the king becomes a fighter - march it toward the action instead of hiding. Step your king up the board.",
    fen:"8/8/8/4k3/8/8/4K3/8 w - - 0 1",task:{from:"e2",to:"e3"},target:"e3",
-   oops:"Walk the king forward to e3 \u2014 in the endgame the king leads."},
+   oops:"Walk the king forward to e3 - in the endgame the king leads."},
   {say:"Three endgame habits: use your king, push passed pawns toward promotion, and put your rook behind a running pawn. Remember those and your wins will actually finish.",done:true}
  ]},
- {id:"check",tier:3,title:"Check \u2014 the king in danger",steps:[
+ {id:"check",tier:3,title:"Check: the king in danger",steps:[
   {say:"When a piece attacks the king, that's called check. The king must get out of it right now. Move your rook so it attacks the black king along the row.",
    fen:"4k3/8/8/8/8/8/8/R6K w - - 0 1",task:{from:"a1",to:"a8"},target:"a8",
-   oops:"Slide the rook up to a8 so it points across at the king \u2014 that's check."},
-  {say:"You just gave check. The black king isn't captured \u2014 in chess you never actually take the king, you just force it out of danger. Tap Next.",
+   oops:"Slide the rook up to a8 so it points across at the king - that's check."},
+  {say:"You just gave check. The black king isn't captured - in chess you never actually take the king, you just force it out of danger. Tap Next.",
    fen:"R3k3/8/8/8/8/8/8/7K b - - 0 1",sandbox:true},
   {say:"There are exactly three ways to answer a check, and we'll learn them next. But first: you can never leave your OWN king in check. That move is simply illegal.",done:true}
  ]},
@@ -1216,38 +1223,38 @@ const LESSONS=[
   {say:"Your king is in check from that rook. Escape #1: move the king off the attacked line. Step the king aside.",
    fen:"8/8/8/8/8/8/r7/K6k w - - 0 1",task:{from:"a1",to:"b1"},target:"b1",
    oops:"Walk the king off the a-file to b1, out of the rook's line."},
-  {say:"Escape #2: block the check by putting a piece in the way. That rook checks down the file — your bishop can jump in between. Block the check.",
+  {say:"Escape #2: block the check by putting a piece in the way. That rook checks down the file - your bishop can jump in between. Block the check.",
    fen:"4r2k/8/8/8/8/8/8/2B1K3 w - - 0 1",task:{from:"c1",to:"e3"},target:"e3",
    oops:"Slide the bishop to e3, right between your king and the rook."},
-  {say:"Escape #3: capture the checker. That knight is giving check \u2014 take it with your rook.",
+  {say:"Escape #3: capture the checker. That knight is giving check - take it with your rook.",
    fen:"7k/8/8/8/8/8/1n6/R5K1 w - - 0 1",task:{from:"a1",to:"b1"},target:"b1",
    oops:"Rook takes the knight on b1 and the check is over."},
-  {say:"Move away, block, or capture \u2014 those are the only three answers to a check. If none of them is possible... that's checkmate.",done:true}
+  {say:"Move away, block, or capture - those are the only three answers to a check. If none of them is possible... that's checkmate.",done:true}
  ]},
  {id:"whatmate",tier:3,title:"What checkmate really is",steps:[
-  {say:"Checkmate is simply a check with no escape. The black king is in check from the queen. It can't run, can't block, can't capture the queen. Look it over, then tap Next \u2014 this is a finished game.",
+  {say:"Checkmate is simply a check with no escape. The black king is in check from the queen. It can't run, can't block, can't capture the queen. Look it over, then tap Next - this is a finished game.",
    fen:"7k/5Q2/6K1/8/8/8/8/8 b - - 0 1",sandbox:true},
   {say:"No move away, no block, no capture: that's mate, and the game is won. Every checkmate you'll ever see is just this idea. Now you know what you're aiming for.",done:true}
  ]},
- {id:"skewer",tier:5,title:"The skewer \u2014 pin's big brother",steps:[
+ {id:"skewer",tier:5,title:"The skewer: pin's big brother",steps:[
   {say:"A skewer is a pin flipped around: the big piece is in front, and when it moves, you win what's behind it. Check the king so it must step aside and leave the rook exposed.",
    fen:"3r3k/8/8/8/8/8/8/3R2QK w - - 0 1",task:{from:"g1",to:"g8"},target:"g8",
-   oops:"Queen to g8 gives check along the file \u2014 the king must move and the rook behind it falls."},
+   oops:"Queen to g8 gives check along the file - the king must move and the rook behind it falls."},
   {say:"The king has to move out of check, and then your queen gobbles the rook behind it. Skewer the valuable piece in front, win the one behind.",done:true}
  ]},
  {id:"discover",tier:6,title:"Discovered attack",steps:[
-  {say:"Sometimes moving one piece uncovers an attack from another behind it. Move your knight out of the way \u2014 your rook behind it suddenly attacks the black queen.",
+  {say:"Sometimes moving one piece uncovers an attack from another behind it. Move your knight out of the way - your rook behind it suddenly attacks the black queen.",
    fen:"3q3k/8/8/8/8/8/3N4/3R3K w - - 0 1",task:{from:"d2",to:"f3"},target:"f3",
    oops:"Hop the knight to f3. That clears the file so your rook attacks the queen."},
   {say:"That's a discovered attack: the piece that moves and the piece it reveals both make threats at once. Doubly nasty when the moving piece gives check itself.",done:true}
  ]},
  {id:"tworooks",tier:7,title:"The two-rook staircase",steps:[
-  {say:"Two rooks can checkmate all by themselves, no king needed. They work in a ladder. First rook cuts off a row \u2014 give check and push the king to the edge.",
+  {say:"Two rooks can checkmate all by themselves, no king needed. They work in a ladder. First rook cuts off a row - give check and push the king to the edge.",
    fen:"4k3/8/8/8/8/R7/1R6/7K w - - 0 1",task:{from:"b2",to:"b7"},target:"b7",
    oops:"Rook to b7 boxes the king into the top two rows."},
   {say:"Now the other rook delivers mate on the last row while the first one stops the king coming back. Deliver checkmate.",
    fen:"4k3/1R6/R7/8/8/8/8/7K w - - 0 1",task:{from:"a6",to:"a8"},target:"a8",
-   oops:"Rook to a8 \u2014 check on the back row, and the b-rook covers the escape. Mate."},
+   oops:"Rook to a8 - check on the back row, and the b-rook covers the escape. Mate."},
   {say:"That's the rook roller: one rook fences the king in, the other checks, then they leapfrog. Two rooks beat a lone king every time.",done:true}
  ]},
  {id:"opposition",tier:8,title:"The opposition",steps:[
@@ -1256,7 +1263,7 @@ const LESSONS=[
   {say:"With your king in front of your pawn and the opposition in hand, the black king is squeezed backward and your pawn marches through to promote. Opposition is the key that unlocks these endings.",done:true}
  ]},
  {id:"passed",tier:8,title:"Push the passed pawn",steps:[
-  {say:"A passed pawn has no enemy pawns able to stop it. It's precious \u2014 race it forward. Push this one toward the finish.",
+  {say:"A passed pawn has no enemy pawns able to stop it. It's precious - race it forward. Push this one toward the finish.",
    fen:"7k/8/8/3P4/8/8/8/7K w - - 0 1",task:{from:"d5",to:"d6"},target:"d6",
    oops:"Just push it: d5 to d6, one step closer to a new queen."},
   {say:"\u201cPassed pawns must be pushed.\u201d Every square it advances drags the enemy king toward panic. In the endgame, a passed pawn is often the whole game.",done:true}
@@ -1265,19 +1272,19 @@ const LESSONS=[
   {say:"Here's a golden endgame rule: put your rook BEHIND a passed pawn, so it pushes the pawn forward and stays out of its way. Drop your rook behind this pawn.",
    fen:"7k/8/8/8/8/3P4/8/3R3K w - - 0 1",task:{from:"d1",to:"d2"},target:"d2",
    oops:"Rook to d2, right behind the pawn, ready to shepherd it up the board."},
-  {say:"Behind your own passed pawn, a rook is at its strongest \u2014 it gains power as the pawn advances. Remember it: rooks belong behind passed pawns.",done:true}
+  {say:"Behind your own passed pawn, a rook is at its strongest - it gains power as the pawn advances. Remember it: rooks belong behind passed pawns.",done:true}
  ]},
  {id:"mix1",tier:10,title:"Put it together: win a piece",steps:[
-  {say:"No hand-holding now \u2014 you spot it. White to move. There's a knight fork that wins the rook. Find it.",
+  {say:"No hand-holding now - you spot it. White to move. There's a knight fork that wins the rook. Find it.",
    fen:"r6k/8/8/3N4/8/8/8/7K w - - 0 1",task:{from:"d5",to:"f6"},target:"f6",
-   oops:"Which knight jump hits the king and the rook at once? f6 \u2014 check, and the rook is next."},
+   oops:"Which knight jump hits the king and the rook at once? f6 - check, and the rook is next."},
   {say:"You found the fork on your own. That's the whole point of everything you've learned: look for the move that does two jobs.",done:true}
  ]},
  {id:"mix2",tier:10,title:"Put it together: finish the game",steps:[
   {say:"White to move and checkmate in one. You have a queen and your king is close. End it.",
    fen:"7k/5Q2/6K1/8/8/8/8/8 w - - 0 1",task:{from:"f7",to:"g7"},target:"g7",
    oops:"Queen to g7, guarded by your king, no escape for the black king. That's mate."},
-  {say:"Rules, tactics, endings, openings \u2014 and now you can finish. You've been through the whole school. Time to play, and try the Daily Puzzle.",done:true}
+  {say:"Rules, tactics, endings, openings - and now you can finish. You've been through the whole school. Time to play, and try the Daily Puzzle.",done:true}
  ]}
 ];
 
@@ -1332,30 +1339,30 @@ function ksPuzzleKey(){const d=new Date();
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function startDailyPuzzle(){
   const {pz,cap}=puzzleForToday();
-  const already=(()=>{try{return JSON.parse(localStorage.getItem('ks_puzzle')||'{}');}catch(e){return{};}})();
+  const already=(()=>{try{return JSON.parse(ksLS.get('ks_puzzle')||'{}');}catch(e){return{};}})();
   const solvedToday=already.date===ksPuzzleKey();
   const L={id:'__puzzle',tier:0,title:'Daily Puzzle',steps:[
-    {say:(solvedToday?'You already solved today\u2019s puzzle \u2014 here it is again. ':'White to move and win. ')+pz.tip,
+    {say:(solvedToday?'You already solved today\u2019s puzzle - here it is again. ':'White to move and win. ')+pz.tip,
      fen:pz.fen,task:{from:pz.f,to:pz.t},target:pz.t,
      oops:'Look for the winning move. Hint: '+pz.idea+'.'},
     {say:'Solved! Come back tomorrow for a new one. As you finish more lesson tiers, the puzzles get tougher.',done:true}
   ]};
   document.getElementById('learnOv').classList.remove('show');
   // record the solve when they land the move: hook via a wrapper on learnMark
-  L._onSolve=function(){try{localStorage.setItem('ks_puzzle',JSON.stringify({date:ksPuzzleKey()}));}catch(e){}};
+  L._onSolve=function(){try{ksLS.set('ks_puzzle',JSON.stringify({date:ksPuzzleKey()}));}catch(e){}};
   learnStart(L);
 }
 
 
 const LEARN_TIERS_SOON=[];  /* all six tiers are live */
 
-function learnProgress(){try{return JSON.parse(localStorage.getItem("ks_learn")||"{}");}catch(e){return{};}}
-function learnMark(id){const p=learnProgress();p[id]=true;try{localStorage.setItem("ks_learn",JSON.stringify(p));}catch(e){}}
+function learnProgress(){try{return JSON.parse(ksLS.get("ks_learn")||"{}");}catch(e){return{};}}
+function learnMark(id){const p=learnProgress();p[id]=true;try{ksLS.set("ks_learn",JSON.stringify(p));}catch(e){}}
 
 function learnOpenList(){
   const box=document.getElementById("lsList");box.innerHTML="";
   const prog=learnProgress();
-  const TIER_NAMES={1:"Tier 1 \u2014 The Pieces",2:"Tier 2 \u2014 The Tricky Rules",3:"Tier 3 \u2014 Check & Checkmate",4:"Tier 4 \u2014 First Skills",5:"Tier 5 \u2014 Basic Tactics",6:"Tier 6 \u2014 Seeing the Board",7:"Tier 7 \u2014 Winning Won Games",8:"Tier 8 \u2014 Endgame Know-How",9:"Tier 9 \u2014 Opening Principles",10:"Tier 10 \u2014 Put It Together"};
+  const TIER_NAMES={1:"Tier 1: The Pieces",2:"Tier 2: The Tricky Rules",3:"Tier 3: Check & Checkmate",4:"Tier 4: First Skills",5:"Tier 5: Basic Tactics",6:"Tier 6: Seeing the Board",7:"Tier 7: Winning Won Games",8:"Tier 8: Endgame Know-How",9:"Tier 9: Opening Principles",10:"Tier 10: Put It Together"};
   let curTier=null;
   const _ordered=LESSONS.slice().sort((a,b)=>(a.tier||1)-(b.tier||1));
   for(const L of _ordered){
@@ -1436,7 +1443,7 @@ LEARN.tryMove=function(m){
     }else{
       sel=-1;legalNow=[];render();
       GNS.play&&GNS.play("womp");
-      document.getElementById("lsOops").textContent=s.oops||"Not quite \u2014 aim for the star.";
+      document.getElementById("lsOops").textContent=s.oops||"Not quite - aim for the star.";
     }
   }else{
     /* sandbox: let them fiddle freely */
@@ -1462,13 +1469,13 @@ setInterval(()=>{
       const m=CAI.pick(st,botLevel,thinkOpts());
       if(m){doCommit(m);
         if(phase==="play"&&coach&&st.turn==="w")
-          setMsg((CH.inCheck(st,"w")?"Check! ":"")+"Your move \u2014 tap \u{1F4A1} Hint for the best move.");}}
+          setMsg((CH.inCheck(st,"w")?"Check! ":"")+"Your move - tap \u{1F4A1} Hint for the best move.");}}
   }finally{botBusy=false;}},120);
 },200);
 /* ---------- coach ---------- */
 document.getElementById("coachBtn").addEventListener("click",()=>{coach=!coach;
   document.getElementById("coachBtn").classList.toggle("on",coach);
-  setMsg(coach?"\u{1F393} Coach is ON. Tap the \u{1F4A1} Hint button for the best move \u2014 I'll also warn you before a risky one. Tap Coach again to turn it off.":"Coach off.");
+  setMsg(coach?"\u{1F393} Coach is ON. Tap the \u{1F4A1} Hint button for the best move - I'll also warn you before a risky one. Tap Coach again to turn it off.":"Coach off.");
   render();});
 document.getElementById("hintBtn").addEventListener("click",()=>{
   if(phase!=="play")return;
@@ -1482,9 +1489,9 @@ document.getElementById("hintBtn").addEventListener("click",()=>{
     hintShown={from:best.m.from,to:best.m.to};
     lastHintMove={from:best.m.from,to:best.m.to,promo:best.m.promo};
     let note="";
-    if(best.score<=-90000)note=" \u2014 careful, this is already a losing spot";
-    else if(best.score>=90000)note=" \u2014 this leads to checkmate!";
-    setMsg("\u{1F4A1} Best move: "+CH.alg(best.m.from)+"\u2192"+CH.alg(best.m.to)+" \u2014 "+describe(best.m,st)+note);
+    if(best.score<=-90000)note=" - careful, this is already a losing spot";
+    else if(best.score>=90000)note=" - this leads to checkmate!";
+    setMsg("\u{1F4A1} Best move: "+CH.alg(best.m.from)+"\u2192"+CH.alg(best.m.to)+" - "+describe(best.m,st)+note);
     S("chime");render();
   },30);
 });
@@ -1495,25 +1502,25 @@ document.getElementById("backBtn").addEventListener("click",()=>{
   if(botLevel&&st.turn==="b"&&st.hist.length){CH.unmake(st);if(GS.trace.length)GS.trace.pop();} // undo the bot reply too
   lastMv=st.hist.length?st.hist[st.hist.length-1].m:null;
   sel=-1;legalNow=[];hintShown=null;botKey="";
-  S("move");setMsg("Take it back \u2014 try again.");render();});
+  S("move");setMsg("Take it back - try again.");render();});
 /* ---------- level picker ---------- */
 function lvLabel(){document.getElementById("botBtn").textContent="vs Computer: "+(botLevel?("L"+botLevel+" \u00b7 "+(THINK[thinkPref]||THINK.normal).label):"Off");}
 function buildThinkRow(){const r=document.getElementById("thinkRow");r.innerHTML="";
   for(const key of ["quick","normal","patient"]){const b=document.createElement("button");
     b.textContent=THINK[key].label;if(key===thinkPref)b.classList.add("cur");
-    b.addEventListener("click",()=>{thinkPref=key;localStorage.setItem("ks_think",key);botKey="";buildThinkRow();lvLabel();});
+    b.addEventListener("click",()=>{thinkPref=key;ksLS.set("ks_think",key);botKey="";buildThinkRow();lvLabel();});
     r.appendChild(b);}}
 document.getElementById("botBtn").addEventListener("click",()=>{
   const g=document.getElementById("lvGrid");g.innerHTML="";
   for(let i=1;i<=10;i++){const b=document.createElement("button");
     b.textContent=i;if(i===botLevel)b.classList.add("cur");
-    b.addEventListener("click",()=>{botLevel=i;localStorage.setItem("ks_bot_level",i);botKey="";
+    b.addEventListener("click",()=>{botLevel=i;ksLS.set("ks_bot_level",i);botKey="";
       lvLabel();document.getElementById("lvOv").classList.remove("show");
       setMsg("Computer plays Black at level "+i+" ("+(THINK[thinkPref]||THINK.normal).label+" thinking time).");render();});
     g.appendChild(b);}
   buildThinkRow();
   document.getElementById("lvOv").classList.add("show");});
-document.getElementById("lvOff").addEventListener("click",()=>{botLevel=0;localStorage.setItem("ks_bot_level",0);
+document.getElementById("lvOff").addEventListener("click",()=>{botLevel=0;ksLS.set("ks_bot_level",0);
   lvLabel();document.getElementById("lvOv").classList.remove("show");setMsg("Two players at the board.");render();});
 /* ---------- theme picker ---------- */
 document.getElementById("themeBtn").addEventListener("click",()=>{
@@ -1547,23 +1554,23 @@ function newGame(){phase="over";document.getElementById("overlay").classList.rem
     st=CH.fresh();sel=-1;legalNow=[];lastMv=null;hintShown=null;botKey="";
     GS={start:Date.now(),flipWinner:m.first.name,friendly:m.friendly,moves:0,trace:[]};
     phase="play";render();
-    setMsg(P.w.name+" has White \u2014 your move."+(botLevel?" Computer holds Black (L"+botLevel+").":""));});}
+    setMsg((P.w.name==="You"?"You have White":P.w.name+" has White")+". Your move."+(botLevel?" Computer holds Black (L"+botLevel+").":""));});}
 document.getElementById("newBtn").addEventListener("click",newGame);
 document.getElementById("ovBtn").addEventListener("click",newGame);
 GN.rulesButton(document.getElementById("foot"),{title:"Chess",sections:[
- {h:"Goal",t:"Checkmate the enemy king \u2014 attack it so it cannot escape. The board lights every legal move when you pick a piece up, so you can learn by looking."},
- {h:"How the pieces move",t:"Pawns step forward one (two from home), capture diagonally. Knights jump in an L \u2014 the only piece that leaps over others. Bishops run diagonals; rooks run ranks and files; the queen does both. The king steps one square any direction."},
- {h:"Check & checkmate",t:"When your king is attacked, you're in CHECK (the king glows red) and must fix it immediately \u2014 move the king, block, or capture the attacker. If nothing fixes it: checkmate, game over.",
-  ex:"A back-rank mate: their rook slides to your home rank, your king is fenced in by its own pawns \u2014 no escape, no block. The oldest trick in the book."},
+ {h:"Goal",t:"Checkmate the enemy king - attack it so it cannot escape. The board lights every legal move when you pick a piece up, so you can learn by looking."},
+ {h:"How the pieces move",t:"Pawns step forward one (two from home), capture diagonally. Knights jump in an L - the only piece that leaps over others. Bishops run diagonals; rooks run ranks and files; the queen does both. The king steps one square any direction."},
+ {h:"Check & checkmate",t:"When your king is attacked, you're in CHECK (the king glows red) and must fix it immediately - move the king, block, or capture the attacker. If nothing fixes it: checkmate, game over.",
+  ex:"A back-rank mate: their rook slides to your home rank, your king is fenced in by its own pawns - no escape, no block. The oldest trick in the book."},
  {h:"Castling",svg:'<svg viewBox="0 0 280 70"><g font-size="22" text-anchor="middle"><rect x="40" y="14" width="200" height="40" rx="6" fill="#1c2b22"/><text x="65" y="44">\u2654</text><text x="215" y="44">\u2656</text><path d="M88 26 Q140 6 192 26" stroke="#f4c542" stroke-width="2.5" fill="none" stroke-dasharray="5 4"/><polygon points="186,18 196,26 182,30" fill="#f4c542"/><path d="M192 50 Q150 64 110 50" stroke="#9fc" stroke-width="2.5" fill="none" stroke-dasharray="5 4"/><polygon points="116,58 106,50 120,44" fill="#9fc"/></g></svg>',
-  t:"Once per game your king may slide TWO squares toward a rook, and the rook hops to the far side \u2014 king to safety, rook to the fight. Allowed only if neither piece has moved, the path is clear, and the king isn't in check or crossing an attacked square. Tap the king two squares sideways to do it."},
- {h:"En passant",t:"If an enemy pawn double-steps and lands exactly beside your pawn, you may capture it AS IF it had moved one square \u2014 but only on the very next move. The board offers it when it's legal; it surprises everyone the first time.",
-  ex:"Your pawn stands on the 5th rank. Their pawn jumps two squares, landing beside you \u2014 take it diagonally behind, and it's off the board."},
- {h:"Promotion",t:"A pawn reaching the far rank becomes any piece you like \u2014 almost always a queen, but the picker offers knight, rook, and bishop for the rare position that wants them."},
- {h:"Draws",t:"Stalemate (no legal moves, but not in check), threefold repetition, fifty quiet moves, or bare-bones material \u2014 the game calls these automatically."},
- {h:"vs Computer: levels 1\u201310",t:"Level 1 barely looks ahead and blunders generously \u2014 perfect while learning. Each level climbs in real strength: 5\u20136 gives a casual adult a fight, 8+ plays serious club-level chess. The shelf remembers your level."},
+  t:"Once per game your king may slide TWO squares toward a rook, and the rook hops to the far side - king to safety, rook to the fight. Allowed only if neither piece has moved, the path is clear, and the king isn't in check or crossing an attacked square. Tap the king two squares sideways to do it."},
+ {h:"En passant",t:"If an enemy pawn double-steps and lands exactly beside your pawn, you may capture it AS IF it had moved one square - but only on the very next move. The board offers it when it's legal; it surprises everyone the first time.",
+  ex:"Your pawn stands on the 5th rank. Their pawn jumps two squares, landing beside you - take it diagonally behind, and it's off the board."},
+ {h:"Promotion",t:"A pawn reaching the far rank becomes any piece you like - almost always a queen, but the picker offers knight, rook, and bishop for the rare position that wants them."},
+ {h:"Draws",t:"Stalemate (no legal moves, but not in check), threefold repetition, fifty quiet moves, or bare-bones material - the game calls these automatically."},
+ {h:"vs Computer: levels 1\u201310",t:"Level 1 barely looks ahead and blunders generously - perfect while learning. Each level climbs in real strength: 5\u20136 gives a casual adult a fight, 8+ plays serious club-level chess. The shelf remembers your level."},
  {h:"\u23f1 Thinking time",t:"Separate from level, you can set how long the computer thinks per move: Quick, Normal, or Patient. Patient lets it search deeper and play noticeably stronger at the same level (great for a tougher game without changing its style); Quick is snappier and slightly weaker. Normal is the level as designed."},
- {h:"\u{1F393} Coach \u2014 how to use it",t:"Tap Coach to turn it on (it glows green). Then two buttons appear: tap \u{1F4A1} HINT any time and the Coach thinks for a moment, then shows the best move in words above the buttons (e.g. \u201cBest move: e2\u2192e4\u201d) and highlights it on the board. If you try a move that loses material or walks into checkmate, the Coach pops up a friendly warning first \u2014 you can still play it. \u21a9 TAKEBACK undoes your last move so mistakes become lessons. The thin bar under the board is separate: it shows who\u2019s ahead (filling toward \u201cYou\u201d means you\u2019re winning). Climb a level when the coach gets quiet."}]});
+ {h:"\u{1F393} Coach - how to use it",t:"Tap Coach to turn it on (it glows green). Then two buttons appear: tap \u{1F4A1} HINT any time and the Coach thinks for a moment, then shows the best move in words above the buttons (e.g. \u201cBest move: e2\u2192e4\u201d) and highlights it on the board. If you try a move that loses material or walks into checkmate, the Coach pops up a friendly warning first - you can still play it. \u21a9 TAKEBACK undoes your last move so mistakes become lessons. The thin bar under the board is separate: it shows who\u2019s ahead (filling toward \u201cYou\u201d means you\u2019re winning). Climb a level when the coach gets quiet."}]});
 GN.statsButton(document.getElementById("foot"),{title:"Chess",key:KEY,specials:[
  {label:"Checkmates",of:(r,n)=>r.filter(x=>x.winner===n&&x.method==="mate").length},
  {label:"Wins vs computer",of:(r,n)=>r.filter(x=>x.winner===n&&x.vsBot).length},

@@ -1,4 +1,4 @@
-/* sfx.js — Game Shelf sound effects. Pure Web Audio synthesis: no files, no copyright.
+/* sfx.js: Game Shelf sound effects. Pure Web Audio synthesis: no files, no copyright.
    Usage: <script src="sfx.js"></script> after gamenight.js, then GNS.play("pop") etc.
    GNS.button(container) adds a mute toggle (persisted). All sounds tunable below. */
 (function(){
@@ -52,6 +52,13 @@
       osc("triangle",ns[i],ns[i],t+i*0.13,0.32,0.22);}
       osc("sine",262,262,t,0.7,0.12);},
     womp:  function(t){osc("triangle",200,110,t,0.26,0.09);},
+    win:   function(t){ // short bright "you did it": rising triad + sparkle (lighter than fanfare)
+      var ns=[659,831,988];for(var i=0;i<ns.length;i++)osc("triangle",ns[i],ns[i],t+i*0.08,0.16,0.2);
+      osc("sine",1319,1319,t+0.24,0.3,0.12);noise(t+0.24,0.08,0.05,4000);},
+    err:   function(t){ // soft "nope": two low square blips stepping down
+      osc("square",240,220,t,0.08,0.06);osc("square",190,170,t+0.11,0.12,0.06);},
+    flip:  function(t){ // card/coin flick: airy swish + quick upward chirp
+      noise(t,0.05,0.1,2600);osc("sine",700,1400,t+0.01,0.06,0.07);},
     six:   function(t,lvl){ // lvl 0,1,2... consecutive sixes build the celebration
       lvl=Math.min(lvl||0,4);
       var notes=[523,659,784,988,1175,1319,1568],n=3+lvl;

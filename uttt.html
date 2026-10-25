@@ -10,7 +10,7 @@
   body{font-family:system-ui,sans-serif;color:#e8f0e4;overflow:hidden;display:flex;flex-direction:column;
     background:radial-gradient(120% 80% at 50% 20%,#1f3327 0%,#0c1410 70%);}
   #bar{display:flex;align-items:center;gap:10px;padding:12px 14px;}
-  #bar a{color:#cfe6d8;text-decoration:none;font-size:14px;border:1px solid #3a5a47;border-radius:999px;padding:6px 12px;}
+  #bar a{color:#cfe6d8;text-decoration:none;font-size:14px;border:1px solid #3a5a47;border-radius:999px;padding:9px 14px;}
   #title{font-weight:800;font-size:17px;}
   #turnWrap{margin-left:auto;display:flex;align-items:center;gap:8px;}
   #dot{width:16px;height:16px;border-radius:50%;}
@@ -39,6 +39,13 @@
   .ov h1{font-size:28px;}
   #confetti{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
   .cf{position:absolute;width:10px;height:14px;top:-20px;animation:fall linear forwards;}
+  @media (orientation:landscape) and (max-height:560px){
+    body{display:grid;grid-template-columns:62% 38%;grid-template-rows:auto 1fr auto;}
+    #bar{grid-column:1/3;padding:8px 14px;}
+    #wrap{grid-column:1;grid-row:2/4;padding:4px;}
+    #msg{grid-column:2;grid-row:2;align-self:end;}
+    #foot{grid-column:2;grid-row:3;}
+  }
   @keyframes fall{to{transform:translateY(110vh) rotate(720deg);}}
 </style>
 </head>
@@ -52,7 +59,7 @@
 </div>
 <div class="ov" id="overlay"><div id="confetti"></div><div style="font-size:54px;">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p>
   <button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
-<script src="gamenight.js?v=12"></script>
+<script src="gamenight.js?v=13"></script>
 <script src="sfx.js?v=5"></script>
 <script>
 const KEY="uttt_games";
@@ -73,11 +80,12 @@ function newGame(){phase="over";
     turn=(m.first===m.a)?"X":"O";phase="play";
     GS={start:Date.now(),flipWinner:m.first.name,friendly:m.friendly,minis:{},moves:{}};
     for(const n of[m.a.name,m.b.name]){GS.minis[n]=0;GS.moves[n]=0;}
-    setMessage(P[turn].name+" won the flip \u2014 play anywhere. Your square picks their board.");
+    setMessage(P[turn].name+" won the flip! Play anywhere. Your square picks their board.");
     build();refresh();});}
 function setMessage(t){document.getElementById("msg").textContent=t;}
 function build(){const M=document.getElementById("macro");M.innerHTML="";
-  const size=Math.min(window.innerWidth-32,window.innerHeight-230,440);
+  const land=window.innerWidth>window.innerHeight&&window.innerHeight<=560;
+  const size=Math.min(land?Math.floor(window.innerWidth*0.62)-32:window.innerWidth-32,window.innerHeight-(land?84:230),440);
   const cellPx=Math.floor((size-16-6*8)/9);
   for(let b=0;b<9;b++){const mini=document.createElement("div");mini.className="mini";mini.id="mini"+b;
     for(let c=0;c<9;c++){const btn=document.createElement("button");btn.className="cell";
@@ -123,7 +131,7 @@ function play(b,c){if(phase!=="play"||boards[b][c]||macro[b])return;
     paint();finish(x===o?null:(x>o?"X":"O"),"count");return;}
   active=legalBoard(c)?c:-1;
   turn=turn==="X"?"O":"X";
-  setMessage(active===-1?(P[turn].name+" \u2014 that board is closed, play anywhere!"):(P[turn].name+" \u2014 board "+(c+1)+" awaits."));
+  setMessage(active===-1?(P[turn].name+": that board is closed, play anywhere!"):(P[turn].name+": board "+(c+1)+" awaits."));
   paint();refresh();}
 function finish(w,how){phase="over";
   const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
@@ -131,7 +139,7 @@ function finish(w,how){phase="over";
     flipWinner:GS.flipWinner,how,minis:GS.minis,moves:GS.moves};
   GN.recordGame(KEY,rec);
   document.getElementById("ovTitle").textContent=w?P[w].name+" wins!":"Dead heat!";
-  document.getElementById("ovText").textContent=w?(how==="line"?"Three boards in a row \u2014 "+GS.minis[P[w].name]+" boards captured.":"Most boards when the grid filled."):"Equal boards on a full grid.";
+  document.getElementById("ovText").textContent=w?(how==="line"?"Three boards in a row! "+GS.minis[P[w].name]+" boards captured.":"Most boards when the grid filled."):"Equal boards on a full grid.";
   if(w){const box=document.getElementById("confetti"),cols=[P[w].main,P[w].light,"#f4c542","#fff"];
     for(let i=0;i<60;i++){const d=document.createElement("div");d.className="cf";d.style.left=Math.random()*100+"%";
       d.style.background=cols[i%cols.length];d.style.animationDuration=(2.2+Math.random()*1.8)+"s";
@@ -144,10 +152,10 @@ GN.rulesButton(document.getElementById("foot"),{title:"Ultimate Tic-Tac-Toe",sec
  {h:"Goal",t:"It's tic-tac-toe made of tic-tac-toes: win three small boards in a row to win the big board."},
  {h:"The one rule that matters",svg:'<svg viewBox="0 0 280 100"><g stroke="#cfe6d8" stroke-width="1.5"><rect x="20" y="10" width="80" height="80" fill="none" stroke-width="2.5"/><line x1="46" y1="10" x2="46" y2="90"/><line x1="73" y1="10" x2="73" y2="90"/><line x1="20" y1="36" x2="100" y2="36"/><line x1="20" y1="63" x2="100" y2="63"/></g><text x="85" y="32" font-size="16" fill="#f4c542" font-family="system-ui" font-weight="800">X</text><path d="M104 28 Q150 0 196 38" stroke="#f4c542" stroke-width="2.5" fill="none" stroke-dasharray="5 4"/><polygon points="190,30 200,40 186,42" fill="#f4c542"/><g stroke="#cfe6d8" stroke-width="1.5"><rect x="180" y="10" width="80" height="80" fill="none" stroke-width="2.5"/><line x1="206" y1="10" x2="206" y2="90"/><line x1="233" y1="10" x2="233" y2="90"/><line x1="180" y1="36" x2="260" y2="36"/><line x1="180" y1="63" x2="260" y2="63"/></g><text x="120" y="98" font-size="10" fill="#cfe6d8" font-family="system-ui">your square \u2192 their board</text></svg>',
   t:"WHERE you play inside a small board decides WHICH small board your opponent must play in next: top-right square sends them to the top-right board, center square to the center board, and so on."},
- {h:"Free moves",t:"If you're sent to a board that's already won or full, you may play in ANY open board \u2014 a free move, and they're gold. Sometimes the best square is a worse local move that denies your opponent a free move."},
+ {h:"Free moves",t:"If you're sent to a board that's already won or full, you may play in ANY open board: a free move, and they're gold. Sometimes the best square is a worse local move that denies your opponent a free move."},
  {h:"Thinking two layers",t:"Every move is two decisions in one: a square here, and a destination for them. Winning a small board means nothing if the move that wins it hands your opponent the center board.",
-  ex:"You can take the bottom-left board now \u2014 but the winning square sends them to the center board, where they have two in a row. Decline the bait."},
- {h:"Winning",t:"Three small boards in a row \u2014 across, down, diagonal \u2014 takes the game. Drawn small boards count for nobody; if the big board fills with no line, the game is a draw."}]});
+  ex:"You can take the bottom-left board now, but the winning square sends them to the center board, where they have two in a row. Decline the bait."},
+ {h:"Winning",t:"Three small boards in a row (across, down or diagonal) takes the game. Drawn small boards count for nobody; if the big board fills with no line, whoever holds more small boards wins (equal counts are a draw)."}]});
 GN.statsButton(document.getElementById("foot"),{title:"Ultimate Tic-Tac-Toe",key:KEY,specials:[
  {label:"Mini boards won",of:(r,n)=>r.reduce((a,x)=>a+((x.minis&&x.minis[n])||0),0)},
  {label:"Fastest win (moves)",of:(r,n)=>{const w=r.filter(x=>x.winner===n&&x.moves&&x.moves[n]);return w.length?Math.min(...w.map(x=>x.moves[n])):0;}},

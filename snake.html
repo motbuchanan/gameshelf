@@ -40,7 +40,7 @@
   .ov h1{font-size:30px;}
   .ov p{font-size:17px;color:#cfe6d8;}
   .ov .big{font-size:46px;font-weight:900;color:#aef0c0;}
-  #who{font-family:inherit;font-size:12px;font-weight:700;color:#fff;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:999px;padding:3px 9px 3px 4px;margin-left:8px;cursor:pointer;}
+  #who{font-family:inherit;font-size:12px;font-weight:700;color:#fff;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:999px;padding:3px 9px 3px 4px;margin-left:8px;cursor:pointer;min-width:32px;min-height:32px;}
 </style>
 </head>
 <body>
@@ -66,7 +66,7 @@
   <button class="act" id="ovBtn">Play again</button>
   <a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a>
 </div>
-<script src="gamenight.js?v=12"></script>
+<script src="gamenight.js?v=13"></script>
 <script src="sfx.js?v=5"></script>
 <script>
 const KEY="snakearcade_games";
@@ -107,7 +107,8 @@ function loop(){clearTimeout(loopT);loopT=setTimeout(function(){step();if(runnin
 function step(){
   if(queue.length)dir=queue.shift();
   const head={x:snake[0].x+dir.x,y:snake[0].y+dir.y};
-  if(head.x<0||head.y<0||head.x>=N||head.y>=N||snake.some(s=>eqCell(s,head)))return gameOver();
+  const body=eqCell(head,apple)?snake:snake.slice(0,-1); // the tail moves out of the way unless we grow
+  if(head.x<0||head.y<0||head.x>=N||head.y>=N||body.some(s=>eqCell(s,head)))return gameOver();
   snake.unshift(head);
   if(eqCell(head,apple)){score++;updateScore();S("place");placeApple();speed=Math.max(80,150-score*4);}
   else snake.pop();
@@ -222,7 +223,7 @@ function renderScene(t){
     ctx.beginPath();ctx.ellipse(x+3,y,4*flap,3,0.5,0,7);ctx.fill();
     ctx.fillStyle="rgba(40,30,20,.8)";ctx.fillRect(x-0.6,y-2,1.2,4);}
 }
-(function _raf(t){renderScene(t||0);requestAnimationFrame(_raf);})(0);
+var _rf=0;(function _raf(t){if(running||!(_rf++&3))renderScene(t||0);requestAnimationFrame(_raf);})(0); // idle: draw every 4th frame to save battery
 
 /* ---------- input ---------- */
 document.addEventListener("keydown",e=>{
@@ -254,7 +255,7 @@ document.addEventListener("visibilitychange",()=>{if(document.hidden){running=fa
 GN.rulesButton(document.getElementById("foot"),{title:"Snake",sections:[
   {h:"Goal",t:"Eat apples to grow as long as you can. Each apple is one point."},
   {h:"Move",t:"Swipe the board, tap the arrows, or use the arrow keys. You can't double back on yourself."},
-  {h:"Watch out",t:"Don't hit the walls or your own tail \u2014 that ends the run. The snake speeds up as it grows."}
+  {h:"Watch out",t:"Don't hit the walls or your own tail: that ends the run. The snake speeds up as it grows."}
 ]});
 if(window.GNS)GNS.button(document.getElementById("foot"));
 

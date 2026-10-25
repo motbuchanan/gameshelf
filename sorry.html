@@ -162,10 +162,10 @@
     <button class="pbtn" data-p="month">Month</button>
   </div>
   <div id="statsBody" class="statsbody"></div>
-  <div class="statsfoot"><button class="act" id="statsClose">Close</button><button class="clearbtn" id="statsClear">Clear records</button></div>
+  <div class="statsfoot"><button class="act" id="statsClose">Close</button></div>
 </div>
 
-<script src="gamenight.js?v=12"></script>
+<script src="gamenight.js?v=13"></script>
 <script src="sfx.js?v=5"></script>
 <script>
 /* ===== THEME REGISTRY ===== */
@@ -362,7 +362,7 @@ function enterForcedCard(bonus){selCardIdx=0;selCard=hands[current][0];card=selC
   const pre=bonus?"Plays again. ":"";
   if(hasAnyMove()){phase=(selCard==="Sorry")?"sorryTarget":"pickPawn";
     setMessage(pre+"Drew "+labelOf(selCard)+". "+(selCard==="Sorry"?"Tap an opponent's pawn.":"Tap a glowing pawn."));}
-  else{phase="nomove";setMessage(pre+"Drew "+labelOf(selCard)+" — no legal move.");}}
+  else{phase="nomove";setMessage(pre+"Drew "+labelOf(selCard)+": no legal move.");}}
 function noMovePass(){recForced();const wasTwo=(hands[current][0]===2);if(hands[current].length){discard.push(hands[current][0]);hands[current]=[];}
   selCard=null;card=null;selCardIdx=-1;if(checkWin())return;
   if(wasTwo)beginTurnFor(current,true);else beginTurnFor(current==="red"?"blue":"red",false);}
@@ -385,7 +385,7 @@ function sideswipePick(p){if(p.loc.state!=="track")return;
   for(let j=(p.loc.idx+1)%TRACK;;j=(j+1)%TRACK){cells.push(j);if(j===corner)break;}
   const victims=pawns.filter(o=>o!==p&&o.loc.state==="track"&&cells.includes(o.loc.idx));
   pending={type:"sideswipe",pawn:p,corner,cells,victims};phase="armed";
-  setMessage("Sideswipe to the corner"+(victims.length?(" \u2014 bumps "+victims.length):"")+ ". Confirm?");render();updatePanel();}
+  setMessage("Sideswipe to the corner"+(victims.length?(", bumps "+victims.length):"")+ ". Confirm?");render();updatePanel();}
 function animateSideswipe(done){const p=pending.pawn,corner=pending.corner,cells=pending.cells,victims=pending.victims.slice();
   let n=1+victims.length;
   const fin=()=>{if(--n===0)done();};
@@ -456,7 +456,7 @@ function backToPickPawn(){pending=null;selPawn=null;pawnOpts=[];splitFirst=null;
   setMessage(selCard==="Sorry"?"Tap an opponent's pawn.":"Tap a glowing pawn.");render();updatePanel();}
 function pickPawnForMove(p){const opts=pawnOptions(p);if(!opts.length)return;selPawn=p;pawnOpts=opts;pending=null;phase="pickSpace";setMessage("Tap a glowing space, then Confirm.");render();updatePanel();}
 function chooseTarget(opt){pending={type:"move",moves:[{pawn:selPawn,dest:opt.dest,path:opt.path}]};setMessage("Confirm the move, or cancel.");render();updatePanel();}
-function beginSplit(){phase="split1";splitFirst=null;selPawn=null;setMessage("Split 7 — tap the FIRST pawn.");render();updatePanel();}
+function beginSplit(){phase="split1";splitFirst=null;selPawn=null;setMessage("Split 7: tap the FIRST pawn.");render();updatePanel();}
 function splitPickFirst(p){if(p.loc.state!=="track"&&p.loc.state!=="safety")return;
   const partners=myPawns().filter(q=>q!==p&&(q.loc.state==="track"||q.loc.state==="safety"));let ok=false;
   for(let a=1;a<=6;a++)if(canFwd(p,a)&&partners.some(q=>canFwd(q,7-a))){ok=true;break;}if(!ok)return;
@@ -465,7 +465,7 @@ function splitSetAmount(a){splitFirst.amount=a;phase="split2";setMessage("Tap th
 function splitPickSecond(p){const a=splitFirst.amount,b=7-a;if(p===splitFirst.pawn)return;const m1=canFwd(splitFirst.pawn,a),m2=canFwd(p,b);
   if(!m2){setMessage("That pawn can't move "+b+". Pick another.");render();return;}
   pending={type:"move",moves:[{pawn:splitFirst.pawn,dest:m1.dest,path:m1.path},{pawn:p,dest:m2.dest,path:m2.path}]};selPawn=null;phase="armed";setMessage("Confirm the split, or cancel.");render();updatePanel();}
-function beginSwap(){phase="swap1";selPawn=null;setMessage("Swap — tap YOUR pawn on the track.");render();updatePanel();}
+function beginSwap(){phase="swap1";selPawn=null;setMessage("Swap: tap YOUR pawn on the track.");render();updatePanel();}
 function swapPickMine(p){if(p.color!==current||p.loc.state!=="track")return;selPawn=p;phase="swap2";setMessage("Tap an OPPONENT pawn to swap with.");render();updatePanel();}
 function swapPickOpp(p){if(p.color===current||p.loc.state!=="track")return;pending={type:"swap",a:selPawn,b:p};phase="armed";setMessage("Confirm the swap, or cancel.");render();updatePanel();}
 function sorryPick(p){if(p.color===current||p.loc.state!=="track")return;const my=myPawns().find(q=>q.loc.state==="start");if(!my)return;
@@ -755,13 +755,13 @@ function addBtn(parent,label,cls,fn){const b=document.createElement("button");b.
   document.getElementById("menuRules").onclick=()=>{ov.classList.remove("show");
     GN.openRules({title:"Sorry!",sections:[
  {h:"Goal",t:"Race all four of your pawns from Start, clockwise around the board, and into your Home. First player with all four pawns Home wins."},
- {h:"Cards, not dice",t:"Draw a card each turn \u2014 the card tells you what you may do. If you can't legally do anything the card allows, your turn is over."},
- {h:"Getting out",t:"Only a 1 or a 2 moves a pawn out of Start (onto the square just outside). A 2 also lets you draw again after your move \u2014 whatever the move was."},
- {h:"The cards",t:"1/2: out of Start, or move forward that many. 3/5/8/12: move forward exactly that. 4: move BACKWARD 4. 7: split the move between two pawns (all 7 must be used). 10: forward 10 or backward 1. 11: forward 11, or SWAP places with any opponent pawn. Sorry!: take a pawn from Start and land it right on any opponent pawn \u2014 they go back to Start.",
-  ex:"A backward 4 right after leaving Start tucks you just shy of your own Home stretch \u2014 the fastest trip in the game. Watch the grown-ups fight for it."},
+ {h:"Cards, not dice",t:"Draw a card each turn; the card tells you what you may do. If you can't legally do anything the card allows, your turn is over."},
+ {h:"Getting out",t:"Only a 1 or a 2 moves a pawn out of Start (onto the square just outside). A 2 also lets you draw again after your move, whatever the move was."},
+ {h:"The cards",t:"1/2: out of Start, or move forward that many. 3/5/8/12: move forward exactly that. 4: move BACKWARD 4. 7: split the move between two pawns (all 7 must be used). 10: forward 10 or backward 1. 11: forward 11, or SWAP places with any opponent pawn. Sorry!: take a pawn from Start and land it right on any opponent pawn, and they go back to Start.",
+  ex:"A backward 4 right after leaving Start tucks you just shy of your own Home stretch: the fastest trip in the game. Watch the grown-ups fight for it."},
  {h:"Slides",svg:'<svg viewBox="0 0 280 64"><rect x="10" y="22" width="260" height="20" rx="10" fill="#1c2b22"/><polygon points="30,32 50,22 50,42" fill="#2f6fd0"/><rect x="50" y="27" width="150" height="10" rx="5" fill="#2f6fd0"/><circle cx="215" cy="32" r="13" fill="#d8312b"/><path d="M60 14 H190" stroke="#f4c542" stroke-width="2.5" stroke-dasharray="5 4"/><polygon points="186,8 198,14 186,20" fill="#f4c542"/><text x="120" y="58" fill="#cfe6d8" font-size="11" font-family="system-ui">land on the triangle \u2192 slide to the end, bumping EVERYONE</text></svg>',
-  t:"Land on the triangle tip of a slide that ISN'T your color and you ride it to the end \u2014 bumping every pawn along the way back to Start, theirs or yours!"},
- {h:"Bumping & safety",t:"Land exactly on an opponent's pawn and it returns to Start. Your colored Safety Zone near Home is yours alone \u2014 opponents can never enter, swap, or Sorry! you there."},
+  t:"Land on the triangle tip of a slide that ISN'T your color and you ride it to the end, bumping every pawn along the way back to Start, theirs or yours!"},
+ {h:"Bumping & safety",t:"Land exactly on an opponent's pawn and it returns to Start. Your colored Safety Zone near Home is yours alone: opponents can never enter, swap, or Sorry! you there."},
  {h:"Home",t:"Pawns enter Home by exact count only. Once Home, a pawn is finished and safe forever."}]});};
   document.getElementById("menuQuit").onclick=()=>{if(confirm("Quit this game? It won't be recorded.")){GS=null;clearSave();ov.classList.remove("show");newGame();}};})();
 
@@ -887,7 +887,7 @@ function finalizeGame(winColor){if(!GS)return;clearSave();const loseColor=winCol
   if(!GS.friendly){
     let ok=false;try{GN.recordGame(SG_KEY,GS);ok=true;}catch(e){}
     if(!ok){const games=GamesStore.load();games.push(GS);GamesStore.save(games);}
-    try{GN.g.addResult(GS.winner,GS.loser,GS.durationMs);}catch(e){}
+    if(!ok){try{GN.g.addResult(GS.winner,GS.loser,GS.durationMs);}catch(e){}}
     if(GS.skunk){const sk=SkunkStore.load();sk.push({winner:GS.winner,loser:GS.loser,date:GS.end});SkunkStore.save(sk);}}
   GS=null;}
 
@@ -895,7 +895,7 @@ function sameDay(a,b){return a.getFullYear()===b.getFullYear()&&a.getMonth()===b
 function filterGames(games,period){const now=Date.now();return games.filter(g=>{const e=g.end||g.start||g.date;if(!e)return period==="all";const d=new Date(e),n=new Date();
   if(period==="today")return sameDay(d,n);if(period==="week")return e>=now-7*864e5;
   if(period==="month")return d.getMonth()===n.getMonth()&&d.getFullYear()===n.getFullYear();return true;});}
-function fmtDur(ms){if(!ms)return"\u2014";const s=Math.round(ms/1000),m=Math.floor(s/60);return m?(m+"m "+(s%60)+"s"):(s+"s");}
+function fmtDur(ms){if(!ms)return"-";const s=Math.round(ms/1000),m=Math.floor(s/60);return m?(m+"m "+(s%60)+"s"):(s+"s");}
 function statNames(games){const f={};games.forEach(g=>{[g.winner,g.loser].forEach(n=>{if(n)f[n]=(f[n]||0)+1;});});
   const ns=Object.keys(f).sort((a,b)=>f[b]-f[a]);
   const n1=ns[0]||SEAT.red,n2=ns[1]||(SEAT.blue!==n1?SEAT.blue:SEAT.red+" II");
@@ -917,7 +917,7 @@ function winChart(games){const w=300,h=84,pad=8;if(!games.length)return"";const 
 let statsPeriod="all";
 function renderStats(){const games=filterGames(GamesStore.load(),statsPeriod),A=aggregate(games),body=document.getElementById("statsBody");
   if(!A.n){body.innerHTML='<div class="empty">No games recorded for this range yet.<br>Finish a game and it lands here.</div>';return;}
-  const streak=A.streak?A.streak.who+" on a "+A.streak.len+"-game streak":"\u2014";let h="";
+  const streak=A.streak?A.streak.who+" on a "+A.streak.len+"-game streak":"-";let h="";
   const[n1,n2]=A.names;
   h+='<div class="h2h"><div class="h2hcol" style="color:'+RED_C+'"><div class="big">'+A.wins[n1]+'</div><div>'+n1+'</div></div><div class="vs">vs</div><div class="h2hcol" style="color:'+BLUE_C+'"><div class="big">'+A.wins[n2]+'</div><div>'+n2+'</div></div></div>';
   h+='<div class="meta">'+A.n+" game"+(A.n>1?"s":"")+" \u00b7 avg "+fmtDur(A.avgDur)+" \u00b7 "+streak+'</div>';
@@ -932,7 +932,7 @@ function renderStats(){const games=filterGames(GamesStore.load(),statsPeriod),A=
   h+=splitRow("Forced discards",A.forced[n1],A.forced[n2]);
   h+=splitRow("Cards played",A.cardsPlayed[n1],A.cardsPlayed[n2]);
   const sk=filterGames(SkunkStore.load(),statsPeriod);
-  h+='<div class="skledger">Skunk ledger: '+sk.length+" total"+(sk.length?" \u2014 "+sk.slice(-3).map(s=>s.winner+" skunked "+s.loser).join("; "):"")+'</div>';
+  h+='<div class="skledger">Skunk ledger: '+sk.length+" total"+(sk.length?": "+sk.slice(-3).map(s=>s.winner+" skunked "+s.loser).join("; "):"")+'</div>';
   body.innerHTML=h;}
 function openStats(){document.getElementById("statsOv").classList.add("show");renderStats();}
 function closeStats(){document.getElementById("statsOv").classList.remove("show");}
@@ -949,7 +949,6 @@ document.getElementById("ovBtn").addEventListener("click",newGame);
 document.getElementById("homeStats").addEventListener("click",openStats);
 document.getElementById("ovStats").addEventListener("click",openStats);
 document.getElementById("statsClose").addEventListener("click",closeStats);
-document.getElementById("statsClear").addEventListener("click",function(){if(confirm("Erase all recorded games and skunks? This cannot be undone.")){GamesStore.save([]);SkunkStore.save([]);renderStats();}});
 document.querySelectorAll("#statsPeriod .pbtn").forEach(function(b){b.addEventListener("click",function(){setPeriod(b.dataset.p);});});
 window.addEventListener("resize",()=>{fitCanvas();render();if(document.getElementById("coinOv").classList.contains("show"))positionCoinScene();});
 loadTheme();setTheme(CONFIG.theme,CONFIG.season);

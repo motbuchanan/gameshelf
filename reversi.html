@@ -6,7 +6,7 @@
   body{font-family:system-ui,sans-serif;color:#eaf2ec;min-height:100vh;display:flex;flex-direction:column;align-items:center;
     background:radial-gradient(125% 85% at 50% 15%,#1c3326 0%,#0a130d 70%);}
   #bar{width:100%;max-width:520px;display:flex;align-items:center;gap:10px;padding:11px 14px;}
-  #bar a{color:#cfe6d8;text-decoration:none;font-size:14px;border:1px solid #3a5a47;border-radius:999px;padding:6px 12px;}
+  #bar a{color:#cfe6d8;text-decoration:none;font-size:14px;border:1px solid #3a5a47;border-radius:999px;padding:9px 14px;display:inline-block;}
   #title{font-weight:800;font-size:20px;flex:1;}
   #turnWrap{display:flex;align-items:center;gap:8px;}
   #dot{width:15px;height:15px;border-radius:50%;}
@@ -50,17 +50,17 @@
 </div>
 <div id="boardWrap"><div id="board"></div></div>
 <div id="msg"></div>
-<div id="foot"><button class="act ghost" id="hintBtn"></button><button class="act ghost" id="newBtn">New game</button></div>
+<div id="foot"><button class="act ghost" id="hintBtn">Hints: On</button><button class="act ghost" id="newBtn">New game</button></div>
 <div class="ov" id="overlay"><div id="confetti"></div><div style="font-size:54px;">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p>
   <button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
-<script src="gamenight.js?v=12"></script>
+<script src="gamenight.js?v=13"></script>
 <script src="bot.js?v=1"></script>
 <script src="sfx.js?v=5"></script>
 <script>
 const KEY="reversi_games",N=8,DIRS=[[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
 function S(n,o){window.GNS&&GNS.play(n,0,o);}
 let P={A:{name:"Player 1",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},B:{name:"Player 2",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182"}};
-let board=[],turn="A",phase="over",GS=null,showHints=true,busy=false;
+let board=[],turn="A",phase="over",GS=null,showHints=true,busy=false,gameId=0;
 let botLevel=null,botKey="";
 function seatFrom(p){return{name:p.name,main:p.color,light:p.light,dark:p.dark};}
 function other(s){return s==="A"?"B":"A";}
@@ -129,30 +129,32 @@ function render(flipCells){
 }
 function setMsg(t){document.getElementById("msg").textContent=t;}
 
-function newGame(){phase="over";document.getElementById("overlay").classList.remove("show");document.getElementById("confetti").innerHTML="";
+function newGame(){phase="over";gameId++;document.getElementById("overlay").classList.remove("show");document.getElementById("confetti").innerHTML="";
   GN.matchStart(function(m){P={A:seatFrom(m.a),B:seatFrom(m.b)};
     botLevel=m.vsComputer?(m.bot||"medium"):null;botKey="";
     board=Array.from({length:N},()=>Array(N).fill(null));
     board[3][3]="B";board[3][4]="A";board[4][3]="A";board[4][4]="B"; // standard opening
-    turn=(m.first===m.a)?"A":"B";phase="play";busy=false;
+    turn=(m.first===m.a)?"A":"B";phase="play";busy=false;gameId++;
     GS={start:Date.now(),flipWinner:m.first.name,friendly:m.friendly};
-    setMsg(P[turn].name+" to move \u2014 place a disc to flip a row.");render();},{bot:true});}
+    setMsg(P[turn].name+" to move: place a disc to flip a row.");render();},{bot:true});}
 
 function tap(r,c){if(phase!=="play"||busy)return;
   if(botLevel&&turn==="B")return;
   tap2(r,c);}
 function tap2(r,c){if(phase!=="play"||busy)return;
   const flips=flipsFor(board,turn,r,c);
-  if(!flips.length){setMsg("That square doesn't flip anything \u2014 try a highlighted spot.");return;}
+  if(!flips.length){setMsg("That square doesn't flip anything. Try a highlighted spot.");return;}
+  busy=true; // block a second tap until the turn has passed
   board[r][c]=turn;flips.forEach(([fr,fc])=>{board[fr][fc]=turn;});
   render(flips.concat([[r,c]]));
   setMsg(P[turn].name+" flips "+flips.length+"!");
-  setTimeout(advance,360);
+  const g=gameId;setTimeout(()=>{if(g===gameId)advance();},360);
 }
 function advance(){
+  busy=false;
   const next=other(turn);
   if(legalMoves(board,next).length){turn=next;render();setMsg(P[turn].name+" to move.");return;}
-  if(legalMoves(board,turn).length){render();setMsg(P[other(turn)].name+" has no move \u2014 "+P[turn].name+" goes again.");return;}
+  if(legalMoves(board,turn).length){render();setMsg(P[other(turn)].name+" has no move, so "+P[turn].name+" goes again.");return;}
   finish(); // neither can move
 }
 document.getElementById("hintBtn").addEventListener("click",()=>{showHints=!showHints;render();});
@@ -162,7 +164,7 @@ document.getElementById("ovBtn").addEventListener("click",newGame);
 function finish(){phase="over";const ct=counts(board);
   const w=ct.A===ct.B?null:(ct.A>ct.B?"A":"B");
   const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
-    winner:w?P[w].name:"tie",loser:w?P[other(w)].name:"tie",flipWinner:GS.flipWinner,
+    winner:w?P[w].name:null,loser:w?P[other(w)].name:null,draw:!w,flipWinner:GS.flipWinner,
     score:(function(){const s={};s[P.A.name]=ct.A;s[P.B.name]=ct.B;return s;})()};
   if(!GS.friendly)GN.recordGame(KEY,rec);
   document.getElementById("ovTitle").textContent=w?(P[w].name+" wins!"):"It's a tie!";
@@ -175,13 +177,13 @@ function confettiBurst(){const box=document.getElementById("confetti");box.inner
     d.style.transform="rotate("+Math.floor(Math.random()*360)+"deg)";box.appendChild(d);}}
 
 GN.rulesButton(document.getElementById("foot"),{title:"Reversi",sections:[
- {h:"Goal",t:"Finish with more discs of your color showing. Every disc can flip many times \u2014 the only count that matters is the last one."},
+ {h:"Goal",t:"Finish with more discs of your color showing. Every disc can flip many times. The only count that matters is the last one."},
  {h:"Flanking",svg:'<svg viewBox="0 0 280 64"><g>'+(function(){let h="";const row=["new","opp","opp","opp","mine"];for(let i=0;i<5;i++){const x=50+i*38;h+='<rect x="'+(x-17)+'" y="12" width="34" height="34" rx="5" fill="#1c3a28"/>';const t=row[i];if(t==="mine"||t==="new")h+='<circle cx="'+x+'" cy="29" r="13" fill="#e8e4da"/>';else h+='<circle cx="'+x+'" cy="29" r="13" fill="#22262b"/>';if(t==="new")h+='<circle cx="'+x+'" cy="29" r="16" fill="none" stroke="#f4c542" stroke-width="2.5"/>';}return h;})()+'<text x="140" y="60" font-size="10.5" fill="#cfe6d8" text-anchor="middle" font-family="system-ui">place \u2192 every trapped disc between yours flips</text></g></svg>',
-  t:"Place a disc so that one or more straight lines of enemy discs are trapped between your new disc and another of yours \u2014 every trapped disc flips to your color, in all directions at once. Every legal move must flip at least one disc; the hints toggle shows them."},
- {h:"No move? Pass",t:"If you have no flipping move, your turn is skipped automatically. When NEITHER player can move, the game ends \u2014 even with empty squares left."},
- {h:"Corners are forever",t:"A corner disc can never be flipped \u2014 it anchors entire edges. The squares diagonally next to corners (the X-squares) are poison early: they usually hand the corner away.",
-  ex:"They take an X-square on move 12. You wait, build toward it, and the corner falls into your lap \u2014 along with both edges."},
- {h:"Fewer is better (early)",t:"Counter-intuitive: a small mid-game disc count is often STRONG \u2014 it means your opponent has many discs to flip and few safe moves. Mobility wins the middle; the count only matters at the end."},
+  t:"Place a disc so that one or more straight lines of enemy discs are trapped between your new disc and another of yours. Every trapped disc flips to your color, in all directions at once. Every legal move must flip at least one disc; the hints toggle shows them."},
+ {h:"No move? Pass",t:"If you have no flipping move, your turn is skipped automatically. When NEITHER player can move, the game ends, even with empty squares left."},
+ {h:"Corners are forever",t:"A corner disc can never be flipped: it anchors entire edges. The squares diagonally next to corners (the X-squares) are poison early: they usually hand the corner away.",
+  ex:"They take an X-square on move 12. You wait, build toward it, and the corner falls into your lap, along with both edges."},
+ {h:"Fewer is better (early)",t:"Counter-intuitive: a small mid-game disc count is often STRONG: it means your opponent has many discs to flip and few safe moves. Mobility wins the middle; the count only matters at the end."},
  {h:"vs Computer",t:"Easy plays loose, Medium fights for mobility, Hard prizes corners and will make you pay for X-squares."}]});
 GN.statsButton(document.getElementById("foot"),{title:"Reversi",key:KEY,specials:[]});
 /* difficulty is now chosen in the player picker (vs Computer) */

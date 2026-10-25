@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<title>Backgammon — 2 Players</title>
+<title>Backgammon: 2 Players</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   :root{--accent:#b0d235;--accentSh:#7e9a1f;--text:#e8f0e4;}
@@ -40,7 +40,7 @@
 <div id="msg"></div>
 <div id="foot"><button class="act" id="rollBtn">Roll</button><button class="act" id="newBtn">New game</button><div id="score"></div></div>
 <div class="ov" id="overlay"><div id="confetti"></div><div id="ovTrophy">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p><button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
-<script src="gamenight.js?v=12"></script>
+<script src="gamenight.js?v=13"></script>
 <script src="sfx.js?v=5"></script>
 <script>
 let P={red:{name:"Player 1",main:"#d8312b",light:"#f06a60",dark:"#8d1d19",dir:-1,home:[1,6]},
@@ -80,7 +80,7 @@ function newGame(){pts=Array(25).fill(null);
     if(!GN.friendly)GN.g.addDice([a,b]);
     dice=[a,b];used=[];GS.stats[P[turn].name].rolls++;
     boardAngle=boardTarget=(TVMODE?0:(turn==="red"?Math.PI:0));
-    phase="move";afterRollSetup(P[turn].name+" won the flip \u2014 opening roll "+a+"-"+b);});}
+    phase="move";afterRollSetup(P[turn].name+" won the flip. Opening roll "+a+"-"+b);});}
 /* ===== rules ===== */
 function cloneState(){return{pts:pts.map(p=>p?{c:p.c,n:p.n}:null),barC:{...barC},off:{...off}};}
 function restore(s){pts=s.pts.map(p=>p?{c:p.c,n:p.n}:null);barC={...s.barC};off={...s.off};}
@@ -137,11 +137,11 @@ function diceLeft(){const l=dice.slice();for(const u of used){const i=l.indexOf(
 function roll(){if(phase!=="roll"||spinning||animFly)return;S("dice");
   const a=1+Math.floor(Math.random()*6),b=1+Math.floor(Math.random()*6);
   dice=a===b?[a,a,a,a]:[a,b];used=[];GS.stats[P[turn].name].rolls++;if(!GN.friendly)GN.g.addDice([a,b]);
-  phase="move";afterRollSetup(P[turn].name+" rolled "+a+"-"+b+(a===b?" \u2014 doubles!":""));}
+  phase="move";afterRollSetup(P[turn].name+" rolled "+a+"-"+b+(a===b?", doubles!":""));}
 function afterRollSetup(msgText){document.getElementById("rollBtn").disabled=true;
   const moves=allowedMoves(turn,diceLeft());
   updateBar();
-  if(!moves.length){setMessage(msgText+" \u2014 no moves");render();
+  if(!moves.length){setMessage(msgText+": no moves");render();
     setTimeout(()=>endTurn(),1100);return;}
   sel=null;targets=[];setMessage(msgText);render();ensurePulse();}
 function endTurn(){if(off[turn]===15){gameOver(turn);return;}
@@ -306,7 +306,7 @@ function updateBar(){const pc=P[turn];document.getElementById("turnName").textCo
   const d=document.getElementById("dot");
   d.style.background="radial-gradient(circle at 35% 30%,"+pc.light+","+pc.main+" 70%,"+pc.dark+")";
   d.style.boxShadow="0 0 0 3px rgba(255,255,255,.15),0 0 14px "+pc.main;
-  const games=Store.load();let m=0,k=0;for(const g of games){if(g.winner===P.red.name)m++;else if(g.winner===P.blue.name)k++;}
+  const games=GN.readGames(KEY);let m=0,k=0;for(const g of games){if(g.winner===P.red.name)m++;else if(g.winner===P.blue.name)k++;}
   document.getElementById("score").textContent=P.red.name+" "+m+" \u00b7 "+k+" "+P.blue.name;}
 function applyOrientation(snap){if(TVMODE)return;const want=(turn==="red"?Math.PI:0);
   if(Math.abs(((boardTarget%(2*Math.PI))+2*Math.PI)%(2*Math.PI)-want)<0.01)return;
@@ -349,14 +349,14 @@ document.getElementById("rollBtn").addEventListener("click",roll);
 document.getElementById("newBtn").addEventListener("click",newGame);
 GN.rulesButton(document.getElementById("foot"),{title:"Backgammon",sections:[
  {h:"Goal",t:"March all 15 of your checkers around the board into your home quarter, then bear them off. First player to bear off every checker wins."},
- {h:"Your turn",t:"Roll two dice \u2014 each die is a separate move (one checker twice, or two checkers once each). Doubles play FOUR times. Checkers move toward your home; the highlights show every legal landing."},
- {h:"Points & blots",t:"Two or more of your checkers on a point OWN it \u2014 opponents can't land there. A lone checker is a BLOT: an enemy landing on it sends it to the bar in the middle.",
+ {h:"Your turn",t:"Roll two dice - each die is a separate move (one checker twice, or two checkers once each). Doubles play FOUR times. Checkers move toward your home; the highlights show every legal landing."},
+ {h:"Points & blots",t:"Two or more of your checkers on a point OWN it - opponents can't land there. A lone checker is a BLOT: an enemy landing on it sends it to the bar in the middle.",
   ex:"Building a wall of owned points in front of their runners (a \u201cprime\u201d) can trap checkers for the whole midgame."},
- {h:"The bar",t:"A checker on the bar must re-enter in the OPPONENT'S home quarter before you may move anything else \u2014 dice that can't enter are wasted. Against a strong home board, a hit can cost several full turns."},
+ {h:"The bar",t:"A checker on the bar must re-enter in the OPPONENT'S home quarter before you may move anything else - dice that can't enter are wasted. Against a strong home board, a hit can cost several full turns."},
  {h:"Bearing off",t:"Once ALL your checkers reach your home quarter, dice remove them: a 5 bears off a checker from the 5-point. A roll higher than your highest occupied point may bear off from the highest. Get hit during bear-off and that checker travels the whole board again."},
- {h:"The doubling cube",t:"Feeling ahead? Offer the cube to double the stakes BEFORE rolling. Your opponent either resigns the game at the current stake or accepts \u2014 and then only THEY may double next. The cube turns good positions into hard decisions.",
+ {h:"The doubling cube",t:"Feeling ahead? Offer the cube to double the stakes BEFORE rolling. Your opponent either resigns the game at the current stake or accepts - and then only THEY may double next. The cube turns good positions into hard decisions.",
   ex:"You're up but one lucky hit could flip it. Doubling now forces them to pay to find out."},
- {h:"Gammons",t:"Win before your opponent bears off a single checker and it's a GAMMON \u2014 double value. If they also have a checker on the bar or in your home, BACKGAMMON \u2014 triple. The stats remember."}]});
+ {h:"Gammons",t:"Win before your opponent bears off a single checker and it's a GAMMON - double value. If they also have a checker on the bar or in your home, BACKGAMMON - triple. The stats remember."}]});
 GN.statsButton(document.getElementById("foot"),{title:"Backgammon",key:KEY,specials:[
   {label:"Hits",of:(r,n)=>r.reduce((a,x)=>a+((x.stats&&x.stats[n])?x.stats[n].hits:0),0)},
   {label:"Gammon wins",of:(r,n)=>r.filter(x=>x.winner===n&&x.gammon).length},

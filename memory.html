@@ -10,7 +10,7 @@
   body{font-family:system-ui,sans-serif;color:#e8f0e4;overflow:hidden;display:flex;flex-direction:column;
     background:radial-gradient(120% 80% at 50% 16%,#26323f 0%,#0d1218 70%);}
   #bar{display:flex;align-items:center;gap:10px;padding:12px 14px;}
-  #bar a{color:#cfe0ec;text-decoration:none;font-size:14px;border:1px solid #3d5366;border-radius:999px;padding:6px 12px;}
+  #bar a{color:#cfe0ec;text-decoration:none;font-size:14px;border:1px solid #3d5366;border-radius:999px;padding:9px 14px;}
   #title{font-weight:800;font-size:20px;}
   #who{margin-left:auto;font-weight:700;font-size:14px;color:#cfe0ec;}
   #stats{display:flex;gap:18px;justify-content:center;padding:2px 0 6px;font-size:14px;color:#9fb6c8;}
@@ -22,7 +22,7 @@
   .tile .back{background:repeating-linear-gradient(45deg,#2f5a8e 0 7px,#244a76 7px 14px);
     box-shadow:0 5px 12px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.18);}
   .tile .back::after{content:"";position:absolute;inset:7px;border-radius:6px;border:1.6px solid rgba(255,255,255,.3);}
-  .tile .front{background:linear-gradient(160deg,#fffdf6,#eee6d2);transform:rotateY(180deg);font-size:34px;
+  .tile .front{background:linear-gradient(160deg,#fffdf6,#eee6d2);transform:rotateY(180deg);font-size:var(--tf,34px);
     box-shadow:0 5px 12px rgba(0,0,0,.5),inset 0 1px 0 #fff;}
   .tile.up,.tile.done{transform:rotateY(180deg);}
   .tile.done .front{background:linear-gradient(160deg,#cdeccd,#a9d6a9);box-shadow:0 0 0 2px #6fbf6f inset,0 4px 10px rgba(0,0,0,.4);}
@@ -38,6 +38,7 @@
   #confetti{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
   .cf{position:absolute;width:10px;height:14px;top:-20px;animation:fall linear forwards;}
   @keyframes fall{to{transform:translateY(110vh) rotate(720deg);}}
+  @media (orientation:landscape) and (max-height:500px){#bar{padding:4px 14px;}#stats{padding:0 0 2px;}#msg{min-height:0;font-size:13px;padding:0 16px;}#board{padding:4px 14px;gap:6px;}#foot{padding:4px 14px 6px;}}
   html.gn-easy #title{font-size:24px;} html.gn-easy #msg,html.gn-easy #stats{font-size:18px;} html.gn-easy .tile .front{font-size:40px;}
 </style>
 </head>
@@ -53,14 +54,14 @@
 <div class="ov" id="overlay"><div id="confetti"></div><div style="font-size:54px;">&#127881;</div><h1 id="ovTitle">Cleared!</h1><p id="ovText"></p>
   <button class="act" id="ovBtn">Play again</button>
   <a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3d5366;background:#16242f;color:#cfe0ec;text-decoration:none;">Back to shelf</a></div>
-<script src="gamenight.js?v=12"></script>
+<script src="gamenight.js?v=13"></script>
 <script src="sfx.js?v=5"></script>
 <script>
 const KEY="memory_games";
 function S(n,o){window.GNS&&GNS.play(n,0,o);}
-const ICONS=["\uD83C\uDF4E","\uD83C\uDF1F","\uD83C\uDF88","\uD83D\uDC31","\uD83C\uDF19","\u2693","\uD83C\uDF44","\uD83C\uDFB8","\uD83D\uDE80","\uD83C\uDF53","\uD83D\uDC1D","\uD83C\uDFB2","\uD83C\uDF55","\uD83D\uDD11","\uD83C\uDF38","\uD83D\uDC22","\uD83C\uDF88","\uD83C\uDFAF"];
+const ICONS=["\uD83C\uDF4E","\uD83C\uDF1F","\uD83C\uDF88","\uD83D\uDC31","\uD83C\uDF19","\u2693","\uD83C\uDF44","\uD83C\uDFB8","\uD83D\uDE80","\uD83C\uDF53","\uD83D\uDC1D","\uD83C\uDFB2","\uD83C\uDF55","\uD83D\uDD11","\uD83C\uDF38","\uD83D\uDC22","\uD83E\uDD8B","\uD83C\uDFAF"];
 const SIZES=[{c:4,r:4,p:8,lab:"4\u00d74"},{c:4,r:5,p:10,lab:"4\u00d75"},{c:6,r:6,p:18,lab:"6\u00d76"}];
-let sizeIdx=0,deck=[],first=null,second=null,moves=0,matches=0,lock=false,GS=null,playerName="You",timer=null;
+let sizeIdx=0,deck=[],first=null,second=null,moves=0,matches=0,lock=false,GS=null,playerName="You",timer=null,pend=0;
 
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
 function fmt(ms){const s=Math.floor(ms/1000);return (s<60?s+"s":Math.floor(s/60)+"m"+String(s%60).padStart(2,"0"));}
@@ -72,6 +73,7 @@ function newGame(name){
   const sz=SIZES[sizeIdx];const pairs=sz.p;
   const faces=ICONS.slice(0,pairs);
   deck=shuffle(faces.concat(faces).map((ic,i)=>({id:i,ic,done:false})));
+  if(pend){clearTimeout(pend);pend=0;}
   first=second=null;moves=0;matches=0;lock=false;
   GS={start:Date.now(),done:false,pairs};
   document.getElementById("overlay").classList.remove("show");
@@ -80,7 +82,7 @@ function newGame(name){
   document.getElementById("msg").textContent="Find the matching pairs.";
   const board=document.getElementById("board");
   board.style.gridTemplateColumns="repeat("+sz.c+",1fr)";
-  board.style.maxWidth=(sz.c*78)+"px";
+  fitBoard();
   board.innerHTML="";
   deck.forEach((card,idx)=>{
     const t=document.createElement("div");t.className="tile";t.dataset.idx=idx;
@@ -92,6 +94,15 @@ function newGame(name){
   document.querySelector("#stats").innerHTML='Moves <b id="moves">0</b><span>Matches <b id="matches">0</b>/'+pairs+'</span>Time <b id="time">0s</b>';
   if(timer)clearInterval(timer);timer=setInterval(tickTime,250);
 }
+/* size tiles by width AND height so every row fits (phone landscape included) */
+function fitBoard(){const sz=SIZES[sizeIdx],board=document.getElementById("board");if(!board)return;
+  const cs=getComputedStyle(board),gap=parseFloat(cs.rowGap)||9,padV=(parseFloat(cs.paddingTop)||0)+(parseFloat(cs.paddingBottom)||0),padH=(parseFloat(cs.paddingLeft)||0)+(parseFloat(cs.paddingRight)||0);
+  const availH=board.getBoundingClientRect().height-padV;
+  let w=Math.min(78-gap,Math.floor((availH-(sz.r-1)*gap)/sz.r*0.74));
+  if(!(w>0))w=78-gap; w=Math.max(28,w);
+  board.style.maxWidth=Math.min(sz.c*78,sz.c*w+(sz.c-1)*gap+padH)+"px";
+  board.style.setProperty("--tf",Math.min(34,Math.floor(w*0.62))+"px");}
+addEventListener("resize",fitBoard);
 function tileEl(idx){return document.querySelector('.tile[data-idx="'+idx+'"]');}
 function flip(idx){
   if(lock||GS.done)return;
@@ -101,15 +112,16 @@ function flip(idx){
   if(first===null){first=idx;return;}
   if(idx===first)return;
   second=idx;moves++;document.getElementById("moves").textContent=moves;
-  if(deck[first].ic===deck[second].ic){
+  const a=first,b=second;
+  if(deck[a].ic===deck[b].ic){
     lock=true;
-    setTimeout(()=>{tileEl(first).classList.add("done");tileEl(second).classList.add("done");
-      deck[first].done=deck[second].done=true;matches++;document.getElementById("matches").textContent=matches;
+    pend=setTimeout(()=>{pend=0;const ea=tileEl(a),eb=tileEl(b);if(!ea||!eb)return;ea.classList.add("done");eb.classList.add("done");
+      deck[a].done=deck[b].done=true;matches++;document.getElementById("matches").textContent=matches;
       S("place");first=second=null;lock=false;
       if(matches===GS.pairs)win();},360);
   }else{
     lock=true;
-    setTimeout(()=>{tileEl(first).classList.remove("up");tileEl(second).classList.remove("up");
+    pend=setTimeout(()=>{pend=0;const ea=tileEl(a),eb=tileEl(b);if(!ea||!eb)return;ea.classList.remove("up");eb.classList.remove("up");
       first=second=null;lock=false;},760);
   }
 }
@@ -136,15 +148,15 @@ document.getElementById("ovBtn").addEventListener("click",()=>newGame(playerName
 document.getElementById("sizeBtn").addEventListener("click",function(){
   sizeIdx=(sizeIdx+1)%SIZES.length;this.innerHTML="Size: "+SIZES[sizeIdx].lab;newGame(playerName);});
 GN.rulesButton(document.getElementById("foot"),{title:"Memory",sections:[
- {h:"Goal",t:"Find every matching pair with as few flips as possible. A calm one \u2014 great for sharp eyes of any age."},
- {h:"Play",t:"Tap a tile to turn it over, then tap a second. Match the two pictures and they stay face-up. No match and they flip back \u2014 remember where they were."},
+ {h:"Goal",t:"Find every matching pair with as few flips as possible. A calm one, great for sharp eyes of any age."},
+ {h:"Play",t:"Tap a tile to turn it over, then tap a second. Match the two pictures and they stay face-up. No match and they flip back, so remember where they were."},
  {h:"Scoring",t:"Each pair of flips counts as one move. Clear the board in the fewest moves to set a new best.",
-  ex:"A perfect 4\u00d74 game is 8 moves \u2014 every flip a match. Mortals take a few more."},
+  ex:"A perfect 4\u00d74 game is 8 moves: every flip a match. Mortals take a few more."},
  {h:"Sizes",t:"Tap Size to switch between 4\u00d74, 4\u00d75, and a brain-bending 6\u00d76. Best scores are kept per size."}]});
 GN.statsButton(document.getElementById("foot"),{title:"Memory",key:KEY,specials:[
  {label:"Games cleared",of:(r)=>r.length},
- {label:"Fewest moves (4\u00d74)",of:(r)=>{const f=r.filter(x=>x.size==="4\u00d74");return f.length?Math.min.apply(null,f.map(x=>x.moves||999)):"\u2014";}},
- {label:"Best time",of:(r)=>{if(!r.length)return "\u2014";const m=Math.min.apply(null,r.map(x=>x.durationMs||9e9));return Math.floor(m/1000)+"s";}}]});
+ {label:"Fewest moves (4\u00d74)",of:(r)=>{const f=r.filter(x=>x.size==="4\u00d74");return f.length?Math.min.apply(null,f.map(x=>x.moves||999)):"none";}},
+ {label:"Best time",of:(r)=>{if(!r.length)return "none";const m=Math.min.apply(null,r.map(x=>x.durationMs||9e9));return Math.floor(m/1000)+"s";}}]});
 if(window.GNS)GNS.button(document.getElementById("foot"));
 pickPlayer();
 </script>

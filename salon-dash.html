@@ -4,9 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Salon Dash</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="/fonts/fonts.css" rel="stylesheet">
 <style>
   :root{
     --teal:#13877a; --teal-d:#0f6d63;
@@ -51,6 +49,8 @@
   #sdRulesScreen .sdSecT{font-family:"Nunito";font-size:14px;line-height:1.5;color:#4a4450}
   #sdRulesScreen .sdEx{font-size:13px;font-style:italic;color:#6a6470;margin-top:6px}
   #sdRulesScreen .sdScroll{max-height:62vh;overflow:auto;margin:6px 0 14px}
+  #sdRotate{display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;text-align:center;padding:24px;background:rgba(20,40,38,.94);color:#fff;font:700 18px "Nunito",system-ui,sans-serif}
+  @media (orientation:landscape) and (max-height:500px){#sdRotate{display:flex}}
   #hint{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);background:rgba(35,32,42,.84);color:#fff;
     font-family:"Nunito";font-weight:700;font-size:12px;padding:7px 14px;border-radius:999px;max-width:88%;text-align:center;
     opacity:0;transition:opacity .3s}
@@ -117,6 +117,7 @@
 </head>
 <body><a href="index.html" style="position:fixed;top:9px;left:9px;z-index:99999;background:rgba(0,0,0,.5);color:#fff;font:600 13px system-ui;text-decoration:none;padding:6px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.22)">⌂ Shelf</a>
 <div id="stage">
+  <div id="sdRotate">Turn your phone upright to play.<br>The shift is paused.</div>
   <div id="wrap">
     <canvas id="c"></canvas>
     <div id="hud">
@@ -148,15 +149,15 @@
         <h1>Salon<span class="dash"> Dash</span></h1>
         <div class="tag">Run the chair · beat the clock</div>
         <div class="how">
-          <b>Seat</b> — tap a waiting client, then tap an open chair.<br>
-          <b>Serve</b> — tap a seated client to send your stylist over.<br>
-          <b>Color develops on its own</b> — go help someone else, come back to finish.<br>
-          <b>Get paid</b> — tap the 💰 when the look is done.<br>
+          <b>Seat:</b> tap a waiting client, then tap an open chair.<br>
+          <b>Serve:</b> tap a seated client to send your stylist over.<br>
+          <b>Color develops on its own:</b> go help someone else, come back to finish.<br>
+          <b>Get paid:</b> tap the 💰 when the look is done.<br>
           Don't let patience run out, or they walk.
         </div>
         <button class="btn" id="contBtn" style="display:none">Continue</button>
         <button class="btn" id="startBtn">Start with a practice shift</button>
-        <button class="btn alt" id="skipBtn" style="margin-top:8px">Skip — open my shift</button>
+        <button class="btn alt" id="skipBtn" style="margin-top:8px">Skip, open my shift</button>
         <div class="best" id="startBest"></div>
       </div>
     </div>
@@ -304,7 +305,7 @@ function pointer(e){
   if(G.state!=='play') return;
   const r=cv.getBoundingClientRect();
   const px=(e.clientX-r.left)/r.width*VW, py=(e.clientY-r.top)/r.height*VH;
-  // topmost client hit — big tap targets (body halo + bubble)
+  // topmost client hit - big tap targets (body halo + bubble)
   let hit=null;
   for(let i=G.clients.length-1;i>=0;i--){const c=G.clients[i];
     if(['enter','leave','angry','toChair'].includes(c.state)) continue;
@@ -339,8 +340,10 @@ cv.addEventListener('pointerdown',pointer);
 function curStep(c){ return SERVICES[c.svc].steps[c.step]; }
 
 /* ============================ update ============================ */
+const _sdRotQ=window.matchMedia?matchMedia('(orientation:landscape) and (max-height:500px)'):null;
 function step(dt){
   if(G.state!=='play') return;
+  if(window.SD_PAUSED||(_sdRotQ&&_sdRotQ.matches)) return;   // rules open or phone turned sideways: hold the shift
   G.t+=dt;
   // spawn
   if(G.spawnLeft>0){
@@ -448,6 +451,7 @@ function coinBurst(x,y,n){ for(let i=0;i<n;i++){G.coins.push({x:x+(Math.random()
 
 /* ============================ sound ============================ */
 let AC=null, muted=false;
+try{muted=localStorage.getItem('salonDashMuted')==='1';}catch(e){}
 function ac(){ if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}} return AC; }
 function tone(f,t,type,g){ if(muted)return; const a=ac(); if(!a)return; const o=a.createOscillator(),v=a.createGain();
   o.type=type||'sine'; o.frequency.value=f; v.gain.value=g||.05; o.connect(v); v.connect(a.destination);
@@ -670,8 +674,8 @@ let hintTimer=null;
 function hint(t){ const e=document.getElementById('hint'); e.textContent=t; e.classList.add('show'); clearTimeout(hintTimer); hintTimer=setTimeout(()=>e.classList.remove('show'),2600); }
 
 const dayInfo=[
-  ['Soft open',"Two services today — cuts and blowouts. Find your rhythm."],
-  ['Word gets out',"Color's on the menu now. It develops on its own — start it, then go help someone."],
+  ['Soft open',"Two services today: cuts and blowouts. Find your rhythm."],
+  ['Word gets out',"Color's on the menu now. It develops on its own. Start it, then go help someone."],
   ['Busy chair',"Faster arrivals. Keep an eye on every patience meter."],
   ['Fully booked',"Back to back. Chain happy clients for tip combos."],
   ['The rush',"No mercy. Seat, serve, and cash out fast."],
@@ -689,7 +693,7 @@ function openDayCard(d){
   document.getElementById('dayGoal').textContent='$'+goalFor(d);
   document.getElementById('dayStaff').textContent=G.staffCount;
   const rstars=Math.min(G.streak,5);
-  document.getElementById('dayRep').textContent = G.streak>0 ? ('Reputation '+'\u2605'.repeat(rstars)+'\u2606'.repeat(5-rstars)+'  \u00b7  '+G.streak+'-day streak') : 'New salon \u2014 keep days clean to build reputation';
+  document.getElementById('dayRep').textContent = G.streak>0 ? ('Reputation '+'\u2605'.repeat(rstars)+'\u2606'.repeat(5-rstars)+'  \u00b7  '+G.streak+'-day streak') : 'New salon: keep days clean to build reputation';
   showScreen('dayScreen');
 }
 function endDay(){
@@ -701,7 +705,7 @@ function endDay(){
   document.getElementById('endTitle').textContent= met?'Books balanced ✂️':'Didn’t hit goal';
   document.getElementById('endMoney').textContent='$'+G.money;
   document.getElementById('endGoal').textContent='$'+G.goal;
-  document.getElementById('endNote').textContent= met?('🔥 '+G.streak+'-day streak · reputation bonus +$'+bonus):'Streak reset — give the day another go.';
+  document.getElementById('endNote').textContent= met?('🔥 '+G.streak+'-day streak · reputation bonus +$'+bonus):'Streak reset. Give the day another go.';
   document.getElementById('endBank').textContent='Bank: $'+G.bank;
   const b=document.getElementById('endBtn'); b.textContent= met?'Upgrades →':'Retry day'; b.dataset.met=met?'1':'0';
   showScreen('endScreen');
@@ -728,20 +732,20 @@ function saveBest(){ try{ if(G.total>best()) localStorage.setItem('salonDashBest
 
 /* ============================ tutorial ============================ */
 const TUT=[
- {spawn:'cut',text:"Hi, I'm Rosa \u2014 your manager. Here comes your first client. Tap her, then tap an open chair to seat her.",await:'seated',tgt:'seat'},
+ {spawn:'cut',text:"Hi, I'm Rosa, your manager. Here comes your first client. Tap her, then tap an open chair to seat her.",await:'seated',tgt:'seat'},
  {text:"Nice. Now tap her in the chair and you'll head over to start her cut.",await:'svcStarted',tgt:'serve'},
  {text:"Snip, snip\u2026 give it a second.",await:'ready',tgt:'none'},
  {text:"All done! Tap the \ud83d\udcb0 to get paid.",await:'paid',tgt:'pay'},
- {spawn:'blowout',text:"One happy client! Here's another \u2014 she wants a blowout. Seat her the same way.",await:'seated',tgt:'seat'},
+ {spawn:'blowout',text:"One happy client! Here's another, and she wants a blowout. Seat her the same way.",await:'seated',tgt:'seat'},
  {text:"Tap her to start the blowout.",await:'svcStarted',tgt:'serve'},
  {text:"Looking good\u2026",await:'ready',tgt:'none'},
  {text:"Tap the \ud83d\udcb0 to collect.",await:'paid',tgt:'pay'},
- {spawn:'color',text:"Last one, and she's a little different \u2014 she wants color. Seat her first.",await:'seated',tgt:'seat'},
+ {spawn:'color',text:"Last one, and she's a little different: she wants color. Seat her first.",await:'seated',tgt:'seat'},
  {text:"Tap her to start applying the color.",await:'svcStarted',tgt:'serve'},
- {text:"Now it develops on its own \u2014 see the \u23f3? You're free to move. Just wait for it.",await:'colorDeveloped',tgt:'none'},
+ {text:"Now it develops on its own. See the \u23f3? You're free to move. Just wait for it.",await:'colorDeveloped',tgt:'none'},
  {text:"Ready! Tap her again to finish the color.",await:'ready',tgt:'serve'},
- {text:"And collect \u2014 tap the \ud83d\udcb0.",await:'paid',tgt:'pay'},
- {text:"That's the whole job: seat, serve, collect \u2014 and let color develop while you help others. Ready for your own shift?",await:'done',tgt:'none',finish:true},
+ {text:"And collect: tap the \ud83d\udcb0.",await:'paid',tgt:'pay'},
+ {text:"That's the whole job: seat, serve, collect, and let color develop while you help others. Ready for your own shift?",await:'done',tgt:'none',finish:true},
 ];
 function coach(text,showBtn){
   const c=document.getElementById('coach'), t=document.getElementById('coachText'), b=document.getElementById('coachBtn');
@@ -886,7 +890,8 @@ document.getElementById('endBtn').onclick=(e)=>{ hideScreens(); if(e.target.data
 document.getElementById('upBtn').onclick=()=>{ hideScreens(); openDayCard(G.pendingDay); };
 document.getElementById('contBtn').onclick=()=>{ ac(); const s=loadRun(); if(!s) return; newGame(); applySave(s); G.tut=null; document.getElementById('coach').classList.add('hide'); openDayCard(s.day); };
 document.getElementById('overBtn').onclick=()=>{ clearRun(); newGame(); hideScreens(); openDayCard(1); };
-document.getElementById('mute').onclick=()=>{ muted=!muted; document.getElementById('mute').textContent=muted?'🔇':'🔊'; };
+document.getElementById('mute').onclick=()=>{ muted=!muted; try{localStorage.setItem('salonDashMuted',muted?'1':'0');}catch(e){} document.getElementById('mute').textContent=muted?'🔇':'🔊'; };
+if(muted)document.getElementById('mute').textContent='🔇';
 
 document.getElementById('startBest').textContent= best()?'Best: $'+best():'';
 (function(){ const s=loadRun(); if(s){ const cb=document.getElementById('contBtn'); cb.style.display=''; cb.textContent='Continue · Day '+(s.day||1); document.getElementById('startBtn').textContent='New game'; } })();
@@ -896,17 +901,17 @@ requestAnimationFrame(frame);
 </script>
 <div id="sdRulesScreen">
   <div class="card">
-    <h2>Salon Dash — How to play</h2>
+    <h2>Salon Dash: How to play</h2>
     <div class="sdScroll">
       <div class="sdSecH">Goal</div>
-      <div class="sdSecT">Run a busy hair salon. Seat each client at an open station, start their service, and finish before their patience runs out. Keep clients happy to earn tips and clear the day.</div>
+      <div class="sdSecT">Run a busy hair salon. Seat each client in an open chair, send your stylist to do their look, and get them paid out before their patience runs out. Happy clients earn money and tips toward the day's goal.</div>
       <div class="sdSecH">Seat &amp; serve</div>
-      <div class="sdSecT">Tap a waiting client, then tap an open station to seat them. Each client wants a specific service — a cut, a color, a wash — shown above their head, so match them to the right station.</div>
+      <div class="sdSecT">Tap a waiting client, then tap any open chair to seat them. Their bubble shows what they want: a cut, a blowout or color. Tap a seated client to send your stylist over. Color develops on its own, so start it and go help someone else, then come back to finish. When the look is done, tap the 💰 to get paid.</div>
       <div class="sdSecH">Patience</div>
       <div class="sdSecT">Every client has a patience meter that drains while they wait and while they’re served. Finish in time and they leave happy; let it empty and they storm out. More stations keep the line moving.</div>
       <div class="sdSecH">Score the day</div>
-      <div class="sdSecT">You earn money and tips for each happy client. Clear the day’s clients to advance — lose too many and the day ends.</div>
-      <div class="sdEx"><b>Tip:</b> Seat the lowest-patience client first, even if another service pays more — a walkout costs you more than a smaller tip.</div>
+      <div class="sdSecT">You earn money and tips for each happy client. Reach the day’s goal to advance. Every walkout costs a heart, and losing all your hearts closes the salon.</div>
+      <div class="sdEx"><b>Tip:</b> Seat the lowest-patience client first, even if another service pays more. A walkout costs you more than a smaller tip.</div>
     </div>
     <button class="btn" id="sdRulesClose">Got it</button>
   </div>
@@ -915,8 +920,8 @@ requestAnimationFrame(frame);
 (function(){
   var btn=document.getElementById('sdRules'),scr=document.getElementById('sdRulesScreen'),cls=document.getElementById('sdRulesClose');
   if(!btn||!scr)return;
-  function open(){scr.style.display='flex';}
-  function close(){scr.style.display='none';}
+  function open(){scr.style.display='flex';window.SD_PAUSED=true;}
+  function close(){scr.style.display='none';window.SD_PAUSED=false;}
   btn.addEventListener('click',open);
   if(cls)cls.addEventListener('click',close);
   scr.addEventListener('click',function(e){if(e.target===scr)close();});

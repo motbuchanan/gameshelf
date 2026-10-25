@@ -6,7 +6,7 @@
   body{font-family:system-ui,sans-serif;color:#22303a;min-height:100vh;display:flex;flex-direction:column;align-items:center;
     background:repeating-linear-gradient(#f6f3ea 0 27px,#eadfca 27px 28px);}
   #bar{width:100%;max-width:640px;display:flex;align-items:center;gap:10px;padding:12px 14px;background:#f6f3ea;border-bottom:2px solid #c9941e;}
-  #bar a{color:#3a566e;text-decoration:none;font-size:14px;border:1.5px solid #c3a86a;border-radius:999px;padding:6px 12px;background:#fff;}
+  #bar a{color:#3a566e;text-decoration:none;font-size:14px;border:1.5px solid #c3a86a;border-radius:999px;padding:10px 16px;background:#fff;}
   #title{font-weight:800;font-size:20px;flex:1;}
   #wrap{width:min(96vw,640px);padding:10px 16px 44px;}
   #prev{float:right;font-size:12px;color:#7a8a98;display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none;}
@@ -38,16 +38,17 @@
   <h2>First place</h2><div class="titles" id="titles"></div>
   <h2>Top scores</h2><div class="scores" id="scores"></div>
   <h2>Game champions</h2><div class="champs" id="champs"></div>
-  <div class="note">Each title is held by one person at a time &mdash; whoever currently leads. Win counts come from games
+  <div class="note">Each title is held by one person at a time: whoever currently leads. Win counts come from games
     finished on this device; friendly games don&rsquo;t count. Beat a record and the title changes hands.</div>
 </div>
-<script src="gamenight.js?v=12"></script>
+<script src="gamenight.js?v=13"></script>
 <script src="achievements.js"></script>
 <script>
 const CHAL=[["snakearcade_games","Snake","pts"],["brickbreak_games","Brick Break","pts"],
   ["blocks_games","Blocks","lvl"],["stardefender_games","Star Defender","wave"],
   ["gemmatch_games","Gem Match","pts"],["minesweeper_games","Minesweeper","pts"],["craps_games","Craps","chips"]];
 const A=window.Achievements;
+function esc(x){return String(x==null?"":x).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
 
 function tokenFor(name){
   const p=(GN.players()||[]).filter(x=>x.name===name)[0];
@@ -71,7 +72,7 @@ function realBundle(){
   const BAD={tie:1,"(draw)":1,Computer:1,You:1};
   const champs=[];(A?A.knownGames():[]).forEach(k=>{
     const recs=GN.readGames(k)||[];const w={};
-    recs.forEach(r=>{if(r&&r.winner&&!BAD[r.winner])w[r.winner]=(w[r.winner]||0)+1;});
+    recs.forEach(r=>{if(r&&!r.draw&&!r.solo&&typeof r.winner==="string"&&r.winner&&!BAD[r.winner]&&(!GN._realWinner||GN._realWinner(r.winner)))w[r.winner]=(w[r.winner]||0)+1;});
     const t=topOf(w);if(t)champs.push({name:A.nameFor(k),holder:t.names.join(" & "),wins:t.count});});
   champs.sort((a,b)=>b.wins-a.wins);
   return {titles,scores,champs};
@@ -92,7 +93,7 @@ function titleCard(ic,label,t){
   const d=document.createElement("div");
   if(!t){d.className="tcard none";d.innerHTML='<div class="ic">'+ic+'</div><div class="lb">'+label+'</div><div class="who">No one yet</div>';return d;}
   d.className="tcard";
-  const who=t.names.map(n=>tokenFor(n)+'<span>'+n+'</span>').join(' ');
+  const who=t.names.map(n=>tokenFor(n)+'<span>'+esc(n)+'</span>').join(' ');
   d.innerHTML='<div class="ic">'+ic+'</div><div class="lb">'+label+'</div><div class="who">'+who+'</div><div class="num">'+t.count+'</div>';
   return d;
 }
@@ -105,13 +106,13 @@ function render(){
   const S=document.getElementById("scores");S.innerHTML="";
   b.scores.forEach(s=>{const r=document.createElement("div");r.className="row";
     r.innerHTML='<span class="g">'+s.name+'</span>'+
-      (s.holder?'<span class="h">'+tokenFor(s.holder)+'<span>'+s.holder+'</span></span><span class="v">'+s.value+' '+s.unit+'</span>'
+      (s.holder?'<span class="h">'+tokenFor(s.holder)+'<span>'+esc(s.holder)+'</span></span><span class="v">'+s.value+' '+s.unit+'</span>'
               :'<span class="h none">no scores yet</span><span class="v">\u2013</span>');
     S.appendChild(r);});
   const C=document.getElementById("champs");C.innerHTML="";
-  if(!b.champs.length){C.innerHTML='<div class="row"><span class="h none">No games recorded yet \u2014 play some!</span></div>';}
+  if(!b.champs.length){C.innerHTML='<div class="row"><span class="h none">No games recorded yet. Play some!</span></div>';}
   else b.champs.forEach(c=>{const r=document.createElement("div");r.className="row";
-    r.innerHTML='<span class="g">'+c.name+'</span><span class="h">'+tokenFor(c.holder)+'<span>'+c.holder+'</span></span><span class="v">'+c.wins+'</span>';
+    r.innerHTML='<span class="g">'+c.name+'</span><span class="h">'+tokenFor(c.holder)+'<span>'+esc(c.holder)+'</span></span><span class="v">'+c.wins+'</span>';
     C.appendChild(r);});
 }
 render();

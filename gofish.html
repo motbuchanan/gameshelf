@@ -56,7 +56,7 @@
 <div class="ov" id="curtain"><h1 id="curTitle"></h1><p id="curText"></p><button class="act" id="curBtn">I'm ready</button></div>
 <div class="ov" id="overlay"><div id="confetti"></div><div style="font-size:54px;">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p>
   <button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #2e5168;background:#10293a;color:#bfe0f0;text-decoration:none;">Back to shelf</a></div>
-<script src="gamenight.js?v=12"></script>
+<script src="gamenight.js?v=13"></script>
 <script src="sfx.js?v=5"></script>
 <script>
 const KEY="gofish_games",SUIT=["\u2660","\u2665","\u2666","\u2663"],RED=new Set([1,2]);
@@ -84,7 +84,7 @@ function cardEl(c,ask){const d=document.createElement("div");
   d.innerHTML='<span class="rk">'+rname(c.r)+'</span><span class="su">'+SUIT[c.s]+'</span>';return d;}
 function render(){
   const opp=turn==="A"?"B":"A";
-  document.getElementById("oppName").textContent=P[opp].name+" \u2014 "+hand[opp].length+" cards";
+  document.getElementById("oppName").textContent=P[opp].name+": "+hand[opp].length+" cards";
   const fan=document.getElementById("oppFan");fan.innerHTML="";
   for(let i=0;i<Math.min(hand[opp].length,13);i++){const b=document.createElement("div");b.className="back";fan.appendChild(b);}
   document.getElementById("booksA").textContent=P.A.name+" books: "+books.A.length+(books.A.length?" ("+books.A.map(rname).join(",")+")":"");
@@ -113,8 +113,8 @@ function newGame(){phase="over";document.getElementById("overlay").classList.rem
     turn=(m.first===m.a)?"A":"B";phase="play";busy=false;
     GS={start:Date.now(),flipWinner:m.first.name,friendly:m.friendly,asks:{},catches:{}};
     GS.asks[m.a.name]=0;GS.asks[m.b.name]=0;GS.catches[m.a.name]=0;GS.catches[m.b.name]=0;
-    curtainTo(()=>{render();setMsg(P[turn].name+" \u2014 tap a card to ask for that rank.");},
-      "Pass to "+P[turn].name,"They go first \u2014 don't peek at their hand!");});}
+    curtainTo(()=>{render();setMsg(P[turn].name+": tap a card to ask for that rank.");},
+      "Pass to "+P[turn].name,"They go first. Don't peek at their hand!");});}
 
 function ask(r){if(phase!=="play"||busy)return;
   busy=true;const opp=turn==="A"?"B":"A";
@@ -122,20 +122,20 @@ function ask(r){if(phase!=="play"||busy)return;
   const got=pullRank(hand[opp],r);
   if(got.length){hand[turn].push(...got);
     const made=harvestBooks(turn);
-    setMsg(P[turn].name+" asked for "+rname(r)+"s \u2014 got "+got.length+"!"+(made?" \uD83D\uDCDA Book!":"")+" Go again.");
+    setMsg(P[turn].name+" asked for "+rname(r)+"s and got "+got.length+"!"+(made?" \uD83D\uDCDA Book!":"")+" Go again.");
     render();finishOrContinue(true);
   } else { // GO FISH
     if(pond.length){const drawn=pond.pop();hand[turn].push(drawn);
       const made=harvestBooks(turn);
       if(drawn.r===r){GS.catches[P[turn].name]++;
-        setMsg("Go Fish \u2014 and "+P[turn].name+" fished the "+rname(r)+" they wanted! "+(made?"\uD83D\uDCDA Book! ":"")+"Go again.");
+        setMsg("Go Fish! And "+P[turn].name+" fished the "+rname(r)+" they wanted! "+(made?"\uD83D\uDCDA Book! ":"")+"Go again.");
         render();finishOrContinue(true);
       } else {
-        setMsg("Go Fish \u2014 "+P[turn].name+" draws a card."+(made?" \uD83D\uDCDA Book!":""));
+        setMsg("Go Fish! "+P[turn].name+" draws a card."+(made?" \uD83D\uDCDA Book!":""));
         render();finishOrContinue(false);
       }
     } else { // empty pond
-      setMsg("The pond is empty \u2014 no card to draw.");render();finishOrContinue(false);
+      setMsg("The pond is empty, no card to draw.");render();finishOrContinue(false);
     }
   }
 }
@@ -144,7 +144,7 @@ function finishOrContinue(again){
   if(hand[turn].length===0&&pond.length){hand[turn].push(pond.pop());harvestBooks(turn);render();}
   if(gameOver()){setTimeout(finish,700);return;}
   if(again){busy=false;
-    if(hand[turn].length===0){setMsg(P[turn].name+" is out of cards \u2014 turn passes.");setTimeout(()=>passTurn(),900);}
+    if(hand[turn].length===0){setMsg(P[turn].name+" is out of cards. Turn passes.");setTimeout(()=>passTurn(),900);}
     return;}
   setTimeout(()=>passTurn(),1000);
 }
@@ -154,8 +154,8 @@ function passTurn(){turn=turn==="A"?"B":"A";busy=false;
   if(hand[turn].length===0&&pond.length===0){ // can't play; other also? then end
     if(gameOver()||(hand.A.length===0&&hand.B.length===0)){finish();return;}
     turn=turn==="A"?"B":"A";} // skip back
-  curtainTo(()=>{render();setMsg(P[turn].name+" \u2014 tap a card to ask for that rank.");},
-    "Pass to "+P[turn].name,"Books so far \u2014 "+P.A.name+": "+books.A.length+" \u00b7 "+P.B.name+": "+books.B.length);}
+  curtainTo(()=>{render();setMsg(P[turn].name+": tap a card to ask for that rank.");},
+    "Pass to "+P[turn].name,"Books so far: "+P.A.name+": "+books.A.length+" \u00b7 "+P.B.name+": "+books.B.length);}
 
 function curtainTo(fn,title,text){const cur=document.getElementById("curtain");
   document.getElementById("curTitle").textContent=title;document.getElementById("curText").textContent=text||"";
@@ -164,12 +164,12 @@ function curtainTo(fn,title,text){const cur=document.getElementById("curtain");
 function finish(){phase="over";
   const w=books.A.length===books.B.length?null:(books.A.length>books.B.length?"A":"B");
   const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
-    winner:w?P[w].name:"tie",loser:w?P[w==="A"?"B":"A"].name:"tie",flipWinner:GS.flipWinner,
+    winner:w?P[w].name:null,loser:w?P[w==="A"?"B":"A"].name:null,draw:!w,flipWinner:GS.flipWinner,
     books:(function(){const s={};s[P.A.name]=books.A.length;s[P.B.name]=books.B.length;return s;})(),
     asks:GS.asks,catches:GS.catches};
   if(!GS.friendly)GN.recordGame(KEY,rec);
   document.getElementById("ovTitle").textContent=w?(P[w].name+" wins!"):"It's a tie!";
-  document.getElementById("ovText").textContent="Books \u2014 "+P.A.name+": "+books.A.length+" \u00b7 "+P.B.name+": "+books.B.length;
+  document.getElementById("ovText").textContent="Books: "+P.A.name+": "+books.A.length+" \u00b7 "+P.B.name+": "+books.B.length;
   confettiBurst();S("fanfare");document.getElementById("overlay").classList.add("show");}
 function confettiBurst(){const box=document.getElementById("confetti");box.innerHTML="";
   const cols=["#46b0d2","#f4c542","#d8312b","#7ed957","#e8e4da"];
@@ -179,13 +179,13 @@ function confettiBurst(){const box=document.getElementById("confetti");box.inner
 document.getElementById("newBtn").addEventListener("click",newGame);
 document.getElementById("ovBtn").addEventListener("click",newGame);
 GN.rulesButton(document.getElementById("foot"),{title:"Go Fish",sections:[
- {h:"Goal",t:"Collect the most BOOKS \u2014 all four cards of one rank. Thirteen books exist; majority wins."},
- {h:"Your turn",t:"Ask the other player for a rank you ALREADY hold at least one of: \u201cGot any Sevens?\u201d If they do, they hand over ALL of them \u2014 and you ASK AGAIN. Keep hitting, keep asking."},
- {h:"Go fish!",t:"If they have none, they say \u201cGo fish!\u201d and you draw one card. Draw the very rank you asked for? Show it \u2014 and your turn continues! Otherwise the turn passes."},
+ {h:"Goal",t:"Collect the most BOOKS: all four cards of one rank. Thirteen books exist; majority wins."},
+ {h:"Your turn",t:"Ask the other player for a rank you ALREADY hold at least one of: \u201cGot any Sevens?\u201d If they do, they hand over ALL of them - and you ASK AGAIN. Keep hitting, keep asking."},
+ {h:"Go fish!",t:"If they have none, they say \u201cGo fish!\u201d and you draw one card. Draw the very rank you asked for? Show it - and your turn continues! Otherwise the turn passes."},
  {h:"Books",t:"The moment you hold all four of a rank, the book banks automatically and scores. Your hand groups cards by rank so near-books are easy to spot."},
- {h:"Memory is the game",t:"Every ask is information \u2014 theirs AND yours. If they asked for Queens two turns ago, they still hold Queens\u2026 unless you fished one since.",
-  ex:"They asked for Nines, then drew twice. You just picked up a Nine \u2014 asking for Nines now likely nets you theirs AND another turn."},
- {h:"Empty hands",t:"Out of cards mid-game? Draw from the pond and play on. The game ends when all 13 books are made \u2014 most books takes it."}]});
+ {h:"Memory is the game",t:"Every ask is information - theirs AND yours. If they asked for Queens two turns ago, they still hold Queens\u2026 unless you fished one since.",
+  ex:"They asked for Nines, then drew twice. You just picked up a Nine - asking for Nines now likely nets you theirs AND another turn."},
+ {h:"Empty hands",t:"Out of cards mid-game? Draw from the pond and play on. The game ends when all 13 books are made - most books takes it."}]});
 GN.statsButton(document.getElementById("foot"),{title:"Go Fish",key:KEY,specials:[
   {label:"Lucky catches",of:(recs,name)=>recs.reduce((a,r)=>a+((r.catches&&r.catches[name])||0),0)}]});
 if(window.GNS)GNS.button(document.getElementById("foot"));

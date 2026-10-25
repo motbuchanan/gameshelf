@@ -4,9 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>The Orb</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,500;0,600;1,400;1,500&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="/fonts/fonts.css" rel="stylesheet">
 <style>
 :root{
   --void:#160b1e; --velvet:#241036; --plum:#3a1c50; --plum2:#4a2663;
@@ -41,7 +39,7 @@ header{width:100%; max-width:540px; display:flex; align-items:center;
 .brand .star{color:var(--candle); font-size:14px; line-height:1;}
 .brand .name{font-family:"Spline Sans Mono",monospace; font-size:11px; letter-spacing:.34em;
   text-transform:uppercase; color:var(--candle-soft); font-weight:500;}
-.reset{background:none; border:1px solid rgba(185,138,78,.35); color:var(--ash);
+.reset{-webkit-user-select:none; user-select:none; background:none; border:1px solid rgba(185,138,78,.35); color:var(--ash);
   font-family:"Spline Sans Mono",monospace; font-size:10px; letter-spacing:.18em; text-transform:uppercase;
   padding:7px 11px; border-radius:999px; cursor:pointer;}
 .reset:hover{color:var(--candle-soft); border-color:var(--gold-line);}
@@ -115,7 +113,7 @@ main{width:100%; max-width:540px; flex:1; display:flex; flex-direction:column;
 @keyframes surface{from{opacity:0; transform:translateY(8px); filter:blur(5px);} to{opacity:1; transform:none; filter:none;}}
 .sub{font-size:16.5px; color:var(--ash); text-align:center; max-width:42ch; line-height:1.4; font-style:italic; margin:2px 0 6px;}
 .answers{display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-top:12px; width:100%;}
-.ans{font-family:"Spline Sans Mono",monospace; font-size:12px; letter-spacing:.08em;
+.ans{-webkit-user-select:none; user-select:none; font-family:"Spline Sans Mono",monospace; font-size:12px; letter-spacing:.08em;
   background:linear-gradient(180deg, rgba(74,38,99,.55), rgba(36,16,54,.55));
   color:var(--ink); border:1px solid rgba(185,138,78,.30); border-radius:999px;
   padding:11px 17px; cursor:pointer; transition:all .16s ease; backdrop-filter:blur(4px);}
@@ -123,7 +121,7 @@ main{width:100%; max-width:540px; flex:1; display:flex; flex-direction:column;
   box-shadow:0 4px 18px rgba(214,156,255,.18);}
 .ans.affirm{border-color:rgba(143,230,214,.4);} .ans.deny{border-color:rgba(255,158,207,.32);}
 .row{display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:14px;}
-.btn{font-family:"Spline Sans Mono",monospace; font-size:12px; letter-spacing:.10em;
+.btn{-webkit-user-select:none; user-select:none; font-family:"Spline Sans Mono",monospace; font-size:12px; letter-spacing:.10em;
   background:linear-gradient(180deg,#e9b873,#c08a3e);  color:#2a1538; border:none; font-weight:500;
   padding:13px 22px; border-radius:999px; cursor:pointer; box-shadow:0 6px 20px rgba(214,156,255,.22);}
 .btn:hover{filter:brightness(1.06);}
@@ -194,11 +192,11 @@ footer{width:100%; max-width:540px; display:flex; justify-content:space-between;
 </main>
 <footer>
   <span id="status">the glass is still</span>
-  <span id="brainsize">— things divined</span>
+  <span id="brainsize">things divined</span>
 </footer>
 <script>
 /* ============================================================
-   THE ORB — a crystal-ball divination guessing game.
+   THE ORB: a crystal-ball divination guessing game.
    Self-contained: a Bayesian engine reads a built-in base of
    things and the questions that split them most evenly.
    Learns into local storage. No network, no AI service.
@@ -637,7 +635,8 @@ function recordDelta(name,patch){
   if(patch.weightBump)d.weightBump=(d.weightBump||0)+patch.weightBump;
   if(patch.traits)Object.assign(d.traits,patch.traits);
 }
-function qText(q){const f=KB.questions.find(x=>x[0]===q);return f?f[1]:q;}
+function qText(q){const f=KB.questions.find(x=>x[0]===q);return escH(f?f[1]:q);}
+function escH(s){return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
 
 /* ---------- state ---------- */
 let answers={},asked=0,rejected=new Set(),lastPick=null,gameAnswerLog={};
@@ -656,7 +655,7 @@ function thinkPulse(){orb.classList.remove("idle");orb.classList.add("thinking")
   setTimeout(()=>{orb.classList.remove("thinking");orb.classList.add("idle");},1100);}
 peekBtn.onclick=()=>{peek.classList.toggle("open");
   peekBtn.textContent=(peek.classList.contains("open")?"◆ close the mist":"◇ gaze into the mist");};
-$("reset").onclick=()=>{LEARNED={base:BASE_VERSION,items:[],questions:[],deltas:{}};KB=buildKB();save();
+$("reset").onclick=()=>{if(!confirm("Clear everything the orb has learned? This can't be undone."))return;LEARNED={base:BASE_VERSION,items:[],questions:[],deltas:{}};KB=buildKB();save();
   $("brainsize").textContent=KB.items.length+" things divined";updateStatus();start();};
 
 /* ---------- screens ---------- */
@@ -666,7 +665,7 @@ function start(){
   peekBtn.hidden=true;peek.classList.remove("open");peekBtn.textContent="◇ gaze into the mist";
   stage.innerHTML=
     '<div class="question">Picture <span class="accent">something</span>.</div>'+
-    '<div class="sub">A creature, an object, a place — anything. Hold it behind your eyes. The orb will ask, and divine what you are hiding.</div>'+
+    '<div class="sub">A creature, an object, a place, anything. Hold it behind your eyes. The orb will ask, and divine what you are hiding.</div>'+
     '<div class="row"><button class="btn" id="begin">Begin the reading</button></div>';
   $("begin").onclick=()=>{thinkPulse();setTimeout(nextQuestion,420);};
 }
@@ -702,9 +701,9 @@ function nextQuestion(){
 function showGuess(item,conf,ranked){
   thinkPulse();glyph.textContent="✦";kicker.textContent="the mist clears";
   stage.innerHTML=
-    '<div class="question">I see&hellip;<br><span class="accent">'+item.name+'</span></div>'+
+    '<div class="question">I see&hellip;<br><span class="accent">'+escH(item.name)+'</span></div>'+
     '<div class="sub">'+asked+' questions in &middot; '+(conf*100).toFixed(0)+'% certain</div>'+
-    '<div class="row"><button class="btn" id="yes">Yes — you saw it</button>'+
+    '<div class="row"><button class="btn" id="yes">Yes, you saw it</button>'+
     '<button class="btn ghost" id="no">No, look again</button></div>';
   $("yes").onclick=()=>win(item);
   $("no").onclick=()=>{rejected.add(item.name);if(asked>=EXTRA)return giveUp(ranked);nextQuestion();};
@@ -751,8 +750,8 @@ function learnItem(name,guess){
   $("brainsize").textContent=KB.items.length+" things divined";
   glyph.textContent="✦";kicker.textContent="";
   stage.innerHTML=
-    '<div class="question">'+item.name+' &mdash; <span class="accent">remembered</span>.</div>'+
-    '<label class="q">Name one yes/no question that is TRUE for '+item.name+' but FALSE for '+guess.name+'. The orb will never confuse them again. (optional)</label>'+
+    '<div class="question">'+escH(item.name)+': <span class="accent">remembered</span>.</div>'+
+    '<label class="q">Name one yes/no question that is TRUE for '+escH(item.name)+' but FALSE for '+escH(guess.name)+'. The orb will never confuse them again. (optional)</label>'+
     '<input class="txt" id="nq" placeholder="e.g. Does it have eight legs?" autocomplete="off">'+
     '<div class="row"><button class="btn" id="addq">Add the question</button>'+
     '<button class="btn ghost" id="done">Done</button></div>';
@@ -776,12 +775,12 @@ function renderPeek(ranked,pick){
   peekStep.textContent="reading "+asked+" of "+(rejected.size?EXTRA:MAX);
   if(pick){
     const splitPct=(pick.split*100).toFixed(0);
-    why.innerHTML='why this question \u2192 of everything still in the glass, about <b>'+splitPct+'%</b> would answer \u201cyes.\u201d A near-even split reveals the most \u2014 it carries roughly <b>'+pick.gain.toFixed(2)+' bits</b>.';
+    why.innerHTML='why this question \u2192 of everything still in the glass, about <b>'+splitPct+'%</b> would answer \u201cyes.\u201d A near-even split reveals the most: it carries roughly <b>'+pick.gain.toFixed(2)+' bits</b>.';
   }else{ why.innerHTML='the mist has settled on its strongest vision.'; }
   cands.innerHTML="";
   ranked.slice(0,6).forEach(([it,p])=>{
     const row=document.createElement("div");
-    row.innerHTML='<div class="cand"><span class="nm">'+it.name+'</span><span class="pct">'+(p*100).toFixed(1)+'%</span></div>'+
+    row.innerHTML='<div class="cand"><span class="nm">'+escH(it.name)+'</span><span class="pct">'+(p*100).toFixed(1)+'%</span></div>'+
       '<div class="bar"><i style="width:'+Math.max(2,p*100).toFixed(1)+'%"></i></div>';
     cands.appendChild(row);
   });

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<title>Connect Four — 2 Players</title>
+<title>Connect Four - 2 Players</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   :root{--accent:#b0d235;--accentSh:#7e9a1f;--text:#e8f0e4;}
@@ -11,7 +11,7 @@
   body{font-family:system-ui,sans-serif;color:var(--text);display:flex;flex-direction:column;align-items:center;overflow:hidden;
     background:radial-gradient(110% 80% at 50% 20%,#1f3327 0%,#0c1410 80%);}
   #bar{width:100%;max-width:520px;display:flex;align-items:center;gap:10px;padding:10px 14px 4px;}
-  #bar a{color:#cfe6d8;text-decoration:none;font-size:13px;border:1px solid #3a5a47;background:#15241b;border-radius:999px;padding:6px 12px;}
+  #bar a{color:#cfe6d8;text-decoration:none;font-size:13px;border:1px solid #3a5a47;background:#15241b;border-radius:999px;padding:9px 14px;}
   #title{font-weight:800;font-size:17px;letter-spacing:.4px;}
   #turn{margin-left:auto;display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px;}
   #dot{width:14px;height:14px;border-radius:50%;animation:dp 1.8s ease-in-out infinite;}
@@ -38,7 +38,7 @@
 <div id="wrap"><canvas id="board"></canvas></div>
 <div id="foot"><button class="act" id="newBtn">New game</button><div id="score"></div></div>
 <div class="ov" id="overlay"><div id="confetti"></div><div id="ovTrophy">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p><button class="act" id="ovBtn">Play again</button><a class="ghost" href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
-<script src="gamenight.js?v=12"></script>
+<script src="gamenight.js?v=13"></script>
 <script src="bot.js?v=1"></script>
 <script src="sfx.js?v=5"></script>
 <script>
@@ -48,10 +48,8 @@ function seatFrom(p){return{name:p.name,main:p.color,light:p.light,dark:p.dark};
 const canvas=document.getElementById("board"),ctx=canvas.getContext("2d");
 let CELL=64,grid=Array.from({length:ROWS},()=>Array(COLS).fill(null)),turn="red",animating=false,over=false,winLine=null,GS=null,moves={},pulseRAF=0;
 let vsComputer=false,botLevel="medium",cpuColor=null;
-const KEY="c4_games";let _mem=[];
+const KEY="c4_games";
 function S(n,o){window.GNS&&GNS.play(n,0,o);}
-const Store={load(){try{return JSON.parse(localStorage.getItem(KEY))||[];}catch(e){return _mem.slice();}},
-  save(l){try{localStorage.setItem(KEY,JSON.stringify(l));}catch(e){_mem=l.slice();}}};
 function fit(){const w=Math.min(window.innerWidth-20,520),h=window.innerHeight-130;
   CELL=Math.floor(Math.min(w/COLS,h/ROWS));
   canvas.width=CELL*COLS;canvas.height=CELL*ROWS;render();}
@@ -67,7 +65,7 @@ function updateBar(){const pc=P[turn];document.getElementById("turnName").textCo
   const d=document.getElementById("dot");
   d.style.background="radial-gradient(circle at 35% 30%,"+pc.light+","+pc.main+" 70%,"+pc.dark+")";
   d.style.boxShadow="0 0 0 3px rgba(255,255,255,.15),0 0 14px "+pc.main;
-  const games=Store.load();let m=0,k=0;for(const g of games){if(g.winner===P.red.name)m++;else if(g.winner===P.blue.name)k++;}
+  const games=GN.readGames(KEY);let m=0,k=0;for(const g of games){if(!!g.vsComputer!==vsComputer)continue;if(g.winner===P.red.name)m++;else if(g.winner===P.blue.name)k++;}
   document.getElementById("score").textContent=P.red.name+" "+m+" \u00b7 "+k+" "+P.blue.name+((GS&&GS.friendly)?" \u00b7 friendly":"");}
 function cellXY(r,c){return{x:c*CELL+CELL/2,y:r*CELL+CELL/2};}
 function drawChip(x,y,color,glow){const pc=P[color],r=CELL*0.40;
@@ -168,7 +166,7 @@ const C4_SPEC={
     return sc;}
 };
 function maybeBot(){if(!vsComputer||over||turn!==cpuColor)return;
-  if(!(window.GN&&GN.bot&&GN.bot.play)){document.getElementById("turnName").textContent="Computer's brain didn't load \u2014 reload";return;}
+  if(!(window.GN&&GN.bot&&GN.bot.play)){document.getElementById("turnName").textContent="Computer's brain didn't load. Reload";return;}
   const state={grid:grid.map(row=>row.slice()),turn:cpuColor};
   GN.bot.play(state,C4_SPEC,botLevel,function(c){if(c==null||over)return;drop(c,true);},650);}
 function finish(color){const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
@@ -193,13 +191,13 @@ canvas.addEventListener("pointerup",e=>{const rect=canvas.getBoundingClientRect(
   if(c>=0&&c<COLS)drop(c);});
 document.getElementById("newBtn").addEventListener("click",newGame);
 GN.rulesButton(document.getElementById("foot"),{title:"Connect 4",sections:[
- {h:"Goal",t:"Be first to line up FOUR of your discs in a row \u2014 across, down, or diagonally."},
+ {h:"Goal",t:"Be first to line up FOUR of your discs in a row: across, down, or diagonally."},
  {h:"Your turn",t:"Tap a column and your disc drops to the lowest empty slot. Gravity is the whole game: you can only ever land on top of the stack."},
  {h:"The diagonal sneak",svg:'<svg viewBox="0 0 280 96"><rect x="60" y="6" width="160" height="84" rx="10" fill="#2f4f8a"/><g>'+(function(){let h="";for(let r=0;r<4;r++)for(let c=0;c<7;c++){h+='<circle cx="'+(76+c*22)+'" cy="'+(20+r*20)+'" r="8" fill="'+([[1,3],[2,2],[3,1],[0,4]].some(p=>p[0]===r&&p[1]===c)?"#d8312b":([[3,2],[2,3],[3,3],[3,0],[2,4],[3,4]].some(p=>p[0]===r&&p[1]===c)?"#f4c542":"#16223c"))+'"/>';}return h;})()+'</g></svg>',
-  t:"Horizontal and vertical threats are easy to spot. Diagonals win games \u2014 they build quietly out of moves that each looked innocent.",
-  ex:"Red's discs at different heights in four neighboring columns suddenly line up corner-to-corner. Yellow never saw it \u2014 nobody ever does."},
- {h:"Double threats",t:"The strongest move creates TWO ways to win at once \u2014 your opponent can only block one. If you must defend, block the line that's already three long first."},
- {h:"Draws",t:"Fill all 42 slots with no four-in-a-row and it's a draw. Rare \u2014 someone usually cracks first."}]});
+  t:"Horizontal and vertical threats are easy to spot. Diagonals win games. They build quietly out of moves that each looked innocent.",
+  ex:"Red's discs at different heights in four neighboring columns suddenly line up corner-to-corner. Yellow never saw it. Nobody ever does."},
+ {h:"Double threats",t:"The strongest move creates TWO ways to win at once, and your opponent can only block one. If you must defend, block the line that's already three long first."},
+ {h:"Draws",t:"Fill all 42 slots with no four-in-a-row and it's a draw. Rare, since someone usually cracks first."}]});
 GN.statsButton(document.getElementById("foot"),{title:"Connect Four",key:KEY,specials:[
   {label:"Horizontal wins",of:(r,n)=>r.filter(x=>x.winner===n&&x.dir==="horizontal").length},
   {label:"Vertical wins",of:(r,n)=>r.filter(x=>x.winner===n&&x.dir==="vertical").length},

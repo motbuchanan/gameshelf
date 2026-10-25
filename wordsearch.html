@@ -9,7 +9,7 @@
   body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:#1b120b;color:#e6ddd0;
     background-image:radial-gradient(ellipse at 50% -10%,#2a1c10,#1b120b 70%);min-height:100vh;}
   #bar{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#15100c;border-bottom:1px solid #3a2a1a;}
-  #bar a{color:#e6ddd0;text-decoration:none;font-size:13px;border:1px solid #6e5f50;background:#2a241e;border-radius:999px;padding:6px 12px;}
+  #bar a{color:#e6ddd0;text-decoration:none;font-size:13px;border:1px solid #6e5f50;background:#2a241e;border-radius:999px;padding:11px 14px;display:inline-block;min-height:44px;line-height:20px;}
   #title{font-weight:800;font-size:17px;}
   #prog{margin-left:auto;font-size:13px;color:#c9ab85;font-weight:700;}
   #wrap{max-width:560px;margin:0 auto;padding:12px;}
@@ -50,12 +50,12 @@
 <div class="ov" id="overlay"><div style="font-size:48px;">&#128081;</div><h1 id="ovTitle"></h1><p id="ovText"></p>
   <button class="act" id="ovBtn">Next puzzle</button>
   <a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #6e5f50;background:#2a241e;color:#e6ddd0;text-decoration:none;">Back to shelf</a></div>
-<script src="gamenight.js?v=12"></script>
+<script src="gamenight.js?v=13"></script>
 <script src="sfx.js?v=5"></script>
 <script src="wordsearch.js"></script>
 <script>
 const PUZZLES=window.WORDSEARCHES||[];
-let pi=0, found=new Set(), startCell=null;
+let pi=0, found=new Set(), foundAt=new Map(), startCell=null;
 function S(n){window.GNS&&GNS.play(n);}
 const boardEl=document.getElementById("board"),wordsEl=document.getElementById("words"),
       themeEl=document.getElementById("theme"),progEl=document.getElementById("prog"),msgEl=document.getElementById("msg");
@@ -87,6 +87,9 @@ function paintFound(){
   const p=cur();
   for(const w of p.words){
     if(!found.has(w.word))continue;
+    // paint the copy the player actually picked (a word can sit in the grid twice)
+    const at=foundAt.get(w.word);
+    if(at){at.forEach(([r,c])=>cellAt(r,c).classList.add("found"));continue;}
     for(let i=0;i<w.word.length;i++){
       const r=w.row+w.dr*i,c=w.col+w.dc*i;
       cellAt(r,c).classList.add("found");
@@ -112,7 +115,7 @@ function tryWord(a,b){
   let str=line.map(([r,c])=>p.grid[r][c]).join("");
   const rev=str.split("").reverse().join("");
   const hit=p.list.find(w=>(w===str||w===rev)&&!found.has(w));
-  if(hit){found.add(hit);S("chime");document.getElementById("wd_"+hit).classList.add("done");
+  if(hit){found.add(hit);foundAt.set(hit,line);S("chime");document.getElementById("wd_"+hit).classList.add("done");
     paintFound();progEl.textContent=found.size+" / "+p.list.length;
     if(found.size===p.list.length)win();else msgEl.textContent="Found "+hit+"!";
     return true;}
@@ -127,19 +130,19 @@ boardEl.addEventListener("click",e=>{
   if(!startCell){startCell={r,c};cell.classList.add("sel");msgEl.textContent="Now tap the last letter.";return;}
   if(startCell.r===r&&startCell.c===c){clearSel();msgEl.textContent="Tap the first letter, then the last letter of a word.";return;}
   const ok=tryWord(startCell,{r,c});
-  if(!ok)msgEl.textContent="Not a word on the list \u2014 try again.";
+  if(!ok)msgEl.textContent="Not a word on the list. Try again.";
   clearSelOnly();
 });
 function clearSelOnly(){startCell=null;boardEl.querySelectorAll(".cell.sel").forEach(c=>c.classList.remove("sel"));}
 
 function win(){
   S("fanfare");
-  document.getElementById("ovTitle").textContent=cur().theme+" \u2014 solved!";
+  document.getElementById("ovTitle").textContent=cur().theme+": solved!";
   document.getElementById("ovText").textContent="All "+cur().list.length+" words found. Nice work!";
   document.getElementById("ovBtn").textContent=(pi<PUZZLES.length-1)?"Next puzzle":"Back to first";
   document.getElementById("overlay").classList.add("show");
 }
-function go(i){pi=(i+PUZZLES.length)%PUZZLES.length;found=new Set();startCell=null;
+function go(i){pi=(i+PUZZLES.length)%PUZZLES.length;found=new Set();foundAt=new Map();startCell=null;
   document.getElementById("overlay").classList.remove("show");
   msgEl.textContent="Tap the first letter, then the last letter of a word.";render();}
 

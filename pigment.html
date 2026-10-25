@@ -224,7 +224,7 @@ nav button.on .ic{background:var(--panel2)}
   <span id="wordmark">Pigment</span>
   <button id="soundBtn" title="Sound">🔇</button>
   <div id="foundChip">★ <b id="foundN">0</b><span>found</span></div>
-  <button id="ver">v1.1</button>
+  <button id="ver">v1.2</button>
 </div>
 
 <main>
@@ -264,12 +264,12 @@ nav button.on .ic{background:var(--panel2)}
 <section class="screen" id="s-mix">
   <h2 class="sec">Mixing bench</h2>
   <div class="jarWrap">
-    <div class="blob"><i id="slotA"></i><b id="slotAName">—</b></div>
+    <div class="blob"><i id="slotA"></i><b id="slotAName">pick a color</b></div>
     <div>
       <div id="jarLip"></div>
       <div id="jar"><div id="jarFill"></div><div id="jarShine"></div></div>
     </div>
-    <div class="blob"><i id="slotB"></i><b id="slotBName">—</b></div>
+    <div class="blob"><i id="slotB"></i><b id="slotBName">pick a color</b></div>
   </div>
   <div class="row">
     <button class="btn sm" data-pick="A">Pick color 1</button>
@@ -284,7 +284,7 @@ nav button.on .ic{background:var(--panel2)}
   </div>
   <p class="hint" id="modeHint">Paint takes light away. Yellow and blue paint make green, and mixes keep getting darker.</p>
   <div id="mixInfo">
-    <div id="mixName">—</div>
+    <div id="mixName">Your mix</div>
     <div id="mixHex"></div>
     <div class="row">
       <button class="btn sm" id="mixCard">See its card</button>
@@ -416,7 +416,7 @@ nav button.on .ic{background:var(--panel2)}
 <div id="toast"></div>
 <script>
 /* ============ PIGMENT · color lab ============ */
-var VERSION = "v1.1 · Jul 19";
+var VERSION = "v1.2 · Oct 25";
 
 /* name | hex | source
    c = crayon box   g = artist pigment   p = paint & product
@@ -1209,6 +1209,7 @@ function save(){store.save();}
 
 /* ============ helpers ============ */
 function $(id){return document.getElementById(id);}
+function escH(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
 var toastT;
 function toast(msg){
   var t=$("toast");t.textContent=msg;t.classList.add("on");
@@ -1571,7 +1572,7 @@ function renderMine(){
     w.innerHTML='<div class="hint">Nothing here yet. Mix a color, or open any color and tap <b>My own name</b>. Whatever you call it, that is its name now.</div>';
   }else{
     w.innerHTML=mem.mine.map(function(m,i){
-      return '<div class="mineRow"><i style="width:60px;height:60px;border-radius:16px;flex:0 0 auto;border:2px solid rgba(255,255,255,.18);background:'+m.hex+'"></i><div style="flex:1;min-width:0"><div style="font-weight:800;font-size:18px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+m.n+'</div><div style="font-family:var(--mono);font-size:12px;color:var(--dim)">'+m.hex+" · "+m.d+'</div></div><button class="btn sm" data-del="'+i+'">Delete</button></div>';
+      return '<div class="mineRow"><i style="width:60px;height:60px;border-radius:16px;flex:0 0 auto;border:2px solid rgba(255,255,255,.18);background:'+m.hex+'"></i><div style="flex:1;min-width:0"><div style="font-weight:800;font-size:18px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+escH(m.n)+'</div><div style="font-family:var(--mono);font-size:12px;color:var(--dim)">'+escH(m.hex)+" · "+escH(m.d)+'</div></div><button class="btn sm" data-del="'+i+'">Delete</button></div>';
     }).join("");
     w.querySelectorAll(".mineRow").forEach(function(row,i){
       row.onclick=function(){openCard(parseHex(mem.mine[i].hex));};
@@ -1614,8 +1615,14 @@ $("importIn").onchange=function(e){
   r.onload=function(){
     try{
       var o=JSON.parse(r.result);
-      if(o.mine)mem.mine=o.mine.concat(mem.mine);
-      if(o.found)for(var k in o.found)mem.found[k]=1;
+      if(!o||typeof o!=="object")throw 0;
+      if(Array.isArray(o.mine)){
+        var seen={};mem.mine.forEach(function(m){seen[String(m.hex).toUpperCase()+"|"+m.n]=1;});
+        var add=o.mine.filter(function(m){if(!m||typeof m.hex!=="string"||!/^#?[0-9a-f]{6}$/i.test(m.hex))return false;
+          if(m.hex.charAt(0)!=="#")m.hex="#"+m.hex;
+          var k=m.hex.toUpperCase()+"|"+m.n;if(seen[k])return false;seen[k]=1;return true;});
+        mem.mine=add.concat(mem.mine);}
+      if(o.found&&typeof o.found==="object")for(var k in o.found)mem.found[k]=1;
       save();renderMine();toast("Loaded");
     }catch(err){toast("That file did not look right");}
   };

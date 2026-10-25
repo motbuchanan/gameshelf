@@ -10,7 +10,7 @@
   body{font-family:system-ui,sans-serif;color:#e8f0e4;overflow:hidden;display:flex;flex-direction:column;
     background:radial-gradient(120% 80% at 50% 18%,#26331c 0%,#0c130a 70%);touch-action:none;}
   #bar{display:flex;align-items:center;gap:10px;padding:12px 14px;}
-  #bar a{color:#dfe9cf;text-decoration:none;font-size:14px;border:1px solid #4f5a3a;border-radius:999px;padding:6px 12px;}
+  #bar a{color:#dfe9cf;text-decoration:none;font-size:14px;border:1px solid #4f5a3a;border-radius:999px;padding:9px 14px;display:inline-block;}
   #title{font-weight:800;font-size:19px;}
   #scoreWrap{margin-left:auto;font-weight:800;font-size:15px;color:#d8f0a0;}
   #scoreWrap b{color:#fff;}
@@ -57,7 +57,7 @@
   </div>
 </div>
 
-<script src="gamenight.js?v=12"></script>
+<script src="gamenight.js?v=13"></script>
 <script src="sfx.js?v=5"></script>
 <script>
 const KEY="paddleduel_games";
@@ -76,7 +76,8 @@ const G={
   px:{top:150,bot:150}, py:{top:30,bot:430},
   ball:{x:150,y:230,vx:0,vy:0},
   score:{top:0,bot:0},
-  mode:"cpu", running:false, over:false, raf:0
+  mode:"cpu", running:false, over:false, raf:0, serveT:0,
+  names:{bot:"Player 1",top:"Player 2"}
 };
 window.__PD=G;
 cv.width=G.W;cv.height=G.H;
@@ -84,6 +85,7 @@ cv.width=G.W;cv.height=G.H;
 function resetMatch(mode){
   const t=(mode==="2p")?P2:P1;
   G.pw=t.pw;G.speed=t.speed;G.rampPer=t.rampPer;G.rampMax=t.rampMax;
+  clearTimeout(G.serveT);G.serveT=0;
   G.mode=mode;G.score.top=0;G.score.bot=0;G.over=false;
   G.px.top=G.W/2;G.px.bot=G.W/2;updateScore();
   startOv.classList.remove("show");overlay.classList.remove("show");
@@ -127,7 +129,7 @@ function point(scorer){
   if(G.score[scorer]>=G.target)return win(scorer);
   S("chime");
   G.running=false;
-  setTimeout(()=>{if(!G.over)serve(scorer==="bot"?-1:1);},700);
+  G.serveT=setTimeout(()=>{G.serveT=0;if(!G.over)serve(scorer==="bot"?-1:1);},700);
 }
 
 function physics(){
@@ -198,19 +200,23 @@ function rrect(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,
   ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
 
 function loop(){G.raf=requestAnimationFrame(loop);physics();draw();}
+function stopLoop(){if(G.raf)cancelAnimationFrame(G.raf);G.raf=0;draw();}
 
 function win(which){
   G.over=true;G.running=false;S("fanfare");
   const youWin=(G.mode==="cpu"&&which==="bot");
   let title,text;
-  if(G.mode==="cpu"){title=which==="bot"?"You win! \u{1F389}":"Computer wins";text="Final "+G.score.bot+"\u2013"+G.score.top+" (you\u2013computer)";}
-  else{title=(which==="bot"?"Player 1":"Player 2")+" wins! \u{1F389}";text="Final "+G.score.bot+"\u2013"+G.score.top;}
+  clearTimeout(G.serveT);G.serveT=0;stopLoop();
+  const winnerName=G.names[which],loserName=G.names[which==="bot"?"top":"bot"];
+  if(G.mode==="cpu"){title=which==="bot"?winnerName+" wins! \u{1F389}":"Computer wins";}
+  else{title=winnerName+" wins! \u{1F389}";}
+  text="Final "+G.score.bot+"\u2013"+G.score.top+" ("+G.names.bot+"\u2013"+G.names.top+")";
   document.getElementById("ovEmoji").innerHTML=youWin||G.mode==="2p"?"&#127942;":"&#129303;";
   document.getElementById("ovTitle").textContent=title;
   document.getElementById("ovText").textContent=text;
-  const winnerName=G.mode==="cpu"?(which==="bot"?"You":"Computer"):(which==="bot"?"Player 1":"Player 2");
+  // names come from GN.matchStart, which also handles friendly games and vs-Computer tagging
   GN.recordGame(KEY,{start:G.tStart||Date.now(),end:Date.now(),durationMs:Date.now()-(G.tStart||Date.now()),
-    winner:winnerName,solo:G.mode==="cpu"});
+    winner:winnerName,loser:loserName,players:[G.names.bot,G.names.top]});
   overlay.classList.add("show");
 }
 
@@ -237,15 +243,28 @@ document.addEventListener("keydown",e=>{
 },{passive:false});
 
 function begin(mode){G.tStart=Date.now();resetMatch(mode);}
-document.getElementById("modeCpu").addEventListener("click",()=>begin("cpu"));
-document.getElementById("mode2p").addEventListener("click",()=>begin("2p"));
+/* pick real players through the shared picker so records carry real names */
+function pickAndBegin(want){
+  if(!(window.GN&&GN.matchStart)){G.names={bot:"Player 1",top:want==="cpu"?"Computer":"Player 2"};begin(want);return;}
+  startOv.classList.remove("show");
+  GN.matchStart(function(m){
+    const cpu=!!m.vsComputer;
+    G.names={bot:m.a.name,top:cpu?"Computer":m.b.name};
+    begin(cpu?"cpu":"2p");
+    if(m.first===m.b){G.ball.vy=Math.abs(G.ball.vy);}else{G.ball.vy=-Math.abs(G.ball.vy);}
+  },{bot:true,botSimple:true});
+  if(want==="cpu"){const mr=document.getElementById("gnMode");
+    if(mr){const bs=[].slice.call(mr.querySelectorAll("button")).filter(function(x){return /Computer/.test(x.textContent);});if(bs[0])bs[0].click();}}
+}
+document.getElementById("modeCpu").addEventListener("click",()=>pickAndBegin("cpu"));
+document.getElementById("mode2p").addEventListener("click",()=>pickAndBegin("2p"));
 document.getElementById("ovBtn").addEventListener("click",()=>{overlay.classList.remove("show");startOv.classList.add("show");});
-document.getElementById("newBtn").addEventListener("click",()=>{G.over=true;G.running=false;overlay.classList.remove("show");startOv.classList.add("show");});
+document.getElementById("newBtn").addEventListener("click",()=>{G.over=true;G.running=false;clearTimeout(G.serveT);G.serveT=0;stopLoop();overlay.classList.remove("show");startOv.classList.add("show");});
 
 GN.rulesButton(document.getElementById("foot"),{title:"Paddle Duel",sections:[
   {h:"Goal",t:"First player to 5 points wins. You score when the ball gets past the other paddle."},
   {h:"Move",t:"Slide your finger along your half of the board to move your paddle. On a keyboard, the arrow keys move the bottom paddle (A and D move the top paddle in 2-player)."},
-  {h:"Spin",t:"Where the ball hits your paddle changes its angle \u2014 hit with the edge to send it sideways."}
+  {h:"Spin",t:"Where the ball hits your paddle changes its angle. Hit with the edge to send it sideways."}
 ]});
 if(window.GNS)GNS.button(document.getElementById("foot"));
 draw();

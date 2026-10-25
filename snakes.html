@@ -10,7 +10,7 @@
   body{font-family:system-ui,sans-serif;color:#e8f0e4;overflow:hidden;display:flex;flex-direction:column;
     background:radial-gradient(120% 80% at 50% 20%,#1f3327 0%,#0c1410 70%);}
   #bar{display:flex;align-items:center;gap:10px;padding:12px 14px;}
-  #bar a{color:#cfe6d8;text-decoration:none;font-size:14px;border:1px solid #3a5a47;border-radius:999px;padding:6px 12px;}
+  #bar a{color:#cfe6d8;text-decoration:none;font-size:14px;border:1px solid #3a5a47;border-radius:999px;padding:9px 14px;display:inline-block;}
   #title{font-weight:800;font-size:18px;}
   #turnWrap{margin-left:auto;display:flex;align-items:center;gap:8px;}
   #dot{width:16px;height:16px;border-radius:50%;}
@@ -43,7 +43,7 @@
 </div>
 <div class="ov" id="overlay"><div id="confetti"></div><div style="font-size:54px;">&#127937;</div><h1 id="ovTitle"></h1><p id="ovText"></p>
   <button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
-<script src="gamenight.js?v=12"></script>
+<script src="gamenight.js?v=13"></script>
 <script src="sfx.js?v=5"></script>
 <script>
 const KEY="sl_games";
@@ -111,7 +111,8 @@ function drawToken(x,y,pc){ctx.save();
   ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,CELL*0.24,0,7);ctx.fill();
   ctx.fillStyle="rgba(255,255,255,.7)";ctx.beginPath();ctx.arc(x-CELL*0.07,y-CELL*0.09,CELL*0.06,0,7);ctx.fill();
   ctx.restore();}
-function newGame(){phase="over";anim=null;pos={A:0,B:0};
+let botT=null,walkRaw=0;
+function newGame(){phase="over";anim=null;pos={A:0,B:0};clearTimeout(botT);botT=null;
   document.getElementById("overlay").classList.remove("show");
   document.getElementById("confetti").innerHTML="";
   GN.matchStart(function(m){P={A:seatFrom(m.a),B:seatFrom(m.b)};
@@ -119,7 +120,7 @@ function newGame(){phase="over";anim=null;pos={A:0,B:0};
     turn=(m.first===m.a)?"A":"B";phase="play";pos={A:0,B:0};
     GS={start:Date.now(),flipWinner:m.first.name,friendly:m.friendly,snakes:{},ladders:{},sixes:{}};
     for(const n of[m.a.name,m.b.name]){GS.snakes[n]=0;GS.ladders[n]=0;GS.sixes[n]=0;}
-    setMessage(P[turn].name+" won the flip \u2014 roll!");refresh();render();maybeBot();},{bot:true,botSimple:true});}
+    setMessage(P[turn].name+" won the flip: roll!");refresh();render();maybeBot();},{bot:true,botSimple:true});}
 function setMessage(t){document.getElementById("msg").textContent=t;}
 function refresh(){const pc=P[turn];
   document.getElementById("turnName").textContent=pc.name+"'s roll";
@@ -136,13 +137,13 @@ function landingOf(from,v){let to=from+v;
 let cube=null;
 function ensureCube(){if(cube)return cube;cube=GN.cubeDie(46);
   document.getElementById("dieHost").appendChild(cube.el);return cube;}
-function roll(byBot){if(vsComputer&&turn===cpuSeat&&!byBot)return;S("dice");if(phase!=="play"||rolling)return;rolling=true;refresh();
+function roll(byBot){if(vsComputer&&turn===cpuSeat&&!byBot)return;if(phase!=="play"||rolling)return;S("dice");rolling=true;refresh();
   const v=1+Math.floor(Math.random()*6);
   if(!GN.friendly)GN.g.addDice([v]);
   if(v===6)GS.sixes[P[turn].name]++;
   ensureCube().tumble(v,{duration:560,hop:30},()=>{
-  setMessage(P[turn].name+" rolls "+v+(pos[turn]+v>100?" \u2014 too far, bounce back!":""));
-  const from=pos[turn],to=landingOf(from,v);
+  setMessage(P[turn].name+" rolls "+v+(pos[turn]+v>100?". Too far, bounce back!":""));
+  const from=pos[turn],to=landingOf(from,v);walkRaw=from+v;
   walk(turn,from,to,()=>{
     pos[turn]=to;
     const chute=SNAKES[to],lad=LADDERS[to];
@@ -156,13 +157,13 @@ function roll(byBot){if(vsComputer&&turn===cpuSeat&&!byBot)return;S("dice");if(p
     if(pos[turn]===100){finish(turn);return;}
     if(v===6){setMessage((document.getElementById("msg").textContent+" ").trim()+" Six rolls again!");refresh();render();maybeBot();return;}
     turn=turn==="A"?"B":"A";refresh();render();
-    setMessage(P[turn].name+" \u2014 your roll.");maybeBot();}}
+    setMessage(P[turn].name+", your roll.");maybeBot();}}
 function maybeBot(){if(!vsComputer||phase!=="play"||turn!==cpuSeat||rolling)return;
-  setTimeout(()=>roll(true),700);}
+  clearTimeout(botT);botT=setTimeout(()=>{botT=null;roll(true);},700);}
 function walk(s,from,to,done){ // hop square by square
   const path=[];const step=from<to?1:-1;
   // bounce path: forward to 100 then back
-  if(from<to){for(let n=from+1;n<=to;n++)path.push(n);}
+  if(walkRaw<=100){for(let n=from+1;n<=to;n++)path.push(n);}
   else{for(let n=from+1;n<=100;n++)path.push(n);for(let n=99;n>=to;n--)path.push(n);}
   if(from+1>100){} // safety
   let i=0;
@@ -191,12 +192,12 @@ document.getElementById("rollBtn").addEventListener("click",()=>roll());
 document.getElementById("newBtn").addEventListener("click",newGame);
 document.getElementById("ovBtn").addEventListener("click",newGame);
 GN.rulesButton(document.getElementById("foot"),{title:"Snakes & Ladders",sections:[
- {h:"Goal",t:"Race from square 1 to square 100. Pure luck \u2014 youngest player wins exactly as often as anyone, which is the whole charm."},
+ {h:"Goal",t:"Race from square 1 to square 100. Pure luck: the youngest player wins exactly as often as anyone, which is the whole charm."},
  {h:"Your turn",t:"Roll the die and move that many squares along the winding path. Roll a 6 and you go again."},
- {h:"Ladders & snakes",t:"Land exactly at a ladder's FOOT and climb to its top \u2014 a free leap forward. Land on a snake's HEAD and you slide all the way down its body. Squares mid-ladder and mid-snake do nothing \u2014 only the foot and the head trigger.",
+ {h:"Ladders & snakes",t:"Land exactly at a ladder's FOOT and climb to its top, a free leap forward. Land on a snake's HEAD and you slide all the way down its body. Squares mid-ladder and mid-snake do nothing. Only the foot and the head trigger.",
   ex:"The big ladder near the start can rocket you half the board on turn one. The long snake near 98 has ended dynasties."},
- {h:"The finish",t:"Square 100 must be hit EXACTLY. Roll too many and you don't move at all this turn \u2014 stuck at 97 rolling 5s while everyone howls."},
- {h:"House flavor",t:"It's a racing game with built-in drama \u2014 perfect first game for new players, and the snakes hurt the same at any age."}]});
+ {h:"The finish",t:"Square 100 must be hit EXACTLY. Roll too many and you bounce back off 100 by the extra amount: from 97, a 5 takes you up to 100 and back down to 98."},
+ {h:"House flavor",t:"It's a racing game with built-in drama, a perfect first game for new players, and the snakes hurt the same at any age."}]});
 GN.statsButton(document.getElementById("foot"),{title:"Snakes & Ladders",key:KEY,specials:[
  {label:"Snakes hit",of:(r,n)=>r.reduce((a,x)=>a+((x.snakes&&x.snakes[n])||0),0)},
  {label:"Ladders climbed",of:(r,n)=>r.reduce((a,x)=>a+((x.ladders&&x.ladders[n])||0),0)},

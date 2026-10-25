@@ -1,10 +1,12 @@
-/* Game Shelf service worker — NETWORK-FIRST.
+/* Game Shelf service worker: NETWORK-FIRST.
    Online: every request goes to the network, so uploads appear on plain refresh
    (no more ?v= cache-busting). Successful responses are cached as they fly by.
    Offline: requests fall back to the cache, so the whole shelf plays with no signal.
    CACHE name only needs bumping when the precache LIST changes (e.g. a new game),
-   to seed offline copies; day-to-day edits need nothing. */
-const CACHE="gameshelf-v70";
+   to seed offline copies; day-to-day edits need nothing.
+   Activate deletes ONLY old gameshelf-* caches. Measure Up, Nazca, Stick, Two Cans
+   and the rest of motbuchanan.com keep their own caches on the same origin. */
+const CACHE="gameshelf-v73";
 const CORE=["index.html","gamenight.js","sfx.js","cardintro.js","bot.js","words.js","achievements.js","manifest.webmanifest",
   "icon192.png","icon512.png","iconmaskable512.png",
   "rules.html","records.html","achievements.html","highscores.html","howto.html","profiles.html","rulesdata.js","backup.html",
@@ -20,13 +22,21 @@ const CORE=["index.html","gamenight.js","sfx.js","cardintro.js","bot.js","words.
   "snake.html","paddleduel.html","brickbreak.html","blocks.html","thumbstack.html","stardefender.html","minesweeper.html","match3.html",
   "salon-dash.html","astromerge.html","astromerge-sticker.png","botlab.html","botlab-sticker.png","starstuff.html","starstuff-sticker.png","theorb.html","dollhouse.html","magic8.html","pigment.html","jigsaw.html","marbles.html","marble-arcade.html","fiveletters.html","noodle.html","harmonica.html","sharp.html","coloringbook.html","critter-garden.html","knightschool.html","snake-sticker.png","stardefender-sticker.png","salondash-sticker.png","blocks-sticker.png","thumbstack-sticker.png","brickbreak-sticker.png","minesweeper-sticker.png","gemmatch-sticker.png","paddleduel-sticker.png","knightschool-sticker.png","hauntinc-sticker.png","hauntinc/index.html","hauntinc/ent-polter.jpg","hauntinc/ent-wraith.jpg","hauntinc/ent-banshee.jpg","hauntinc/ent-shade.jpg","hauntinc/ent-ghoul.jpg","hauntinc/ent-rev.jpg","hauntinc/ent-trick.jpg","hauntinc/ent-dopp.jpg","hauntinc/ent-lich.jpg","hauntinc/ent-audit.jpg","hauntinc/site-alder.jpg","hauntinc/site-farm.jpg","hauntinc/site-apts.jpg","hauntinc/site-light.jpg","hauntinc/site-hosp.jpg","hauntinc/site-mall.jpg","hauntinc/site-ship.jpg",
   "nazca/index.html","nazca/manifest.json","nazca/sw.js","nazca/icon-192.png",
-  "puff/","puff/index.html","puff/icon-180.png","puff/icon-512.png","puff/manifest.webmanifest","puff-sticker.png"];
+  "puff/","puff/index.html","puff/icon-180.png","puff/icon-512.png","puff/manifest.webmanifest","puff-sticker.png",
+  "bloodstream.html","hexempire.html","marble-explainer.html","rps.html","rock.png","paper.png","scissors.png","buzz.html",
+  "measureup/","measureup/index.html","measureup/manifest.json","measureup/icon-192.png",
+  "stick/","stick/index.html","stick/manifest.json","stick/icon.png"];
+/* Shared site fonts (motbuchanan.com/fonts). Cached separately and one at a time so a
+   missing font file can never stop the shelf itself from installing for offline play. */
+const FONTS=["/fonts/fonts.css","/fonts/fraunces.woff2","/fonts/fredoka.woff2","/fonts/nunito.woff2",
+  "/fonts/archivo.woff2","/fonts/jetbrains-mono.woff2","/fonts/cormorant-garamond.woff2","/fonts/cormorant-garamond-italic.woff2",
+  "/fonts/spline-sans-mono.woff2","/fonts/press-start-2p.woff2","/fonts/silkscreen-400.woff2","/fonts/silkscreen-700.woff2"];
 self.addEventListener("install",e=>{
-  e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE).then(()=>Promise.all(FONTS.map(f=>c.add(f).catch(()=>{}))))).then(()=>self.skipWaiting()));
 });
 self.addEventListener("activate",e=>{
   e.waitUntil(caches.keys().then(ks=>{
-    var old=ks.filter(k=>k!==CACHE);
+    var old=ks.filter(k=>k.startsWith("gameshelf-")&&k!==CACHE);
     return Promise.all(old.map(k=>caches.delete(k))).then(()=>{
       if(old.length&&self.navigator&&self.navigator.setAppBadge){try{self.navigator.setAppBadge();}catch(e){}}
     });

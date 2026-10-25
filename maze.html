@@ -9,7 +9,7 @@
   body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:#1b120b;color:#e6ddd0;
     background-image:radial-gradient(ellipse at 50% -10%,#2a1c10,#1b120b 70%);min-height:100vh;}
   #bar{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#15100c;border-bottom:1px solid #3a2a1a;}
-  #bar a{color:#e6ddd0;text-decoration:none;font-size:13px;border:1px solid #6e5f50;background:#2a241e;border-radius:999px;padding:6px 12px;}
+  #bar a{color:#e6ddd0;text-decoration:none;font-size:13px;border:1px solid #6e5f50;background:#2a241e;border-radius:999px;padding:9px 14px;}
   #title{font-weight:800;font-size:17px;}
   #prog{margin-left:auto;font-size:13px;color:#c9ab85;font-weight:700;}
   #wrap{max-width:520px;margin:0 auto;padding:12px;}
@@ -35,6 +35,14 @@
   .ov p{color:#cfc4b4;max-width:330px;font-size:15px;}
   .act{font-family:inherit;font-size:15px;font-weight:bold;padding:11px 20px;border-radius:10px;border:none;
     background:#46b06a;color:#0c2014;box-shadow:0 4px 0 #1e6038;cursor:pointer;}
+  @media (orientation:landscape) and (max-height:560px){
+    #wrap{max-width:860px;display:grid;grid-template-columns:auto 280px;column-gap:18px;align-items:start;justify-content:center;}
+    #pager{grid-column:1/3;margin:2px 0 8px;}
+    #boardWrap{grid-column:1;grid-row:2/6;width:min(460px,calc(100vh - 120px));width:min(460px,calc(100svh - 120px));margin:0;}
+    #msg,#dpad,#tools{grid-column:2;}
+    #msg{margin:4px 0 6px;}
+    #dpad button{padding:9px 0;}
+  }
   html.gn-easy #title,html.gn-easy #label{font-size:21px;}
   html.gn-easy #dpad button{font-size:26px;}
 </style>
@@ -55,7 +63,7 @@
 <div class="ov" id="overlay"><div style="font-size:48px;">&#127881;</div><h1 id="ovTitle">Out!</h1><p id="ovText"></p>
   <button class="act" id="ovBtn">Next maze</button>
   <a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #6e5f50;background:#2a241e;color:#e6ddd0;text-decoration:none;">Back to shelf</a></div>
-<script src="gamenight.js?v=12"></script>
+<script src="gamenight.js?v=13"></script>
 <script src="sfx.js?v=5"></script>
 <script>
 const COUNT=16, PKEY="shelf_maze";
@@ -71,9 +79,10 @@ let trail=[];        // visited path
 let won=false;
 
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
-function loadAll(){try{return JSON.parse(localStorage.getItem(PKEY))||{};}catch(e){return{};}}
-function saveAll(o){try{localStorage.setItem(PKEY,JSON.stringify(o));}catch(e){}}
-function markSolved(){const a=loadAll();a.pi=pi;a.s=a.s||{};a.s[pi]=true;saveAll(a);}
+let MEM=null; // in-memory copy so progress still counts this visit when storage is blocked
+function loadAll(){try{const v=localStorage.getItem(PKEY);if(v!==null)return JSON.parse(v)||{};}catch(e){}return MEM?JSON.parse(MEM):{};}
+function saveAll(o){MEM=JSON.stringify(o);try{localStorage.setItem(PKEY,MEM);}catch(e){}}
+function markSolved(){const a=loadAll();a.pi=(pi+1)%COUNT;a.s=a.s||{};a.s[pi]=true;saveAll(a);}
 
 function idx(x,y){return y*N+x;}
 function gen(seed){               // recursive backtracker
@@ -98,7 +107,8 @@ function load(i){
   gen(pi+1);
   px=0;py=0;trail=[[0,0]];won=false;
   draw();
-  const solved=Object.keys(loadAll().s||{}).length;
+  const all=loadAll();if(all.pi!==pi){all.pi=pi;saveAll(all);}
+  const solved=Object.keys(all.s||{}).length;
   labelEl.textContent="Maze "+(pi+1)+"  \u00b7  "+N+"\u00d7"+N;
   progEl.textContent=solved+"/"+COUNT;
   msgEl.textContent="Swipe or use the arrows to reach the flag.";
@@ -151,7 +161,7 @@ function win(){
   won=true;S("win");markSolved();
   const solved=Object.keys(loadAll().s||{}).length;
   progEl.textContent=solved+"/"+COUNT;
-  document.getElementById("ovText").textContent="Maze "+(pi+1)+" cleared! "+(solved>=COUNT?"Every maze solved \u2014 amazing.":(solved+" of "+COUNT+" done."));
+  document.getElementById("ovText").textContent="Maze "+(pi+1)+" cleared! "+(solved>=COUNT?"Every maze solved. Amazing!":(solved+" of "+COUNT+" done."));
   document.getElementById("overlay").classList.add("show");
 }
 

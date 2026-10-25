@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<title>Yahtzee — 2 Players</title>
+<title>Yahtzee</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   :root{--accent:#b0d235;--accentSh:#7e9a1f;--text:#e8f0e4;}
@@ -18,7 +18,7 @@
   @keyframes dp{0%,100%{transform:scale(1);}50%{transform:scale(1.2);}}
   #card{flex:1;overflow-y:auto;padding:4px 10px;}
   table{width:100%;max-width:480px;margin:0 auto;border-collapse:collapse;font-size:13.5px;}
-  th,td{padding:5px 7px;border-bottom:1px solid #233a2c;text-align:center;}
+  th,td{padding:8px 7px;border-bottom:1px solid #233a2c;text-align:center;}
   th:first-child,td:first-child{text-align:left;}
   th{color:#9fbdac;font-size:12px;letter-spacing:.4px;}
   td.cat{color:#cfe6d8;}
@@ -57,7 +57,7 @@
 <div id="msg"></div>
 <div id="foot"><button class="act" id="rollBtn">Roll</button></div>
 <div class="ov" id="overlay"><div id="confetti"></div><div id="ovTrophy">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p><button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
-<script src="gamenight.js?v=12"></script>
+<script src="gamenight.js?v=13"></script>
 <script src="sfx.js?v=5"></script>
 <script>
 let P={A:{name:"Player 1",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},B:{name:"Player 2",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182"}};
@@ -100,7 +100,7 @@ function newGame(){cards={A:{},B:{}};
     GS={start:Date.now(),flipWinner:(m.first||m.a).name};
     startTurn();},{solo:true});}
 function startTurn(){held=[false,false,false,false,false];rolls=0;phase="turn";
-  updateBar();setMessage(P[turn].name+" \u2014 roll the dice");layoutDice();drawTray();renderCard();
+  updateBar();setMessage(P[turn].name+": roll the dice");layoutDice();drawTray();renderCard();
   document.getElementById("rollBtn").disabled=false;document.getElementById("rollBtn").textContent="Roll";}
 function updateBar(){const pc=P[turn];document.getElementById("turnName").textContent=pc.name+" \u00b7 round "+(roundsDone(cards[turn])+1)+"/13";
   const d=document.getElementById("dot");
@@ -259,7 +259,7 @@ function roll(){if(rolls>=3||phase!=="turn"||tumbling)return;S("dice");
       const left=3-rolls;
       document.getElementById("rollBtn").disabled=(left===0);
       document.getElementById("rollBtn").textContent=left?("Roll again ("+left+" left)"):"Roll";
-      setMessage(left?P[turn].name+" \u2014 tap dice to hold, roll again, or score":P[turn].name+" \u2014 pick a row to score");}
+      setMessage(left?P[turn].name+": tap dice to hold, roll again, or score":P[turn].name+": pick a row to score");}
   })(performance.now());}
 tray.addEventListener("click",e=>{if(rolls===0||phase!=="turn"||tumbling)return;
   const rect=tray.getBoundingClientRect();
@@ -284,7 +284,7 @@ function renderCard(){const host=document.getElementById("card");
   h+='<tr class="total"><td>TOTAL</td>'+seats.map(pl=>'<td style="color:'+P[pl].light+'">'+totalOf(cards[pl])+'</td>').join("")+'</tr></table>';
   host.innerHTML=h;
   host.querySelectorAll("td.mine").forEach(td=>td.addEventListener("click",()=>scoreCat(td.dataset.cat)));}
-function scoreCat(cat){if(rolls===0||phase!=="turn")return;
+function scoreCat(cat){if(rolls===0||phase!=="turn"||tumbling)return;
   cards[turn][cat]=scoreFor(cat,dice);
   const allDone=roundsDone(cards.A)===13&&(solo||roundsDone(cards.B)===13);
   if(allDone){renderCard();finish();return;}
@@ -294,7 +294,7 @@ function finish(){phase="over";
     document.getElementById("ovTitle").textContent="Final score";
     document.getElementById("ovTitle").style.color=P.A.light;
     document.getElementById("ovTrophy").textContent="\uD83C\uDFB2";
-    document.getElementById("ovText").textContent=P.A.name+" \u2014 "+sc+" points";
+    document.getElementById("ovText").textContent=P.A.name+": "+sc+" points";
     spawnConfetti("A");
     setTimeout(()=>{S("fanfare");document.getElementById("overlay").classList.add("show");},500);
     return;}
@@ -319,14 +319,14 @@ document.getElementById("rollBtn").addEventListener("click",roll);
 window.addEventListener("resize",fitTray);fitTray();
 document.getElementById("ovBtn").addEventListener("click",newGame);
 GN.rulesButton(document.getElementById("foot"),{title:"Yahtzee",sections:[
- {h:"Goal",t:"Thirteen rounds, thirteen scorecard boxes \u2014 fill them all and the highest total wins."},
- {h:"Your turn",t:"Roll five dice up to THREE times. After each roll, tap dice to hold them (they keep their value) and re-roll the rest. Then you MUST score one open box \u2014 even if the best option is a zero."},
- {h:"The upper section",t:"Ones through Sixes score the sum of just those dice. Score 63+ up there (an average of three of each number) and you earn a +35 bonus \u2014 chasing that bonus quietly decides most close games.",
+ {h:"Goal",t:"Thirteen rounds, thirteen scorecard boxes. Fill them all and the highest total wins."},
+ {h:"Your turn",t:"Roll five dice up to THREE times. After each roll, tap dice to hold them (they keep their value) and re-roll the rest. Then you MUST score one open box, even if the best option is a zero."},
+ {h:"The upper section",t:"Ones through Sixes score the sum of just those dice. Score 63+ up there (an average of three of each number) and you earn a +35 bonus, and chasing that bonus quietly decides most close games.",
   ex:"Three Fives = 15 in the Fives box: exactly on pace for the bonus. Two Fives = 10 means you'll owe the difference somewhere else."},
- {h:"The lower section",t:"3 of a Kind and 4 of a Kind score ALL five dice. Full House (3+2) = 25. Small Straight (4 in a row) = 30. Large Straight (5 in a row) = 40. Chance = sum of anything. YAHTZEE \u2014 five of a kind \u2014 = 50."},
- {h:"Extra Yahtzees",t:"Roll a second Yahtzee with the Yahtzee box already scored at 50 and you bank a +100 bonus, then score the dice in another box. If your Yahtzee box holds a zero, no bonus \u2014 ouch."},
+ {h:"The lower section",t:"3 of a Kind and 4 of a Kind score ALL five dice. Full House (3+2) = 25. Small Straight (4 in a row) = 30. Large Straight (5 in a row) = 40. Chance = sum of anything. YAHTZEE (five of a kind) = 50."},
+ {h:"Extra Yahtzees",t:"A second Yahtzee scores like any other roll: put it in any open box that fits. This version has no +100 bonus."},
  {h:"Knowing when to zero",t:"Sometimes the play is sacrificing: a dead roll should zero your least-needed box (Ones and Yahtzee are the usual victims), protecting the boxes that score big.",
-  ex:"Final rolls show 2,2,3,4,6 with only Large Straight and Sixes open. Zero the straight \u2014 one die of Sixes is worth more than a miracle chase."}]});
+  ex:"Final rolls show 2,2,3,4,6 with only Large Straight and Sixes open. Zero the straight: one die of Sixes is worth more than a miracle chase."}]});
 GN.statsButton(document.getElementById("foot"),{title:"Yahtzee",key:KEY,specials:[
   {label:"Yahtzees rolled",of:(r,n)=>r.reduce((a,x)=>a+((x.yahtzees&&x.yahtzees[n])||0),0)},
   {label:"63+ bonuses",of:(r,n)=>r.reduce((a,x)=>a+((x.bonus&&x.bonus[n])||0),0)},

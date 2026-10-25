@@ -50,12 +50,15 @@
     font-weight:800;padding:14px 30px;cursor:pointer;display:none}
   #status{font-size:12px;color:#8a919b;min-height:16px;line-height:1.35}
   #status.err{color:var(--accent);font-weight:700}
-  #resetGame{font-size:12px;color:#8a919b;text-decoration:underline;background:none;border:none;cursor:pointer;margin-top:2px}
+  #resetGame{font-size:12px;color:#8a919b;text-decoration:underline;background:none;border:none;cursor:pointer;margin-top:2px;padding:10px 14px;min-height:36px}
+  #shelfBtn{position:fixed;top:8px;left:10px;font-size:14px;font-weight:700;color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:999px;padding:8px 14px;text-decoration:none}
+  #offline{display:none;font-size:15px;font-weight:700;color:var(--accent);line-height:1.4}
   @media (prefers-reduced-motion: reduce){.pick:active{transform:none}}
 </style>
 </head>
 <body>
-  <div id="ver">RPS v0.5</div>
+  <a id="shelfBtn" href="index.html">&#8962; Shelf</a>
+  <div id="ver">RPS v0.6 &middot; Oct 25</div>
   <h1>ROCK &middot; PAPER &middot; SCISSORS</h1>
 
   <div id="nameScreen">
@@ -63,6 +66,7 @@
     <input id="nameInput" placeholder="your name" maxlength="14" autocomplete="off">
     <button id="joinBtn">Join</button>
     <div class="tip">First to 3 wins the match.</div>
+    <div id="offline">Needs internet to play. Connect, then reload this page.</div>
   </div>
 
   <div id="gameScreen">
@@ -121,7 +125,7 @@
   const nameScreen=el("nameScreen"), gameScreen=el("gameScreen"), nameInput=el("nameInput");
   const headline=el("headline"), picks=el("picks"), revealEl=el("reveal"), actionBtn=el("actionBtn"), statusEl=el("status");
   function setStatus(m,k){ statusEl.textContent=m; statusEl.className=k||""; }
-  el("ver").addEventListener("click",()=>setStatus("RPS v0.5 \u00b7 secret pick, then reveal"));
+  el("ver").addEventListener("click",()=>setStatus("RPS v0.6 \u00b7 Oct 25 \u00b7 secret pick, then reveal"));
 
   let myUid="", myName="", authReady=false, claiming=false, resolving=false, lastData=null;
 
@@ -263,6 +267,7 @@
     catch(e){ setStatus("New match failed: "+e.message,"err"); }
   }
   el("resetGame").addEventListener("click", async ()=>{
+    if(!confirm("Reset the game? This clears both seats and the score."))return;
     // full wipe incl. seats - use if slots got stuck to dead sessions
     try{ await updateDoc(roomRef,{ round:1, resolvedRound:0,
       "p1.uid":"", "p1.name":"", "p1.choice":"", "p1.score":0,
@@ -280,6 +285,15 @@
     else setStatus("Connecting...");
   });
   nameInput.addEventListener("keydown", e=>{ if(e.key==="Enter") el("joinBtn").click(); });
+  window.__rpsReady=true; el("offline").style.display="none";
+</script>
+<script>
+  // If the online module never loads (offline, blocked network), say so instead of a dead Join button.
+  (function(){
+    function showOffline(){ if(window.__rpsReady)return; var o=document.getElementById("offline"); if(o)o.style.display="block"; }
+    document.getElementById("joinBtn").addEventListener("click", showOffline);
+    setTimeout(showOffline, 4000);
+  })();
 </script>
 </body>
 </html>

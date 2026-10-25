@@ -51,6 +51,7 @@
   #confetti{position:absolute;inset:0;overflow:hidden;pointer-events:none;}
   .cf{position:absolute;top:-20px;width:9px;height:14px;border-radius:2px;animation:cfall linear forwards;}
   @keyframes cfall{0%{transform:translateY(-20px) rotate(0deg);}100%{transform:translateY(108vh) rotate(680deg);}}
+  #curtain{background:#070c09;}
 </style></head><body>
 <div id="bar"><a href="index.html">&#8962; Shelf</a><h1>Scrabble</h1><div id="turnTag"><div id="dot"></div><span id="turnName"></span></div></div>
 <div id="board"></div>
@@ -69,7 +70,7 @@
 <div class="ov" id="overlay"><div id="confetti"></div><div id="ovTrophy">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p>
   <button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
 <script src="words.js?v=2"></script>
-<script src="gamenight.js?v=12"></script>
+<script src="gamenight.js?v=13"></script>
 <script src="sfx.js?v=5"></script>
 <script>
 const KEY="scrabble_games",N=15,RACK=7;
@@ -101,7 +102,7 @@ function newGame(){phase="over";
     turn=(m.first===m.a)?"A":"B";phase="play";
     GS={start:Date.now(),flipWinner:m.first.name,friendly:m.friendly,words:{},best:{w:"",pts:0,by:""}};
     GS.words[m.a.name]=0;GS.words[m.b.name]=0;
-    curtainTo(()=>{render();setMsg(P[turn].name+" goes first \u2014 first word must cross the \u2605.");},
+    curtainTo(()=>{render();setMsg(P[turn].name+" goes first. The first word must cross the \u2605.");},
       "Pass to "+P[turn].name,"They play first. No peeking!");});}
 function draw(side){while(racks[side].length<RACK&&bag.length)racks[side].push(bag.pop());}
 // ---- pure logic ----
@@ -134,7 +135,7 @@ function validateAndScore(b,frs){ // b already has fresh tiles ON it; frs=[{r,c}
   if(empty&&frs.length<2)return{err:"First word needs at least 2 letters."};
   const main=wordAt(b,frs[0].r,frs[0].c,line.dir);
   // contiguity: every fresh tile must be inside the main word span
-  for(const p of frs)if(!main.some(x=>x.r===p.r&&x.c===p.c))return{err:"Tiles must form one connected word \u2014 no gaps."};
+  for(const p of frs)if(!main.some(x=>x.r===p.r&&x.c===p.c))return{err:"Tiles must form one connected word, no gaps."};
   if(!empty){ // must touch existing
     const touches=main.some(x=>!fs.has(x.r+","+x.c))||frs.some(p=>{
       const cross=wordAt(b,p.r,p.c,line.dir==="H"?"V":"H");return cross.length>1;});
@@ -181,11 +182,11 @@ function render(){
 function setMsg(t){const el=document.getElementById("msg");el.className="";el.dataset.pv="";el.textContent=t;}
 function preview(){const el=document.getElementById("msg");
   if(phase!=="play"||swapMode)return;
-  if(!fresh.length){if(el.dataset.pv==="1"){el.dataset.pv="";el.className="";el.textContent=P[turn].name+" \u2014 your move.";}return;}
+  if(!fresh.length){if(el.dataset.pv==="1"){el.dataset.pv="";el.className="";el.textContent=P[turn].name+": your move.";}return;}
   const res=validateAndScore(board,placedCells());
   el.dataset.pv="1";
   if(res.err){el.className="bad";el.textContent=res.err;}
-  else{el.className="good";el.textContent=res.words.join(" + ")+" \u2014 "+res.pts+" point"+(res.pts===1?"":"s")+"! Tap Play word.";}}
+  else{el.className="good";el.textContent=res.words.join(" + ")+": "+res.pts+" point"+(res.pts===1?"":"s")+"! Tap Play word.";}}
 function tapRack(i){if(phase!=="play")return;
   if(swapMode){if(swapMarks.has(i))swapMarks.delete(i);else swapMarks.add(i);render();return;}
   sel=(sel===i)?-1:i;render();}
@@ -216,7 +217,7 @@ function endTurn(scored){
   const out=racks[turn].length===0&&bag.length===0;
   if(out||zeroRuns>=6){finish(out?turn:null);return;}
   turn=turn==="A"?"B":"A";sel=-1;swapMode=false;swapMarks.clear();
-  curtainTo(()=>{render();setMsg(P[turn].name+" \u2014 your move.");},
+  curtainTo(()=>{render();setMsg(P[turn].name+": your move.");},
     "Pass to "+P[turn].name,"Scores: "+P.A.name+" "+scores.A+" \u00b7 "+scores.B+" "+P.B.name);}
 document.getElementById("playBtn").addEventListener("click",()=>{if(phase!=="play")return;
   const res=validateAndScore(board,placedCells());
@@ -254,7 +255,7 @@ function finish(outSide){phase="over";
   else{scores.A-=rv("A");scores.B-=rv("B");}
   const w=scores.A===scores.B?null:(scores.A>scores.B?"A":"B");
   const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
-    winner:w?P[w].name:"tie",loser:w?P[w==="A"?"B":"A"].name:"tie",
+    winner:w?P[w].name:null,loser:w?P[w==="A"?"B":"A"].name:null,draw:!w,
     flipWinner:GS.flipWinner,
     score:(function(){const s={};s[P.A.name]=scores.A;s[P.B.name]=scores.B;return s;})(),
     words:GS.words,bestWord:GS.best};
@@ -262,7 +263,7 @@ function finish(outSide){phase="over";
   document.getElementById("ovTitle").textContent=w?(P[w].name+" wins!"):"It's a tie!";
   document.getElementById("ovText").textContent=
     "Final: "+P.A.name+" "+scores.A+" \u00b7 "+scores.B+" "+P.B.name+
-    (GS.best.pts?(" \u2014 best word: "+GS.best.w+" ("+GS.best.pts+") by "+GS.best.by):"");
+    (GS.best.pts?(" - best word: "+GS.best.w+" ("+GS.best.pts+") by "+GS.best.by):"");
   confettiBurst();S("fanfare");document.getElementById("overlay").classList.add("show");}
 function confettiBurst(){const box=document.getElementById("confetti");box.innerHTML="";
   const cols=["#b0d235","#f4c542","#d8312b","#2f6fd0","#e8e4da"];
@@ -273,16 +274,16 @@ function confettiBurst(){const box=document.getElementById("confetti");box.inner
 document.getElementById("ovBtn").addEventListener("click",newGame);
 GN.rulesButton(document.getElementById("foot"),{title:"Scrabble",sections:[
  {h:"Goal",t:"Build words crossword-style on the board. When the game ends, the highest total score wins."},
- {h:"Setup",t:"Each player draws 7 tiles from the bag of 100. Your rack is hidden behind the pass curtain \u2014 only you see it on your turn."},
+ {h:"Setup",t:"Each player draws 7 tiles from the bag of 100. Your rack is hidden behind the pass curtain, so only you see it on your turn."},
  {h:"Your first word",t:"The very first word of the game must cover the center \u2605 square and be at least 2 letters long."},
- {h:"Playing a word",t:"Tap a rack tile, then tap a board square to place it. All the tiles you play in one turn must sit in a single row or column with no gaps, and the word must connect to tiles already on the board. The score preview turns green when your play is a valid word \u2014 red means something's wrong (tap it to see why). Tap Play word to commit.",
-  ex:"CAT is on the board. You add H above the C and S after the T: you've made both CHAT down and CATS across \u2014 and you score BOTH words this turn."},
+ {h:"Playing a word",t:"Tap a rack tile, then tap a board square to place it. All the tiles you play in one turn must sit in a single row or column with no gaps, and the word must connect to tiles already on the board. The score preview turns green when your play is a valid word; red means something's wrong (tap it to see why). Tap Play word to commit.",
+  ex:"CAT is on the board. You add H above the C and S after the T: you've made both CHAT down and CATS across, and you score BOTH words this turn."},
  {h:"Premium squares",svg:'<svg viewBox="0 0 280 74"><g font-family="system-ui" font-size="11" font-weight="700" text-anchor="middle"><rect x="6" y="8" width="58" height="38" rx="6" fill="#7db8d8"/><text x="35" y="31" fill="#123">DL</text><rect x="74" y="8" width="58" height="38" rx="6" fill="#4f9b6e"/><text x="103" y="31" fill="#fff">TL</text><rect x="142" y="8" width="58" height="38" rx="6" fill="#e0a3b8"/><text x="171" y="31" fill="#5a2038">DW</text><rect x="210" y="8" width="58" height="38" rx="6" fill="#e08a4f"/><text x="239" y="31" fill="#5a2c10">TW</text><text x="35" y="64" fill="#cfe" font-size="10" font-weight="400">letter \u00d72</text><text x="103" y="64" fill="#cfe" font-size="10" font-weight="400">letter \u00d73</text><text x="171" y="64" fill="#cfe" font-size="10" font-weight="400">word \u00d72</text><text x="239" y="64" fill="#cfe" font-size="10" font-weight="400">word \u00d73</text></g></svg>',
-  t:"DL and TL multiply one letter; DW and TW multiply the whole word. A premium only counts the first time a tile is placed on it \u2014 after that it's just a normal square. Letter premiums apply before word premiums.",
-  ex:"QUIZ with the Q (10 points) on a TL and the Z (10) on a DW: Q becomes 30, so Q30+U1+I1+Z10 = 42, then the whole word doubles for the DW \u2014 84 points."},
- {h:"Blanks",t:"The two blank tiles can be any letter \u2014 you choose when you place one \u2014 but they're worth 0 points. Choose wisely: a blank stays the letter you picked forever."},
+  t:"DL and TL multiply one letter; DW and TW multiply the whole word. A premium only counts the first time a tile is placed on it. After that it's just a normal square. Letter premiums apply before word premiums.",
+  ex:"QUIZ with the Q (10 points) on a TL and the Z (10) on a DW: Q becomes 30, so Q30+U1+I1+Z10 = 42, then the whole word doubles for the DW: 84 points."},
+ {h:"Blanks",t:"The two blank tiles can be any letter (you choose when you place one), but they're worth 0 points. Choose wisely: a blank stays the letter you picked forever."},
  {h:"Bingo!",t:"Play all 7 of your tiles in one turn and you earn a 50-point bonus on top of the word score."},
- {h:"Stuck?",t:"Swap trades any number of your tiles for new ones from the bag \u2014 that's your whole turn. Pass gives up your turn. If six turns in a row pass with no score, the game ends."},
+ {h:"Stuck?",t:"Swap trades any number of your tiles for new ones from the bag. That's your whole turn. Pass gives up your turn. If six turns in a row pass with no score, the game ends."},
  {h:"Game end",t:"When the bag is empty and one player uses their last tile, the game ends: that player gains the value of everyone's leftover tiles, and everyone else loses the value of their own leftovers. Highest total wins."}]});
 GN.statsButton(document.getElementById("foot"),{title:"Scrabble",key:KEY,specials:[]});
 if(window.GNS)GNS.button(document.getElementById("foot"));

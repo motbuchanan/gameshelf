@@ -109,10 +109,10 @@
   <button class="act ghost" id="themeBtn">&#127912; Theme</button>
 </div>
 <div class="ov" id="promoOv"><h1>Promote to&hellip;</h1><div class="pickRow" id="promoRow"></div></div>
-<div class="ov" id="lvOv"><h1>vs Computer</h1><p>The computer plays Black. Pick a level &mdash; 1 learns with you, 10 means business.</p>
+<div class="ov" id="lvOv"><h1>vs Computer</h1><p>The computer plays Black. Pick a level: 1 learns with you, 10 means business.</p>
   <div id="lvGrid"></div>
   <div id="thinkWrap"><div class="thinkHd">Thinking time</div><div id="thinkRow"></div>
-  <p class="thinkNote">How long the computer ponders each move &mdash; <b>at any level</b>. <b>Patient</b> lets it search deeper and play noticeably stronger; <b>Quick</b> is snappier and a touch weaker. Same personality, more (or less) thinking.</p></div>
+  <p class="thinkNote">How long the computer ponders each move, <b>at any level</b>. <b>Patient</b> lets it search deeper and play noticeably stronger; <b>Quick</b> is snappier and a touch weaker. Same personality, more (or less) thinking.</p></div>
   <button class="act ghost" id="lvOff">Two players (off)</button></div>
 <div class="ov" id="thOv"><h1>Board &amp; pieces</h1><div id="thGrid">
   <div class="thLabel">Board material</div><div class="swRow" id="swB"></div>
@@ -120,10 +120,10 @@
   <button class="act" id="thDone">Done</button></div>
 <div class="ov" id="overlay"><div style="font-size:50px;">&#9812;</div><h1 id="ovTitle"></h1><p id="ovText"></p><div id="ovRecap"></div>
   <button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #6e5f50;background:#2a241e;color:#e6ddd0;text-decoration:none;">Back to shelf</a></div>
-<script src="gamenight.js?v=12"></script>
+<script src="gamenight.js?v=13"></script>
 <script src="sfx.js?v=5"></script>
 <script>
-/* Chess engine core — 0x88 board. White pawns move toward rank index 0. */
+/* Chess engine core - 0x88 board. White pawns move toward rank index 0. */
 </script>
 <script src="chess-engine.js"></script>
 <script>
@@ -347,6 +347,7 @@ return{evaluate,analyze,pick,LEVELS};
 
 </script>
 <script>
+const LS=(()=>{const m={};return{get(k){try{const v=localStorage.getItem(k);return v===null?(k in m?m[k]:null):v}catch(e){return k in m?m[k]:null}},set(k,v){m[k]=String(v);try{localStorage.setItem(k,v)}catch(e){}}}})();
 const KEY="chess_games";
 function S(n,o){window.GNS&&GNS.play(n,0,o);}
 /* ---------- original piece art (100x100). Fills via CSS vars per side. ---------- */
@@ -376,25 +377,25 @@ const PIECE_THEMES=[
  {id:"maple",pw1:"#ecd2a0",pw2:"#c8a468",pws:"#6a4a22",pb1:"#7a5230",pb2:"#46280f",pbs:"#1e0f04"},
  {id:"frost",pw1:"#f2f8fc",pw2:"#c2d4e2",pws:"#48637a",pb1:"#3c628c",pb2:"#1d3a5c",pbs:"#0c1a2c"},
  {id:"rose",pw1:"#f4dcd8",pw2:"#d8aaa2",pws:"#7a4a42",pb1:"#5c5662",pb2:"#332f3c",pbs:"#16141c"}];
-let themeB=localStorage.getItem("chess_theme_b")||"walnut";
-let themeP=localStorage.getItem("chess_theme_p")||"ivory";
+let themeB=LS.get("chess_theme_b")||"walnut";
+let themeP=LS.get("chess_theme_p")||"ivory";
 function applyTheme(){const b=BOARD_THEMES.find(t=>t.id===themeB)||BOARD_THEMES[0];
   const p=PIECE_THEMES.find(t=>t.id===themeP)||PIECE_THEMES[0];
   const r=document.documentElement.style;
   r.setProperty("--lt",b.lt);r.setProperty("--dk",b.dk);r.setProperty("--fr1",b.fr1);r.setProperty("--fr2",b.fr2);
   r.setProperty("--bg1",b.bg1);r.setProperty("--bg2",b.bg2);
   for(const k of["pw1","pw2","pws","pb1","pb2","pbs"])r.setProperty("--"+k,p[k]);
-  localStorage.setItem("chess_theme_b",themeB);localStorage.setItem("chess_theme_p",themeP);
+  LS.set("chess_theme_b",themeB);LS.set("chess_theme_p",themeP);
   if(st)render();}
 /* ---------- state ---------- */
 let P={w:{name:"White"},b:{name:"Black"}};
 let st=null,sel=-1,legalNow=[],lastMv=null,phase="over",GS=null;
-let botLevel=+(localStorage.getItem("chess_bot_level")||0),botBusy=false,botKey="";
-let thinkPref=localStorage.getItem("chess_think")||"normal";
+let botLevel=+(LS.get("chess_bot_level")||0),botBusy=false,botKey="";
+let thinkPref=LS.get("chess_think")||"normal";
 const THINK={quick:{msMult:0.45,depthBonus:0,label:"Quick"},normal:{msMult:1,depthBonus:0,label:"Normal"},patient:{msMult:2.2,depthBonus:1,label:"Patient"}};
 function thinkOpts(){return THINK[thinkPref]||THINK.normal;}
 let coach=false,hintShown=null,pendingPromo=null,lastHintMove=null;
-const TVMODE=localStorage.getItem("shelf_tv")==="1";
+const TVMODE=LS.get("shelf_tv")==="1";
 const boardEl=document.getElementById("board");
 const RM=window.matchMedia&&window.matchMedia("(prefers-reduced-motion:reduce)").matches;
 let flyLayer=null,noSlide=false,drag=null,suppressClick=false;
@@ -578,7 +579,7 @@ function commit(m,silentCoach){
       const best=a[0], drop=best.score-mine.score, walksIntoMate=mine.score<=-90000;
       if(walksIntoMate||drop>180){
         const why=walksIntoMate?"that move lets your opponent force checkmate":"that move may lose material";
-        GN.confirmEnd("\u{1F393} Coach: "+why+" \u2014 a stronger move is "+CH.alg(best.m.from)+"\u2192"+CH.alg(best.m.to)+" ("+describe(best.m,st)+"). Play your move anyway?",
+        GN.confirmEnd("\u{1F393} Coach: "+why+" - a stronger move is "+CH.alg(best.m.from)+"\u2192"+CH.alg(best.m.to)+" ("+describe(best.m,st)+"). Play your move anyway?",
           ()=>doCommit(m));
         const c=document.getElementById("gnConf");
         if(c){c.querySelector("#gnKeep").textContent="Take another look";
@@ -613,10 +614,10 @@ function recapHTML(){
   for(let i=0;i<t.length;i++){const d=t[i].evalW-prev;prev=t[i].evalW;sw.push({i,e:t[i],delta:d,mag:Math.abs(d)});}
   const RECAP_MIN=60; // centipawns; ignore swings smaller than this
   const top=sw.filter(x=>x.mag>=RECAP_MIN).sort((a,b)=>b.mag-a.mag).slice(0,3).sort((a,b)=>a.i-b.i);
-  if(!top.length)return '<div style="font-weight:700;margin-bottom:4px;">A close one</div>An even game \u2014 no single move ran away with it.';
+  if(!top.length)return '<div style="font-weight:700;margin-bottom:4px;">A close one</div>An even game - no single move ran away with it.';
   const rows=top.map(function(x){
     const e=x.e,toward=x.delta>0?"White":"Black",pawns=(x.mag/100).toFixed(1);
-    return '<div style="margin:4px 0;"><b>Move '+e.n+' \u00b7 '+escH(e.name)+':</b> '+CH.alg(e.from)+'\u2192'+CH.alg(e.to)+' \u2014 '+escH(e.desc)+'. Swung ~'+pawns+' toward '+toward+'.</div>';
+    return '<div style="margin:4px 0;"><b>Move '+e.n+' \u00b7 '+escH(e.name)+':</b> '+CH.alg(e.from)+'\u2192'+CH.alg(e.to)+' - '+escH(e.desc)+'. Swung ~'+pawns+' toward '+toward+'.</div>';
   }).join("");
   return '<div style="font-weight:700;margin-bottom:6px;">3 moves that decided it</div>'+rows;
 }
@@ -625,7 +626,7 @@ function finish(stat){phase="over";
   if(stat==="mate"){winner=st.turn==="w"?"b":"w";
     title=P[winner].name+" wins!";text="Checkmate in "+GS.moves+" moves.";S("fanfare");}
   else{title="Drawn game.";
-    text=stat==="stale"?"Stalemate \u2014 no legal moves, no check.":
+    text=stat==="stale"?"Stalemate - no legal moves, no check.":
       stat==="rep"?"Threefold repetition.":stat==="fifty"?"Fifty quiet moves.":"Not enough material to mate.";
     S("womp");}
   const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
@@ -647,13 +648,13 @@ setInterval(()=>{
       const m=CAI.pick(st,botLevel,thinkOpts());
       if(m){doCommit(m);
         if(phase==="play"&&coach&&st.turn==="w")
-          setMsg((CH.inCheck(st,"w")?"Check! ":"")+"Your move \u2014 tap \u{1F4A1} Hint for the best move.");}}
+          setMsg((CH.inCheck(st,"w")?"Check! ":"")+"Your move - tap \u{1F4A1} Hint for the best move.");}}
   }finally{botBusy=false;}},120);
 },200);
 /* ---------- coach ---------- */
 document.getElementById("coachBtn").addEventListener("click",()=>{coach=!coach;
   document.getElementById("coachBtn").classList.toggle("on",coach);
-  setMsg(coach?"\u{1F393} Coach is ON. Tap the \u{1F4A1} Hint button for the best move \u2014 I'll also warn you before a risky one. Tap Coach again to turn it off.":"Coach off.");
+  setMsg(coach?"\u{1F393} Coach is ON. Tap the \u{1F4A1} Hint button for the best move - I'll also warn you before a risky one. Tap Coach again to turn it off.":"Coach off.");
   render();});
 document.getElementById("hintBtn").addEventListener("click",()=>{
   if(phase!=="play")return;
@@ -667,9 +668,9 @@ document.getElementById("hintBtn").addEventListener("click",()=>{
     hintShown={from:best.m.from,to:best.m.to};
     lastHintMove={from:best.m.from,to:best.m.to,promo:best.m.promo};
     let note="";
-    if(best.score<=-90000)note=" \u2014 careful, this is already a losing spot";
-    else if(best.score>=90000)note=" \u2014 this leads to checkmate!";
-    setMsg("\u{1F4A1} Best move: "+CH.alg(best.m.from)+"\u2192"+CH.alg(best.m.to)+" \u2014 "+describe(best.m,st)+note);
+    if(best.score<=-90000)note=" - careful, this is already a losing spot";
+    else if(best.score>=90000)note=" - this leads to checkmate!";
+    setMsg("\u{1F4A1} Best move: "+CH.alg(best.m.from)+"\u2192"+CH.alg(best.m.to)+" - "+describe(best.m,st)+note);
     S("chime");render();
   },30);
 });
@@ -680,25 +681,25 @@ document.getElementById("backBtn").addEventListener("click",()=>{
   if(botLevel&&st.turn==="b"&&st.hist.length){CH.unmake(st);if(GS.trace.length)GS.trace.pop();} // undo the bot reply too
   lastMv=st.hist.length?st.hist[st.hist.length-1].m:null;
   sel=-1;legalNow=[];hintShown=null;botKey="";
-  S("move");setMsg("Take it back \u2014 try again.");render();});
+  S("move");setMsg("Take it back - try again.");render();});
 /* ---------- level picker ---------- */
 function lvLabel(){document.getElementById("botBtn").textContent="vs Computer: "+(botLevel?("L"+botLevel+" \u00b7 "+(THINK[thinkPref]||THINK.normal).label):"Off");}
 function buildThinkRow(){const r=document.getElementById("thinkRow");r.innerHTML="";
   for(const key of ["quick","normal","patient"]){const b=document.createElement("button");
     b.textContent=THINK[key].label;if(key===thinkPref)b.classList.add("cur");
-    b.addEventListener("click",()=>{thinkPref=key;localStorage.setItem("chess_think",key);botKey="";buildThinkRow();lvLabel();});
+    b.addEventListener("click",()=>{thinkPref=key;LS.set("chess_think",key);botKey="";buildThinkRow();lvLabel();});
     r.appendChild(b);}}
 document.getElementById("botBtn").addEventListener("click",()=>{
   const g=document.getElementById("lvGrid");g.innerHTML="";
   for(let i=1;i<=10;i++){const b=document.createElement("button");
     b.textContent=i;if(i===botLevel)b.classList.add("cur");
-    b.addEventListener("click",()=>{botLevel=i;localStorage.setItem("chess_bot_level",i);botKey="";
+    b.addEventListener("click",()=>{botLevel=i;LS.set("chess_bot_level",i);botKey="";
       lvLabel();document.getElementById("lvOv").classList.remove("show");
       setMsg("Computer plays Black at level "+i+" ("+(THINK[thinkPref]||THINK.normal).label+" thinking time).");render();});
     g.appendChild(b);}
   buildThinkRow();
   document.getElementById("lvOv").classList.add("show");});
-document.getElementById("lvOff").addEventListener("click",()=>{botLevel=0;localStorage.setItem("chess_bot_level",0);
+document.getElementById("lvOff").addEventListener("click",()=>{botLevel=0;LS.set("chess_bot_level",0);
   lvLabel();document.getElementById("lvOv").classList.remove("show");setMsg("Two players at the board.");render();});
 /* ---------- theme picker ---------- */
 document.getElementById("themeBtn").addEventListener("click",()=>{
@@ -725,23 +726,23 @@ function newGame(){phase="over";document.getElementById("overlay").classList.rem
     st=CH.fresh();sel=-1;legalNow=[];lastMv=null;hintShown=null;botKey="";
     GS={start:Date.now(),flipWinner:m.first.name,friendly:m.friendly,moves:0,trace:[]};
     phase="play";render();
-    setMsg(P.w.name+" has White \u2014 your move."+(botLevel?" Computer holds Black (L"+botLevel+").":""));});}
+    setMsg(P.w.name+" has White - your move."+(botLevel?" Computer holds Black (L"+botLevel+").":""));});}
 document.getElementById("newBtn").addEventListener("click",newGame);
 document.getElementById("ovBtn").addEventListener("click",newGame);
 GN.rulesButton(document.getElementById("foot"),{title:"Chess",sections:[
- {h:"Goal",t:"Checkmate the enemy king \u2014 attack it so it cannot escape. The board lights every legal move when you pick a piece up, so you can learn by looking."},
- {h:"How the pieces move",t:"Pawns step forward one (two from home), capture diagonally. Knights jump in an L \u2014 the only piece that leaps over others. Bishops run diagonals; rooks run ranks and files; the queen does both. The king steps one square any direction."},
- {h:"Check & checkmate",t:"When your king is attacked, you're in CHECK (the king glows red) and must fix it immediately \u2014 move the king, block, or capture the attacker. If nothing fixes it: checkmate, game over.",
-  ex:"A back-rank mate: their rook slides to your home rank, your king is fenced in by its own pawns \u2014 no escape, no block. The oldest trick in the book."},
+ {h:"Goal",t:"Checkmate the enemy king - attack it so it cannot escape. The board lights every legal move when you pick a piece up, so you can learn by looking."},
+ {h:"How the pieces move",t:"Pawns step forward one (two from home), capture diagonally. Knights jump in an L - the only piece that leaps over others. Bishops run diagonals; rooks run ranks and files; the queen does both. The king steps one square any direction."},
+ {h:"Check & checkmate",t:"When your king is attacked, you're in CHECK (the king glows red) and must fix it immediately - move the king, block, or capture the attacker. If nothing fixes it: checkmate, game over.",
+  ex:"A back-rank mate: their rook slides to your home rank, your king is fenced in by its own pawns - no escape, no block. The oldest trick in the book."},
  {h:"Castling",svg:'<svg viewBox="0 0 280 70"><g font-size="22" text-anchor="middle"><rect x="40" y="14" width="200" height="40" rx="6" fill="#1c2b22"/><text x="65" y="44">\u2654</text><text x="215" y="44">\u2656</text><path d="M88 26 Q140 6 192 26" stroke="#f4c542" stroke-width="2.5" fill="none" stroke-dasharray="5 4"/><polygon points="186,18 196,26 182,30" fill="#f4c542"/><path d="M192 50 Q150 64 110 50" stroke="#9fc" stroke-width="2.5" fill="none" stroke-dasharray="5 4"/><polygon points="116,58 106,50 120,44" fill="#9fc"/></g></svg>',
-  t:"Once per game your king may slide TWO squares toward a rook, and the rook hops to the far side \u2014 king to safety, rook to the fight. Allowed only if neither piece has moved, the path is clear, and the king isn't in check or crossing an attacked square. Tap the king two squares sideways to do it."},
- {h:"En passant",t:"If an enemy pawn double-steps and lands exactly beside your pawn, you may capture it AS IF it had moved one square \u2014 but only on the very next move. The board offers it when it's legal; it surprises everyone the first time.",
-  ex:"Your pawn stands on the 5th rank. Their pawn jumps two squares, landing beside you \u2014 take it diagonally behind, and it's off the board."},
- {h:"Promotion",t:"A pawn reaching the far rank becomes any piece you like \u2014 almost always a queen, but the picker offers knight, rook, and bishop for the rare position that wants them."},
- {h:"Draws",t:"Stalemate (no legal moves, but not in check), threefold repetition, fifty quiet moves, or bare-bones material \u2014 the game calls these automatically."},
- {h:"vs Computer: levels 1\u201310",t:"Level 1 barely looks ahead and blunders generously \u2014 perfect while learning. Each level climbs in real strength: 5\u20136 gives a casual adult a fight, 8+ plays serious club-level chess. The shelf remembers your level."},
+  t:"Once per game your king may slide TWO squares toward a rook, and the rook hops to the far side - king to safety, rook to the fight. Allowed only if neither piece has moved, the path is clear, and the king isn't in check or crossing an attacked square. Tap the king two squares sideways to do it."},
+ {h:"En passant",t:"If an enemy pawn double-steps and lands exactly beside your pawn, you may capture it AS IF it had moved one square - but only on the very next move. The board offers it when it's legal; it surprises everyone the first time.",
+  ex:"Your pawn stands on the 5th rank. Their pawn jumps two squares, landing beside you - take it diagonally behind, and it's off the board."},
+ {h:"Promotion",t:"A pawn reaching the far rank becomes any piece you like - almost always a queen, but the picker offers knight, rook, and bishop for the rare position that wants them."},
+ {h:"Draws",t:"Stalemate (no legal moves, but not in check), threefold repetition, fifty quiet moves, or bare-bones material - the game calls these automatically."},
+ {h:"vs Computer: levels 1\u201310",t:"Level 1 barely looks ahead and blunders generously - perfect while learning. Each level climbs in real strength: 5\u20136 gives a casual adult a fight, 8+ plays serious club-level chess. The shelf remembers your level."},
  {h:"\u23f1 Thinking time",t:"Separate from level, you can set how long the computer thinks per move: Quick, Normal, or Patient. Patient lets it search deeper and play noticeably stronger at the same level (great for a tougher game without changing its style); Quick is snappier and slightly weaker. Normal is the level as designed."},
- {h:"\u{1F393} Coach \u2014 how to use it",t:"Tap Coach to turn it on (it glows green). Then two buttons appear: tap \u{1F4A1} HINT any time and the Coach thinks for a moment, then shows the best move in words above the buttons (e.g. \u201cBest move: e2\u2192e4\u201d) and highlights it on the board. If you try a move that loses material or walks into checkmate, the Coach pops up a friendly warning first \u2014 you can still play it. \u21a9 TAKEBACK undoes your last move so mistakes become lessons. The thin bar under the board is separate: it shows who\u2019s ahead (filling toward \u201cYou\u201d means you\u2019re winning). Climb a level when the coach gets quiet."}]});
+ {h:"\u{1F393} Coach: how to use it",t:"Tap Coach to turn it on (it glows green). Then two buttons appear: tap \u{1F4A1} HINT any time and the Coach thinks for a moment, then shows the best move in words above the buttons (e.g. \u201cBest move: e2\u2192e4\u201d) and highlights it on the board. If you try a move that loses material or walks into checkmate, the Coach pops up a friendly warning first - you can still play it. \u21a9 TAKEBACK undoes your last move so mistakes become lessons. The thin bar under the board is separate: it shows who\u2019s ahead (filling toward \u201cYou\u201d means you\u2019re winning). Climb a level when the coach gets quiet."}]});
 GN.statsButton(document.getElementById("foot"),{title:"Chess",key:KEY,specials:[
  {label:"Checkmates",of:(r,n)=>r.filter(x=>x.winner===n&&x.method==="mate").length},
  {label:"Wins vs computer",of:(r,n)=>r.filter(x=>x.winner===n&&x.vsBot).length},

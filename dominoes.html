@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<title>Dominoes — 2 Players</title>
+<title>Dominoes: 2 Players</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   :root{--accent:#b0d235;--accentSh:#7e9a1f;--text:#e8f0e4;}
@@ -60,7 +60,7 @@
 <div id="foot"><button class="act" id="newBtn">New game</button><button class="act ghost" id="drawBtn">Draw</button><span style="font-size:13px;color:#9fbdac;border:1px solid #3a5a47;border-radius:999px;padding:6px 12px;">Rules: Draw</span><div id="score"></div></div>
 <div class="ov" id="endOv"><h2>Play it on which end?</h2><div id="endChoice"></div></div>
 <div class="ov" id="overlay"><div id="confetti"></div><div id="ovTrophy">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p><button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
-<script src="gamenight.js?v=12"></script>
+<script src="gamenight.js?v=13"></script>
 <script src="sfx.js?v=5"></script>
 <script>
 let P={top:{name:"Player 1",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},bot:{name:"Player 2",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182"}};
@@ -77,7 +77,8 @@ function fits(b){const e=ends();if(!e)return{L:true,R:true};
 function playable(b){const f=fits(b);return f.L||f.R;}
 function pip(side){return hands[side].reduce((s,b)=>s+b[0]+b[1],0);}
 function seatFrom(p){return{name:p.name,main:p.color,light:p.light,dark:p.dark};}
-function newGame(){yard=shuffle(allBones());hands={top:yard.splice(0,7),bot:yard.splice(0,7)};line=[];passes=0;pendingBone=null;
+let passTimer=null;
+function newGame(){if(passTimer){clearTimeout(passTimer);passTimer=null;}yard=shuffle(allBones());hands={top:yard.splice(0,7),bot:yard.splice(0,7)};line=[];passes=0;pendingBone=null;
   phase="over";
   GN.matchStart(function(m){P={top:seatFrom(m.a),bot:seatFrom(m.b)};
   turn=(m.first===m.a)?"top":"bot";phase="play";
@@ -86,13 +87,13 @@ function newGame(){yard=shuffle(allBones());hands={top:yard.splice(0,7),bot:yard
   document.getElementById("overlay").classList.remove("show");
   document.getElementById("endOv").classList.remove("show");
   document.getElementById("confetti").innerHTML="";
-  updateBar();setMessage(P[turn].name+" won the flip \u2014 opens with any bone");renderAll();});}
+  updateBar();setMessage(P[turn].name+" won the flip and opens with any bone");renderAll();});}
 function setMessage(t){document.getElementById("msg").textContent=t;}
 function updateBar(){const pc=P[turn];document.getElementById("turnName").textContent=pc.name+"'s turn";
   const d=document.getElementById("dot");
   d.style.background="radial-gradient(circle at 35% 30%,"+pc.light+","+pc.main+" 70%,"+pc.dark+")";
   d.style.boxShadow="0 0 0 3px rgba(255,255,255,.15),0 0 14px "+pc.main;
-  const g=Store.load();let m=0,k=0;for(const r of g){if(r.winner===P.top.name)m++;else if(r.winner===P.bot.name)k++;}
+  const g=GN.readGames(KEY);let m=0,k=0;for(const r of g){if(r.winner===P.top.name)m++;else if(r.winner===P.bot.name)k++;}
   document.getElementById("score").textContent=P.top.name+" "+m+" \u00b7 "+k+" "+P.bot.name+" \u00b7 boneyard "+yard.length;}
 function boneEl(b,vert){const d=document.createElement("div");d.className="bone "+(vert?"v":"h");
   for(const v of b){const h=document.createElement("div");h.className="half";
@@ -141,17 +142,17 @@ function commit(idx,end){const b=hands[turn].splice(idx,1)[0],t=orient(b,end);
   nextTurn();}
 function nextTurn(){turn=turn==="top"?"bot":"top";checkStuck();}
 function checkStuck(){updateBar();
-  if(hands[turn].some(playable)){setMessage(P[turn].name+" \u2014 tap a glowing bone");renderAll();return;}
-  if(yard.length){setMessage(P[turn].name+" can't play \u2014 draw from the boneyard");renderAll();return;}
+  if(hands[turn].some(playable)){setMessage(P[turn].name+": tap a glowing bone");renderAll();return;}
+  if(yard.length){setMessage(P[turn].name+" can't play, draw from the boneyard");renderAll();return;}
   passes++;setMessage(P[turn].name+" passes (nothing fits)");renderAll();
   if(passes>=2){blockedEnd();return;}
-  setTimeout(nextTurn,900);}
+  passTimer=setTimeout(()=>{passTimer=null;nextTurn();},900);}
 function drawBone(){if(phase!=="play"||!yard.length||hands[turn].some(playable))return;
   hands[turn].push(yard.pop());GS.draws[P[turn].name]++;
   setMessage(P[turn].name+" draws...");checkStuck();}
 function blockedEnd(){const m=pip("top"),k=pip("bot");
   const winSide=m<k?"top":k<m?"bot":null;
-  finish(winSide,"Blocked \u2014 "+P.top.name+" "+m+" pips, "+P.bot.name+" "+k,true);}
+  finish(winSide,"Blocked: "+P.top.name+" "+m+" pips, "+P.bot.name+" "+k,true);}
 function gameOver(winSide,why){finish(winSide,why);}
 function finish(winSide,why,wasBlocked){phase="over";
   const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
@@ -172,12 +173,12 @@ function spawnConfetti(side){const box=document.getElementById("confetti");box.i
     d.style.transform="rotate("+Math.floor(Math.random()*360)+"deg)";box.appendChild(d);}}
 document.getElementById("newBtn").addEventListener("click",newGame);
 GN.rulesButton(document.getElementById("foot"),{title:"Dominoes",sections:[
- {h:"Goal",t:"Be first to play every tile in your hand \u2014 or be caught holding the fewest pips when the game blocks."},
+ {h:"Goal",t:"Be first to play every tile in your hand - or be caught holding the fewest pips when the game blocks."},
  {h:"Setup & the line",t:"Each player draws 7 tiles. Tiles join end-to-end: a tile may be played only where its number MATCHES the open end of the line. Doubles sit crosswise.",
-  ex:"The line's open ends show 3 and 5. Your 5-2 plays on the 5 end \u2014 now the ends are 3 and 2."},
+  ex:"The line's open ends show 3 and 5. Your 5-2 plays on the 5 end - now the ends are 3 and 2."},
  {h:"Can't play?",t:"Draw from the boneyard until you CAN play. If the boneyard is empty and you still can't move, you pass."},
- {h:"Going out & blocking",t:"Play your last tile \u2014 \u201cdomino!\u201d \u2014 and you win the hand. If NOBODY can play and the boneyard's dry, the hand is blocked: lowest pip total in hand wins it."},
- {h:"Reading the bones",t:"There are seven of each number in the set. Count what's on the table: if five 6s are down and you hold the sixth, only one 6 remains anywhere \u2014 steering the line toward numbers you control is how sharks play.",
+ {h:"Going out & blocking",t:"Play your last tile - \u201cdomino!\u201d - and you win the hand. If NOBODY can play and the boneyard's dry, the hand is blocked: lowest pip total in hand wins it."},
+ {h:"Reading the bones",t:"There are seven of each number in the set. Count what's on the table: if five 6s are down and you hold the sixth, only one 6 remains anywhere - steering the line toward numbers you control is how sharks play.",
   ex:"You hold 6-4 and 6-1, and four 6s are already on the table. Force a 6 end and odds are they'll be drawing."}]});
 GN.statsButton(document.getElementById("foot"),{title:"Dominoes",key:KEY,specials:[
   {label:"Blocked-game wins",of:(r,n)=>r.filter(x=>x.winner===n&&x.blocked).length},

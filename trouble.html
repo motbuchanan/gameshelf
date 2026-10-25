@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<title>Trouble — Mot vs Kathy</title>
+<title>Trouble</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   :root{--accent:#b0d235;--accentSh:#7e9a1f;--text:#e8f0e4;}
@@ -80,7 +80,7 @@
 <div id="msg"></div>
 <div id="foot"><button class="act" id="newBtn">New game</button><button class="act" id="onlineBtn" style="background:#2f6fd0;box-shadow:0 4px 0 #194182;">&#127760; Online</button><div id="score"></div></div>
 <div class="ov" id="overlay"><div id="confetti"></div><div id="ovTrophy">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p><button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
-<script src="gamenight.js?v=12"></script>
+<script src="gamenight.js?v=13"></script>
 <script src="bot.js?v=1"></script>
 <script src="sfx.js?v=5"></script>
 <script>
@@ -139,7 +139,7 @@ function rr(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h
 function pegXY(p){if(p.loc.state==="home")return homeXY(p.color,p.hi);
   if(p.loc.state==="track")return holeXY(p.loc.idx);return finXY(p.color,p.loc.i);}
 function seatFrom(p,seat){return Object.assign({},seat,{name:p.name,main:p.color,light:p.light,dark:p.dark});}
-function newGame(){if(online)leaveOnline();pegs=[];for(const c of["red","blue"])for(let i=0;i<4;i++)pegs.push({color:c,hi:i,t:0,loc:{state:"home"}});
+function newGame(){if(online){if(roomCode){lastSeq++;try{Promise.resolve(GN.room.pushState(roomCode,{state:snapState(),turn:turn,seq:lastSeq,status:"left"})).catch(function(){});}catch(e){}}leaveOnline();}pegs=[];for(const c of["red","blue"])for(let i=0;i<4;i++)pegs.push({color:c,hi:i,t:0,loc:{state:"home"}});
   die=0;phase="over";movable=[];animFly=null;extra=false;
   document.getElementById("overlay").classList.remove("show");document.getElementById("confetti").innerHTML="";render();
   GN.matchStart(function(m){P={red:seatFrom(m.a,P.red),blue:seatFrom(m.b,P.blue)};
@@ -153,8 +153,8 @@ function updateBar(){const pc=P[turn];document.getElementById("turnName").textCo
   const d=document.getElementById("dot");
   d.style.background="radial-gradient(circle at 35% 30%,"+pc.light+","+pc.main+" 70%,"+pc.dark+")";
   d.style.boxShadow="0 0 0 3px rgba(255,255,255,.15),0 0 14px "+pc.main;
-  const g=Store.load();let m=0,k=0;for(const r of g){if(r.winner===P.red.name)m++;else if(r.winner===P.blue.name)k++;}
-  document.getElementById("score").textContent="Mot "+m+" \u00b7 "+k+" Kathy";}
+  const g=GN.readGames(KEY);let m=0,k=0;for(const r of g){if(r.winner===P.red.name)m++;else if(r.winner===P.blue.name)k++;}
+  document.getElementById("score").textContent=P.red.name+" "+m+" \u00b7 "+k+" "+P.blue.name;}
 function occTrack(idx){return pegs.find(p=>p.loc.state==="track"&&p.loc.idx===idx)||null;}
 function moveOf(p,n){ // returns {to,bump}|null
   if(p.loc.state==="fin"){const j=p.loc.i+n;if(j>=FIN)return null;
@@ -179,7 +179,7 @@ function rollDie(){if(phase!=="roll"||animFly)return;
     {transform:"translate(-50%,-50%) scale(1.02,0.98)",offset:0.74},
     {transform:"translate(-50%,-50%) scale(1,1)"}
   ],{duration:560,easing:"cubic-bezier(.3,.7,.3,1)"});
-  // wrap jumps; cube inside tumbles in 3D — randomized every pop
+  // wrap jumps; cube inside tumbles in 3D, randomized every pop
   const wrap=document.getElementById("dieWrap");
   const H=wrap.offsetHeight,jump=-(H*(0.8+Math.random()*0.5));
   const drift=(Math.random()*2-1)*H*0.34;
@@ -212,12 +212,12 @@ function showDie(v){
 function afterRoll(){extra=(die===6);
   if(die===6){sixStreak++;S("six",sixStreak-1);}
   movable=pegs.filter(p=>p.color===turn&&moveOf(p,die));
-  if(!movable.length){setMessage(P[turn].name+" rolled "+die+" \u2014 no moves");S("womp");
+  if(!movable.length){setMessage(P[turn].name+" rolled "+die+": no moves");S("womp");
     setTimeout(()=>{if(extra){phase="roll";setMessage(P[turn].name+" rolled 6, pop again!");if(online)pushRoom();}else passTurn();},900);
     phase="wait";render();if(online)pushRoom();return;}
-  phase="move";setMessage(P[turn].name+" rolled "+die+" \u2014 tap a glowing peg");render();ensurePulse();if(online)pushRoom();}
+  phase="move";setMessage(P[turn].name+" rolled "+die+": tap a glowing peg");render();ensurePulse();if(online)pushRoom();}
 function passTurn(){turn=turn==="red"?"blue":"red";die=0;phase="roll";movable=[];sixStreak=0;
-  updateBar();setMessage(P[turn].name+" \u2014 pop the die");render();if(online)pushRoom();}
+  updateBar();setMessage(P[turn].name+": pop the die");render();if(online)pushRoom();}
 function doMove(p){const mv=moveOf(p,die);if(!mv)return;S("move");
   phase="anim";const from=pegXY(p),to=(mv.to.state==="track")?holeXY(mv.to.idx):finXY(p.color,mv.to.i);
   animFly={p,from,to,k:0};const t0=performance.now();
@@ -227,7 +227,7 @@ function doMove(p){const mv=moveOf(p,die);if(!mv)return;S("move");
     if(mv.to.state==="fin")S("chime");
     p.loc=mv.to;p.t=mv.t;animFly=null;
     if(pegs.filter(q=>q.color===turn&&q.loc.state==="fin").length===4){gameOver(turn);return;}
-    if(extra){phase="roll";setMessage(P[turn].name+" rolled 6 \u2014 pop again!");render();if(online)pushRoom();return;}
+    if(extra){phase="roll";setMessage(P[turn].name+" rolled 6. Pop again!");render();if(online)pushRoom();return;}
     passTurn();})(t0);}
 function drawHole(x,y,r,fill){
   // surface AO halo
@@ -419,7 +419,7 @@ function openLobby(){
   }
   ov.innerHTML='<h1>Play Online</h1><p>Playing as <b>'+me.name+'</b></p>'+
     '<button class="act" id="netCreate">Create a game</button>'+
-    '<div style="margin:4px 0;color:#9bb3a6;">\u2014 or join with a code \u2014</div>'+
+    '<div style="margin:4px 0;color:#9bb3a6;">or join with a code</div>'+
     '<div style="display:flex;gap:8px;align-items:center;"><input id="netCode" maxlength="4" placeholder="CODE" autocapitalize="characters" style="text-transform:uppercase;width:120px;font-size:22px;text-align:center;padding:8px;border-radius:10px;border:1px solid #3a5a47;background:#0e1a13;color:#fff;letter-spacing:5px;"><button class="act" id="netJoin">Join</button></div>'+
     '<div id="netMsg" style="color:#cfe6d8;min-height:20px;"></div>'+
     '<a href="#" id="netCancel" style="font-size:14px;color:#9bb3a6;">Cancel</a>';
@@ -460,6 +460,7 @@ function onRoom(data){
     if(start)start.style.display=(s.red&&s.blue)?"":"none";
     return;
   }
+  if(data.status==="left"){if(online){leaveOnline();phase="over";setMessage("The other player left the online game. Tap New game to play again.");render();}return;}
   applyRemote(data,!online);
 }
 function snapState(){return {pegs:pegs.map(p=>({color:p.color,hi:p.hi,t:p.t,loc:{state:p.loc.state,idx:p.loc.idx,i:p.loc.i}})),
@@ -481,7 +482,7 @@ function showTurnState(){
   movable=(phase==="move")?pegs.filter(p=>p.color===turn&&moveOf(p,die)):[];
   showDie(die||6);updateBar();
   if(phase!=="over"){
-    if(myTurn())setMessage(phase==="move"?("Your roll: "+die+" \u2014 tap a glowing peg"):"Your turn \u2014 pop the die");
+    if(myTurn())setMessage(phase==="move"?("Your roll: "+die+": tap a glowing peg"):"Your turn: pop the die");
     else setMessage(P[turn].name+(phase==="move"?(" rolled "+die+"\u2026"):"\u2019s turn\u2026"));
   }
   render();if(phase==="move")ensurePulse();
@@ -513,14 +514,14 @@ window.__net={openLobby:openLobby,snapState:snapState,applyRemote:applyRemote,ho
 document.getElementById("newBtn").addEventListener("click",newGame);
 GN.rulesButton(document.getElementById("foot"),{title:"Trouble",sections:[
  {h:"Goal",t:"Race all four of your pegs from your home tray, once around the track, and up your finish lane. First player to get all four pegs into the finish wins."},
- {h:"The Pop-O-Matic",t:"Tap the dome in the middle to pop the die \u2014 that's your roll. No dice to lose under the couch since 1965."},
+ {h:"The Pop-O-Matic",t:"Tap the dome in the middle to pop the die - that's your roll. No dice to lose under the couch since 1965."},
  {h:"Getting out",t:"Pegs start OFF the board in your corner tray. You need to pop a 6 to bring a peg out onto your starting spot. No 6 and no pegs on the track? Your turn is lost.",
-  ex:"You pop a 4 but all four pegs are still in your tray \u2014 nothing can move, turn over. Pop a 6 and a peg comes out AND you pop again!"},
- {h:"Pop a 6",t:"Every 6 gives you another pop after you move. Chain them \u2014 the celebration sound gets bigger with every 6 in a row."},
+  ex:"You pop a 4 but all four pegs are still in your tray - nothing can move, turn over. Pop a 6 and a peg comes out AND you pop again!"},
+ {h:"Pop a 6",t:"Every 6 gives you another pop after you move. Chain them - the celebration sound gets bigger with every 6 in a row."},
  {h:"Bumping",svg:'<svg viewBox="0 0 280 70"><circle cx="40" cy="35" r="14" fill="#2f6fd0"/><circle cx="140" cy="35" r="14" fill="#d8312b"/><path d="M62 35 H112" stroke="#f4c542" stroke-width="3" marker-end="url(#a)"/><defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#f4c542"/></marker></defs><path d="M150 28 Q190 0 232 24" stroke="#d8312b" stroke-width="2.5" fill="none" stroke-dasharray="4 4"/><polygon points="228,16 238,26 224,28" fill="#d8312b"/><text x="196" y="62" fill="#cfe6d8" font-size="11" font-family="system-ui">bumped back to the tray!</text></svg>',
-  t:"Land exactly on an opponent's peg and it gets bumped all the way back to their home tray \u2014 they'll need a 6 to come out again. You can never land on your OWN peg."},
- {h:"The finish lane",t:"After a full lap, your pegs turn up your colored finish lane. You need the exact count to step into each finish spot \u2014 overshooting isn't allowed, so a peg can be stuck waiting for the right roll."},
- {h:"\ud83c\udf10 Play online (2 players)",t:"Tap the blue Online button to play across two devices. The first time, choose who plays on this device. One player taps Create a game and shares the 4-letter code; the other taps Join and enters it. When both have joined, the host taps Start. On your turn, pop the die and move; on your opponent's turn the board shows \u201ctheir turn\u2026\u201d and waits. Both devices need an internet connection.",ex:"Around the same table or across town \u2014 same game, just on two phones. Closing the app and rejoining with the same code puts you back in your seat."},
+  t:"Land exactly on an opponent's peg and it gets bumped all the way back to their home tray - they'll need a 6 to come out again. You can never land on your OWN peg."},
+ {h:"The finish lane",t:"After a full lap, your pegs turn up your colored finish lane. You need the exact count to step into each finish spot - overshooting isn't allowed, so a peg can be stuck waiting for the right roll."},
+ {h:"\ud83c\udf10 Play online (2 players)",t:"Tap the blue Online button to play across two devices. The first time, choose who plays on this device. One player taps Create a game and shares the 4-letter code; the other taps Join and enters it. When both have joined, the host taps Start. On your turn, pop the die and move; on your opponent's turn the board shows \u201ctheir turn\u2026\u201d and waits. Both devices need an internet connection.",ex:"Around the same table or across town - same game, just on two phones. Closing the app and rejoining with the same code puts you back in your seat."},
  {h:"vs Computer",t:"The vs Computer button lets the computer take the second player's seat: Easy plays loose (great for learning), Medium plays solid priorities, Hard also dodges your likely bumps."}]});
 GN.statsButton(document.getElementById("foot"),{title:"Trouble",key:KEY,specials:[
   {label:"Bumps dealt",of:(r,n)=>r.reduce((a,x)=>a+((x.bumps&&x.bumps[n])||0),0)},

@@ -10,7 +10,7 @@
   body{font-family:system-ui,sans-serif;color:#e8f0e4;overflow:hidden;display:flex;flex-direction:column;
     background:radial-gradient(120% 80% at 50% 20%,#1f3327 0%,#0c1410 70%);}
   #bar{display:flex;align-items:center;gap:10px;padding:12px 14px;}
-  #bar a{color:#cfe6d8;text-decoration:none;font-size:14px;border:1px solid #3a5a47;border-radius:999px;padding:6px 12px;}
+  #bar a{color:#cfe6d8;text-decoration:none;font-size:14px;border:1px solid #3a5a47;border-radius:999px;padding:9px 14px;}
   #title{font-weight:800;font-size:18px;}
   #turnWrap{margin-left:auto;display:flex;align-items:center;gap:8px;}
   #dot{width:16px;height:16px;border-radius:50%;}
@@ -43,7 +43,7 @@
 </div>
 <div class="ov" id="overlay"><div id="confetti"></div><div style="font-size:54px;">&#128395;</div><h1 id="ovTitle"></h1><p id="ovText"></p>
   <button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
-<script src="gamenight.js?v=12"></script>
+<script src="gamenight.js?v=13"></script>
 <script src="bot.js?v=1"></script>
 <script src="sfx.js?v=5"></script>
 <script>
@@ -57,7 +57,7 @@ let vsComputer=false,botLevel="medium",cpuSeat=null;
 const canvas=document.getElementById("cv"),ctx=canvas.getContext("2d");
 let SZ=320,CELL=52,M=26;
 function fit(){const w=Math.min(window.innerWidth-14,window.innerHeight-250,440);
-  SZ=Math.max(300,w);M=SZ*0.09;CELL=(SZ-2*M)/B;canvas.width=SZ;canvas.height=SZ;render();}
+  SZ=Math.max(180,w);M=SZ*0.09;CELL=(SZ-2*M)/B;canvas.width=SZ;canvas.height=SZ;render();}
 window.addEventListener("resize",fit);
 function boxDone(r,c){return H[r][c]&&H[r+1][c]&&V[r][c]&&V[r][c+1];}
 function claimAround(kind,r,c){ // returns list of newly completed boxes after setting edge
@@ -119,7 +119,7 @@ function newGame(){phase="over";lastEdge=null;
     turn=(m.first===m.a)?"A":"B";phase="play";
     GS={start:Date.now(),flipWinner:m.first.name,friendly:m.friendly,bestRun:{}};
     GS.bestRun[m.a.name]=0;GS.bestRun[m.b.name]=0;
-    setMessage(m.first.name+" won the flip \u2014 tap between two dots to draw a line.");
+    setMessage(m.first.name+" won the flip! Tap between two dots to draw a line.");
     refresh();render();maybeBot();},{bot:true});}
 function setMessage(t){document.getElementById("msg").textContent=t;}
 function refresh(){const pc=P[turn];
@@ -147,11 +147,11 @@ function applyEdge(ed){const[k,r,c]=ed;
   if(done.length){for(const[br,bc]of done){owner[br][bc]=turn;boxes[turn]++;turnBoxes++;}
     if(turnBoxes>GS.bestRun[P[turn].name])GS.bestRun[P[turn].name]=turnBoxes;
     if(boxes.A+boxes.B>=B*B){render();refresh();finishGame();return;}
-    setMessage(P[turn].name+" boxes "+done.length+" \u2014 and goes again!");
+    setMessage(P[turn].name+" boxes "+done.length+", and goes again!");
     refresh();render();maybeBot();return;}
   turnBoxes=0;
   turn=turn==="A"?"B":"A";
-  setMessage(P[turn].name+" \u2014 your line. Careful with the third side\u2026");
+  setMessage(P[turn].name+": your line. Careful with the third side\u2026");
   refresh();render();maybeBot();}
 function dUndrawn(){const m=[];
   for(let r=0;r<=B;r++)for(let c=0;c<B;c++)if(!H[r][c])m.push(["H",r,c]);
@@ -199,7 +199,7 @@ function dPolicy(state,L){
 }
 const DOTS_SPEC={policy:dPolicy};
 function maybeBot(){if(!vsComputer||phase!=="play"||turn!==cpuSeat)return;
-  if(!(window.GN&&GN.bot&&GN.bot.play)){setMessage("Computer's brain didn't load \u2014 reload the page (or play pass-and-play).");return;}
+  if(!(window.GN&&GN.bot&&GN.bot.play)){setMessage("Computer's brain didn't load. Reload the page (or play pass-and-play).");return;}
   GN.bot.play({},DOTS_SPEC,botLevel,function(ed){if(!ed||phase!=="play"||turn!==cpuSeat)return;applyEdge(ed);},600);}
 function finishGame(){phase="over";
   const w=boxes.A===boxes.B?null:(boxes.A>boxes.B?"A":"B");
@@ -219,13 +219,13 @@ function finishGame(){phase="over";
 document.getElementById("newBtn").addEventListener("click",newGame);
 document.getElementById("ovBtn").addEventListener("click",newGame);
 GN.rulesButton(document.getElementById("foot"),{title:"Dots & Boxes",sections:[
- {h:"Goal",t:"Claim more boxes than your opponent. A box is yours when you draw its FOURTH side \u2014 it fills with your color."},
- {h:"Your turn",t:"Tap between two neighboring dots to draw one line. Complete a box and you claim it AND move again \u2014 chain completions as long as they last."},
- {h:"Don't give the third side",t:"Early game is a dance of NOT drawing the third side of any box \u2014 the third side is a gift. Count before you draw.",
+ {h:"Goal",t:"Claim more boxes than your opponent. A box is yours when you draw its FOURTH side, and it fills with your color."},
+ {h:"Your turn",t:"Tap between two neighboring dots to draw one line. Complete a box and you claim it AND move again. Chain completions as long as they last."},
+ {h:"Don't give the third side",t:"Early game is a dance of NOT drawing the third side of any box. The third side is a gift. Count before you draw.",
   ex:"Only \u201csafe\u201d lines remain that all create a third side somewhere. Whoever runs out of safe moves first opens the floodgates."},
- {h:"Chains",t:"Late game, boxes form chains \u2014 open one and your opponent eats the WHOLE chain. The trick is to open the SHORTEST chain available, feeding them little to save the big chains for yourself."},
- {h:"The double-cross",t:"The expert move: when gobbling a long chain, leave the LAST TWO boxes by drawing the closing line instead. You sacrifice two boxes \u2014 but your opponent must open the next chain for you. Whoever controls the chain count usually controls the game.",
-  ex:"A 7-chain and a 5-chain remain. Take 5 of the 7, decline the last two \u2014 they get 2, then must hand you the 5-chain. You: 10, them: 2."}]});
+ {h:"Chains",t:"Late game, boxes form chains: open one and your opponent eats the WHOLE chain. The trick is to open the SHORTEST chain available, feeding them little to save the big chains for yourself."},
+ {h:"The double-cross",t:"The expert move: when gobbling a long chain, leave the LAST TWO boxes by drawing the closing line instead. You sacrifice two boxes, but your opponent must open the next chain for you. Whoever controls the chain count usually controls the game.",
+  ex:"A 7-chain and a 5-chain remain. Take 5 of the 7, decline the last two. They get 2, then must hand you the 5-chain. You: 10, them: 2."}]});
 GN.statsButton(document.getElementById("foot"),{title:"Dots and Boxes",key:KEY,specials:[
  {label:"Boxes claimed",of:(r,n)=>r.reduce((a,x)=>a+((x.boxes&&x.boxes[n])||0),0)},
  {label:"Best chain run",of:(r,n)=>r.reduce((a,x)=>Math.max(a,(x.bestRun&&x.bestRun[n])||0),0)},

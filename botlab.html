@@ -149,7 +149,7 @@ input[type=range]{flex:1;accent-color:var(--accent);}
   <h1>🧠 Bot Lab</h1>
   <div style="display:flex;gap:8px;align-items:center;">
     <div id="gear" style="font-size:15px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:3px 9px;cursor:pointer;">⚙️</div>
-    <div id="ver">v18.1 · Jul 17</div>
+    <div id="ver">v18.2 · Oct 25</div>
   </div>
 </header>
 <div id="wrap">
@@ -250,12 +250,11 @@ input[type=range]{flex:1;accent-color:var(--accent);}
   </div>
 </div>
 
-<div id="updateBar" class="hide"><span>✨ New version ready</span><button id="updateGo">Reload</button></div>
 <div id="card" class="hide">
   <div class="cardbox">
     <div class="cardtop">
       <div id="cardSwatch"></div>
-      <input id="cardName" maxlength="14" spellcheck="false">
+      <input id="cardName" maxlength="14" spellcheck="false" placeholder="Name me">
       <div id="cardClose" class="mini">Done</div>
     </div>
     <div id="cardSub"></div>
@@ -358,10 +357,10 @@ var WIN=200;
 // survival / foraging
 var ENERGY_MAX=100, ENERGY_START=60, HUNGRY_BELOW=55;
 var METAB=0.35;         // energy burned per step (the drive to keep foraging)
-var BITE=30;            // energy pulled from a flower per feeding — a sip nearly empties it
+var BITE=30;            // energy pulled from a flower per feeding; a sip nearly empties it
 var NECTAR_MAX=40, REFILL=0.28;  // refill is SLOWER than metabolism: one flower alone can't keep him alive
 var MIN_SIP=8;          // a flower must hold at least this much to be worth a real sip (no trickle-camping)
-var SPIKE_DMG=30, SMELL_MIN=15;  // a flower below SMELL_MIN is "dark" — he can't smell it, so he moves on
+var SPIKE_DMG=30, SMELL_MIN=15;  // a flower below SMELL_MIN is "dark": he can't smell it, so he moves on
 var FAINT_PENALTY=15;
 // day / night
 var SMELL_RANGE_DAY=18, SMELL_RANGE_NIGHT=3;  // how far he can smell full flowers
@@ -1171,7 +1170,7 @@ if (typeof document !== "undefined") (function(){
             emotes.push({ch:"🌱",x:pos.x*c+c/2,y:pos.y*c+c*0.2,t:0});
             emotes.push({ch:"💞",x:((A.x+B.x)/2)*c+c/2,y:((A.y+B.y)/2)*c+c*0.1,t:0}); made=true; }
         } }
-        // lone/unpaired adults do NOT breed — colony can dwindle (realistic)
+        // lone/unpaired adults do NOT breed, colony can dwindle (realistic)
       } else if(eligible.length){
         // solo cloning (legacy asexual mode)
         var solo=eligible[0], pos2=freeAdjacent(solo)||freeCell();
@@ -1363,7 +1362,7 @@ if (typeof document !== "undefined") (function(){
     updateObs(); save(); draw(); updateStats();
     toast("New group: 3 fresh creatures, clean board.");
   };
-  document.getElementById("ver").onclick=function(){ toast("Bot Lab v3.0 · Jul 15"); };
+  document.getElementById("ver").onclick=function(){ toast("Bot Lab v18.2 · Oct 25"); };
   // ============================================================
   // TUTORIAL / HOW-TO / STRATEGY WIZARD
   // To update as features change: edit WIZARD_STEPS below. Each step
@@ -1443,7 +1442,7 @@ if (typeof document !== "undefined") (function(){
       var ag=focusAgent, it=intentOf(ag), emax=emaxOf(st.world,ag), kn=knowledge(ag);
       var mode=st.mode==="sense"?"Senses":"Memory";
       p.innerHTML =
-        "<div class='obshead'><b>"+(ag.name||"—")+"</b><span class='obsx' id='obsClose'>✕</span></div>"+
+        "<div class='obshead'><b>"+(ag.name||"unnamed")+"</b><span class='obsx' id='obsClose'>✕</span></div>"+
         "<div class='intent' style='color:"+it.c+"'>"+it.t+"</div>"+
         "<div class='obsline'>Energy <b>"+Math.round(ag.energy/emax*100)+"%</b> · Gen <b>"+ag.gen+"</b> · Meals <b>"+ag.meals+"</b> · Kids <b>"+(ag.kids||0)+"</b></div>"+
         "<div class='obsline'>Its "+mode.toLowerCase()+" brain: <b>"+kn.label+"</b> ("+(kn.frac*100).toFixed(1)+"% learned)</div>"+
@@ -1494,7 +1493,7 @@ if (typeof document !== "undefined") (function(){
   function openCard(ag){
     cardAgent=ag;
     document.getElementById("cardSwatch").style.background = st.world.traits?("rgb("+traitColor(ag).join(",")+")"):ag.color;
-    document.getElementById("cardName").value = ag.name||"—";
+    document.getElementById("cardName").value = ag.name||"";
     var days=st.world.dayNight?(" · "+(ag.age/st.world.cycleLen).toFixed(1)+" days old"):(" · "+ag.age+" steps");
     var mode = st.mode==="sense"?"Senses":"Memory";
     document.getElementById("cardSub").innerHTML = "Gen "+ag.gen+days+(ag.parentName?(" · child of "+ag.parentName):"")+" · "+mode+" brain"+(st.world.traits?(" · "+traitLabel(ag.traits)):"");
@@ -1518,7 +1517,7 @@ if (typeof document !== "undefined") (function(){
     document.getElementById("cardKnow").innerHTML = "🧠 <b>"+kn.label+"</b><br><span style='color:var(--dim)'>Its "+mode.toLowerCase()+" brain has learned "+(kn.frac*100).toFixed(1)+"% of what it could know. Turn on 👁 Brain to see what this one is thinking.</span>";
     cardEl.classList.remove("hide");
   }
-  document.getElementById("cardName").addEventListener("input",function(){ if(cardAgent){ cardAgent.name=this.value.trim()||cardAgent.name; } });
+  document.getElementById("cardName").addEventListener("input",function(){ if(cardAgent){ cardAgent.name=this.value.replace(/[<>&"']/g,"").trim()||cardAgent.name; } });
   document.getElementById("cardName").addEventListener("blur",function(){ save(); });
   document.getElementById("cardClose").onclick=function(){ cardEl.classList.add("hide"); save(); };
   cardEl.addEventListener("click",function(e){ if(e.target===cardEl){ cardEl.classList.add("hide"); save(); } });

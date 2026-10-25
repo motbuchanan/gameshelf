@@ -41,7 +41,7 @@
 </div>
 <div class="ov" id="overlay"><div id="confetti"></div><div style="font-size:54px;">&#11044;</div><h1 id="ovTitle"></h1><p id="ovText"></p>
   <button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
-<script src="gamenight.js?v=12"></script>
+<script src="gamenight.js?v=13"></script>
 <script src="sfx.js?v=5"></script>
 <script>
 const KEY="gomoku_games",N=13;
@@ -52,7 +52,7 @@ let grid,turn="A",phase="over",GS=null,winLine=null,last=null,moves=0;
 const canvas=document.getElementById("cv"),ctx=canvas.getContext("2d");
 let SZ=320,CELL=24,M=18;
 function fit(){const w=Math.min(window.innerWidth-14,window.innerHeight-210,470);
-  SZ=Math.max(300,w);M=SZ*0.05;CELL=(SZ-2*M)/(N-1);canvas.width=SZ;canvas.height=SZ;render();}
+  SZ=Math.max(200,w);M=SZ*0.05;CELL=(SZ-2*M)/(N-1);canvas.width=SZ;canvas.height=SZ;render();}
 window.addEventListener("resize",fit);
 function ptOf(r,c){return{x:M+c*CELL,y:M+r*CELL};}
 function render(){if(!grid){return;}
@@ -112,7 +112,7 @@ function newGame(){phase="over";winLine=null;last=null;moves=0;
     turn=(m.first===m.a)?"A":"B";phase="play";winLine=null;last=null;moves=0;
     GS={start:Date.now(),flipWinner:m.first.name,friendly:m.friendly,moves:{}};
     GS.moves[m.a.name]=0;GS.moves[m.b.name]=0;
-    setMessage(P[turn].name+" won the flip \u2014 five in a row wins. Tap a crossing.");
+    setMessage(P[turn].name+" won the flip. Five in a row wins. Tap a crossing.");
     refresh();render();});}
 function setMessage(t){document.getElementById("msg").textContent=t;}
 function refresh(){const pc=P[turn];
@@ -135,14 +135,14 @@ canvas.addEventListener("click",e=>{if(phase!=="play")return;
   if(w){winLine=w;render();finish(turn);return;}
   if(moves>=N*N){render();finish(null);return;}
   turn=turn==="A"?"B":"A";
-  setMessage(P[turn].name+" \u2014 your stone.");
+  setMessage(P[turn].name+": your stone.");
   refresh();render();});
 function finish(w){phase="over";
   const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
     winner:w?P[w].name:null,loser:w?P[w==="A"?"B":"A"].name:null,draw:!w,
     flipWinner:GS.flipWinner,moves:GS.moves};
   GN.recordGame(KEY,rec);
-  document.getElementById("ovTitle").textContent=w?P[w].name+" \u2014 five in a row!":"Board full!";
+  document.getElementById("ovTitle").textContent=w?P[w].name+": five in a row!":"Board full!";
   document.getElementById("ovText").textContent=w?("Victory in "+GS.moves[P[w].name]+" stones."):"A 169-stone stalemate. Legendary.";
   if(w){const box=document.getElementById("confetti"),cols=[P[w].main,P[w].light,"#f4c542","#fff"];
     for(let i=0;i<60;i++){const d=document.createElement("div");d.className="cf";d.style.left=Math.random()*100+"%";
@@ -152,12 +152,12 @@ function finish(w){phase="over";
 document.getElementById("newBtn").addEventListener("click",newGame);
 document.getElementById("ovBtn").addEventListener("click",newGame);
 GN.rulesButton(document.getElementById("foot"),{title:"Gomoku",sections:[
- {h:"Goal",t:"Place stones on the intersections and be first to get FIVE in a row \u2014 across, down, or diagonally."},
- {h:"Your turn",t:"Tap any empty point to place a stone. Stones never move and are never captured \u2014 the board only fills."},
- {h:"Open threats",t:"An open three (three in a row with BOTH ends free) must be answered immediately \u2014 ignored, it becomes an open four, which is unstoppable: two winning ends, one blocker.",
-  ex:"You spot their \u00b7XXX\u00b7 \u2014 block an end NOW. If you see \u00b7XXXX\u00b7 it's already over."},
- {h:"The double threat",t:"The classic win is making two open threes with a single stone \u2014 a fork. Your opponent blocks one, you complete the other. Building quiet crossing shapes beats racing in a straight line."},
- {h:"First-move advantage",t:"Going first is a real edge \u2014 the coin flip matters. House etiquette: alternate who starts across games (your stats track who went first)."}]});
+ {h:"Goal",t:"Place stones on the intersections and be first to get FIVE in a row: across, down, or diagonally."},
+ {h:"Your turn",t:"Tap any empty point to place a stone. Stones never move and are never captured. The board only fills."},
+ {h:"Open threats",t:"An open three (three in a row with BOTH ends free) must be answered immediately. Ignored, it becomes an open four, which is unstoppable: two winning ends, one blocker.",
+  ex:"You spot their \u00b7XXX\u00b7? Block an end NOW. If you see \u00b7XXXX\u00b7 it's already over."},
+ {h:"The double threat",t:"The classic win is making two open threes with a single stone: a fork. Your opponent blocks one, you complete the other. Building quiet crossing shapes beats racing in a straight line."},
+ {h:"First-move advantage",t:"Going first is a real edge, so the coin flip matters. House etiquette: alternate who starts across games (your stats track who went first)."}]});
 GN.statsButton(document.getElementById("foot"),{title:"Gomoku",key:KEY,specials:[
  {label:"Fastest win (stones)",of:(r,n)=>{const w=r.filter(x=>x.winner===n&&x.moves&&x.moves[n]);return w.length?Math.min(...w.map(x=>x.moves[n])):0;}},
  {label:"Stones placed",of:(r,n)=>r.reduce((a,x)=>a+((x.moves&&x.moves[n])||0),0)},

@@ -1,4 +1,4 @@
-/* achievements.js  —  per-player milestone/challenge badges for The Game Shelf
+/* achievements.js: per-player milestone/challenge badges for The Game Shelf
  * Load AFTER gamenight.js.  Pure logic + localStorage (memory fallback); no DOM.
  *
  * Two ideas live here:
@@ -37,7 +37,8 @@ var NAMES={
   blackjack_games:"Blackjack", solitaire_games:"Solitaire", memory_games:"Memory",
   gin_games:"Gin Rummy", oldmaid_games:"Old Maid", onecardleft_games:"One Card Left!",
   knuckle_games:"Knucklebones", pig_games:"Pig", liarsdice_games:"Liar's Dice",
-  craps_games:"Craps", minesweeper_games:"Minesweeper", gemmatch_games:"Gem Match"
+  craps_games:"Craps", minesweeper_games:"Minesweeper", gemmatch_games:"Gem Match",
+  puff_games:"Puff Collection", bloodstream_games:"Bloodstream"
 };
 
 /* per-game "challenge" ladders: a single higher-is-better metric (score/level/wave).

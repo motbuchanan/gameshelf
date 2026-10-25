@@ -68,7 +68,7 @@
 </div>
 <div class="ov" id="overlay"><div id="confetti"></div><div style="font-size:54px;">&#127881;</div><h1 id="ovTitle"></h1><p id="ovText"></p>
   <button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
-<script src="gamenight.js?v=12"></script>
+<script src="gamenight.js?v=13"></script>
 <script src="sfx.js?v=5"></script>
 <script>
 const KEY="war_games",MAXR=200;
@@ -77,10 +77,10 @@ let P={A:{name:"Player 1",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},B:{name
 function seatFrom(p){return{name:p.name,main:p.color,light:p.light,dark:p.dark};}
 const RANKS=["2","3","4","5","6","7","8","9","10","J","Q","K","A"];
 const SUITS=[{s:"\u2660",r:false},{s:"\u2665",r:true},{s:"\u2666",r:true},{s:"\u2663",r:false}];
-let decks={A:[],B:[]},phase="over",rounds=0,GS=null,busy=false;
+let decks={A:[],B:[]},phase="over",rounds=0,GS=null,busy=false,gameTok=0;
 function freshDeck(){const d=[];for(let v=0;v<13;v++)for(const su of SUITS)d.push({v,s:su.s,red:su.r});
   for(let i=d.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[d[i],d[j]]=[d[j],d[i]];}return d;}
-function newGame(){phase="over";busy=false;rounds=0;
+function newGame(){phase="over";busy=false;rounds=0;gameTok++;
   document.getElementById("overlay").classList.remove("show");
   document.getElementById("confetti").innerHTML="";
   document.getElementById("cardA").innerHTML="";document.getElementById("cardB").innerHTML="";
@@ -90,7 +90,7 @@ function newGame(){phase="over";busy=false;rounds=0;
     phase="play";rounds=0;
     GS={start:Date.now(),flipWinner:m.first.name,friendly:m.friendly,wars:{},pot:0,bigPot:{}};
     GS.wars[m.a.name]=0;GS.wars[m.b.name]=0;GS.bigPot[m.a.name]=0;GS.bigPot[m.b.name]=0;
-    setMessage(m.first.name+" won the flip \u2014 tap Battle! to fight each round");
+    setMessage(m.first.name+" won the flip. Tap Battle! to fight each round");
     refresh();},{bot:true,botSimple:true});}
 function setMessage(t){document.getElementById("msg").textContent=t;}
 function cardEl(c,down){const e=document.createElement("div");e.className="card flip"+(c.red?" red":"")+(down?" facedown":"");
@@ -102,9 +102,9 @@ function refresh(){document.getElementById("nA").textContent=P.A.name+" \u00b7 "
   for(const r of recs){if(r.winner===P.A.name)a++;else if(r.winner===P.B.name)b++;}
   document.getElementById("score").textContent=P.A.name+" "+a+" \u00b7 "+b+" "+P.B.name+((GS&&GS.friendly)?" \u00b7 friendly":"");
   document.getElementById("turnName").textContent="Round "+(rounds+1);}
-function battle(){if(phase!=="play"||busy)return;busy=true;
+function battle(){if(phase!=="play"||busy)return;busy=true;const tok=gameTok;
   const table=[];let warCount=0;
-  (function fight(){
+  (function fight(){if(tok!==gameTok)return;
     if(!decks.A.length||!decks.B.length){conclude();return;}
     const ca=decks.A.shift(),cb=decks.B.shift();table.push(ca,cb);
     const eA=document.getElementById("cardA"),eB=document.getElementById("cardB");
@@ -115,8 +115,8 @@ function battle(){if(phase!=="play"||busy)return;busy=true;
     if(cb.v>ca.v){award("B",table,warCount);return;}
     // WAR: each buries 3 (or all but one), then fights again
     warCount++;
-    setMessage("WAR! "+RANKS[ca.v]+" ties "+RANKS[cb.v]+" \u2014 three down, one up\u2026");
-    setTimeout(()=>{
+    setMessage("WAR! "+RANKS[ca.v]+" ties "+RANKS[cb.v]+": three down, one up\u2026");
+    setTimeout(()=>{if(tok!==gameTok)return;
       const burn=s=>{const n=Math.min(3,Math.max(0,decks[s].length-1));for(let i=0;i<n;i++)table.push(decks[s].shift());};
       burn("A");burn("B");
       setTimeout(fight,420);},650);})();
@@ -124,8 +124,8 @@ function battle(){if(phase!=="play"||busy)return;busy=true;
     if(wars){GS.wars[P[w].name]+=wars;}
     if(pile.length>GS.bigPot[P[w].name])GS.bigPot[P[w].name]=pile.length;
     decks[w].push(...pile);
-    setMessage(P[w].name+" takes "+pile.length+" card"+(pile.length>1?"s":"")+(wars?" \u2014 won the war!":""));
-    setTimeout(()=>{busy=false;refresh();
+    setMessage(P[w].name+" takes "+pile.length+" card"+(pile.length>1?"s":"")+(wars?" and won the war!":""));
+    setTimeout(()=>{if(tok!==gameTok)return;busy=false;refresh();
       if(!decks.A.length||!decks.B.length||rounds>=MAXR)conclude();},pile.length>2?700:280);}
   function conclude(){phase="over";
     const w=decks.A.length===decks.B.length?null:(decks.A.length>decks.B.length?"A":"B");
@@ -136,7 +136,7 @@ function finish(w){
     flipWinner:GS.flipWinner,rounds,wars:GS.wars,bigPot:GS.bigPot};
   GN.recordGame(KEY,rec);
   document.getElementById("ovTitle").textContent=w?P[w].name+" wins the war!":"Stalemate!";
-  document.getElementById("ovText").textContent=w?("All 52 cards in "+rounds+" rounds."):"Equal armies after "+rounds+" rounds.";
+  document.getElementById("ovText").textContent=(rounds>=MAXR&&decks.A.length&&decks.B.length)?((w?"Most cards":"Dead even")+" after "+MAXR+" rounds ("+decks.A.length+"-"+decks.B.length+")."):w?("All 52 cards in "+rounds+" rounds."):"Equal armies after "+rounds+" rounds.";
   if(w)confetti(P[w]);
   S("fanfare");document.getElementById("overlay").classList.add("show");refresh();}
 function confetti(pc){const box=document.getElementById("confetti"),cols=[pc.main,pc.light,"#f4c542","#fff"];
@@ -147,12 +147,12 @@ document.getElementById("flipBtn").addEventListener("click",battle);
 document.getElementById("newBtn").addEventListener("click",newGame);
 document.getElementById("ovBtn").addEventListener("click",newGame);
 GN.rulesButton(document.getElementById("foot"),{title:"War",sections:[
- {h:"Goal",t:"Win ALL the cards. No decisions, no mercy \u2014 just fate, flips, and bragging rights."},
- {h:"Battle",t:"Each player flips their top card. Higher card takes both \u2014 Aces high. Won cards go under your stack."},
- {h:"WAR!",t:"A tie means WAR: each player lays THREE cards face-down, then one face-up. The new face-up cards fight \u2014 winner takes everything on the table. Tie again? The war grows. The pile gets ridiculous. That's the point.",
-  ex:"Two Kings collide with 9 cards already down \u2014 the next flip is suddenly worth 17 cards. The room goes quiet."},
- {h:"Running dry",t:"If you can't fund a war \u2014 not enough cards to lay down \u2014 you lose on the spot. Live by the deck, die by the deck."},
- {h:"How long?",t:"Honestly? Anywhere from two minutes to the heat death of the universe. The card counters track the tide \u2014 a big war swings everything."}]});
+ {h:"Goal",t:"Win ALL the cards. No decisions, no mercy, just fate, flips, and bragging rights."},
+ {h:"Battle",t:"Each player flips their top card. Higher card takes both. Aces high. Won cards go under your stack."},
+ {h:"WAR!",t:"A tie means WAR: each player lays THREE cards face-down, then one face-up. The new face-up cards fight - winner takes everything on the table. Tie again? The war grows. The pile gets ridiculous. That's the point.",
+  ex:"Two Kings collide with 9 cards already down - the next flip is suddenly worth 17 cards. The room goes quiet."},
+ {h:"Running dry",t:"Short on cards for a war? Lay down all but your last card and let that one fight. Run out of cards completely and you lose. Live by the deck, die by the deck."},
+ {h:"How long?",t:"Honestly? Anywhere from two minutes to the heat death of the universe, so the shelf calls it at 200 rounds: whoever holds more cards then wins. The card counters track the tide - a big war swings everything."}]});
 GN.statsButton(document.getElementById("foot"),{title:"War",key:KEY,specials:[
  {label:"Wars won",of:(r,n)=>r.reduce((a,x)=>a+((x.wars&&x.wars[n])||0),0)},
  {label:"Biggest pot",of:(r,n)=>r.reduce((a,x)=>Math.max(a,(x.bigPot&&x.bigPot[n])||0),0)},

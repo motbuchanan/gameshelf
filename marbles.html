@@ -57,13 +57,13 @@
   /* collection screen */
   #collectWrap{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;
     padding:14px 13px calc(18px + env(safe-area-inset-bottom))}
-  .cGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:12px}
+  .cGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:12px}
   .cCell{display:flex;flex-direction:column;align-items:center;gap:5px}
   .cCell canvas{border-radius:50%;display:block;filter:drop-shadow(0 3px 4px rgba(0,0,0,.4))}
   .cName{font-size:11px;color:var(--dim);text-align:center;line-height:1.2}
   .cCount{font-size:10px;color:var(--accent);font-weight:700}
   .cBtns{display:flex;gap:6px;margin-top:2px}
-  .cAdj{width:30px;height:30px;border-radius:8px;border:1px solid var(--line);background:var(--panel);
+  .cAdj{width:36px;height:36px;border-radius:8px;border:1px solid var(--line);background:var(--panel);
     color:var(--txt);font:800 16px/1 inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
   .cAdj:active{transform:translateY(1px)}
   #collectStatus{color:var(--accent)}
@@ -105,7 +105,7 @@
   <section class="screen" id="s-collect">
     <div id="collectWrap">
       <h2>Your marbles</h2>
-      <p class="sub">Tap <b>+</b> to add a marble or <b>\u2212</b> to remove one. <b id="collectStatus"></b></p>
+      <p class="sub">Tap <b>+</b> to add a marble or <b>&minus;</b> to remove one. <b id="collectStatus"></b></p>
       <div class="cGrid" id="cGrid"></div>
     </div>
   </section>
@@ -115,7 +115,7 @@
 "use strict";
 var $=function(i){return document.getElementById(i);};
 var MAX_POUR=18;  // collision is O(n^2); cap how many pour onto the felt so it stays smooth
-var VERSION="v1.3 \u00b7 Aug 1";
+var VERSION="v1.4 \u00b7 Oct 25";
 $("ver").textContent=VERSION.split(" ")[0];
 
 /* ---------- marble types ----------
@@ -348,11 +348,14 @@ function render(){
   });
   drawAim();
 }
-function loop(){
-  if(aim){ render(); requestAnimationFrame(loop); return; }   // aiming: redraw overlay, no physics
+var _raf=0;                   // one animation chain at a time (extra loop() calls just ride the running one)
+function loop(){ if(_raf)return; _raf=requestAnimationFrame(frame); }
+function frame(){
+  _raf=0;
+  if(aim){ render(); _raf=requestAnimationFrame(frame); return; }   // aiming: redraw overlay, no physics
   if(!running){render();return;}
   step(); render();
-  requestAnimationFrame(loop);
+  _raf=requestAnimationFrame(frame);
 }
 
 /* ---------- slingshot aim (pool/billiards style) ----------
@@ -429,7 +432,7 @@ window.addEventListener("deviceorientation",function(e){
   if(e.gamma==null)return;
   tilt.x=Math.max(-1,Math.min(1,e.gamma/45));
   tilt.y=Math.max(-1,Math.min(1,e.beta>90?1:(e.beta-40)/45));
-  if(poured){running=true;if(!drag)loop();}
+  if(poured){running=true;loop();}
 });
 
 /* ---------- collection ---------- */
@@ -453,7 +456,7 @@ function renderCollection(){
     cx.translate(sz/2,sz/2);paintMarble(cx,sz/2-3,t);
     if(!n){c.style.filter="grayscale(1)";c.style.opacity=".35";}
     var name=document.createElement("div");name.className="cName";name.textContent=t.name;
-    var cnt=document.createElement("div");cnt.className="cCount";cnt.textContent=n?("\u00d7"+n):"\u2014";
+    var cnt=document.createElement("div");cnt.className="cCount";cnt.textContent=n?("\u00d7"+n):"0";
     // +/- row: minus removes one of this type, plus adds one
     var row=document.createElement("div");row.className="cBtns";
     var minus=document.createElement("button");minus.className="cAdj";minus.textContent="\u2212";

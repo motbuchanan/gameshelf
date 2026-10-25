@@ -9,7 +9,7 @@
   body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:#1b120b;color:#e6ddd0;
     background-image:radial-gradient(ellipse at 50% -10%,#2a1c10,#1b120b 70%);min-height:100vh;}
   #bar{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#15100c;border-bottom:1px solid #3a2a1a;}
-  #bar a{color:#e6ddd0;text-decoration:none;font-size:13px;border:1px solid #6e5f50;background:#2a241e;border-radius:999px;padding:6px 12px;}
+  #bar a{color:#e6ddd0;text-decoration:none;font-size:13px;border:1px solid #6e5f50;background:#2a241e;border-radius:999px;padding:9px 14px;}
   #title{font-weight:800;font-size:17px;}
   #prog{margin-left:auto;font-size:13px;color:#c9ab85;font-weight:700;}
   #wrap{max-width:560px;margin:0 auto;padding:12px;}
@@ -18,8 +18,8 @@
   #label{font-weight:800;font-size:18px;color:#f4c542;text-align:center;min-width:150px;}
   #crypt{display:flex;flex-wrap:wrap;gap:10px 14px;justify-content:center;padding:6px 2px 2px;}
   .word{display:flex;gap:4px;}
-  .cell{display:flex;flex-direction:column;align-items:center;width:24px;cursor:pointer;}
-  .cell .pl{height:30px;width:24px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;
+  .cell{display:flex;flex-direction:column;align-items:center;width:30px;cursor:pointer;}
+  .cell .pl{height:30px;width:30px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;
     color:#1d5fb0;border-bottom:2px solid #6e5f50;border-radius:3px;}
   .cell .cl{font-size:11px;color:#b59a72;margin-top:3px;font-weight:700;letter-spacing:.5px;}
   .cell.sel .pl{background:#f4c542;color:#2a1c0c;border-bottom-color:#b8860b;}
@@ -60,7 +60,7 @@
 <div class="ov" id="overlay"><div style="font-size:46px;">&#128273;</div><h1 id="ovTitle">Cracked it!</h1><p id="ovText"></p>
   <button class="act" id="ovBtn">Next puzzle</button>
   <a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #6e5f50;background:#2a241e;color:#e6ddd0;text-decoration:none;">Back to shelf</a></div>
-<script src="gamenight.js?v=12"></script>
+<script src="gamenight.js?v=13"></script>
 <script src="sfx.js?v=5"></script>
 <script>
 const QUOTES=[
@@ -83,8 +83,9 @@ const cryptEl=document.getElementById("crypt"),labelEl=document.getElementById("
 let pi=0, sol="", perm={}, inv={}, cipher="", guess={}, locked={}, sel="";
 
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
-function loadAll(){try{return JSON.parse(localStorage.getItem(PKEY))||{};}catch(e){return{};}}
-function saveAll(o){try{localStorage.setItem(PKEY,JSON.stringify(o));}catch(e){}}
+let _mem=null;
+function loadAll(){try{return JSON.parse(localStorage.getItem(PKEY))||{};}catch(e){return _mem?JSON.parse(JSON.stringify(_mem)):{};}}
+function saveAll(o){_mem=JSON.parse(JSON.stringify(o));try{localStorage.setItem(PKEY,JSON.stringify(o));}catch(e){}}
 function makePerm(seed){
   const rnd=mulberry32(seed*2654435761>>>0);const A=ALPHA.split("");let p;
   do{p=A.slice();for(let i=p.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1));const t=p[i];p[i]=p[j];p[j]=t;}}
@@ -99,6 +100,7 @@ function load(idx){
   guess={}; locked={}; sel="";
   const saved=(loadAll().st||{})[pi];
   if(saved){if(saved.g)guess=Object.assign({},saved.g);if(saved.l)saved.l.forEach(c=>{locked[c]=true;guess[c]=inv[c];});}
+  for(const ch of cipher){if(/[A-Z]/.test(ch)&&!locked[ch]&&guess[ch]!==inv[ch]){sel=ch;break;}}
   render();
 }
 function decrypted(){let out="";for(const ch of cipher){out+= /[A-Z]/.test(ch)?(guess[ch]||"\u00b7"):ch;}return out;}
@@ -135,6 +137,7 @@ function render(){
   progEl.textContent=solved+"/"+QUOTES.length;
 }
 function place(L){
+  if(isWon())return;
   if(!sel){msgEl.textContent="Tap a letter in the puzzle first.";return;}
   if(locked[sel]){S("err");return;}
   // each plaintext letter used once: clear any other cipher letter currently guessing L
@@ -155,7 +158,7 @@ function save(){const a=loadAll();a.pi=pi;a.st=a.st||{};a.st[pi]={g:guess,l:Obje
 function win(){
   S("win");save();
   const solved=Object.keys(loadAll().s||{}).length;progEl.textContent=solved+"/"+QUOTES.length;
-  document.getElementById("ovText").innerHTML="\u201C"+sol+"\u201D<br><br>"+(solved>=QUOTES.length?"Every cryptogram solved \u2014 sharp!":(solved+" of "+QUOTES.length+" done."));
+  document.getElementById("ovText").innerHTML="\u201C"+sol+"\u201D<br><br>"+(solved>=QUOTES.length?"Every cryptogram solved. Sharp!":(solved+" of "+QUOTES.length+" done."));
   document.getElementById("overlay").classList.add("show");
 }
 
@@ -169,7 +172,7 @@ document.addEventListener("keydown",e=>{if(/^[a-zA-Z]$/.test(e.key))place(e.key.
 document.getElementById("prev").addEventListener("click",()=>{document.getElementById("overlay").classList.remove("show");load(pi-1);});
 document.getElementById("next").addEventListener("click",()=>{document.getElementById("overlay").classList.remove("show");load(pi+1);});
 document.getElementById("hint").addEventListener("click",hint);
-document.getElementById("reset").addEventListener("click",()=>{guess={};locked={};sel="";save();render();});
+document.getElementById("reset").addEventListener("click",()=>{if(!Object.keys(guess).length||!confirm("Clear every letter in this puzzle?"))return;guess={};locked={};sel="";save();render();});
 document.getElementById("ovBtn").addEventListener("click",()=>{document.getElementById("overlay").classList.remove("show");load(pi+1);});
 
 window.__crypto=function(){return{sol:sol,cipher:cipher,inv:inv,guess:Object.assign({},guess),won:isWon()};};

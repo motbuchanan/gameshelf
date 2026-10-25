@@ -6,7 +6,7 @@
   body{font-family:system-ui,sans-serif;color:#f3ead8;min-height:100vh;display:flex;flex-direction:column;align-items:center;
     background:radial-gradient(120% 80% at 50% 15%,#3a3046 0%,#13101c 70%);}
   #bar{width:100%;max-width:560px;display:flex;align-items:center;gap:10px;padding:11px 14px;}
-  #bar a{color:#e8dff0;text-decoration:none;font-size:14px;border:1px solid #5a4a6e;border-radius:999px;padding:6px 12px;}
+  #bar a{color:#e8dff0;text-decoration:none;font-size:14px;border:1px solid #5a4a6e;border-radius:999px;padding:9px 14px;display:inline-block;}
   #title{font-weight:800;font-size:19px;flex:1;}
   #turnWrap{display:flex;align-items:center;gap:8px;}
   #dot{width:15px;height:15px;border-radius:50%;}
@@ -55,7 +55,7 @@
 <div id="foot"><button class="act" id="newBtn">New game</button><div id="score" style="font-size:13px;color:#cfc2e0;"></div></div>
 <div class="ov" id="overlay"><div style="font-size:54px;">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p>
   <button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #5a4a6e;background:#241c30;color:#e8dff0;text-decoration:none;">Back to shelf</a></div>
-<script src="gamenight.js?v=12"></script>
+<script src="gamenight.js?v=13"></script>
 <script src="bot.js?v=1"></script>
 <script src="sfx.js?v=5"></script>
 <script>
@@ -147,11 +147,12 @@ function doRoll(){if(phase!=="roll")return;S("dice");
   const r=rollDice();roll=r.total;showDice(r.faces);
   GS.rolls[P[st.turn].name]++;
   moves=movesFor(st,st.turn,roll);
-  if(roll===0){setMsg(P[st.turn].name+" rolled 0 \u2014 turn lost!");S("womp");passTurn();return;}
-  if(!moves.length){setMsg(P[st.turn].name+" rolled "+roll+" \u2014 no moves.");S("womp");passTurn();return;}
-  phase="move";setMsg(P[st.turn].name+" rolled "+roll+" \u2014 pick a piece.");render();}
-function passTurn(){phase="wait";render();
-  setTimeout(()=>{st.turn=st.turn==="A"?"B":"A";roll=null;moves=[];phase="roll";render();
+  if(roll===0){setMsg(P[st.turn].name+" rolled 0: turn lost!");S("womp");passTurn();return;}
+  if(!moves.length){setMsg(P[st.turn].name+" rolled "+roll+": no moves.");S("womp");passTurn();return;}
+  phase="move";setMsg(P[st.turn].name+" rolled "+roll+": pick a piece.");render();}
+let urGid=0;
+function passTurn(){phase="wait";render();const g=urGid;
+  setTimeout(()=>{if(g!==urGid)return;st.turn=st.turn==="A"?"B":"A";roll=null;moves=[];phase="roll";render();
     setMsg(P[st.turn].name+"'s roll.");},900);}
 function tapCell(k){if(phase!=="move")return;
   if(botLevel&&st.turn==="B")return;
@@ -170,7 +171,7 @@ function playMove(mv){const side=st.turn;
   if(res.extra){S("chime",120);GS.rosettes[P[side].name]++;}
   phase="roll";moves=[];roll=null;render();
   if(st.home[side]>=7){gameOver(side);return;}
-  if(res.extra)setMsg(P[side].name+" landed a rosette \u2014 roll again!");
+  if(res.extra)setMsg(P[side].name+" landed a rosette: roll again!");
   else setMsg(P[st.turn].name+"'s roll.");}
 function gameOver(w){phase="over";S("fanfare");
   const l=w==="A"?"B":"A";
@@ -180,9 +181,9 @@ function gameOver(w){phase="over";S("fanfare");
     captures:GS.captures,rosettes:GS.rosettes,rolls:GS.rolls};
   if(!GS.friendly)GN.recordGame(KEY,rec);
   document.getElementById("ovTitle").textContent=P[w].name+" wins!";
-  document.getElementById("ovText").textContent="All seven pieces home \u2014 "+st.home[l]+" for "+P[l].name+".";
+  document.getElementById("ovText").textContent="All seven pieces home. "+st.home[l]+" for "+P[l].name+".";
   document.getElementById("overlay").classList.add("show");}
-function newGame(){phase="over";document.getElementById("overlay").classList.remove("show");
+function newGame(){phase="over";urGid++;document.getElementById("overlay").classList.remove("show");
   GN.matchStart(function(m){P={A:seatFrom(m.a),B:seatFrom(m.b)};
     botLevel=m.vsComputer?(m.bot||"medium"):null;botKey="";
     st=freshState();st.turn=(m.first===m.a)?"A":"B";
@@ -224,16 +225,16 @@ document.getElementById("rollBtn").addEventListener("click",()=>{if(botLevel&&st
 document.getElementById("newBtn").addEventListener("click",newGame);
 document.getElementById("ovBtn").addEventListener("click",newGame);
 GN.rulesButton(document.getElementById("foot"),{title:"Royal Game of Ur",sections:[
- {h:"The oldest game on the shelf",t:"Played in Mesopotamia 4,500 years ago \u2014 boards have been dug out of royal tombs. Race all 7 of your pieces along your path and off the far end before your opponent does."},
+ {h:"The oldest game on the shelf",t:"Played in Mesopotamia 4,500 years ago, and boards have been dug out of royal tombs. Race all 7 of your pieces along your path and off the far end before your opponent does."},
  {h:"The board",svg:'<svg viewBox="0 0 280 110"><g><rect x="10" y="10" width="260" height="90" rx="10" fill="#5a3f24"/><g font-size="14" text-anchor="middle">'+(function(){let h="";const GAP={"0,4":1,"0,5":1,"2,4":1,"2,5":1},ROS={"0,0":1,"2,0":1,"1,3":1,"0,6":1,"2,6":1};for(let r=0;r<3;r++)for(let c=0;c<8;c++){const k=r+","+c;if(GAP[k])continue;const x=18+c*31,y=15+r*27;h+='<rect x="'+x+'" y="'+y+'" width="27" height="23" rx="4" fill="'+(ROS[k]?"#9fb8cb":"#e9d9b8")+'"/>';if(ROS[k])h+='<text x="'+(x+13.5)+'" y="'+(y+17)+'" fill="#3c3c6e">\u2738</text>';}return h;})()+'</g><text x="140" y="55" font-size="10" fill="#5a3f24" font-family="system-ui" font-weight="700">\u2190 the shared battle lane \u2192</text></g></svg>',
-  t:"Your private lane is the row nearest you; the middle row is the BATTLE LANE you both share. Your path: down your own lane, all the way along the middle, then a short hook home at the far end \u2014 14 squares in all."},
- {h:"The dice",t:"Four pyramid dice, each landing marked (1) or unmarked (0). Your roll is the total: 0 to 4. Roll a zero and your whole turn is lost \u2014 the table is allowed to laugh."},
- {h:"Moving",t:"Move ONE piece exactly your roll: bring a new piece onto your lane, advance a piece on the board, or bear a piece off the end (exact count required \u2014 a 3 can't carry a piece 2 squares from home). You can never land on your own piece. No legal move? Turn lost."},
- {h:"Battle!",t:"Land on an enemy piece in the shared lane and it's captured \u2014 sent all the way back to their starting pool to begin again.",
-  ex:"Their piece sits 3 ahead of yours in the middle lane. Roll a 3, land on it, and it goes home \u2014 there are no friendly squares out there\u2026 except one."},
- {h:"Rosettes \u2738",t:"Five flower squares. Land on ANY rosette and you immediately roll again. The center rosette \u2014 right in the battle lane \u2014 is also a SAFE HAVEN: a piece there can never be captured, and enemies can't land on it while you're parked."},
+  t:"Your private lane is the row nearest you; the middle row is the BATTLE LANE you both share. Your path: down your own lane, all the way along the middle, then a short hook home at the far end: 14 squares in all."},
+ {h:"The dice",t:"Four pyramid dice, each landing marked (1) or unmarked (0). Your roll is the total: 0 to 4. Roll a zero and your whole turn is lost, and the table is allowed to laugh."},
+ {h:"Moving",t:"Move ONE piece exactly your roll: bring a new piece onto your lane, advance a piece on the board, or bear a piece off the end (exact count required: a 3 can't carry a piece 2 squares from home). You can never land on your own piece. No legal move? Turn lost."},
+ {h:"Battle!",t:"Land on an enemy piece in the shared lane and it's captured and sent all the way back to their starting pool to begin again.",
+  ex:"Their piece sits 3 ahead of yours in the middle lane. Roll a 3, land on it, and it goes home. There are no friendly squares out there\u2026 except one."},
+ {h:"Rosettes \u2738",t:"Five flower squares. Land on ANY rosette and you immediately roll again. The center rosette, right in the battle lane, is also a SAFE HAVEN: a piece there can never be captured, and enemies can't land on it while you're parked."},
  {h:"Winning",t:"First player to walk all 7 pieces off the far end wins. The score line tracks pieces home: 7 ends it."},
- {h:"vs Computer",t:"The computer can take the second seat \u2014 Hard knows which battle-lane squares your dice can reach and plays around them."}]});
+ {h:"vs Computer",t:"The computer can take the second seat. Hard knows which battle-lane squares your dice can reach and plays around them."}]});
 GN.statsButton(document.getElementById("foot"),{title:"Royal Game of Ur",key:KEY,specials:[
   {label:"Captures",of:(r,n)=>r.reduce((a,x)=>a+((x.captures&&x.captures[n])||0),0)},
   {label:"Rosettes hit",of:(r,n)=>r.reduce((a,x)=>a+((x.rosettes&&x.rosettes[n])||0),0)},

@@ -23,6 +23,8 @@
   .hide{display:none !important}
 
   .topbar{display:flex; align-items:center; justify-content:space-between; gap:10px; padding-left:100px}
+  .topbar .seg{flex:none}
+  @media (max-width:460px){ .topbar{padding-left:84px; gap:6px} .seg button{padding:9px 10px; font-size:12px} .wordmark{font-size:22px} }
   .wordmark{font-family:Georgia,"Times New Roman",serif; font-size:25px; letter-spacing:.5px; font-weight:600}
   .wordmark .c{color:var(--gold)}
   .tag{font-size:10px; color:var(--muted); letter-spacing:1.2px; text-transform:lowercase; margin-top:3px}
@@ -190,8 +192,9 @@
 <script>
 (function(){
   "use strict";
-  function lsGet(k,d){ try{var v=localStorage.getItem(k); return v==null?d:JSON.parse(v);}catch(e){return d;} }
-  function lsSet(k,v){ try{localStorage.setItem(k,JSON.stringify(v));}catch(e){} }
+  var lsMem={};
+  function lsGet(k,d){ try{var v=localStorage.getItem(k); return v==null?d:JSON.parse(v);}catch(e){return (k in lsMem)?lsMem[k]:d;} }
+  function lsSet(k,v){ lsMem[k]=v; try{localStorage.setItem(k,JSON.stringify(v));}catch(e){} }
 
   /* ---------- audio ---------- */
   var AC=null;
@@ -304,25 +307,26 @@
   function showCue(){ clearNext(); if(pmode!=="practice"||!song)return;
     var m=song.steps[idx],a=arrowFor(idx);
     cueLetter.textContent=letter(m); cueLetter.classList.remove("dim"); cueArrow.textContent=a.sym; cueArrow.style.color=a.col;
-    cueText.innerHTML= st.lights ? '<b>Press the glowing key.</b> That\u2019s '+letter(m)+' \u2014 '+a.word+'.' : '<b>Lights off.</b> Find '+letter(m)+' yourself \u2014 '+a.word+'.';
+    cueText.innerHTML= st.lights ? '<b>Press the glowing key.</b> That\u2019s '+letter(m)+', '+a.word+'.' : '<b>Lights off.</b> Find '+letter(m)+' yourself, '+a.word+'.';
     if(st.lights&&keyEls[m]) keyEls[m].classList.add("next"); renderProgress();
   }
-  function setFree(){ pmode="free"; song=null; idx=0; busy=false; clearNext(); renderProgress();
+  var listenTok=0;
+  function setFree(){ listenTok++; pmode="free"; song=null; idx=0; busy=false; clearNext(); renderProgress();
     cueLetter.textContent="C"; cueLetter.classList.add("dim"); cueArrow.textContent="";
     cueText.innerHTML='<b>Tap any key to play.</b> C sits just left of the two black keys.';
     noteEl.textContent="Pick a song, hear it once, then practice. Flip the lights off to read the cue and find the keys yourself.";
     el("listen").disabled=true; el("practice").disabled=true; }
-  function selectSong(i){ song=SONGS[i]; idx=0; pmode="free"; busy=false; st.baseOct=4;
+  function selectSong(i){ listenTok++; song=SONGS[i]; idx=0; pmode="free"; busy=false; st.baseOct=4;
     st.nOct=(Math.max.apply(null,song.steps)>72)?2:1; buildKeyboard();
     el("listen").disabled=false; el("practice").disabled=false; cueLetter.classList.add("dim"); cueArrow.textContent="";
     cueText.innerHTML='<b>'+song.name+'</b> loaded. Tap \u25B6 Listen to hear it, then \u25CF Practice.';
-    noteEl.textContent="Listen first so you know how it goes. Then practice \u2014 lights on to learn, lights off to read.";
+    noteEl.textContent="Listen first so you know how it goes. Then practice: lights on to learn, lights off to read.";
     clearNext(); renderProgress(); }
-  function startPractice(){ if(!song)return; pmode="practice"; idx=0; busy=false; mistakes=0; showCue();
+  function startPractice(){ if(!song)return; listenTok++; pmode="practice"; idx=0; busy=false; mistakes=0; showCue();
     noteEl.textContent= st.lights?"Press each glowing key in turn.":"Read the cue, find the key. No lights to help."; }
-  function listen(){ if(!song)return; pmode="practice"; idx=0; busy=true; renderProgress(); var i=0;
+  function listen(){ if(!song)return; var tok=++listenTok; pmode="practice"; idx=0; busy=true; renderProgress(); var i=0;
     cueText.innerHTML='<b>Listen first.</b> Watch the keys for '+song.name+'.';
-    (function step(){ if(i>=song.steps.length){ busy=false; clearNext(); cueText.innerHTML='<b>Your turn.</b> Hit \u25CF Practice when ready.'; return; }
+    (function step(){ if(tok!==listenTok||!song)return; if(i>=song.steps.length){ busy=false; clearNext(); cueText.innerHTML='<b>Your turn.</b> Hit \u25CF Practice when ready.'; return; }
       clearNext(); var m=song.steps[i]; if(keyEls[m]) keyEls[m].classList.add("next");
       cueLetter.textContent=letter(m); cueLetter.classList.remove("dim"); var a=arrowFor(i); cueArrow.textContent=a.sym; cueArrow.style.color=a.col;
       pluck(m,0.42); pressVisual(m); idx=i; renderProgress(); i++; setTimeout(step,560); })(); }
@@ -332,7 +336,7 @@
         var prev=done[song.name]; if(prev==null||mistakes<prev){ done[song.name]=mistakes; lsSet("mc_done",done); refreshSongList(); }
         cueLetter.textContent="\u2605"; cueArrow.textContent="";
         cueText.innerHTML='<b>You played '+song.name+'!</b> '+(mistakes===0?"Clean run!":mistakes+" stumble"+(mistakes>1?"s":"")+".");
-        noteEl.textContent= st.lights?"Now try it with the lights off \u2014 that\u2019s reading.":"That was reading, no lights. Pick a new song or run it again.";
+        noteEl.textContent= st.lights?"Now try it with the lights off. That\u2019s reading.":"That was reading, no lights. Pick a new song or run it again.";
         renderProgress(); return; }
       showCue();
     } else { mistakes++; badFlash(m); }
@@ -371,7 +375,7 @@
   function setBest(id,v){ if(v>bestOf(id)){ lsSet(DRILLS[id].key,v); } }
   var PROMOTE=4;
   function maybePromote(){ var d=DRILLS[drill.id]; if(!d.levels) return;
-    if(drill.lvl < d.levels.length-1 && drill.streak>=PROMOTE){ drill.lvl++; lsSet(d.key+"_lvl",drill.lvl); drill.streak=0; noteEl.textContent="Level up \u2014 a few more now."; } }
+    if(drill.lvl < d.levels.length-1 && drill.streak>=PROMOTE){ drill.lvl++; lsSet(d.key+"_lvl",drill.lvl); drill.streak=0; noteEl.textContent="Level up! A few more now."; } }
 
   function showWoodList(){
     el("drillView").classList.add("hide"); el("woodList").classList.remove("hide");
@@ -383,7 +387,7 @@
       h+='</div>'; });
     el("woodList").innerHTML=h;
     Array.prototype.forEach.call(el("woodList").querySelectorAll(".wcard"),function(c){ c.addEventListener("click",function(){ openDrill(c.dataset.d); }); });
-    noteEl.textContent="Drills live here \u2014 short reps for one skill. Tap any card. Hit "+GOAL+" in a row to earn its \u2605.";
+    noteEl.textContent="Drills live here: short reps for one skill. Tap any card. Hit "+GOAL+" in a row to earn its \u2605.";
   }
 
   var drill=null;
@@ -455,7 +459,7 @@
   // Find Home
   function roundHome(){ var pool=DRILLS.home.levels[drill.lvl]; drill.expect=pool[Math.floor(Math.random()*pool.length)];
     var hint = drill.lvl>=2 ? "count up from C or F" : "use the black keys";
-    el("dAsk").innerHTML='Tap <b>'+drill.expect+'</b> &nbsp; <span style="color:var(--muted);font-weight:400">(no labels \u2014 '+hint+')</span>'; }
+    el("dAsk").innerHTML='Tap <b>'+drill.expect+'</b> &nbsp; <span style="color:var(--muted);font-weight:400">(no labels, '+hint+')</span>'; }
   // Name That Note
   function roundNTN(){ var pool=DRILLS.ntn.levels[drill.lvl]; drill.note=pool[Math.floor(Math.random()*pool.length)]; drill.expect=drill.note;
     el("dAsk").textContent="Play this note"; el("dStaffBox").classList.remove("hide"); el("dStaffBox").innerHTML=staffSVG(drill.note,false); }
@@ -477,7 +481,7 @@
     else if(id==="steps"){ el("dAsk").textContent="A step (next-door)\u2026"; playPair(60,62); setTimeout(function(){ el("dAsk").textContent="\u2026a skip (hop over one)."; playPair(60,64); setTimeout(function(){ drill.locked=false; nextRound(); },1500); },1400); }
     else if(id==="home"){ el("dAsk").innerHTML="C is just left of the <b>two</b> black keys."; if(keyEls[61])keyEls[61].classList.add("next"); if(keyEls[63])keyEls[63].classList.add("next");
       setTimeout(function(){ clearNext(); if(keyEls[60])keyEls[60].classList.add("next"); pluck(60,0.6); setTimeout(function(){ clearNext(); drill.locked=false; nextRound(); },1300); },1300); }
-    else if(id==="ntn"){ el("dStaffBox").classList.remove("hide"); el("dStaffBox").innerHTML=staffSVG(60,true); el("dAsk").innerHTML="This is middle C \u2014 it rides one little line below the staff."; pluck(60,0.6); if(keyEls[60])keyEls[60].classList.add("next");
+    else if(id==="ntn"){ el("dStaffBox").classList.remove("hide"); el("dStaffBox").innerHTML=staffSVG(60,true); el("dAsk").innerHTML="This is middle C. It rides one little line below the staff."; pluck(60,0.6); if(keyEls[60])keyEls[60].classList.add("next");
       setTimeout(function(){ clearNext(); drill.locked=false; nextRound(); },1900); }
   }
 
@@ -498,7 +502,7 @@
   window.addEventListener("keyup",function(e){ if(e.key in KMAP){ release("k_"+e.key); delete held[e.key]; } });
 
   /* ---------- nav / controls ---------- */
-  function setView(v){ view=v;
+  function setView(v){ listenTok++; view=v;
     el("navPlay").classList.toggle("on",v==="play"); el("navWood").classList.toggle("on",v==="wood");
     el("playTop").classList.toggle("hide",v!=="play"); el("playBottom").classList.toggle("hide",v!=="play");
     el("woodTop").classList.toggle("hide",v!=="wood"); el("woodBottom").classList.toggle("hide",v!=="wood");
@@ -537,10 +541,10 @@
 
   /* ---------- walkthrough ---------- */
   var WT=[
-    {big:"🎹",title:"Welcome to SHARP",body:"See \u00b7 Hear \u00b7 Anchor \u00b7 Read \u00b7 Play. Tap any key to hear it \u2014 low notes left, high notes right, just like the sound."},
+    {big:"🎹",title:"Welcome to SHARP",body:"See \u00b7 Hear \u00b7 Anchor \u00b7 Read \u00b7 Play. Tap any key to hear it: low notes left, high notes right, just like the sound."},
     {big:"🏠",title:"Find C, your home note",body:"The black keys sit in groups of two and three. C is always just left of a group of two. That\u2019s your anchor."},
     {big:"▶",title:"Hear it, then play it",body:"In Play, pick a song and tap Listen to watch it once. Then Practice and press each glowing key."},
-    {big:"🪵",title:"Then hit the Woodshed",body:"When you\u2019re ready to read, the Woodshed has short drills \u2014 from \u201Cwhich way\u201D up to reading notes off a staff."}
+    {big:"🪵",title:"Then hit the Woodshed",body:"When you\u2019re ready to read, the Woodshed has short drills, from \u201Cwhich way\u201D up to reading notes off a staff."}
   ];
   var wIdx=0, scrim=el("scrim"), wPips=el("wPips");
   function renderWT(){ var s=WT[wIdx]; el("wBig").textContent=s.big; el("wTitle").textContent=s.title; el("wBody").textContent=s.body;

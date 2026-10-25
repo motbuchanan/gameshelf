@@ -68,7 +68,7 @@
 <div class="ov" id="overlay"><div id="confetti"></div><div id="ovEmoji" style="font-size:50px;">&#127881;</div><h1 id="ovTitle"></h1><p id="ovText"></p>
   <button class="act" id="ovBtn">Play again</button>
   <a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3d4d6a;background:#161f30;color:#cdd8ec;text-decoration:none;">Back to shelf</a></div>
-<script src="gamenight.js?v=12"></script>
+<script src="gamenight.js?v=13"></script>
 <script src="sfx.js?v=5"></script>
 <script>
 const KEY="gin_games",TARGET=100;
@@ -142,7 +142,7 @@ function startHand(first){
   sortHand(handA);sortHand(handB);
   turn=first;phase="draw";selIdx=-1;busy=false;drawnFromDiscard=false;
   GS=GS||{start:Date.now(),hands:0};
-  setMsg((turn==="A"?"Your turn":playerNameB()+"\u2019s turn")+" \u2014 draw a card.");
+  setMsg((turn==="A"?"Your turn":playerNameB()+"\u2019s turn")+": draw a card.");
   render();
   if(turn==="B"){busy=true;setTimeout(botTurn,900);}
 }
@@ -188,7 +188,7 @@ function renderFoot(){const foot=document.getElementById("foot");foot.innerHTML=
     const k=btn(knockDw===0?"Gin!":"Knock",()=>doHumanDiscard(true),!(selIdx>=0&&knockDw<=10),"gold");
     foot.appendChild(k);
   }
-  foot.appendChild(btn("New game",pickPlayer,false,"ghost"));
+  const nb=btn("New game",pickPlayer,false,"ghost");nb.id="newBtn";foot.appendChild(nb);
   attachTools(foot);
 }
 function btn(label,fn,disabled,cls){const b=document.createElement("button");b.className="act"+(cls?" "+cls:"");
@@ -231,11 +231,11 @@ function botTurn(){if(phase==="over")return;
     render();setTimeout(()=>endHand("B",bm.dwValue),700);return;}
   // pass to human
   turn="A";phase="draw";busy=false;
-  setMsg("Your turn \u2014 draw a card.");render();
+  setMsg("Your turn: draw a card.");render();
   if(stock.length<=2)return washCheck();
 }
 function washCheck(){ if(stock.length<=2){setTimeout(washHand,500);} }
-function washHand(){phase="over";setMsg("Stock ran out \u2014 hand is a wash. Redealing\u2026");
+function washHand(){phase="over";setMsg("Stock ran out. Hand is a wash. Redealing\u2026");
   setTimeout(()=>{phase="draw";startHand(turn==="A"?"B":"A");},1100);}
 
 function endHand(knocker,knockDw){
@@ -258,7 +258,7 @@ function endHand(knocker,knockDw){
 }
 function showHandOverlay(text,matchOver){
   document.getElementById("ovEmoji").textContent="\uD83C\uDCCF";
-  document.getElementById("ovTitle").textContent="Hand done \u2014 "+scoreA+" : "+scoreB;
+  document.getElementById("ovTitle").textContent="Hand done: "+scoreA+" : "+scoreB;
   document.getElementById("ovText").textContent=text+"  (First to "+TARGET+" wins.)";
   document.getElementById("ovBtn").textContent="Next hand";
   document.getElementById("ovBtn").onclick=()=>{document.getElementById("overlay").classList.remove("show");
@@ -287,15 +287,15 @@ function pickPlayer(){if(window.GN&&GN.soloStart){GN.soloStart(function(name){GS
 
 const RULES={title:"Gin Rummy",sections:[
  {h:"Goal",t:"Group your ten cards into melds and reach "+TARGET+" points across several hands before the Computer does."},
- {h:"Melds",t:"A meld is three or more cards of the same rank (a set) or three or more in a row of one suit (a run). Cards left over are your \u201cdeadwood\u201d \u2014 face cards count 10, aces 1, the rest their number."},
+ {h:"Melds",t:"A meld is three or more cards of the same rank (a set) or three or more in a row of one suit (a run). Cards left over are your \u201cdeadwood\u201d: face cards count 10, aces 1, the rest their number."},
  {h:"A turn",t:"Draw the top of the stock (hidden) or take the visible discard, then throw one card away. Your melds and deadwood total update live under your hand."},
- {h:"Knock & Gin",t:"When your deadwood is 10 or less you may Knock (discard, then reveal). Zero deadwood is Gin \u2014 a 25-point bonus.",
+ {h:"Knock & Gin",t:"When your deadwood is 10 or less you may Knock (discard, then reveal). Zero deadwood is Gin: a 25-point bonus. House rule: no layoffs, so the other hand\u2019s deadwood counts as it stands.",
   ex:"You knock with 6 deadwood; the Computer has 14. You score the 8-point difference."},
  {h:"Undercut",t:"If the player who didn\u2019t knock has equal or less deadwood, they undercut: they score the difference plus a 25-point bonus. Knock carefully!"}]};
 const STATS={title:"Gin Rummy",key:KEY,specials:[
  {label:"Matches won",of:(r,n)=>r.filter(x=>x.winner===n).length},
- {label:"Best margin",of:(r)=>r.reduce((a,x)=>Math.max(a,(x.scoreYou||0)-(x.scoreOpp||0)),0)},
- {label:"Hands played",of:(r)=>r.reduce((a,x)=>a+(x.hands||0),0)}]};
+ {label:"Best margin",of:(r,n)=>r.filter(x=>x.players&&x.players.includes(n)).reduce((a,x)=>Math.max(a,(x.scoreYou||0)-(x.scoreOpp||0)),0)},
+ {label:"Hands played",of:(r,n)=>r.filter(x=>x.players&&x.players.includes(n)).reduce((a,x)=>a+(x.hands||0),0)}]};
 document.getElementById("ovBtn").addEventListener("click",function(){});
 pickPlayer();
 </script>

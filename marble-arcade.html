@@ -287,11 +287,12 @@
 
 <div id="toast"></div>
 
+<script src="gamenight.js?v=13"></script>
 <script>
 "use strict";
 var $=function(i){return document.getElementById(i);};
 var MAX_ACTIVE=18;  // physics is O(n^2) pairwise; cap on-screen marbles for smooth play
-var VERSION="v1.7 \u00b7 Aug 1";
+var VERSION="v1.8 \u00b7 Oct 25";
 
 /* ============================================================
    SHARED MARBLE MODEL (same as the Bag toy - same localStorage keys,
@@ -374,6 +375,12 @@ function loadCoins(){try{var c=parseInt(localStorage.getItem(CKEY),10);return is
 function saveCoins(c){try{localStorage.setItem(CKEY,String(c));}catch(e){}}
 function loadBenched(){try{return JSON.parse(localStorage.getItem(XKEY))||{};}catch(e){return {};}}
 function saveBenched(b){try{localStorage.setItem(XKEY,JSON.stringify(b));}catch(e){}}
+/* one finished Ringer game or Golf course = one play on the shelf (Most played, achievements) */
+function recordPlay(mode,start,winner){var now=Date.now(),rec={start:start||now,end:now,durationMs:now-(start||now),winner:null,draw:true,solo:true,result:winner,mode:mode};
+  /* through the shelf runtime so the play syncs with the household and is never wiped by the cloud copy;
+     a solo draw adds a play (Most played, play badges) but no family win */
+  if(window.GN&&GN.recordGame){try{GN.recordGame("marble_arcade_games",rec);return;}catch(e){}}
+  try{var l=JSON.parse(localStorage.getItem("marble_arcade_games"))||[];if(!Array.isArray(l))l=[];l.push(rec);localStorage.setItem("marble_arcade_games",JSON.stringify(l));}catch(e){}}
 var bag=loadBag(), coins=loadCoins(), benched=loadBenched();
 /* the marbles actually put IN PLAY: full bag minus benched types, capped so the
    O(n^2) physics stays smooth. Benched marbles are still OWNED, just on the shelf. */
@@ -597,7 +604,7 @@ function cycleOpp(){ringer.opp=ringer.opp==="ai"?"solo":ringer.opp==="solo"?"two
   $("ringerOpp").textContent="Rival: "+(ringer.opp==="ai"?"AI":ringer.opp==="solo"?"Solo":"2P");
   newRinger();}
 function newRinger(){
-  var S=ringer.sim; S.size(); S.balls=[]; ringer.yourOut=0; ringer.rivalOut=0; ringer.turn="you"; ringer.shooting=false;
+  var S=ringer.sim; S.size(); S.balls=[]; ringer.yourOut=0; ringer.rivalOut=0; ringer.turn="you"; ringer.shooting=false; ringer.t0=Date.now();
   $("win").classList.remove("on");
   S.ring={x:S.W/2,y:S.H*0.46,r:Math.min(S.W,S.H)*0.26};
   // target marbles ("mibs") arranged as a small cluster that sits well inside the ring
@@ -654,6 +661,7 @@ function finishRinger(){
   if(ringer.opp==="solo"){win=true;}
   else win=you>=rival;
   var bonus=win?15:0; if(bonus)addCoins(bonus);
+  recordPlay("ringer",ringer.t0,win?"You":(ringer.opp==="two"?"Player 2":"Rival"));
   $("winTitle").textContent=win?(ringer.opp==="solo"?"Ring cleared!":"You win!"):"Rival wins";
   $("winCoins").textContent="+"+(you*2+bonus)+" coins  (\ud83e\ude99 in the bag)";
   $("win").classList.add("on");
@@ -671,7 +679,7 @@ function initGolf(){
   $("golfNew").onclick=newGolf; $("golfMenu").onclick=function(){show("s-menu");};
 }
 function newGolf(){
-  var S=golf.sim; S.size(); S.balls=[]; S.holes=[]; golf.shots=0;
+  var S=golf.sim; S.size(); S.balls=[]; S.holes=[]; golf.shots=0; golf.t0=Date.now();
   var n=3;
   for(var i=0;i<n;i++){S.holes.push({x:S.W*(0.25+0.5*Math.random()),y:S.H*(0.15+0.25*Math.random()),r:S.R*1.35,filled:false});}
   S.balls.push(newBall(S.W/2,S.H*0.82,shooterType(),{cue:true}));
@@ -681,7 +689,7 @@ function golfSink(m,ho){ if(m.cue){ addCoins(3);
     // respawn cue for next hole if any remain
     var S=golf.sim, remaining=S.holes.filter(function(h){return !h.filled;}).length;
     updGolfHud();
-    if(remaining===0){ var bonus=Math.max(5,20-golf.shots*2); addCoins(bonus);
+    if(remaining===0){ var bonus=Math.max(5,20-golf.shots*2); addCoins(bonus); recordPlay("golf",golf.t0,"You");
       toast("Course done! +"+bonus+" bonus"); setTimeout(newGolf,1400);
     } else {
       m.sunk=false; m.x=S.W/2; m.y=S.H*0.82; m.vx=m.vy=0;
@@ -758,7 +766,7 @@ function buildGum(){
   $("newMarbles").innerHTML="";
 }
 function crank(count,cost){
-  if(coins<cost){toast("Need "+cost+" coins \u2014 go win some marbles!");return;}
+  if(coins<cost){toast("Need "+cost+" coins. Go win some marbles!");return;}
   addCoins(-cost);
   var box=$("newMarbles"); box.innerHTML="";
   var got=[];
@@ -794,7 +802,7 @@ function renderCollection(){
     if(!n){c.style.filter="grayscale(1)";c.style.opacity=".35";}
     else if(isBenched){c.style.opacity=".4";}
     var name=document.createElement("div");name.className="cName";name.textContent=t.name;
-    var cnt=document.createElement("div");cnt.className="cCount";cnt.textContent=n?("\u00d7"+n):"\u2014";
+    var cnt=document.createElement("div");cnt.className="cCount";cnt.textContent=n?("\u00d7"+n):"0";
     cell.appendChild(c);cell.appendChild(name);cell.appendChild(cnt);
     if(n){
       // tap to bench/unbench this type: benched = owned but not put in play
@@ -868,7 +876,7 @@ var TUT={
       [[30,36],[54,30],[42,54],[68,58],[24,60]].forEach(function(p,i){marbleMini(cx,p[0],p[1],8,i*2);});
     },
     steps:[
-      "This is <b>free play</b> \u2014 no rules, no score.",
+      "This is <b>free play</b>: no rules, no score.",
       "<b>Press any marble</b> and <b>pull back</b> to shoot it around.",
       "Use <b>Add marble</b> for more, <b>Shake</b> to stir them up, and <b>Set level</b> to steer by tilting the tablet.",
       "Just a calm place to knock marbles around."

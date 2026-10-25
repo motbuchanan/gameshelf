@@ -66,7 +66,7 @@
   <button class="act" id="cBtn">I'm ready</button></div>
 <div class="ov" id="overlay"><div id="confetti"></div><div style="font-size:54px;">&#128273;</div><h1 id="ovTitle"></h1><p id="ovText"></p>
   <button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
-<script src="gamenight.js?v=12"></script>
+<script src="gamenight.js?v=13"></script>
 <script src="sfx.js?v=5"></script>
 <script>
 const KEY="cb_games",SLOTS=4,MAXG=10;
@@ -100,11 +100,11 @@ function startRound(){code=null;cur=[];cursor=0;guesses=[];mode="set";phase="pla
     code=Array.from({length:SLOTS},()=>Math.floor(Math.random()*COLORS.length));
     cur=[];cursor=0;mode="guess";
     curtain("Crack the code",
-      "The computer picked a secret "+SLOTS+"-peg code \u2014 colors may repeat. You have "+MAXG+" guesses. Black peg = right color & spot, white = right color, wrong spot.",
+      "The computer picked a secret "+SLOTS+"-peg code - colors may repeat. You have "+MAXG+" guesses. Black peg = right color & spot, white = right color, wrong spot.",
       ()=>{buildEntry();setMessage(P.A.name+": build a guess and fire.");render();});
     return;}
   curtain(P[setter].name+" sets the code",
-    "Pass the phone to "+P[setter].name+". Pick a secret 4-peg code \u2014 colors may repeat. "+P[guesserOf()].name+", look away!",
+    "Pass the phone to "+P[setter].name+". Pick a secret 4-peg code - colors may repeat. "+P[guesserOf()].name+", look away!",
     ()=>{buildEntry();setMessage(P[setter].name+": tap colors to build your secret code.");render();});}
 function curtain(title,text,then){const c=document.getElementById("curtain");
   document.getElementById("cTitle").textContent=title;
@@ -129,8 +129,8 @@ function render(){for(let i=0;i<SLOTS;i++){const d=document.getElementById("slot
   document.getElementById("goBtn").textContent=mode==="set"?"Lock it in":"Guess";
   document.getElementById("goBtn").disabled=phase!=="play"||cur.filter(x=>x!==undefined).length<SLOTS;
   const recs=GN.readGames(KEY);let a=0,b=0;
-  for(const r of recs){if(r.winner===P.A.name)a++;else if(r.winner===P.B.name)b++;}
-  document.getElementById("score").textContent=P.A.name+" "+a+" \u00b7 "+b+" "+P.B.name+((GS&&GS.friendly)?" \u00b7 friendly":"");}
+  for(const r of recs){if(r.winner===P.A.name)a++;else if(P.B&&r.winner===P.B.name)b++;}
+  document.getElementById("score").textContent=(solo||!P.B)?(P.A.name+" solo"):(P.A.name+" "+a+" \u00b7 "+b+" "+P.B.name)+((GS&&GS.friendly)?" \u00b7 friendly":"");}
 function setMessage(t){document.getElementById("msg").textContent=t;}
 function addRow(guess,fb){const h=document.getElementById("history");
   const row=document.createElement("div");row.className="row";
@@ -159,7 +159,7 @@ function go(){if(phase!=="play"||cur.filter(x=>x!==undefined).length<SLOTS)retur
     setMessage("CRACKED in "+guesses.length+"!");
     endRound(true);return;}
   if(guesses.length>=MAXG){used[guesserOf()]=MAXG+1;
-    setMessage("Out of guesses \u2014 the code held.");
+    setMessage("Out of guesses: the code held.");
     endRound(false);return;}
   setMessage((MAXG-guesses.length)+" guesses left.");render();}
 function endRound(cracked){phase="over";render();
@@ -170,7 +170,7 @@ function endRound(cracked){phase="over";render();
 function finishGame(){
   if(solo){const u=used.A,cracked=u<=MAXG;
     document.getElementById("ovTitle").textContent=cracked?("Cracked in "+u+"!"):"The code held!";
-    document.getElementById("ovText").textContent=cracked?(P.A.name+" broke it in "+u+" guess"+(u>1?"es":"")+"."):("Out of guesses \u2014 the secret code wins this time.");
+    document.getElementById("ovText").textContent=cracked?(P.A.name+" broke it in "+u+" guess"+(u>1?"es":"")+"."):("Out of guesses: the secret code wins this time.");
     if(cracked){const box=document.getElementById("confetti"),cols=[P.A.main,P.A.light,"#f4c542","#fff"];
       for(let i=0;i<60;i++){const d=document.createElement("div");d.className="cf";d.style.left=Math.random()*100+"%";
         d.style.background=cols[i%cols.length];d.style.animationDuration=(2.2+Math.random()*1.8)+"s";
@@ -195,13 +195,13 @@ document.getElementById("goBtn").addEventListener("click",go);
 document.getElementById("newBtn").addEventListener("click",newGame);
 document.getElementById("ovBtn").addEventListener("click",newGame);
 GN.rulesButton(document.getElementById("foot"),{title:"Codebreaker",sections:[
- {h:"Goal",t:"One player sets a secret 4-peg color code; the other has 10 guesses to crack it. Then you swap \u2014 fewer guesses wins."},
- {h:"Setting the code",t:"The setter secretly picks 4 pegs from 6 colors \u2014 repeats ARE allowed, and doubles make wickedly harder codes. The pass curtain keeps it hidden."},
+ {h:"Goal",t:"One player sets a secret 4-peg color code; the other has 10 guesses to crack it. Then you swap. Fewer guesses wins."},
+ {h:"Setting the code",t:"The setter secretly picks 4 pegs from 6 colors - repeats ARE allowed, and doubles make wickedly harder codes. The pass curtain keeps it hidden."},
  {h:"The clues",svg:'<svg viewBox="0 0 280 60"><g><circle cx="40" cy="30" r="12" fill="#d8312b"/><circle cx="72" cy="30" r="12" fill="#f4c542"/><circle cx="104" cy="30" r="12" fill="#46b06a"/><circle cx="136" cy="30" r="12" fill="#2f6fd0"/><rect x="168" y="12" width="100" height="36" rx="8" fill="#1c2b22"/><circle cx="186" cy="24" r="6" fill="#111"/><circle cx="204" cy="24" r="6" fill="#111"/><circle cx="222" cy="24" r="6" fill="#fff"/><text x="218" y="46" font-size="9.5" fill="#cfe6d8" font-family="system-ui" text-anchor="middle">2 black \u00b7 1 white</text></g></svg>',
-  t:"After each guess: a BLACK clue peg for every guess peg that's the right color in the right spot, a WHITE peg for right color, wrong spot. The clue pegs are NOT in order \u2014 they describe the guess as a whole.",
-  ex:"Code R-Y-G-B, guess R-G-Y-Y: the R earns a black; G and Y are present but misplaced \u2014 two whites. The second Y earns nothing: clues never count a code peg twice."},
- {h:"Cracking it",t:"Early guesses should SPREAD colors to learn what's in the code; later guesses rearrange what you know. Every clue rules out thousands of codes \u2014 write nothing down, argue everything out loud."},
- {h:"The duel",t:"Both players set and both players guess \u2014 the cracker who needed fewer guesses takes the game. A code unbroken in 10 scores as 11 against you, so setters: be cruel."}]});
+  t:"After each guess: a BLACK clue peg for every guess peg that's the right color in the right spot, a WHITE peg for right color, wrong spot. The clue pegs are NOT in order - they describe the guess as a whole.",
+  ex:"Code R-Y-G-B, guess R-G-Y-Y: the R earns a black; G and Y are present but misplaced - two whites. The second Y earns nothing: clues never count a code peg twice."},
+ {h:"Cracking it",t:"Early guesses should SPREAD colors to learn what's in the code; later guesses rearrange what you know. Every clue rules out thousands of codes - write nothing down, argue everything out loud."},
+ {h:"The duel",t:"Both players set and both players guess - the cracker who needed fewer guesses takes the game. A code unbroken in 10 scores as 11 against you, so setters: be cruel."}]});
 GN.statsButton(document.getElementById("foot"),{title:"Code Breaker",key:KEY,specials:[
  {label:"Codes cracked",of:(r,n)=>r.reduce((a,x)=>a+((x.cracked&&x.cracked[n])||0),0)},
  {label:"Best crack (guesses)",of:(r,n)=>{const w=r.filter(x=>x.guesses&&x.guesses[n]&&x.guesses[n]<=10);return w.length?Math.min(...w.map(x=>x.guesses[n])):0;}},

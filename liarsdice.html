@@ -51,7 +51,7 @@
 <div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">Liar's Dice</div><div id="who">1 player</div></div>
 <div id="wrap">
   <div class="opp"><span id="oppName">Computer</span><div class="cd" id="oppCups"></div></div>
-  <div id="bidBanner"><div class="by" id="bidBy">No bid yet</div><div class="big" id="bidBig">&mdash;</div></div>
+  <div id="bidBanner"><div class="by" id="bidBy">No bid yet</div><div class="big" id="bidBig">-</div></div>
   <div id="msg"></div>
   <div class="mine"><div class="lbl">Your dice</div><div class="dice" id="myDice"></div></div>
   <div id="ctrl">
@@ -63,7 +63,7 @@
 <div id="foot"></div>
 <div class="ov" id="overlay"><div style="font-size:44px;">&#127922;</div><h1 id="ovTitle"></h1><p id="ovText"></p>
   <button class="act" id="ovBtn">Play again</button><a href="index.html" class="ghost">Back to shelf</a></div>
-<script src="gamenight.js?v=12"></script>
+<script src="gamenight.js?v=13"></script>
 <script src="sfx.js?v=5"></script>
 <script>
 const KEY="liarsdice_games", START=5;
@@ -94,7 +94,7 @@ function render(){
   // bid banner
   if(bid){document.getElementById("bidBy").textContent=(bid.by===0?who||"You":"Computer")+" bid";
     document.getElementById("bidBig").innerHTML=bid.q+" \u00d7 "+'<span style="display:inline-block;width:20px;height:20px;background:#fbf7ec;border-radius:4px;position:relative;vertical-align:middle">'+dieHTML(bid.f,9).replace(/#3a2436/g,'#3a2436')+'</span>';}
-  else{document.getElementById("bidBy").textContent="No bid yet";document.getElementById("bidBig").innerHTML="&mdash;";}
+  else{document.getElementById("bidBy").textContent="No bid yet";document.getElementById("bidBig").innerHTML="-";}
   // my dice
   const md=document.getElementById("myDice");md.innerHTML="";
   for(const v of hand[0]){const d=document.createElement("div");d.className="die";d.innerHTML=dieHTML(v);md.appendChild(d);}
@@ -148,7 +148,9 @@ function botTurn(){if(phase!=="bid"||turn!==1)return;
   // sanity: if even the best raise is wildly unbelievable and not bluffing, challenge instead
   const need=r.q-ownCount(hand[1],r.f),pr=binomGE(count[0],need);
   if(bid && pr<0.07 && Math.random()>bluff){setMsg("Computer calls Liar!");setTimeout(()=>resolve(1),700);return;}
-  bid={q:r.q,f:r.f,by:1};S("place");turn=0;render();
+  bid={q:r.q,f:r.f,by:1};S("place");turn=0;
+  {const ms=minBid();qSel=ms.q;fSel=ms.f;clampSel();}
+  render();
   setMsg("Computer bids "+r.q+" \u00d7 "+r.f+". Raise or call Liar.");
 }
 
@@ -163,7 +165,7 @@ function resolve(challenger){
   const bidder=bid.by===0?(who||"You"):"Computer";
   const caller=challenger===0?(who||"You"):"Computer";
   count[loser]--;
-  const detail="There were "+actual+" \u00d7 "+f+". "+(bidTrue?(bidder+"\u2019s bid held \u2014 "+caller+" loses a die."):(bidder+" was bluffing \u2014 loses a die."));
+  const detail="There were "+actual+" \u00d7 "+f+". "+(bidTrue?(bidder+"\u2019s bid held, "+caller+" loses a die."):(bidder+" was bluffing and loses a die."));
   S(loser===0?"womp":"chime");
   if(count[0]<=0||count[1]<=0){setTimeout(()=>finish(detail),900);return;}
   setMsg(detail);
@@ -181,13 +183,13 @@ function nextRound(starter,detail){
   const ms=minBid();qSel=ms.q;fSel=ms.f;
   render();
   if(turn===1){setMsg(detail+" Computer starts.");setTimeout(botTurn,900);}
-  else setMsg(detail+" You start \u2014 make a bid.");
+  else setMsg(detail+" You start: make a bid.");
 }
 function finish(detail){phase="over";
   const youWon=count[1]<=0;
   const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
     winner:youWon?(who||"You"):"Computer",loser:youWon?"Computer":(who||"You"),
-    vsComputer:true,method:"liar",draw:false};
+    vsComputer:true,botDiff:botDiff,method:"liar",draw:false};
   try{if(!GS.friendly)GN.recordGame(KEY,rec);}catch(e){}
   document.getElementById("ovTitle").textContent=youWon?"You win!":"Computer wins!";
   document.getElementById("ovText").textContent=detail+(youWon?" You took the last die!":" You\u2019re out of dice.");
@@ -207,19 +209,27 @@ function startGame(cfg){count=[START,START];hand[0]=rollHand(START);hand[1]=roll
   bid=null;phase="bid";turn=cfg.first||0;botDiff=cfg.botDiff||"medium";GS={start:Date.now(),friendly:cfg.friendly};
   qSel=1;fSel=2;document.getElementById("overlay").classList.remove("show");render();
   if(turn===1){setMsg("Computer starts.");setTimeout(botTurn,800);}
-  else setMsg("Make a bid \u2014 how many of a face are on the table?");}
+  else setMsg("Make a bid: how many of a face are on the table?");}
 function pickPlayer(){if(window.GN&&GN.soloStart){GN.soloStart(function(name){who=name;
   if(GN.whoBadge)GN.whoBadge(document.getElementById("who"),name,pickPlayer);else document.getElementById("who").textContent=name;
-  startGame({first:Math.random()<0.5?0:1,friendly:false});},{title:"Liar's Dice"});}
+  startGame({first:Math.random()<0.5?0:1,friendly:false,botDiff:diffPref});},{title:"Liar's Dice"});}
   else startGame({first:0,friendly:true});}
-document.getElementById("who").addEventListener("click",pickPlayer);
+document.getElementById("who").addEventListener("click",function(){
+  if((phase==="bid"||phase==="reveal")&&window.GN&&GN.confirmEnd){GN.confirmEnd("Start over? The round in progress will be lost.",pickPlayer);return;}
+  pickPlayer();});
+let diffPref="medium";
+(function(){const b=document.createElement("button");b.className="ghost";b.id="diffBtn";
+  const lab=()=>{b.textContent="Computer: "+diffPref.charAt(0).toUpperCase()+diffPref.slice(1);};lab();
+  b.addEventListener("click",()=>{diffPref=diffPref==="easy"?"medium":diffPref==="medium"?"hard":"easy";botDiff=diffPref;lab();
+    setMsg("Computer is now "+diffPref+".");});
+  document.getElementById("foot").appendChild(b);})();
 
 if(window.GN&&GN.rulesButton)GN.rulesButton(document.getElementById("foot"),{title:"Liar's Dice",sections:[
- {h:"The idea",t:"You and the computer each hide five dice. You take turns bidding on how many of a face exist on the WHOLE table \u2014 yours and theirs together. You can only see your own."},
+ {h:"The idea",t:"You and the computer each hide five dice. You take turns bidding on how many of a face exist on the WHOLE table, yours and theirs together. You can only see your own."},
  {h:"Bidding",t:"Each bid must beat the last: either a higher quantity, or the same quantity with a higher face. \u201cThree 4s\u201d means at least three 4s exist across all dice."},
  {h:"Calling Liar",t:"Think the last bid is too greedy? Call Liar! Everyone reveals. If the bid was true (enough of that face exist), the challenger loses a die. If it was a bluff, the bidder loses a die."},
  {h:"Winning",t:"Lose a die each time you\u2019re caught or wrongly accuse. Last player with dice wins. Bluff, read the odds, and trust your gut."},
- {h:"vs Computer",t:"Easy bluffs wildly and rarely challenges; Hard tracks the odds and pounces on a stretch. The shelf keeps your record."}]});
+ {h:"vs Computer",t:"Pick Easy, Medium or Hard with the Computer button. Easy bluffs wildly and rarely challenges; Hard tracks the odds and pounces on a stretch. The shelf keeps your record."}]});
 if(window.GN&&GN.statsButton)GN.statsButton(document.getElementById("foot"),{title:"Liar's Dice",key:KEY,specials:[
  {label:"Wins",of:(r,n)=>r.filter(x=>x.winner===n).length},
  {label:"Wins vs computer",of:(r,n)=>r.filter(x=>x.winner===n&&x.vsComputer).length}]});

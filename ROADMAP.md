@@ -1,39 +1,59 @@
-# Game Shelf — Roadmap
+# Game Shelf: Roadmap
 
 Repo: `motbuchanan/gameshelf` · Live: https://motbuchanan.github.io/gameshelf/
-Last updated: 2026-10-18
+Last updated: 2026-10-25
 
 This file is the single organizing record for the shelf: what each app is,
 what state it's in, what's shipped, and what's next. Update it when a version
 ships or a decision changes. Keep entries short. Status tags:
 
-- **LIVE** — deployed and in use
-- **ACTIVE** — being built right now
-- **PARKED** — paused on purpose, will resume
-- **IDEA** — captured, not started
+- **LIVE**: deployed and in use
+- **ACTIVE**: being built right now
+- **PARKED**: paused on purpose, will resume
+- **IDEA**: captured, not started
 
 ---
 
 ## Shelf-wide
 
-- [x] **Share the Shelf** — double-tap the version badge (`verBadge`) shows a QR
+- [x] **Share the Shelf**: double-tap the version badge (`verBadge`) shows a QR
   to the shelf index + Add-to-Home-Screen hint. Wired natively into shelf
   **v59** and tested 2026-08-23. Styled to the shelf's gold/dark theme.
-- [x] **Nazca in the Toys bin** (shelf **v62**, 2026-09-22) — Mot's infinite-canvas
+- [x] **Nazca in the Toys bin** (shelf **v62**, 2026-09-22): Mot's infinite-canvas
   drawing app wired into the OLD TOYS bin (now 11 toys), sitting after Color Lab.
   Its own copy of the app lives at `/nazca/` (copied from the site repo; self-contained,
   no leak-out links). Tile art = Mot-supplied sand-carved bird icon (base64 img in the
   toy `art` field). sw.js precache += `nazca/index.html`, `nazca/manifest.json`,
   `nazca/sw.js`, `nazca/icon-192.png`; CACHE + visible badge bumped 59/61 → **v62**.
-- [ ] **This roadmap** — keep `ROADMAP.md` current as the shelf's source of truth. **ACTIVE**
+- [x] **Break-sweep repair round** (shelf **v73**, 2026-10-25). The v71/v72 bundle
+  (Bloodstream wiring, built Oct 18) never went live; live stayed at v70, so v73
+  rebuilds it: Bloodstream is in GAMES + ARCADE_H (Old Video Games box) with inline
+  SVG box art. Headline fixes: every root page plus measureup/ and stick/ now in the
+  sw.js precache (offline claim in How-To is true), shelf sw.js deletes only old
+  `gameshelf-*` caches, storage-blocked fallbacks, Rulebook em dashes cleared and
+  phone Back returns to contents. Fonts are now local: the shelf links
+  `/fonts/fonts.css` (motbuchanan.com shared font folder, v1.1), no Google Fonts;
+  sw.js precaches the shared woff2 files. The site's `/fonts/` folder must be
+  uploaded (site repo) before or with this shelf upload.
+  Also: gamenight.js changed (picker scrolls in landscape, bigger picker links, in-memory
+  records when storage is blocked, Computer/ties/draws no longer counted as wins, duplicate
+  names refused, Restore pushes to the household, GAME_KEYS += puff_games, bloodstream_games),
+  sfx.js gained win/err/flip, every page's runtime tag bumped to gamenight.js?v=13. About 90
+  pages got their Break/Fix items from the Oct 24 break sweep; Word Search/Five Letters/
+  Crossword word content cleaned for a young child.
+- [ ] **Measure Up chat: keep the cache fix.** `measureup/sw.js` now deletes only its
+  own old `measureup-*` caches (`k.startsWith('measureup-')&&k!==CACHE`, cache
+  `measureup-v1-59`). Measure Up is being edited in another conversation: keep this
+  filter when that chat ships its next sw.js, or it will wipe the shelf's offline copy again.
+- [ ] **This roadmap**: keep `ROADMAP.md` current as the shelf's source of truth. **ACTIVE**
 - [ ] Per-app version badges + shared deploy ritual audit across all apps. **IDEA**
 
 ---
 
 ## Apps
 
-### Bloodstream — body-exploring trail game  **LIVE**
-Path: `bloodstream.html` · Current: **v0.2** (2026-10-18) · shelf **v72**
+### Bloodstream: body-exploring trail game  **LIVE**
+Path: `bloodstream.html` · Current: **v0.6** (2026-10-25) · shelf **v73**
 Oregon Trail / FTL-style single-file game (Old Video Games box, ARCADE_H) built for Garrett from his own Body Trail
 Builder answers (ride: Bubble Pod; crew: Oxinator, Fighty, Patchlet; boss: Sugar Monster;
 Blood Red palette). Heart hub + node map (Stomach, Bones, Cell Lab open; Lungs unlock on
@@ -41,10 +61,10 @@ boss win; Brain locked). Event cards, snack-heal (feeds the boss), math-gated sh
 scales addition → division, 3 missions (Pizza Night math, Running Race catch, Scraped Knee
 tap), Sugar Monster tap fight, Journal (cells, organs, germs, routes, mysteries). Nobody dies.
 Writes plays to `bloodstream_games` (shelf Most Played); progress in `bloodstream_v1`.
-Not in gamenight GAME_KEYS / achievements NAMES (same as Puff, Haunt Inc).
+`bloodstream_games` added to gamenight GAME_KEYS / achievements NAMES in the Oct 25 repair round.
 - [ ] Phase 2: Fighty germ-swat minigame, Brain missions, more organs/bosses, crew bios in Journal **IDEA**
 
-### Measure Up — build-a-band math game  **LIVE**
+### Measure Up: build-a-band math game  **LIVE**
 Path: `/measureup/` · Current: **v0.33** (2026-08-23)
 Single-file HTML PWA. Build a band of 11 members + Elly the host; each member
 teaches one math concept (addition through money) through jams, auditions,
@@ -66,9 +86,9 @@ proofs, gigs, a Band Room, and a shop. Built for Garrett first, wider K-5 second
 
 **Next / backlog:**
 - [ ] Character art: Slice (escape the plain circle), Gauge + Luna depth/beauty pass **IDEA**
-- [ ] Real-art swap — drawn/generated band members as drop-in images; its own
+- [ ] Real-art swap: drawn/generated band members as drop-in images; its own
   project. Breathing wrapper, stage, flair, rename all carry over. **IDEA**
-- [ ] "Battle of the Bands" — teaser exists in the hub footer, feature unbuilt **IDEA**
+- [ ] "Battle of the Bands": teaser exists in the hub footer, feature unbuilt **IDEA**
 - [ ] Composition sandbox (free-play beat maker) **IDEA**
 - [ ] Parent PIN view; sensory dials (confetti/animation intensity, quiet mode) **IDEA**
 - [ ] Possible new concepts later: place value, comparing numbers, rounding/estimation **IDEA**
@@ -83,15 +103,15 @@ is lost. I don't have each app's internal version from its own file, so per-app
 `Current:` and detailed backlogs stay blank until we open that app's file.
 
 Original / featured builds (have their own dev history elsewhere):
-- **AstroMerge Realms** — merge + space-strategy. Add its own block when worked on.
-- **Bot Lab** — AI-creature life-sim sandbox.
-- **Star Stuff** — (portal-candidate build).
-- **Salon Dash** — time-management game (spun off the Meriki work).
-- **Cozy Critter Garden** — merge/blast for a 96-yr-old Candy Crush player.
-- **Knight School** — trainer-first chess variant (built for Garrett).
-- **Measure Up** — see its full block above.
+- **AstroMerge Realms**: merge + space-strategy. Add its own block when worked on.
+- **Bot Lab**: AI-creature life-sim sandbox.
+- **Star Stuff**: (portal-candidate build).
+- **Salon Dash**: time-management game (spun off the Meriki work).
+- **Cozy Critter Garden**: merge/blast for a 96-yr-old Candy Crush player.
+- **Knight School**: trainer-first chess variant (built for Garrett).
+- **Measure Up**: see its full block above.
 
-Classic game library (deployed, stable — bump individually only when revisited):
+Classic game library (deployed, stable; bump individually only when revisited):
 Marble Arcade, Blackjack, Solitaire, Memory, Gin Rummy, Old Maid, Chess,
 One Card Left!, Scrabble, Bridge Builders, Sorry!, Trouble, Guess Who, Checkers,
 Connect Four, Battleship, Royal Game of Ur, Backgammon, Mancala, Dominoes,

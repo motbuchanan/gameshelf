@@ -60,18 +60,18 @@
   <button class="act" id="rollBtn">Roll</button>
   <button class="act" id="keepBtn">Keep &amp; roll</button>
   <button class="act bank" id="bankBtn">Bank</button>
-  <button class="act ghost" id="ruleBtn"></button>
+  <button class="act ghost" id="ruleBtn">Open: 500</button>
   <button class="act ghost" id="newBtn">New game</button>
 </div>
 <div class="ov" id="overlay"><div id="confetti"></div><div style="font-size:54px;">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText" style="color:#cfe6d8;"></p>
   <button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
-<script src="gamenight.js?v=12"></script>
+<script src="gamenight.js?v=13"></script>
 <script src="sfx.js?v=5"></script>
 <script>
 const KEY="farkle_games",GOAL=5000,PIP={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
 function S(n,o){window.GNS&&GNS.play(n,0,o);}
 let P={A:{name:"Player 1",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},B:{name:"Player 2",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182"}};
-let dice=[],turn="A",total={A:0,B:0},onBoard={A:false,B:false},turnPts=0,phase="over",rolling=false,GS=null,openMin=500,solo=false;
+let dice=[],turn="A",total={A:0,B:0},onBoard={A:false,B:false},turnPts=0,phase="over",rolling=false,GS=null,openMin=500,solo=false,banking=false;
 function seatFrom(p){return{name:p.name,main:p.color,light:p.light,dark:p.dark};}
 
 // ---------- scoring engine (pure) ----------
@@ -125,24 +125,24 @@ function refresh(){
   else if(!sc.valid)si.innerHTML='<span class="bad">that set doesn\u2019t all score</span>';
   else si.innerHTML='<span class="good">+'+sc.pts+(sc.tag?" "+sc.tag:"")+'</span>';
   const validSel=sel.length>0&&sc.valid;
-  document.getElementById("rollBtn").disabled=anyActive||phase!=="play"||rolling;
-  document.getElementById("keepBtn").disabled=!validSel||rolling||phase!=="play";
+  document.getElementById("rollBtn").disabled=anyActive||phase!=="play"||rolling||banking;
+  document.getElementById("keepBtn").disabled=!validSel||rolling||phase!=="play"||banking;
   // bank allowed if you've banked points this turn OR a valid selection now; and meets opening min
   const wouldBank=turnPts+(validSel?sc.pts:0);
   const canOpen=onBoard[turn]||wouldBank>=openMin;
-  document.getElementById("bankBtn").disabled=phase!=="play"||rolling||wouldBank<=0||!canOpen||(dice.some(d=>d.active)&&!validSel);
+  document.getElementById("bankBtn").disabled=phase!=="play"||rolling||banking||wouldBank<=0||!canOpen||(dice.some(d=>d.active)&&!validSel);
 }
 function setMsg(t){document.getElementById("msg").textContent=t;}
-function toggle(i){const d=dice[i];if(!d.active||rolling||phase!=="play")return;d.sel=!d.sel;paintDie(i);refresh();}
+function toggle(i){const d=dice[i];if(!d.active||rolling||banking||phase!=="play")return;d.sel=!d.sel;paintDie(i);refresh();}
 
-function newGame(){phase="over";document.getElementById("overlay").classList.remove("show");document.getElementById("confetti").innerHTML="";
+function newGame(){phase="over";banking=false;document.getElementById("overlay").classList.remove("show");document.getElementById("confetti").innerHTML="";
   GN.matchStart(function(m){solo=!!m.solo;P=solo?{A:seatFrom(m.a)}:{A:seatFrom(m.a),B:seatFrom(m.b)};
     total={A:0,B:0};onBoard={A:false,B:false};turnPts=0;turn="A";phase="play";rolling=false;
     GS={start:Date.now(),flipWinner:(m.first||m.a).name,friendly:m.friendly,farkles:{},hot:{},best:{pts:0,by:""}};
     GS.farkles[m.a.name]=0;GS.hot[m.a.name]=0;if(!solo){GS.farkles[m.b.name]=0;GS.hot[m.b.name]=0;}
     document.getElementById("cardB").style.display=solo?"none":"";
     dice.forEach(d=>{d.set=false;d.sel=false;d.active=false;d.face=1;});paintAll();
-    setMsg(solo?(P.A.name+" \u2014 roll! Score to 5000."):(P[turn].name+" rolls first. Score to 5000 wins!"));refresh();},{solo:true});}
+    setMsg(solo?(P.A.name+": roll! Score to 5000."):(P[turn].name+" rolls first. Score to 5000 wins!"));refresh();},{solo:true});}
 
 function rollActive(fresh){rolling=true;S("dice");
   const pool=fresh?dice:dice.filter(d=>!d.set);
@@ -162,34 +162,35 @@ function afterRoll(){
     setMsg("\uD83D\uDCA5 Farkle! "+P[turn].name+" scores nothing this turn.");
     document.querySelectorAll(".die").forEach(e=>e.style.filter="saturate(.4)");
     setTimeout(()=>{document.querySelectorAll(".die").forEach(e=>e.style.filter="");passTurn();},1100);return;}
-  setMsg(P[turn].name+" \u2014 tap the dice you want to keep.");refresh();
+  setMsg(P[turn].name+": tap the dice you want to keep.");refresh();
 }
-function passTurn(){turnPts=0;if(!solo)turn=turn==="A"?"B":"A";
+function passTurn(){banking=false;turnPts=0;if(!solo)turn=turn==="A"?"B":"A";
   dice.forEach(d=>{d.set=false;d.sel=false;d.active=false;});paintAll();
-  setMsg(P[turn].name+"'s turn \u2014 roll!");refresh();}
+  setMsg(P[turn].name+"'s turn. Roll!");refresh();}
 
-document.getElementById("rollBtn").addEventListener("click",()=>{if(phase!=="play"||rolling)return;
+document.getElementById("rollBtn").addEventListener("click",()=>{if(phase!=="play"||rolling||banking)return;
   if(dice.some(d=>d.active))return;
   dice.forEach(d=>{d.set=false;});
   rollActive(true);});
 document.getElementById("keepBtn").addEventListener("click",()=>{
   const sel=dice.filter(d=>d.active&&d.sel),sc=scoreSel(sel.map(d=>d.face));
-  if(!sc.valid||rolling)return;
+  if(!sc.valid||rolling||banking)return;
   turnPts+=sc.pts;sel.forEach(d=>{d.set=true;d.sel=false;d.active=false;});
   dice.filter(d=>d.active).forEach(d=>{d.active=false;});
   const remaining=dice.filter(d=>!d.set).length;
   paintAll();
   if(remaining===0){ // HOT DICE
     GS.hot[P[turn].name]++;dice.forEach(d=>{d.set=false;});paintAll();
-    setMsg("\uD83D\uDD25 Hot dice! All six scored \u2014 roll again. (turn: "+turnPts+")");
+    setMsg("\uD83D\uDD25 Hot dice! All six scored. Roll again. (turn: "+turnPts+")");
     rollActive(true);return;}
-  setMsg(P[turn].name+" \u2014 keep going or bank "+turnPts+".");
+  setMsg(P[turn].name+": keep going or bank "+turnPts+".");
   rollActive(false);
 });
-document.getElementById("bankBtn").addEventListener("click",()=>{if(phase!=="play"||rolling)return;
+document.getElementById("bankBtn").addEventListener("click",()=>{if(phase!=="play"||rolling||banking)return;
   const sel=dice.filter(d=>d.active&&d.sel),sc=scoreSel(sel.map(d=>d.face));
   if(dice.some(d=>d.active)){if(!sc.valid)return;turnPts+=sc.pts;sel.forEach(d=>{d.set=true;});}
   const gain=turnPts;if(!onBoard[turn]&&gain<openMin){setMsg("Need "+openMin+" to get on the board.");return;}
+  banking=true;dice.forEach(d=>{d.active=false;d.sel=false;});
   onBoard[turn]=true;total[turn]+=gain;
   if(gain>GS.best.pts)GS.best={pts:gain,by:P[turn].name};
   setMsg(P[turn].name+" banks "+gain+"!");
@@ -203,7 +204,7 @@ document.getElementById("ovBtn").addEventListener("click",newGame);
 function finish(w){phase="over";
   if(solo){
     document.getElementById("ovTitle").textContent=P.A.name+" hit "+GOAL+"!";
-    document.getElementById("ovText").textContent="Final score "+total.A+(GS.best.pts?(" \u2014 biggest turn: "+GS.best.pts):"");
+    document.getElementById("ovText").textContent="Final score "+total.A+(GS.best.pts?(", biggest turn: "+GS.best.pts):"");
     confettiBurst();S("fanfare");document.getElementById("overlay").classList.add("show");return;}
   const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,winner:P[w].name,loser:P[w==="A"?"B":"A"].name,
     flipWinner:GS.flipWinner,score:(function(){const s={};s[P.A.name]=total.A;s[P.B.name]=total.B;return s;})(),
@@ -211,7 +212,7 @@ function finish(w){phase="over";
   if(!GS.friendly)GN.recordGame(KEY,rec);
   document.getElementById("ovTitle").textContent=P[w].name+" wins!";
   document.getElementById("ovText").textContent="Final: "+P.A.name+" "+total.A+" \u00b7 "+total.B+" "+P.B.name+
-    (GS.best.pts?(" \u2014 biggest turn: "+GS.best.pts+" by "+GS.best.by):"");
+    (GS.best.pts?(", biggest turn: "+GS.best.pts+" by "+GS.best.by):"");
   confettiBurst();S("fanfare");document.getElementById("overlay").classList.add("show");}
 function confettiBurst(){const box=document.getElementById("confetti");box.innerHTML="";
   const cols=["#b0d235","#f4c542","#d8312b","#2f6fd0","#e8e4da"];
@@ -221,12 +222,12 @@ function confettiBurst(){const box=document.getElementById("confetti");box.inner
 
 GN.rulesButton(document.getElementById("foot"),{title:"Farkle",sections:[
  {h:"Goal",t:"First to 5,000 points. But every roll you push your luck, you're gambling the whole turn."},
- {h:"Your turn",t:"Roll six dice. Set aside at least one SCORING die or combo, then either bank your turn total or re-roll the rest. Use all six and they come back \u2014 hot dice! \u2014 and the turn keeps building."},
- {h:"Scoring",t:"Single 1 = 100. Single 5 = 50. Three of a kind = 100\u00d7 the number (three 2s = 200\u2026 three 6s = 600) except three 1s = 1,000. Four/five/six of a kind double each step. A 1\u20136 straight and three pairs score too \u2014 the picker only lets you select legal combos, and the running total shows what your selection is worth.",
-  ex:"You roll 1,1,5,3,3,6: take both 1s and the 5 (250) and roll three dice \u2014 or take just one 1 (100) and roll five for better odds at trips."},
- {h:"FARKLE!",t:"Roll and score NOTHING \u2014 that's a Farkle: your entire unbanked turn total vanishes and play passes. The deeper the run, the harder the fall. Three pairs on the opening six saves you; two dead dice late won't."},
- {h:"The opening rule",t:"The Open/500 button picks your house rule: \u201cOpen\u201d lets anyone bank any amount; \u201c500\u201d means you can't bank your FIRST points of the game until a single turn reaches 500 \u2014 the classic high-pressure start."},
- {h:"Banking wisdom",t:"One or two dice left is the danger zone \u2014 roughly a coin flip to Farkle on two, worse on one. Banking 300 beats explaining how you lost 1,200.",
+ {h:"Your turn",t:"Roll six dice. Set aside at least one SCORING die or combo, then either bank your turn total or re-roll the rest. Use all six and they come back - hot dice! - and the turn keeps building."},
+ {h:"Scoring",t:"Single 1 = 100. Single 5 = 50. Three of a kind = 100\u00d7 the number (three 2s = 200\u2026 three 6s = 600) except three 1s = 1,000. Four/five/six of a kind double each step. A 1\u20136 straight and three pairs score too - the picker only lets you select legal combos, and the running total shows what your selection is worth.",
+  ex:"You roll 1,1,5,3,3,6: take both 1s and the 5 (250) and roll three dice - or take just one 1 (100) and roll five for better odds at trips."},
+ {h:"FARKLE!",t:"Roll and score NOTHING - that's a Farkle: your entire unbanked turn total vanishes and play passes. The deeper the run, the harder the fall. Three pairs on the opening six saves you; two dead dice late won't."},
+ {h:"The opening rule",t:"The Open/500 button picks your house rule: \u201cOpen\u201d lets anyone bank any amount; \u201c500\u201d means you can't bank your FIRST points of the game until a single turn reaches 500 - the classic high-pressure start."},
+ {h:"Banking wisdom",t:"One or two dice left is the danger zone - roughly a coin flip to Farkle on two, worse on one. Banking 300 beats explaining how you lost 1,200.",
   ex:"Turn total 850 with two dice in hand. Bank it. Yes, even though hot dice would feel amazing. BANK it."}]});
 GN.statsButton(document.getElementById("foot"),{title:"Farkle",key:KEY,specials:[
   {label:"Farkles",of:(recs,name)=>recs.reduce((a,r)=>a+((r.farkles&&r.farkles[name])||0),0)},

@@ -156,6 +156,12 @@
   .sitem .sprice.poor{opacity:.45;}
   .sitem.equipped .sprice{background:hsla(var(--ah),75%,55%,.18);color:hsl(var(--ah),80%,74%);border-color:hsla(var(--ah),75%,62%,.55);}
   #hud .val.coins{cursor:pointer;}
+  @media (orientation:landscape) and (max-height:560px){
+    body{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,46%);grid-template-rows:auto auto auto 1fr auto;}
+    #stageWrap{grid-column:1;grid-row:1/6;padding:4px 8px;}
+    #bar,#hud,#zoneBanner,#trackWrap,#foot{grid-column:2;}
+    #bar{grid-row:1;}#hud{grid-row:2;}#zoneBanner{grid-row:3;}#trackWrap{grid-row:4;align-self:end;}#foot{grid-row:5;}
+  }
   @media(prefers-reduced-motion:reduce){
     #combo,#zoneBanner .dot,#puck,.blob,.nxtile,#board.shake,#holdBtn.swapfx,.ov.show,.ov.show .big,#hud .val.bump{transition:none;animation:none;}
   }
@@ -163,7 +169,7 @@
 </head>
 <body>
 <div class="blob" id="blobA"></div><div class="blob" id="blobB"></div>
-<div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">Thumbstack</div><span id="ver">v1.7</span><button id="who"></button></div>
+<div id="bar"><a href="index.html">&#8962; Shelf</a><div id="title">Thumbstack</div><span id="ver">v1.8</span><button id="who"></button></div>
 <div id="hud">
   <div class="stat"><div class="lab">Score</div><div class="val" id="score">0</div></div>
   <div class="stat"><div class="lab">Best</div><div class="val" id="best">0</div></div>
@@ -190,7 +196,7 @@
   <div class="shopcard">
     <h1>&#129689; Coin Shop</h1>
     <div id="shopBank"></div>
-    <div id="shopNote">Coins bank when a game ends. Tap an item to buy, tap again to equip.</div>
+    <div id="shopNote">Coins bank when a game ends or you start a new one. Tap an item to buy, tap again to equip.</div>
     <div class="shopsec">Gem Palettes</div>
     <div class="shopgrid" id="palGrid"></div>
     <div class="shopsec">Puck Styles</div>
@@ -208,7 +214,7 @@
   <a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid rgba(127,167,168,.3);background:#0d2226;color:#bfe4e0;text-decoration:none;">Back to shelf</a>
 </div>
 
-<script src="gamenight.js?v=12"></script>
+<script src="gamenight.js?v=13"></script>
 <script src="sfx.js?v=5"></script>
 <script>
 "use strict";
@@ -325,7 +331,7 @@ function evaluate(mat,w,h,x,y){
 function bestPlacement(type,targetCol){
   /* The player owns the column. Each rotation is anchored so its center sits on
      targetCol (clamped to the walls, so dragging to the edge lands FLUSH against it).
-     The heuristic only chooses WHICH ROTATION fits that spot best — it never moves
+     The heuristic only chooses WHICH ROTATION fits that spot best - it never moves
      the piece away from where the thumb is pointing. */
   const rots=ROT[type];let best=null;
   if(G.rotLock!=null){
@@ -392,7 +398,7 @@ function expireZoneIfDone(){
 }
 function updateZoneBanner(){
   const el=document.getElementById("zoneBanner");
-  if(G.zoneActive){el.classList.add("show");document.getElementById("zoneText").textContent="Zone active \u2014 clear the glowing rows";}
+  if(G.zoneActive){el.classList.add("show");document.getElementById("zoneText").textContent="Zone active: clear the glowing rows";}
   else el.classList.remove("show");
 }
 
@@ -557,7 +563,7 @@ function applyAccent(){
 }
 
 /* ================= transient effect loop =================
-   Runs ONLY while an effect is alive, then stops — zero idle cost.
+   Runs ONLY while an effect is alive, then stops - zero idle cost.
    Effects are visual overlays; game logic never waits on them. */
 const FX={q:[],raf:0};
 function pushFX(f){f.t0=Date.now();FX.q.push(f);if(!FX.raf)FX.raf=requestAnimationFrame(fxLoop);}
@@ -648,7 +654,7 @@ function readCoins(){try{return parseInt(localStorage.getItem("ts_coins")||"0",1
 function saveCoins(v){coinsMem=v;try{localStorage.setItem("ts_coins",String(v));}catch(e){}}
 let hudPrev={score:-1,lines:-1,coins:-1};
 function updateHud(){
-  const vals={score:G.score,best:G.best,lines:G.lines,coins:readCoins()+G.coins};
+  const vals={score:G.score,best:G.best,lines:G.lines,coins:readCoins()+G.coins-coinsBanked};
   document.getElementById("score").textContent=vals.score;
   document.getElementById("best").textContent=vals.best;
   document.getElementById("lines").textContent=vals.lines;
@@ -738,7 +744,7 @@ function draw(){
   ctx.strokeStyle="rgba(127,167,168,.05)";ctx.lineWidth=1;
   for(let i=1;i<W;i++){ctx.beginPath();ctx.moveTo(i*CELL,0);ctx.lineTo(i*CELL,H*CELL);ctx.stroke();}
   for(let i=1;i<H;i++){ctx.beginPath();ctx.moveTo(0,i*CELL);ctx.lineTo(W*CELL,i*CELL);ctx.stroke();}
-  /* aim shaft: soft light column under the ghost — where you're pointing */
+  /* aim shaft: soft light column under the ghost - where you're pointing */
   if(G.ghost&&G.active){
     const gh=G.ghost;
     const sg=ctx.createLinearGradient(0,0,0,H*CELL);
@@ -839,7 +845,7 @@ function endDrag(e){
     if(!G.hasDropped){G.hasDropped=true;trackHint.classList.add("hide");}
     commitDrop();
   }
-  /* otherwise: aim kept, piece waits — slide again or tap when ready */
+  /* otherwise: aim kept, piece waits - slide again or tap when ready */
 }
 track.addEventListener("pointerup",endDrag);
 track.addEventListener("pointercancel",e=>{G.dragging=false;ptrId=null;track.classList.remove("drag");});
@@ -908,7 +914,10 @@ document.addEventListener("keydown",e=>{
 },{passive:false});
 
 /* ================= game lifecycle ================= */
+let coinsBanked=0; /* part of this run's coins already moved to the bank */
+function bankRunCoins(){const d=G.coins-coinsBanked;if(d>0){saveCoins(readCoins()+d);coinsBanked=G.coins;}}
 function newGame(){
+  if(!G.over)bankRunCoins();coinsBanked=0;
   G.board=emptyBoard();G.zoneMask=emptyMask();G.score=0;G.lines=0;G.level=1;G.coins=0;
   G.combo=0;G.zoneActive=false;G.zonePiecesLeft=0;G.zoneLinesSinceTrigger=0;
   G.goldThisRun=0;G.zonesThisRun=0;G.over=false;G.hasDropped=false;
@@ -937,7 +946,7 @@ function gameOver(){
   if(window.GN&&GN.recordGame)GN.recordGame(KEY,{start:G.tStart||Date.now(),end:Date.now(),durationMs:Date.now()-(G.tStart||Date.now()),
     score:G.score,lines:G.lines,level:G.level,coins:G.coins,goldCollected:G.goldThisRun,zonesCleared:G.zonesThisRun,
     solo:true,winner:null,draw:true});
-  saveCoins(readCoins()+G.coins);
+  bankRunCoins();
   G.best=readBest();
   const beat=G.score>0&&G.score>=G.best&&G.score>prevBest;
   countUp(document.getElementById("ovScore"),G.score);
@@ -949,10 +958,11 @@ function gameOver(){
   document.getElementById("overlay").classList.add("show");
   updateHud();
 }
+window.addEventListener("pagehide",()=>{if(!G.over)bankRunCoins();});
 document.getElementById("newBtn").addEventListener("click",newGame);
 document.getElementById("ovBtn").addEventListener("click",newGame);
 document.getElementById("ver").addEventListener("click",e=>{
-  e.target.textContent=e.target.textContent.indexOf("Jul")>=0?"v1.7":"v1.7 \u00b7 Jul 2026";
+  e.target.textContent=e.target.textContent.indexOf("Oct")>=0?"v1.8":"v1.8 \u00b7 Oct 25 2026";
 });
 
 /* ================= shop UI ================= */
@@ -992,11 +1002,11 @@ document.getElementById("coins").addEventListener("click",openShop);
 document.getElementById("shopClose").addEventListener("click",()=>shopOv.classList.remove("show"));
 
 if(window.GN&&GN.rulesButton)GN.rulesButton(document.getElementById("foot"),{title:"Thumbstack",sections:[
-  {h:"Goal",t:"Fit the falling blocks together to clear full rows \u2014 one thumb, no rotate button."},
-  {h:"Move",t:"Press anywhere on the slider and drag left or right. The ghost piece shows exactly where it will land, and the game always picks its best rotation for that column. Lift freely \u2014 only a quick tap drops the piece."},
-  {h:"Rotate",t:"Auto-rotation picks the best fit by default. Tap the \u21bb tile to take over and cycle rotations yourself \u2014 manual control lasts until that piece drops, then auto resumes."},
+  {h:"Goal",t:"Fit the falling blocks together to clear full rows. One thumb, no rotate button."},
+  {h:"Move",t:"Press anywhere on the slider and drag left or right. The ghost piece shows exactly where it will land, and the game always picks its best rotation for that column. Lift freely: only a quick tap drops the piece."},
+  {h:"Rotate",t:"Auto-rotation picks the best fit by default. Tap the \u21bb tile to take over and cycle rotations yourself. Manual control lasts until that piece drops, then auto resumes."},
   {h:"Hold",t:"Tap the Hold tile beside the slider to bank the current piece for later. Tap again on a future turn to swap it back in. One hold per drop."},
-  {h:"Bonuses",t:"A shimmering gold cell pays out bonus coins when its row clears. Every so often two rows light up as a Zone \u2014 clear both before it fades for a big bonus. Clearing rows back-to-back builds a combo. Coins bank between games \u2014 spend them in the Shop on gem palettes and puck styles."}
+  {h:"Bonuses",t:"A shimmering gold cell pays out bonus coins when its row clears. Every so often two rows light up as a Zone: clear both before it fades for a big bonus. Clearing rows back-to-back builds a combo. Coins bank between games: spend them in the Shop on gem palettes and puck styles."}
 ]});
 if(window.GNS)GNS.button(document.getElementById("foot"));
 G.best=readBest();

@@ -9,7 +9,7 @@
   body{font-family:system-ui,-apple-system,sans-serif;color:#eaf0e6;min-height:100vh;
     background:radial-gradient(120% 90% at 50% 8%,#1f4536,#0c1813 70%);display:flex;flex-direction:column;align-items:center;}
   #bar{width:100%;max-width:520px;display:flex;align-items:center;gap:10px;padding:11px 14px;}
-  #bar a{color:#dfe9df;text-decoration:none;font-size:14px;border:1px solid #3f6b54;border-radius:999px;padding:6px 12px;}
+  #bar a{color:#dfe9df;text-decoration:none;font-size:14px;border:1px solid #3f6b54;border-radius:999px;padding:9px 14px;display:inline-block;}
   #title{font-weight:800;font-size:18px;flex:1;}
   #who{font-size:12.5px;color:#9fd6b4;border:1px solid #34604a;background:#13241c;border-radius:999px;padding:5px 11px;cursor:pointer;}
   #wrap{width:100%;max-width:440px;padding:10px 14px 20px;display:flex;flex-direction:column;align-items:center;gap:16px;}
@@ -58,7 +58,7 @@
 <div id="foot"></div>
 <div class="ov" id="overlay"><div style="font-size:44px;">&#127922;</div><h1 id="ovTitle"></h1><p id="ovText"></p>
   <button class="act2" id="ovBtn">Play again</button><a href="index.html" class="ghost">Back to shelf</a></div>
-<script src="gamenight.js?v=12"></script>
+<script src="gamenight.js?v=13"></script>
 <script src="sfx.js?v=5"></script>
 <script>
 const KEY="craps_games";
@@ -89,23 +89,23 @@ function roll(fa,fb){
   const a=fa||1+Math.floor(Math.random()*6), b=fb||1+Math.floor(Math.random()*6), sum=a+b;
   rolls++;showDice(a,b);S("dice");
   if(!point){
-    if(sum===7||sum===11){win("Natural "+sum+" \u2014 pass wins!");}
-    else if(sum===2||sum===3||sum===12){lose("Craps "+sum+" \u2014 pass loses.");}
+    if(sum===7||sum===11){win("Natural "+sum+": pass wins!");}
+    else if(sum===2||sum===3||sum===12){lose("Craps "+sum+": pass loses.");}
     else{point=sum;setMsg("Point is "+sum+". Roll it again before a 7.");render();}
   }else{
-    if(sum===point){point=0;win("Hit the "+sum+" \u2014 pass wins!");}
-    else if(sum===7){point=0;lose("Seven out \u2014 pass loses.");}
+    if(sum===point){point=0;win("Hit the "+sum+": pass wins!");}
+    else if(sum===7){point=0;lose("Seven out: pass loses.");}
     else{setMsg("Rolled "+sum+". Keep rolling for the "+point+".");}
   }
   return sum;
 }
 function win(m){bank+=bet;if(bank>best)best=bank;S("chime");setMsg(m+" +"+bet);render();}
-function lose(m){bank-=bet;S("womp",120,{rate:.8});if(bank<bet)bet=Math.max(5,bank);
+function lose(m){const lost=bet;bank-=bet;S("womp",120,{rate:.8});if(bank<bet)bet=Math.max(5,bank);
   if(bank<=0){bank=0;render();gameOver("Out of chips!");return;}
-  setMsg(m+" \u2212"+bet);render();}
+  setMsg(m+" \u2212"+lost);render();}
 function gameOver(title){phase="over";
   const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,score:best,
-    solo:true,winner:null,draw:true,finalBank:bank,rolls};
+    solo:true,winner:null,draw:true,finalBank:bank,rolls,player:who,players:[who]};
   try{if(window.GN&&GN.recordGame)GN.recordGame(KEY,rec);}catch(e){}
   document.getElementById("ovTitle").textContent=title;
   document.getElementById("ovText").textContent="Best bankroll: "+best+" chips over "+rolls+" rolls. Walked with "+bank+".";
@@ -123,18 +123,19 @@ function start(){bank=100;best=100;bet=10;point=0;phase="bet";rolls=0;GS={start:
   document.getElementById("d1").className="die empty";document.getElementById("d1").innerHTML="";
   setMsg("Set your bet and roll. 7 or 11 wins; 2, 3, 12 lose; anything else sets the point.");render();}
 function pickPlayer(){if(window.GN&&GN.soloStart){GN.soloStart(function(name){who=name;
-  if(GN.whoBadge)GN.whoBadge(document.getElementById("who"),name,pickPlayer);else document.getElementById("who").textContent=name;
+  if(GN.whoBadge)GN.whoBadge(document.getElementById("who"),name,whoTap);else document.getElementById("who").textContent=name;
   start();},{title:"Craps"});}else start();}
-document.getElementById("who").addEventListener("click",pickPlayer);
+function whoTap(){if(rolls>0&&phase!=="over"&&window.GN&&GN.confirmEnd)GN.confirmEnd("Switch player? This bankroll will be lost.",pickPlayer);else pickPlayer();}
+document.getElementById("who").onclick=whoTap;
 
 if(window.GN&&GN.rulesButton)GN.rulesButton(document.getElementById("foot"),{title:"Craps",sections:[
- {h:"The pass line",t:"Place a bet, then roll two dice. This is a simple solo pass-line game \u2014 build your bankroll as high as you can."},
+ {h:"The pass line",t:"Place a bet, then roll two dice. This is a simple solo pass-line game. Build your bankroll as high as you can."},
  {h:"Come-out roll",t:"On the first roll: 7 or 11 wins instantly. 2, 3, or 12 (\u201ccraps\u201d) loses. Any other number (4,5,6,8,9,10) becomes your POINT."},
  {h:"Chasing the point",t:"Once a point is set, keep rolling. Roll the point again and you win. Roll a 7 first (\u201cseven out\u201d) and you lose. You can\u2019t change your bet while a point is on."},
  {h:"Bankroll",t:"Win to grow your chips, and cash out to lock in your best. Hit zero and the table\u2019s done. The shelf remembers your highest bankroll."}]});
 if(window.GN&&GN.statsButton)GN.statsButton(document.getElementById("foot"),{title:"Craps",key:KEY,specials:[
- {label:"Best bankroll",of:(r,n)=>{let m=0;for(const x of r)m=Math.max(m,x.score||0);return m;}},
- {label:"Sessions",of:(r,n)=>r.length}]});
+ {label:"Best bankroll",of:(r,n)=>{let m=0;for(const x of r)if(x.player===n)m=Math.max(m,x.score||0);return m;}},
+ {label:"Sessions",of:(r,n)=>r.filter(x=>x.player===n).length}]});
 if(window.GNS)GNS.button(document.getElementById("foot"));
 
 window.__craps={state:()=>({bank,best,bet,point,phase,rolls}),roll:(a,b)=>roll(a,b),

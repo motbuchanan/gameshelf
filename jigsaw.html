@@ -61,8 +61,8 @@
            background:#0e0d15;aspect-ratio:1;cursor:pointer}
   .libItem img{width:100%;height:100%;object-fit:cover;display:block}
   .libItem b{position:absolute;top:3px;right:3px;background:rgba(0,0,0,.65);color:#fff;
-             border-radius:999px;width:22px;height:22px;display:flex;align-items:center;
-             justify-content:center;font-size:13px}
+             border-radius:999px;width:32px;height:32px;display:flex;align-items:center;
+             justify-content:center;font-size:16px}
 
   /* draw-your-own piece shape */
   #drawWrap{display:none}
@@ -96,7 +96,7 @@
 <div id="top">
   <a href="index.html" id="gsShelfBtn" aria-label="Back to the Game Shelf" style="pointer-events:auto;flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;background:rgba(127,127,127,.18);border:1px solid rgba(127,127,127,.42);color:inherit;font:600 12px/1 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;text-decoration:none;padding:10px 12px;border-radius:999px;white-space:nowrap">&#8962; Shelf</a>
   <span id="wordmark">Jig<span>saw</span></span>
-  <button id="ver">v1.0</button>
+  <button id="ver">v1.1</button>
 </div>
 
 <main>
@@ -167,7 +167,7 @@
 <script>
 "use strict";
 var $=function(id){return document.getElementById(id);};
-var VERSION="v1.0 \u00b7 Jul 19";
+var VERSION="v1.1 \u00b7 Oct 25";
 $("ver").textContent=VERSION.split(" ")[0];
 
 /* ---------- tiny IndexedDB store ----------
@@ -361,7 +361,9 @@ function onMove(e){
   if(!drag)return;
   e.preventDefault();
   var pt=ptFromEvt(e);
-  drag.p.x=pt.x-drag.dx; drag.p.y=pt.y-drag.dy;
+  var p=drag.p; p.x=pt.x-drag.dx; p.y=pt.y-drag.dy;
+  /* keep at least half the piece on the board */
+  p.x=Math.max(-p.w/2,Math.min(S.W-p.w/2,p.x)); p.y=Math.max(-p.h/2,Math.min(S.H-p.h/2,p.y));
   draw();
 }
 function onUp(){
@@ -415,7 +417,7 @@ function refreshLib(){
       var x=document.createElement("b"); x.textContent="\u00d7";
       d.appendChild(im); d.appendChild(x);
       d.onclick=function(ev){ if(ev.target===x)return; loadURL(r.full); };
-      x.onclick=function(){ DB.del(r.id).then(refreshLib); };
+      x.onclick=function(){ if(!confirm("Delete this saved picture?"))return; DB.del(r.id).then(refreshLib); };
       g.appendChild(d);
     });
   }).catch(function(){ $("libEmpty").textContent="Saved pictures are unavailable on this device."; });
@@ -541,7 +543,7 @@ $("bSaveLib").onclick=saveToLib;
 $("bDrawClear").onclick=function(){dpts=[];drawPad();};
 $("bDrawUse").onclick=useDrawing;
 $("bStart").onclick=function(){ if(!S.img)return; show("s-play"); setTimeout(buildPuzzle,40); };
-$("bQuit").onclick=function(){ $("done").classList.remove("on"); show("s-setup"); };
+$("bQuit").onclick=function(){ if(S.placed>0&&S.placed<S.list.length&&!confirm("Quit this puzzle? Your progress will be lost."))return; $("done").classList.remove("on"); show("s-setup"); };
 $("bAgain").onclick=function(){ $("done").classList.remove("on"); show("s-start"); };
 $("bSaveShot").onclick=savePicture;
 $("bShuffle").onclick=function(){scatter();draw();};
@@ -575,8 +577,32 @@ window.addEventListener("pointermove",onMove,{passive:false});
 window.addEventListener("pointerup",onUp);
 window.addEventListener("pointercancel",onUp);
 
+/* resize / rotate: rescale the existing pieces instead of re-cutting, so progress is kept */
+function rescalePuzzle(){
+  var wrap=$("boardWrap"), cv=$("board");
+  var W=wrap.clientWidth, H=wrap.clientHeight;
+  if(W<40||H<40||!S.W||!S.H)return;
+  if(W===S.W&&H===S.H)return;
+  var im=S.img, dpr=Math.min(2,window.devicePixelRatio||1);
+  cv.width=W*dpr; cv.height=H*dpr; cv.style.width=W+"px"; cv.style.height=H+"px";
+  var ctx=cv.getContext("2d"); ctx.setTransform(dpr,0,0,dpr,0,0);
+  var pad=Math.min(W,H)*0.10;
+  var sc=Math.min((W-pad*2)/im.width,(H-pad*2)/im.height);
+  var bw=im.width*sc, bh=im.height*sc, bx=(W-bw)/2, by=(H-bh)/2;
+  var k=bw/S.bw, oW=S.W, oH=S.H;
+  S.list.forEach(function(p){
+    p.tx=bx+(p.tx-S.bx)*k; p.ty=by+(p.ty-S.by)*k; p.w*=k; p.h*=k;
+    if(p.placed){p.x=p.tx;p.y=p.ty;}
+    else{
+      p.x=Math.max(0,Math.min(W-p.w,(p.x+p.w/(2*k))/oW*W-p.w/2));
+      p.y=Math.max(0,Math.min(H-p.h,(p.y+p.h/(2*k))/oH*H-p.h/2));
+    }
+  });
+  S.unit*=k; S.ctx=ctx; S.W=W; S.H=H; S.bx=bx; S.by=by; S.bw=bw; S.bh=bh;
+  draw();
+}
 window.addEventListener("resize",function(){
-  if($("s-play").classList.contains("on")&&S.img)buildPuzzle();
+  if($("s-play").classList.contains("on")&&S.img){ if(S.list.length&&S.W)rescalePuzzle(); else buildPuzzle(); }
   if(S.cut==="custom")initDraw();
 });
 

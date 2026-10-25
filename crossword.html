@@ -9,7 +9,7 @@
   body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:#1b120b;color:#e6ddd0;
     background-image:radial-gradient(ellipse at 50% -10%,#2a1c10,#1b120b 70%);min-height:100vh;}
   #bar{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#15100c;border-bottom:1px solid #3a2a1a;}
-  #bar a{color:#e6ddd0;text-decoration:none;font-size:13px;border:1px solid #6e5f50;background:#2a241e;border-radius:999px;padding:6px 12px;}
+  #bar a{color:#e6ddd0;text-decoration:none;font-size:13px;border:1px solid #6e5f50;background:#2a241e;border-radius:999px;padding:11px 14px;display:inline-block;min-height:44px;line-height:20px;}
   #title{font-weight:800;font-size:17px;}
   #prog{margin-left:auto;font-size:13px;color:#c9ab85;font-weight:700;}
   #wrap{max-width:520px;margin:0 auto;padding:12px;}
@@ -76,7 +76,7 @@
 <div class="ov" id="overlay"><div style="font-size:48px;">&#127881;</div><h1 id="ovTitle">Solved!</h1><p id="ovText"></p>
   <button class="act" id="ovBtn">Next puzzle</button>
   <a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #6e5f50;background:#2a241e;color:#e6ddd0;text-decoration:none;">Back to shelf</a></div>
-<script src="gamenight.js?v=12"></script>
+<script src="gamenight.js?v=13"></script>
 <script src="sfx.js?v=5"></script>
 <script>
 // Each puzzle is a full word square: every row AND column is a real word.
@@ -97,14 +97,14 @@ const PUZZLES=[
   across:["It shows the roads","Gorilla cousin","Ink writer"],
   down:["Page in an atlas","Mimic","Pig's home"]},
  {id:6,sol:["FACT","AREA","CELL","TALC"],
-  across:["A true thing","Region","Prison room","Soft powder mineral"],
+  across:["A true thing","Region","Tiny part of a living thing","Soft powder mineral"],
   down:["Verified info","Square footage","Phone, casually","Baby-powder base"]},
  {id:7,sol:["MAST","AREA","SEED","TADS"],
   across:["Sail pole","Zone","Plant's start","Little bits"],
   down:["Ship's flag pole","Surface measure","What you sow","Small amounts"]},
- {id:8,sol:["HEART","EMBER","ABUSE","RESIN","TREND"],
-  across:["Valentine shape","Glowing coal","Mistreat","Violin-bow rub / pine sap","Latest fashion"],
-  down:["Love's organ","Dying-fire bit","Ill-treat","Sticky tree stuff","Popular direction"]}
+ {id:9,/* replaced the old puzzle 8 on Oct 25; new id so stale saved letters are not reused */sol:["HEART","ERROR","ARGUE","ROUTE","TREES"],
+  across:["Valentine shape","Oops, a mistake","Disagree out loud","The way you go","Oaks and maples"],
+  down:["It beats in your chest","Wrong answer","Bicker","Bus path","Forest plants"]}
 ];
 const PKEY="shelf_cross";
 function S(n){try{window.GNS&&GNS.play(n);}catch(e){}}
@@ -113,8 +113,11 @@ const gridEl=document.getElementById("grid"),labelEl=document.getElementById("la
 
 let pi=0,N=3,blk=[],solL=[],user=[],across=[],down=[],nums=[],sel=-1,dir="A";
 
-function loadAll(){try{return JSON.parse(localStorage.getItem(PKEY))||{};}catch(e){return{};}}
-function saveAll(o){try{localStorage.setItem(PKEY,JSON.stringify(o));}catch(e){}}
+// storage that survives being blocked: falls back to memory for this visit
+let _mem=null;
+function loadAll(){try{const v=localStorage.getItem(PKEY);if(v!==null)return JSON.parse(v)||{};}catch(e){}return _mem?JSON.parse(_mem):{};}
+function saveAll(o){_mem=JSON.stringify(o);try{localStorage.setItem(PKEY,_mem);}catch(e){}}
+function solvedCount(){const s=loadAll().s||{};return PUZZLES.filter(p=>s[p.id]).length;}
 function cur(){return PUZZLES[pi];}
 function white(i){return !blk[i];}
 
@@ -169,8 +172,8 @@ function render(){
   }
   if(slot)clueTxt.innerHTML="<b>"+slot.num+(dir==="A"?" Across":" Down")+"</b> &nbsp; "+slot.clue;
   renderClueList(slot);
-  const solved=Object.keys(loadAll().s||{}).length;
-  labelEl.textContent="Crossword "+p.id+"  \u00b7  "+N+"\u00d7"+N;
+  const solved=solvedCount();
+  labelEl.textContent="Crossword "+(pi+1)+"  \u00b7  "+N+"\u00d7"+N;
   progEl.textContent=solved+"/"+PUZZLES.length;
 }
 function renderClueList(curslot){
@@ -222,8 +225,8 @@ function cycleClue(step){
 }
 function win(){
   S("win");save();
-  const solved=Object.keys(loadAll().s||{}).length;progEl.textContent=solved+"/"+PUZZLES.length;
-  document.getElementById("ovText").textContent="Crossword "+cur().id+" complete! "+(solved>=PUZZLES.length?"All puzzles solved!":(solved+" of "+PUZZLES.length+" done."));
+  const solved=solvedCount();progEl.textContent=solved+"/"+PUZZLES.length;
+  document.getElementById("ovText").textContent="Crossword "+(pi+1)+" complete! "+(solved>=PUZZLES.length?"All puzzles solved!":(solved+" of "+PUZZLES.length+" done."));
   document.getElementById("overlay").classList.add("show");
 }
 
@@ -242,7 +245,7 @@ document.getElementById("next").addEventListener("click",()=>{document.getElemen
 document.getElementById("cPrev").addEventListener("click",()=>cycleClue(-1));
 document.getElementById("cNext").addEventListener("click",()=>cycleClue(1));
 document.getElementById("check").addEventListener("click",check);
-document.getElementById("reset").addEventListener("click",()=>{user=new Array(N*N).fill("");save();render();});
+document.getElementById("reset").addEventListener("click",()=>{if(user.some(x=>x)&&!confirm("Clear every letter in this puzzle?"))return;user=new Array(N*N).fill("");save();render();});
 document.getElementById("ovBtn").addEventListener("click",()=>{document.getElementById("overlay").classList.remove("show");load(pi+1);});
 
 window.__cross=function(){const sol={};for(let i=0;i<N*N;i++)if(white(i))sol[i]=solL[i];return{N:N,white:solL.map((_,i)=>white(i)),sol:sol,user:user.slice(),won:isSolved()};};

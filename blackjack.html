@@ -78,7 +78,7 @@
 <div class="ov" id="overlay"><div id="confetti"></div><div id="ovEmoji" style="font-size:54px;">&#127881;</div><h1 id="ovTitle"></h1><p id="ovText"></p>
   <button class="act" id="ovBtn">Play again</button>
   <a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
-<script src="gamenight.js?v=12"></script>
+<script src="gamenight.js?v=13"></script>
 <script src="sfx.js?v=5"></script>
 <script>
 const KEY="blackjack_games";
@@ -125,7 +125,7 @@ function newSession(name){
   playerName=name||playerName;
   document.getElementById("pName").textContent=playerName;
   document.getElementById("who")&&GN.whoBadge&&GN.whoBadge(document.getElementById("who"),playerName,pickPlayer);
-  chips=100;dealer=[];player=[];shoe=buildShoe();
+  chips=100;dealer=[];player=[];shoe=buildShoe();busy=false;
   GS={start:Date.now(),hands:0,won:0,lost:0,push:0,blackjacks:0,peak:100,net:0};
   document.getElementById("overlay").classList.remove("show");
   document.getElementById("confetti").innerHTML="";
@@ -141,7 +141,7 @@ function deal(){if(phase!=="bet"||busy)return;if(chips<5)return;
   phase="player";busy=false;
   renderHands(true);S("place");setMsg("Hit or stand?");controls();
   const pBJ=isBJ(player),dBJ=isBJ(dealer);
-  if(pBJ||dBJ){setTimeout(()=>{phase="dealer";renderHands(false);
+  if(pBJ||dBJ){phase="dealer";controls();setTimeout(()=>{renderHands(false);
     if(pBJ&&dBJ){settle("push",roundBet,true);}
     else if(pBJ){settle("bj",Math.round(roundBet*1.5),true);}
     else{settle("lose",roundBet,true);}},500);}
@@ -171,17 +171,17 @@ function resolve(){const pv=handValue(player).total,dv=handValue(dealer).total;
   else{settle("push",roundBet,false);}}
 
 function settle(kind,amount,fast){
-  busy=false;GS.hands++;
+  if(busy)return;busy=true;GS.hands++;
   if(kind==="win"){chips+=roundBet+amount;GS.won++;GS.net+=amount;setMsg("You win +"+amount+"!");S("place");}
   else if(kind==="bj"){chips+=roundBet+amount;GS.won++;GS.blackjacks++;GS.net+=amount;setMsg("Blackjack! +"+amount);S("fanfare");}
-  else if(kind==="push"){chips+=roundBet;GS.push++;setMsg("Push \u2014 bet returned.");}
+  else if(kind==="push"){chips+=roundBet;GS.push++;setMsg("Push: bet returned.");}
   else{GS.lost++;GS.net-=roundBet;setMsg(handValue(player).total>21?"Busted. \u2212"+roundBet:"Dealer wins. \u2212"+roundBet);}
   if(chips>GS.peak)GS.peak=chips;
   refreshChips();
   if(bet<5)bet=5;bet=Math.min(bet,chips);
   setTimeout(function(){
     if(chips<5){conclude("busted");return;}
-    setBet(Math.min(bet,chips));phase="bet";controls();
+    busy=false;setBet(Math.min(bet,chips));phase="bet";controls();
   }, fast?700:900);
 }
 function conclude(reason){
@@ -215,12 +215,12 @@ document.getElementById("cashBtn").addEventListener("click",()=>conclude("cashou
 document.getElementById("ovBtn").addEventListener("click",()=>newSession(playerName));
 
 GN.rulesButton(document.getElementById("foot"),{title:"Blackjack",sections:[
- {h:"Goal",t:"Beat the dealer\u2019s hand without going over 21. Number cards are face value, royals are 10, and an Ace is 11 or 1 \u2014 whichever helps."},
+ {h:"Goal",t:"Beat the dealer\u2019s hand without going over 21. Number cards are face value, royals are 10, and an Ace is 11 or 1, whichever helps."},
  {h:"Your turn",t:"After your bet, you and the dealer each get two cards (one of the dealer\u2019s stays hidden). Hit to take another card, Stand to hold. Go over 21 and you bust instantly."},
  {h:"Double down",t:"On your first two cards you may Double: double your bet, take exactly one more card, and stand.",
-  ex:"You hold 11 against a dealer 6 \u2014 a classic double. Push the bet up and hope for a ten."},
+  ex:"You hold 11 against a dealer 6: a classic double. Push the bet up and hope for a ten."},
  {h:"Dealer",t:"When you stand, the dealer reveals the hole card and must hit until reaching 17 or more, then stops. Dealer busts = you win."},
- {h:"Blackjack",t:"An Ace plus a ten-value card on the first two cards is a natural blackjack \u2014 it pays 3:2. If you both have it, it\u2019s a push and your bet comes back."},
+ {h:"Blackjack",t:"An Ace plus a ten-value card on the first two cards is a natural blackjack. It pays 3:2. If you both have it, it\u2019s a push and your bet comes back."},
  {h:"Chips",t:"You sit down with 100 chips. Win to grow the stack; run below 5 and you\u2019re out. Cash out any time to bank the run on the record."}]});
 GN.statsButton(document.getElementById("foot"),{title:"Blackjack",key:KEY,specials:[
  {label:"Best stack",of:(r)=>r.reduce((a,x)=>Math.max(a,x.peak||x.score||0),0)},

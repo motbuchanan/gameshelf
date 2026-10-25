@@ -5,9 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#13202680">
 <title>HEX EMPIRE</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
+<link href="/fonts/fonts.css" rel="stylesheet">
 <style>
 :root{
   --panel:#15242b; --panel2:#1d333c; --panelEdge:#0c171c;
@@ -145,7 +143,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block;image-rend
   background:#0a1418;font-family:'Press Start 2P';font-size:11px;color:var(--bronze);}
 </style>
 </head>
-<body><a href="index.html" style="position:fixed;top:9px;left:9px;z-index:99999;background:rgba(0,0,0,.5);color:#fff;font:600 13px system-ui;text-decoration:none;padding:6px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.22)">⌂ Shelf</a>
+<body><a href="index.html" style="position:fixed;top:9px;left:9px;z-index:99999;background:rgba(0,0,0,.5);color:#fff;font:600 13px system-ui;text-decoration:none;padding:9px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.22)">⌂ Shelf</a>
 <div id="game">
   <canvas id="cv"></canvas>
 
@@ -153,7 +151,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block;image-rend
     <div id="playerChip" class="panel">
       <div id="pcolor"></div>
       <div style="min-width:0">
-        <div id="pname">—</div>
+        <div id="pname">-</div>
         <div id="pturn">Turn 1</div>
       </div>
     </div>
@@ -255,7 +253,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block;image-rend
 <script>
 "use strict";
 /* ===================================================================
-   HEX EMPIRE — single-file 4X. Sections:
+   HEX EMPIRE: single-file 4X. Sections:
    1 util/rng/hex math   2 data (terrain/tech/units/buildings)
    3 mapgen   4 fog/yields   5 render   6 input   7 city/tech/combat
    8 AI   9 turn loop   10 HUD/screens   11 boot
@@ -322,24 +320,24 @@ const RES={
   gold  :{ic:'💎',dy:[0,0,3],need:'mining',on:['hills','desert']},
 };
 
-// TECH TREE — id:{name, cost, pre[], unlocks{units[],builds[],imp[],reveal[]}, desc}
+// TECH TREE: id:{name, cost, pre[], unlocks{units[],builds[],imp[],reveal[]}, desc}
 const TECH={
   pottery   :{n:'Pottery'        ,cost:25 ,pre:[]            ,U:{builds:['granary']},d:'Granary +food storage'},
   mining    :{n:'Mining'         ,cost:30 ,pre:[]            ,U:{imp:['mine'],reveal:['gold']},d:'Mines on hills, reveals Gems'},
   husbandry :{n:'Animal Husb.'   ,cost:35 ,pre:[]            ,U:{units:['horseman'],reveal:['horses']},d:'Horseman, reveals Horses'},
-  archery   :{n:'Archery'        ,cost:35 ,pre:[]            ,U:{units:['archer']},d:'Archer — ranged attacker'},
+  archery   :{n:'Archery'        ,cost:35 ,pre:[]            ,U:{units:['archer']},d:'Archer, ranged attacker'},
   writing   :{n:'Writing'        ,cost:45 ,pre:['pottery']   ,U:{builds:['library']},d:'Library +science'},
   bronze    :{n:'Bronze Working' ,cost:50 ,pre:['mining']    ,U:{units:['spearman'],builds:['barracks']},d:'Spearman, Barracks'},
   masonry   :{n:'Masonry'        ,cost:55 ,pre:['mining']    ,U:{builds:['walls']},d:'City Walls +defense'},
-  wheel     :{n:'The Wheel'      ,cost:55 ,pre:['husbandry'] ,U:{units:['chariot']},d:'War Chariot — fast & strong'},
+  wheel     :{n:'The Wheel'      ,cost:55 ,pre:['husbandry'] ,U:{units:['chariot']},d:'War Chariot, fast & strong'},
   currency  :{n:'Currency'       ,cost:65 ,pre:['writing']   ,U:{builds:['market']},d:'Market +gold'},
   ironworking:{n:'Iron Working'  ,cost:75 ,pre:['bronze']    ,U:{units:['swordsman'],reveal:['iron']},d:'Swordsman, reveals Iron'},
-  math      :{n:'Mathematics'    ,cost:85 ,pre:['wheel','masonry'],U:{units:['catapult']},d:'Catapult — siege ranged'},
+  math      :{n:'Mathematics'    ,cost:85 ,pre:['wheel','masonry'],U:{units:['catapult']},d:'Catapult, siege ranged'},
   construction:{n:'Construction' ,cost:100,pre:['masonry','currency'],U:{builds:['aqueduct']},d:'Aqueduct +growth'},
 };
 const TECH_ORDER=Object.keys(TECH);
 
-// UNITS — str, rng(0=melee), mv, cost, sight, emoji, tech(null=start), special
+// UNITS: str, rng(0=melee), mv, cost, sight, emoji, tech(null=start), special
 const UNIT={
   settler :{n:'Settler' ,str:0,rng:0,mv:2,cost:30,sight:2,e:'🛖',civ:1,tech:null},
   builder :{n:'Builder' ,str:0,rng:0,mv:2,cost:25,sight:2,e:'🔨',work:1,tech:null},
@@ -352,7 +350,7 @@ const UNIT={
   swordsman:{n:'Swordsman',str:14,rng:0,mv:2,cost:40,sight:2,e:'🗡️',tech:'ironworking'},
   catapult:{n:'Catapult',str:8,rng:2,mv:1,cost:45,sight:1,e:'⚙️',tech:'math',siege:1},
 };
-// BUILDINGS — cost, effect, tech
+// BUILDINGS: cost, effect, tech
 const BLD={
   monument:{n:'Monument',cost:20,e:'🗿',tech:null,cult:2,d:'+2 culture (borders)'},
   granary :{n:'Granary' ,cost:30,e:'🌾',tech:'pottery',food:2,d:'+2 food'},
@@ -572,7 +570,7 @@ function drawRiverTile(t,sx,sy,s,pl){ const pts=riverEdgePts(t,sx,sy,s,pl); cons
   const layers=[['rgba(28,84,120,.55)',.34,0],['rgba(58,138,188,.92)',.2,0],['rgba(150,206,236,.55)',.1,0],['rgba(206,235,250,.8)',.045,-s*.035]];
   for(const[col,wf,off]of layers){ ctx.strokeStyle=col; ctx.lineWidth=Math.max(1,s*wf);
     for(const[a,c,b]of segs){ ctx.beginPath(); ctx.moveTo(a[0],a[1]+off); ctx.quadraticCurveTo(c[0],c[1]+off,b[0],b[1]+off); ctx.stroke(); } }
-  // gentle continuous shimmer (no dashes — reads as water, not a route)
+  // gentle continuous shimmer (no dashes: reads as water, not a route)
   ctx.save(); ctx.globalAlpha=.22+.16*Math.sin(G.anim*0.003+rv*6);
   ctx.strokeStyle='rgba(222,242,253,.6)'; ctx.lineWidth=Math.max(1,s*.05);
   for(const[a,c,b]of segs){ ctx.beginPath(); ctx.moveTo(a[0],a[1]-s*.035); ctx.quadraticCurveTo(c[0],c[1]-s*.035,b[0],b[1]-s*.035); ctx.stroke(); }
@@ -1383,8 +1381,9 @@ function serialize(){
     rel:G.rel,turnLimit:G.turnLimit,goldGoal:G.goldGoal,
     tiles,players:G.players.map(ser),CITYID,UID};
 }
-function saveSoft(){ if(!G.started)return; try{localStorage.setItem('hexempire_save',JSON.stringify(serialize()));}catch(e){} }
-function loadGame(){ let raw; try{raw=localStorage.getItem('hexempire_save');}catch(e){return false;} if(!raw)return false;
+let _hxMem=null;
+function saveSoft(){ if(!G.started)return; let j; try{j=JSON.stringify(serialize());localStorage.setItem('hexempire_save',j);}catch(e){if(j)_hxMem=j;} }
+function loadGame(){ let raw; try{raw=localStorage.getItem('hexempire_save');}catch(e){raw=_hxMem;} if(!raw)return false;
   try{ const d=JSON.parse(raw); G.W=d.W;G.H=d.H;G.turn=d.turn;G.cur=d.cur;G.mode=d.mode;G.hexSize=d.hexSize||34;G.cam=d.cam||{x:0,y:0,z:1};
     G.over=false; G.rel=d.rel||{}; G.turnLimit=d.turnLimit||null; G.goldGoal=d.goldGoal||1300; G.promoQ=[]; G.promoShowing=false;
     CITYID=d.CITYID||1;UID=d.UID||1;
@@ -1402,7 +1401,7 @@ function loadGame(){ let raw; try{raw=localStorage.getItem('hexempire_save');}ca
     closeAll(); $('#diploBtn').style.display='block'; refreshCtx(); return true;
   }catch(e){console.error('load failed',e);return false;}
 }
-function checkContinue(){ let has=false; try{has=!!localStorage.getItem('hexempire_save');}catch(e){}
+function checkContinue(){ let has=false; try{has=!!localStorage.getItem('hexempire_save');}catch(e){has=!!_hxMem;}
   $('#continueWrap').style.display=has?'block':'none'; }
 
 /* ---------- WIRING ---------- */
@@ -1424,15 +1423,15 @@ function wire(){
   $('#helpBody').innerHTML=HELP;
 }
 const HELP=`<p><b>Goal:</b> grow an empire and be the last civilization with cities.</p>
-<p><b>🛖 Settler</b> — tap it, tap <b>Found City</b> on good land. Cities grow population, claim borders, and build units & buildings.</p>
-<p><b>Move</b> — select a unit, tap a highlighted tile. <b>Attack</b> — tap a red ⚔ enemy tile. Hills & forest give defenders a bonus.</p>
-<p><b>🔬 Research</b> — tap the science bar up top to choose a tech. Techs unlock stronger units and buildings.</p>
-<p><b>Cities</b> — tap your city to pick what it produces. Build a <b>Monument</b> early to expand borders, a <b>Library</b> for science.</p>
-<p><b>Turns</b> — give every unit orders (or Fortify/Skip), then press <b>END TURN</b>. The game auto-saves; use Continue from the title.</p>
+<p><b>🛖 Settler</b>: tap it, tap <b>Found City</b> on good land. Cities grow population, claim borders, and build units & buildings.</p>
+<p><b>Move</b>: select a unit, tap a highlighted tile. <b>Attack</b>: tap a red ⚔ enemy tile. Hills & forest give defenders a bonus.</p>
+<p><b>🔬 Research</b>: tap the science bar up top to choose a tech. Techs unlock stronger units and buildings.</p>
+<p><b>Cities</b>: tap your city to pick what it produces. Build a <b>Monument</b> early to expand borders, a <b>Library</b> for science.</p>
+<p><b>Turns</b>: give every unit orders (or Fortify/Skip), then press <b>END TURN</b>. The game auto-saves; use Continue from the title.</p>
 <p>Pinch or scroll to zoom, drag to pan.</p>`;
 
 /* ===================================================================
-   EXPANSION v2 — rivers/roads, XP & promotions, victory paths,
+   EXPANSION v2: rivers/roads, XP & promotions, victory paths,
    civ setup, personalities, diplomacy
 =================================================================== */
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
@@ -1507,7 +1506,7 @@ function queuePromo(u){ G.promoQ=G.promoQ||[]; if(!G.promoQ.includes(u))G.promoQ
 function showPromo(){ G.promoQ=G.promoQ||[]; const u=G.promoQ[0];
   if(!u||u.hp<=0||!G.players[u.owner].units.includes(u)){ G.promoQ.shift(); if(G.promoQ.length)return showPromo(); G.promoShowing=false; return; }
   G.promoShowing=true; const ch=promoChoices(u); const box=$('#promoList'); box.innerHTML='';
-  $('#promoTitle').textContent=UNIT[u.type].n+' — Level '+u.level;
+  $('#promoTitle').textContent=UNIT[u.type].n+': Level '+u.level;
   for(const p of ch){ const P=PROMO[p]; const d=document.createElement('div'); d.className='line pick';
     d.innerHTML='<div class="ic">'+P.e+'</div><div class="mid"><div class="t">'+P.n+'</div><div class="d">'+P.d+'</div></div>';
     d.onclick=()=>{ applyPromo(u,p); $('#promoScreen').classList.remove('show');
@@ -1635,7 +1634,7 @@ function aiAccepts(ai,other,kind){ const ps=PERSONA[ai.persona]; const ratio=sco
       <div class="scroll">
         <div class="crown">👑</div>
         <div id="vTitle" style="font-family:'Press Start 2P';font-size:18px;text-align:center;margin-bottom:4px">VICTORY</div>
-        <div id="vType" style="text-align:center;color:var(--inkDim);font-size:11px;margin-bottom:14px">—</div>
+        <div id="vType" style="text-align:center;color:var(--inkDim);font-size:11px;margin-bottom:14px">-</div>
         <div class="subhead">FINAL STANDINGS</div>
         <div id="vStandings"></div>
         <button class="btn bronze" id="btnVictoryNew" style="width:100%;margin-top:12px;padding:13px">NEW GAME</button>
@@ -1672,7 +1671,7 @@ function renderDiplo(me){ const list=$('#diploList'); list.innerHTML='';
   if(!others.length){list.innerHTML='<div class="ctxEmpty">No other civilizations.</div>';return;}
   for(const o of others){ const st=relOf(me.id,o.id);
     const card=document.createElement('div'); card.className='line';
-    const persona=o.persona?PERSONA[o.persona].n:'—';
+    const persona=o.persona?PERSONA[o.persona].n:'-';
     card.innerHTML='<div class="ic" style="color:'+o.col+'">●</div><div class="mid"><div class="t">'+o.name+'</div>'
       +'<div class="d">'+persona+' · '+(o.cities.length)+' cities · score '+score(o)+'<br><b style="color:'+(st==='war'?'var(--bad)':st==='alliance'?'var(--bronzeLt)':'var(--inkDim)')+'">'+relLabel(st)+'</b></div></div>';
     const acts=document.createElement('div'); acts.style.cssText='display:flex;flex-direction:column;gap:5px;';
@@ -1688,7 +1687,7 @@ function renderDiplo(me){ const list=$('#diploList'); list.innerHTML='';
 }
 /* ---------- victory ---------- */
 function endGame(winner,type){ if(G.over)return; G.over=true; G.started=false;
-  try{localStorage.removeItem('hexempire_save');}catch(e){}
+  _hxMem=null;try{localStorage.removeItem('hexempire_save');}catch(e){}
   const humans=G.players.filter(p=>!p.isAI); const human=humans[0]; const win=winner===human;
   $('#vTitle').textContent = win?'VICTORY':(winner.name+' Wins');
   $('#vTitle').style.color=winner.col;
@@ -1772,12 +1771,12 @@ function openPedia(tab){ tab=tab||'Terrain';
   $$('#pediaTabs .ptab').forEach(x=>x.classList.toggle('sel',x.dataset.tab===tab));
   renderPedia(tab); $('#pediaScreen').classList.add('show');
 }
-function yld(a){const p=[];if(a[0])p.push('🌾'+a[0]);if(a[1])p.push('⚒'+a[1]);if(a[2])p.push('💰'+a[2]);return p.join('  ')||'—';}
+function yld(a){const p=[];if(a[0])p.push('🌾'+a[0]);if(a[1])p.push('⚒'+a[1]);if(a[2])p.push('💰'+a[2]);return p.join('  ')||'-';}
 function dyld(a){const s=v=>(v>0?'+':'')+v;const p=[];if(a[0])p.push('🌾'+s(a[0]));if(a[1])p.push('⚒'+s(a[1]));if(a[2])p.push('💰'+s(a[2]));return p.join('  ')||'no yield change';}
 function unitRole(id){const U=UNIT[id];
   if(U.civ)return 'Civilian. Found a new city on good land.';
   if(U.work)return 'Civilian. Builds farms, mines and roads.';
-  let s=U.rng>0?('Ranged — strikes from '+U.rng+' tiles, takes no counter-damage.'):'Melee — fights in adjacent tiles, captures cities.';
+  let s=U.rng>0?('Ranged: strikes from '+U.rng+' tiles, takes no counter-damage.'):'Melee: fights in adjacent tiles, captures cities.';
   if(U.siege)s+=' Bonus damage vs cities.';
   if(U.mv>=4)s+=' Very fast.';
   return s;
@@ -1804,7 +1803,7 @@ function renderPedia(tab){ const b=$('#pediaBody'); b.innerHTML='';
     b.innerHTML='<div class="subhead" style="margin-top:0">TERRAIN FEATURES</div>'+
       Object.values(FEAT).map(f=>ent('<div class="pe">'+(f.name==='Forest'?'🌲':f.name==='Jungle'?'🌴':f.name==='Hills'?'⛰️':'🗻')+'</div>',f.name,
         dyld(f.dy)+' · Move '+f.cost+(f.def?' · +'+Math.round(f.def*100)+'% defense':''),
-        f.impass?'Impassable — blocks movement and cities.':'Defenders here gain a bonus. Hills can be mined.')).join('');
+        f.impass?'Impassable: blocks movement and cities.':'Defenders here gain a bonus. Hills can be mined.')).join('');
   } else if(tab==='Resources'){
     b.innerHTML='<div class="subhead" style="margin-top:0">RESOURCES</div>'+
       Object.entries(RES).map(([k,r])=>ent('<div class="pe">'+r.ic+'</div>',k.charAt(0).toUpperCase()+k.slice(1),
@@ -1828,7 +1827,7 @@ function renderPedia(tab){ const b=$('#pediaBody'); b.innerHTML='';
       Object.values(TRAIT).map(t=>ent('<div class="pe">'+t.e+'</div>',t.n,'',t.d)).join('')+
       '<div class="subhead">AI PERSONAS</div>'+
       Object.values(PERSONA).map(p=>ent('<div class="pe">🤖</div>',p.n,'Trait: '+TRAIT[p.trait].n,
-        (p.warlust>.6?'Aggressive — declares war readily.':p.peace>.7?'Peaceful — prefers pacts and alliances.':'Balanced.')+
+        (p.warlust>.6?'Aggressive: declares war readily.':p.peace>.7?'Peaceful: prefers pacts and alliances.':'Balanced.')+
         ' Leans '+(p.sci>=.9?'science':p.gold>=.9?'gold':p.expand>=.9?'expansion':'mixed')+'.')).join('');
   } else if(tab==='Victory'){
     const goal=G.started?G.goldGoal:1300, lim=G.started?(G.turnLimit||'set per match'):'set per match';
@@ -1850,7 +1849,7 @@ function renderPedia(tab){ const b=$('#pediaBody'); b.innerHTML='';
         const tag=human?(state==='done'?' ✓':state==='avail'?' ●':' 🔒'):'';
         html+='<div class="tcard '+state+'"><div class="th"><div class="tn">'+t.n+tag+'</div><div class="tc">'+t.cost+'🔬</div></div>'
           +'<div class="tsub">'+(t.pre.length?'Requires: '+techNames(t.pre):'No prerequisites')+'</div>'
-          +'<div style="margin-top:4px">'+(techUnlocks(id)||'<span class="pd">—</span>')+'</div></div>';
+          +'<div style="margin-top:4px">'+(techUnlocks(id)||'<span class="pd">-</span>')+'</div></div>';
       }
     });
     b.innerHTML=html;
@@ -1873,14 +1872,14 @@ function showTileInfo(t){ if(!t||!G.started)return; const pl=G.cur; if(!t.seen[p
   if(t.road)rows.push('<b>Road</b> fast movement');
   if(t.owner!=null)rows.push('<b>Territory</b> '+G.players[t.owner].name);
   const ownU=ownUnitsOn(t,pl); if(ownU.length>1)rows.push('<b>Your stack</b> '+ownU.length+' units here');
-  if(hasEnemyUnit(t,pl)){const eu=t.units.filter(u=>u.owner!==pl);rows.push('<span style="color:var(--bad)"><b>Enemy units</b> '+eu.length+' \u2014 '+UNIT[topUnit(t).type].n+(eu.length>1?' +'+(eu.length-1)+' more':'')+'</span>');}
+  if(hasEnemyUnit(t,pl)){const eu=t.units.filter(u=>u.owner!==pl);rows.push('<span style="color:var(--bad)"><b>Enemy units</b> '+eu.length+': '+UNIT[topUnit(t).type].n+(eu.length>1?' +'+(eu.length-1)+' more':'')+'</span>');}
   if(t.city&&t.city.owner!==pl)rows.push('<span style="color:var(--bad)"><b>Enemy city</b> '+t.city.name+'</span>');
   $('#tiBody').innerHTML=rows.map(r=>'<div class="tiRow">'+r+'</div>').join('');
   $('#tileInfo').style.display='block';
 }
 
 /* ===================================================================
-   BATTLE POPUP — attacker vs defender, odds, animated clash, result
+   BATTLE POPUP: attacker vs defender, odds, animated clash, result
 =================================================================== */
 (function injectBattle(){
   const css=document.createElement('style'); css.textContent=`
@@ -1914,7 +1913,7 @@ function showTileInfo(t){ if(!t||!G.started)return; const pl=G.cur; if(!t.seen[p
           <div class="bside" id="bDefSide"><div class="bemoji" id="bDefEmoji">🛡️</div><div class="bname" id="bDefName">Defender</div><div class="bstr" id="bDefStr">STR</div></div>
         </div>
         <div class="bclash" id="bClash">⚔️💥</div>
-        <div id="bOddsWrap"><div id="bOddsTrack"><div id="bOddsFill"></div></div><div id="bOdds">—</div></div>
+        <div id="bOddsWrap"><div id="bOddsTrack"><div id="bOddsFill"></div></div><div id="bOdds">-</div></div>
         <div id="bResult"></div>
         <button class="btn bronze" id="bContinue" style="width:100%;margin-top:8px;padding:12px;display:none">CONTINUE</button>
       </div>

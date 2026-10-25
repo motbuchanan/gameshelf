@@ -9,7 +9,7 @@
   body{font-family:system-ui,-apple-system,sans-serif;color:#f0e8dc;min-height:100vh;
     background:radial-gradient(120% 90% at 50% 8%,#2c3a52,#10141d 70%);display:flex;flex-direction:column;align-items:center;}
   #bar{width:100%;max-width:520px;display:flex;align-items:center;gap:10px;padding:11px 14px;}
-  #bar a{color:#e6ddd0;text-decoration:none;font-size:14px;border:1px solid #4f6080;border-radius:999px;padding:6px 12px;}
+  #bar a{color:#e6ddd0;text-decoration:none;font-size:14px;border:1px solid #4f6080;border-radius:999px;padding:9px 14px;display:inline-block;}
   #title{font-weight:800;font-size:18px;flex:1;}
   #turn{font-size:12.5px;color:#9fc0ee;border:1px solid #3a5680;background:#1a2436;border-radius:999px;padding:5px 11px;}
   #wrap{width:100%;max-width:440px;padding:10px 14px 20px;display:flex;flex-direction:column;align-items:center;gap:16px;}
@@ -54,7 +54,7 @@
 <div id="foot"></div>
 <div class="ov" id="overlay"><div style="font-size:44px;">&#128055;</div><h1 id="ovTitle"></h1><p id="ovText"></p>
   <button class="act" id="ovBtn">Play again</button><a href="index.html" class="ghost">Back to shelf</a></div>
-<script src="gamenight.js?v=12"></script>
+<script src="gamenight.js?v=13"></script>
 <script src="sfx.js?v=5"></script>
 <script>
 const KEY="pig_games", TARGET=100;
@@ -64,6 +64,7 @@ const PIPS={1:[[50,50]],2:[[28,28],[72,72]],3:[[28,28],[50,50],[72,72]],
   6:[[28,26],[72,26],[28,50],[72,50],[28,74],[72,74]]};
 function dieHTML(v){return PIPS[v].map(p=>'<span class="pip" style="left:'+(p[0]-7.5)+'%;top:'+(p[1]-7.5)+'%"></span>').join('');}
 let scores=[0,0],turn=0,turnTot=0,die=null,phase="over",names=["",""],botSide=-1,botDiff="medium",busy=false,GS=null;
+let tmrs=[];function later(f,ms){tmrs.push(setTimeout(f,ms));}function clearLater(){tmrs.forEach(clearTimeout);tmrs=[];}
 
 function render(){
   document.getElementById("s0").textContent=scores[0];document.getElementById("s1").textContent=scores[1];
@@ -85,15 +86,15 @@ function rollOnce(){die=1+Math.floor(Math.random()*6);S("dice");
   turnTot+=die;render();return die;}
 function rollHuman(){if(phase!=="roll"||turn===botSide||busy)return;
   const d=rollOnce();
-  if(d===1){setMsg("Rolled a 1 \u2014 turn lost!");setTimeout(endTurn,800);}
+  if(d===1){busy=true;render();setMsg("Rolled a 1. Turn lost!");later(endTurn,800);}
   else setMsg("Rolled "+d+". Roll again or hold.");}
 function holdHuman(){if(phase!=="roll"||turn===botSide||busy||turnTot===0)return;bank();}
 function bank(){scores[turn]+=turnTot;S("chime");
   if(scores[turn]>=TARGET){render();finish();return;}
   turnTot=0;endTurn();}
-function endTurn(){die=null;turnTot=0;turn^=1;phase="roll";render();
-  if(turn===botSide){busy=true;setTimeout(botStep,700);}
-  else{busy=false;setMsg(names[turn]+", roll to start your turn.");}}
+function endTurn(){die=null;turnTot=0;turn^=1;phase="roll";busy=(turn===botSide);render();
+  if(turn===botSide)later(botStep,700);
+  else setMsg(names[turn]+", roll to start your turn.");}
 
 /* ---- computer ---- */
 function holdTarget(){if(botDiff==="easy")return 14+Math.floor(Math.random()*6);
@@ -104,10 +105,10 @@ function botStep(){
   // win if possible by holding
   if(scores[botSide]+turnTot>=TARGET){bankBot();return;}
   const d=rollOnce();
-  if(d===1){setMsg("Computer rolled a 1.");setTimeout(()=>{endTurn();},800);return;}
+  if(d===1){setMsg("Computer rolled a 1.");later(()=>{endTurn();},800);return;}
   setMsg("Computer rolled "+d+" (turn "+turnTot+").");
-  if(turnTot>=holdTarget()||scores[botSide]+turnTot>=TARGET)setTimeout(bankBot,650);
-  else setTimeout(botStep,650);
+  if(turnTot>=holdTarget()||scores[botSide]+turnTot>=TARGET)later(bankBot,650);
+  else later(botStep,650);
 }
 function bankBot(){scores[botSide]+=turnTot;S("chime");
   if(scores[botSide]>=TARGET){render();finish();return;}
@@ -122,10 +123,10 @@ function finish(){phase="over";busy=false;
   document.getElementById("ovText").textContent=names[0]+" "+scores[0]+"  \u00b7  "+names[1]+" "+scores[1];
   S("fanfare");document.getElementById("overlay").classList.add("show");}
 
-function startGame(cfg){scores=[0,0];turnTot=0;die=null;turn=0;phase="roll";busy=false;
+function startGame(cfg){clearLater();scores=[0,0];turnTot=0;die=null;turn=0;phase="roll";busy=false;
   names=cfg.names;botSide=cfg.botSide;botDiff=cfg.botDiff||"medium";GS={start:Date.now(),friendly:cfg.friendly};
   document.getElementById("overlay").classList.remove("show");render();
-  if(turn===botSide){busy=true;setTimeout(botStep,700);}else setMsg(names[turn]+", roll to start.");}
+  if(turn===botSide){busy=true;later(botStep,700);}else setMsg(names[turn]+", roll to start.");}
 function newGame(){
   if(window.GN&&GN.matchStart){GN.matchStart(function(m){
     const a=m.a,b=m.b||{name:"Computer"},first=m.first;const order=(first===a)?[a,b]:[b,a];
@@ -141,7 +142,7 @@ document.getElementById("ovBtn").addEventListener("click",newGame);
 
 if(window.GN&&GN.rulesButton)GN.rulesButton(document.getElementById("foot"),{title:"Pig",sections:[
  {h:"Goal",t:"Be the first to reach 100 points."},
- {h:"Your turn",t:"Roll as many times as you dare. Each roll adds to your turn total \u2014 but roll a 1 and you lose the whole turn total and your turn ends. Tap Hold to bank your turn total into your score and pass the dice."},
+ {h:"Your turn",t:"Roll as many times as you dare. Each roll adds to your turn total, but roll a 1 and you lose the whole turn total and your turn ends. Tap Hold to bank your turn total into your score and pass the dice."},
  {h:"The gamble",t:"Push for big turns, but the longer you roll the more likely a 1 wipes it out. A common rule of thumb: hold around 20."},
  {h:"vs Computer",t:"Easy holds early and loosely, Medium holds near 20, Hard presses harder when it\u2019s behind. The shelf keeps your record."}]});
 if(window.GN&&GN.statsButton)GN.statsButton(document.getElementById("foot"),{title:"Pig",key:KEY,specials:[

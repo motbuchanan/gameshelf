@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<title>Chinese Checkers — 2 Players</title>
+<title>Chinese Checkers: 2 Players</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   :root{--accent:#b0d235;--accentSh:#7e9a1f;--text:#e8f0e4;}
@@ -39,7 +39,7 @@
 <div id="msg"></div>
 <div id="foot"><button class="act" id="newBtn">New game</button><div id="score"></div></div>
 <div class="ov" id="overlay"><div id="confetti"></div><div id="ovTrophy">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p><button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #2f4d66;background:#0e2235;color:#cfe2f0;text-decoration:none;">Back to shelf</a></div>
-<script src="gamenight.js?v=12"></script>
+<script src="gamenight.js?v=13"></script>
 <script src="sfx.js?v=5"></script>
 <script>
 const ROWLEN=[1,2,3,4,13,12,11,10,9,10,11,12,13,4,3,2,1];
@@ -84,7 +84,7 @@ function newGame(){occ=new Map();
     GS={start:Date.now(),flipWinner:m.first.name,moves:{},hops:{}};
     GS.moves[m.a.name]=0;GS.moves[m.b.name]=0;GS.hops[m.a.name]=0;GS.hops[m.b.name]=0;
     boardAngle=boardTarget=(TVMODE?0:(turn==="red"?Math.PI:0));
-    updateBar();setMessage(P[turn].name+" starts \u2014 tap a marble");render();ensurePulse();});}
+    updateBar();setMessage(P[turn].name+" starts: tap a marble");render();ensurePulse();});}
 function setMessage(t){document.getElementById("msg").textContent=t;}
 function updateBar(){const pc=P[turn];document.getElementById("turnName").textContent=pc.name+"'s turn";
   const d=document.getElementById("dot");
@@ -113,7 +113,7 @@ function render(){ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,SZ,
   // platter
   const bg=ctx.createRadialGradient(SZ/2,SZ/2-SZ*0.1,SZ*0.1,SZ/2,SZ/2,SZ*0.55);
   bg.addColorStop(0,"#11283c");bg.addColorStop(1,"#0a1827");
-  ctx.fillStyle=bg;ctx.beginPath();ctx.roundRect(0,0,SZ,SZ,18);ctx.fill();
+  ctx.fillStyle=bg;ctx.beginPath();if(ctx.roundRect)ctx.roundRect(0,0,SZ,SZ,18);else ctx.rect(0,0,SZ,SZ);ctx.fill();
   const C=SZ/2;ctx.translate(C,C);ctx.rotate(boardAngle);ctx.translate(-C,-C);
   // star outline glow under triangles
   for(const[keys,col]of[[TOP,P.red.main],[BOT,P.blue.main]]){ctx.save();ctx.globalAlpha=0.12;ctx.fillStyle=col;
@@ -163,9 +163,11 @@ function doMove(from,to){phase="anim";const color=occ.get(from);
     occ.delete(from);occ.set(to,color);animFly=null;sel=null;targets=[];
     GS.moves[P[turn].name]++;if(isHop)GS.hops[P[turn].name]++;
     const goal=turn==="red"?BOT:TOP;
-    if(goal.every(k=>occ.get(k)===turn)){gameOver(turn);return;}
-    turn=turn==="red"?"blue":"red";phase="pick";
-    applyOrientation();updateBar();setMessage(P[turn].name+"'s move");render();ensurePulse();})(t0);}
+    if(goal.every(k=>occ.has(k))&&goal.some(k=>occ.get(k)===turn)){gameOver(turn);return;}
+    turn=turn==="red"?"blue":"red";phase="pick";let skipped=false;
+    if(!canMove(turn)&&canMove(turn==="red"?"blue":"red")){skipped=P[turn].name;turn=turn==="red"?"blue":"red";}
+    applyOrientation();updateBar();setMessage(skipped?skipped+" has no move, so "+P[turn].name+" goes again":P[turn].name+"'s move");render();ensurePulse();})(t0);}
+function canMove(c){for(const[k,v]of occ)if(v===c&&destsFor(k).length)return true;return false;}
 function gameOver(winColor){phase="over";
   const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
     winner:P[winColor].name,loser:P[winColor==="red"?"blue":"red"].name,flipWinner:GS.flipWinner,moves:GS.moves,hops:GS.hops};
@@ -183,12 +185,12 @@ function spawnConfetti(color){const box=document.getElementById("confetti");box.
     d.style.transform="rotate("+Math.floor(Math.random()*360)+"deg)";box.appendChild(d);}}
 document.getElementById("newBtn").addEventListener("click",newGame);
 GN.rulesButton(document.getElementById("foot"),{title:"Chinese Checkers",sections:[
- {h:"Goal",t:"Race all ten of your marbles across the star into the opposite point. First full destination triangle wins."},
+ {h:"Goal",t:"Race all ten of your marbles across the star into the opposite point. First full destination triangle wins. If the other player leaves a marble sitting in your goal, that hole still counts as filled, as long as at least one of yours is in there."},
  {h:"Your turn",t:"Move ONE marble: either a single step to an adjacent hole, or a HOP over any one adjacent marble (yours or theirs) into the empty hole directly beyond."},
- {h:"Hop chains",t:"Hops CHAIN: after one hop, the same marble may keep hopping as long as landings exist \u2014 a well-built ladder can carry a marble across the whole board in one breathtaking turn. Tap your marble and the board lights every reachable hole, chains included.",
-  ex:"Marbles spaced gap-by-gap form a highway: hop-hop-hop-hop \u2014 one move, half the board. Both players can ride a ladder, so build the on-ramp on YOUR side."},
- {h:"No captures",t:"Nothing is ever removed \u2014 hopped marbles are stepping stones, not victims. The whole game is geometry: build ladders for yourself that arrive a tempo too late for them."},
- {h:"Don't strand the stragglers",t:"The classic loss: nine marbles home, one lonely marble three turns behind with no one left to hop. Keep the group loosely together \u2014 the last marble's trip matters as much as the first's."}]});
+ {h:"Hop chains",t:"Hops CHAIN: after one hop, the same marble may keep hopping as long as landings exist. A well-built ladder can carry a marble across the whole board in one breathtaking turn. Tap your marble and the board lights every reachable hole, chains included.",
+  ex:"Marbles spaced gap-by-gap form a highway: hop-hop-hop-hop, one move, half the board. Both players can ride a ladder, so build the on-ramp on YOUR side."},
+ {h:"No captures",t:"Nothing is ever removed: hopped marbles are stepping stones, not victims. The whole game is geometry: build ladders for yourself that arrive a tempo too late for them."},
+ {h:"Don't strand the stragglers",t:"The classic loss: nine marbles home, one lonely marble three turns behind with no one left to hop. Keep the group loosely together. The last marble's trip matters as much as the first's."}]});
 GN.statsButton(document.getElementById("foot"),{title:"Chinese Checkers",key:KEY,specials:[
   {label:"Hop moves",of:(r,n)=>r.reduce((a,x)=>a+((x.hops&&x.hops[n])||0),0)},
   {label:"Fastest win (moves)",of:(r,n)=>{const w=r.filter(x=>x.winner===n&&x.moves&&x.moves[n]);return w.length?Math.min(...w.map(x=>x.moves[n])):0;}},

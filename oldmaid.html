@@ -10,7 +10,7 @@
   body{font-family:system-ui,sans-serif;color:#efe6f2;overflow:hidden;display:flex;flex-direction:column;
     background:radial-gradient(120% 80% at 50% 16%,#3a2440 0%,#150b18 70%);}
   #bar{display:flex;align-items:center;gap:10px;padding:12px 14px;}
-  #bar a{color:#e4d2ec;text-decoration:none;font-size:14px;border:1px solid #5a3d66;border-radius:999px;padding:6px 12px;}
+  #bar a{color:#e4d2ec;text-decoration:none;font-size:14px;border:1px solid #5a3d66;border-radius:999px;padding:9px 14px;display:inline-block;}
   #title{font-weight:800;font-size:20px;}
   #turn{margin-left:auto;font-weight:700;font-size:14px;color:#e4d2ec;}
   #table{flex:1;display:flex;flex-direction:column;justify-content:space-between;padding:6px 10px;min-height:0;gap:6px;}
@@ -57,7 +57,7 @@
 <div class="ov" id="overlay"><div id="confetti"></div><div id="ovEmoji" style="font-size:54px;">&#127881;</div><h1 id="ovTitle"></h1><p id="ovText"></p>
   <button class="act" id="ovBtn">Play again</button>
   <a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #5a3d66;background:#241630;color:#e4d2ec;text-decoration:none;">Back to shelf</a></div>
-<script src="gamenight.js?v=12"></script>
+<script src="gamenight.js?v=13"></script>
 <script src="sfx.js?v=5"></script>
 <script>
 const KEY="oldmaid_games";
@@ -67,6 +67,7 @@ const SUITS=[{s:"\u2660",r:false},{s:"\u2665",r:true},{s:"\u2666",r:true},{s:"\u
 let P={A:{name:"You",main:"#c98fe0"},B:{name:"Rival",main:"#5fb0e8"}};
 function seatFrom(p){return{name:p.name,main:p.color||p.main};}
 let hands={A:[],B:[]},turn="A",phase="over",GS=null,busy=false,discarded=0;
+let playerName="You",tmr=null;
 
 function freshDeal(){
   const d=[];for(let r=0;r<13;r++)for(const su of SUITS)d.push({r,s:su.s,red:su.r});
@@ -87,6 +88,7 @@ function total(){return hands.A.length+hands.B.length;}
 
 function pickPlayer(){if(window.GN&&GN.soloStart){GN.soloStart(function(name){newGame(name);},{title:"Who\u2019s playing?"});}else newGame("You");}
 function newGame(name){
+  clearTimeout(tmr);tmr=null;
   playerName=name||playerName;
   const me=(window.GN&&GN.players&&GN.players().filter(function(p){return p.name===playerName;})[0])||null;
   P={A:{name:playerName,main:(me&&me.color)||"#c98fe0"},B:{name:"Rival",main:"#5fb0e8"}};
@@ -99,9 +101,9 @@ function newGame(name){
   turn=Math.random()<0.5?"A":"B";
   GS={start:Date.now(),draws:0};
   if(document.getElementById("who")&&GN.whoBadge)GN.whoBadge(document.getElementById("who"),playerName,pickPlayer);
-  setMsg(turn==="A"?"Your turn \u2014 draw a card from "+P.B.name+".":P.B.name+" goes first\u2026");
+  setMsg(turn==="A"?"Your turn: draw a card from "+P.B.name+".":P.B.name+" goes first\u2026");
   render();
-  if(turn==="B")setTimeout(botTurn,800);
+  if(turn==="B")tmr=setTimeout(botTurn,800);
 }
 function setMsg(t){document.getElementById("msg").textContent=t;}
 function miniEl(c,opts){opts=opts||{};const e=document.createElement("div");
@@ -128,14 +130,14 @@ function performDraw(drawer,victim,idx){
   const made=discardPairs(drawer);if(made)discarded+=made;
   sortHand(drawer);GS.draws++;
   S(made?"place":"flip");
-  setMsg((drawer==="A"?"You":P.B.name)+" drew "+RANKS[card.r]+card.s+(made?" \u2014 made a pair!":" \u2014 no match."));
+  setMsg((drawer==="A"?"You":P.B.name)+" drew "+RANKS[card.r]+card.s+(made?". Made a pair!":". No match."));
   render();
-  if(total()<=1){setTimeout(finish,700);return;}
+  if(total()<=1){tmr=setTimeout(finish,700);return;}
   // pass turn to the other player who still has cards
   const other=drawer==="A"?"B":"A";
   turn=hands[other].length?other:drawer;
   busy=false;
-  if(turn==="B"){busy=true;setTimeout(botTurn,900);}
+  if(turn==="B"){busy=true;tmr=setTimeout(botTurn,900);}
   else{render();}
 }
 function humanDraw(idx){if(phase!=="play"||turn!=="A"||busy)return;if(!hands.B.length)return;
@@ -157,7 +159,7 @@ function finish(){phase="over";
   const youLost=maidSide==="A";
   document.getElementById("ovEmoji").textContent=youLost?"\uD83D\uDC79":"\uD83C\uDF89";
   document.getElementById("ovTitle").textContent=youLost?"You\u2019re the Old Maid!":P.B.name+" is the Old Maid!";
-  document.getElementById("ovText").textContent=youLost?("Stuck holding the lone queen after "+GS.draws+" draws."):("You shed every pair \u2014 "+P.B.name+" got stuck with the queen.");
+  document.getElementById("ovText").textContent=youLost?("Stuck holding the lone queen after "+GS.draws+" draws."):("You shed every pair! "+P.B.name+" got stuck with the queen.");
   if(!youLost)confetti();
   S("fanfare");document.getElementById("overlay").classList.add("show");render();
 }
@@ -169,10 +171,10 @@ function confetti(){const box=document.getElementById("confetti"),cols=["#f4c542
 document.getElementById("newBtn").addEventListener("click",pickPlayer);
 document.getElementById("ovBtn").addEventListener("click",pickPlayer);
 GN.rulesButton(document.getElementById("foot"),{title:"Old Maid",sections:[
- {h:"Goal",t:"Don\u2019t be the one left holding the Old Maid \u2014 the single queen with no partner."},
+ {h:"Goal",t:"Don\u2019t be the one left holding the Old Maid: the single queen with no partner."},
  {h:"Setup",t:"One queen is removed from the deck before dealing, so three remain: one pair and one lonely queen. Cards are dealt to both players, and any pairs you already hold are tossed automatically."},
  {h:"Play",t:"On your turn, draw one face-down card from your rival\u2019s hand. If it matches a card you hold, that pair is discarded. Then it\u2019s their turn to draw from you.",
-  ex:"You pick a card and it pairs your 7 \u2014 both 7s vanish and your hand shrinks. Empty your hand and you\u2019re safe."},
+  ex:"You pick a card and it pairs your 7, so both 7s vanish and your hand shrinks. Empty your hand and you\u2019re safe."},
  {h:"Losing",t:"Pairs keep disappearing until only the lone queen is left in someone\u2019s hand. That player is the Old Maid. Everyone else escapes."}]});
 GN.statsButton(document.getElementById("foot"),{title:"Old Maid",key:KEY,specials:[
  {label:"Times the Old Maid",of:(r,n)=>r.filter(x=>x.oldMaid===n).length},
