@@ -25,6 +25,28 @@ ships or a decision changes. Keep entries short. Status tags:
   no leak-out links). Tile art = Mot-supplied sand-carved bird icon (base64 img in the
   toy `art` field). sw.js precache += `nazca/index.html`, `nazca/manifest.json`,
   `nazca/sw.js`, `nazca/icon-192.png`; CACHE + visible badge bumped 59/61 → **v62**.
+- [x] **v75 fits the screen** (shelf **v75**, 2026-10-25). Fit check (site tools/fitcheck.py:
+  320, 360, 412px and 640x360 landscape) now runs on every build. Fixed: badge names in
+  Achievements wrap instead of cutting off; the shelf home drawer decks (Gin Rummy and the
+  rest) are full size; old-video-games and toys rows fit a small phone; Bot Lab paint
+  buttons, Coloring Book header (v0.12), Critter Garden greeting (v0.8.2, wraps to two
+  lines), Dollhouse header, Five Letters ENTER key (v1.2), Bag of Marbles buttons wrap
+  (v1.5), SHARP header and keyboard, Star Stuff buttons (v6.3), Thumbstack board leaves
+  room for NEXT (v1.9), Nazca top bar (v0.20). The shelf's Nazca cache is now named shelfnazca-v0.20 so it never
+  collides with the site's own nazca/ copy (same motbuchanan.com origin). Thumbstack top bar wraps
+  instead of pushing the player chip off screen. Upload after v74.
+- [x] **v74 follow-ups** (shelf **v74**, 2026-10-25). Bloodstream title now scales to the
+  screen (was cut off on phones). Yahtzee gets the official +100 Yahtzee bonus and joker
+  rules. Solo games now record and count in Code Breaker, Farkle and Shut the Box, and
+  every solo game is marked Solo in Stats, the Record Book and High Scores (solo plays
+  count as plays, never as head-to-head wins). Buzz and RPS pulled: removed from the
+  sw.js precache; delete buzz.html, rps.html, rock.png, paper.png, scissors.png from the
+  repo. Runtime tag gamenight.js?v=14 (gamenight.js changed for solo stats).
+- [ ] **Marble Explainer: back burner.** Works offline, has a Shelf link, but nothing on the
+  shelf links to it yet. Revisit later (likely from the Marble Arcade menu). **PARKED**
+- [ ] **Hex Empire: spin back up.** hexempire.html is in the repo and precached but unlinked
+  (it was swapped out of the Old Video Games box for AstroMerge in July). Original build
+  chat: claude.ai/chat/7386b769-53d1-4ed3-a2df-05357205ad5d. **NEXT**
 - [x] **Break-sweep repair round** (shelf **v73**, 2026-10-25). The v71/v72 bundle
   (Bloodstream wiring, built Oct 18) never went live; live stayed at v70, so v73
   rebuilds it: Bloodstream is in GAMES + ARCADE_H (Old Video Games box) with inline

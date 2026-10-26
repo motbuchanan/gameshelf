@@ -6,7 +6,7 @@
    to seed offline copies; day-to-day edits need nothing.
    Activate deletes ONLY old gameshelf-* caches. Measure Up, Nazca, Stick, Two Cans
    and the rest of motbuchanan.com keep their own caches on the same origin. */
-const CACHE="gameshelf-v73";
+const CACHE="gameshelf-v75";
 const CORE=["index.html","gamenight.js","sfx.js","cardintro.js","bot.js","words.js","achievements.js","manifest.webmanifest",
   "icon192.png","icon512.png","iconmaskable512.png",
   "rules.html","records.html","achievements.html","highscores.html","howto.html","profiles.html","rulesdata.js","backup.html",
@@ -23,7 +23,7 @@ const CORE=["index.html","gamenight.js","sfx.js","cardintro.js","bot.js","words.
   "salon-dash.html","astromerge.html","astromerge-sticker.png","botlab.html","botlab-sticker.png","starstuff.html","starstuff-sticker.png","theorb.html","dollhouse.html","magic8.html","pigment.html","jigsaw.html","marbles.html","marble-arcade.html","fiveletters.html","noodle.html","harmonica.html","sharp.html","coloringbook.html","critter-garden.html","knightschool.html","snake-sticker.png","stardefender-sticker.png","salondash-sticker.png","blocks-sticker.png","thumbstack-sticker.png","brickbreak-sticker.png","minesweeper-sticker.png","gemmatch-sticker.png","paddleduel-sticker.png","knightschool-sticker.png","hauntinc-sticker.png","hauntinc/index.html","hauntinc/ent-polter.jpg","hauntinc/ent-wraith.jpg","hauntinc/ent-banshee.jpg","hauntinc/ent-shade.jpg","hauntinc/ent-ghoul.jpg","hauntinc/ent-rev.jpg","hauntinc/ent-trick.jpg","hauntinc/ent-dopp.jpg","hauntinc/ent-lich.jpg","hauntinc/ent-audit.jpg","hauntinc/site-alder.jpg","hauntinc/site-farm.jpg","hauntinc/site-apts.jpg","hauntinc/site-light.jpg","hauntinc/site-hosp.jpg","hauntinc/site-mall.jpg","hauntinc/site-ship.jpg",
   "nazca/index.html","nazca/manifest.json","nazca/sw.js","nazca/icon-192.png",
   "puff/","puff/index.html","puff/icon-180.png","puff/icon-512.png","puff/manifest.webmanifest","puff-sticker.png",
-  "bloodstream.html","hexempire.html","marble-explainer.html","rps.html","rock.png","paper.png","scissors.png","buzz.html",
+  "bloodstream.html","hexempire.html","marble-explainer.html",
   "measureup/","measureup/index.html","measureup/manifest.json","measureup/icon-192.png",
   "stick/","stick/index.html","stick/manifest.json","stick/icon.png"];
 /* Shared site fonts (motbuchanan.com/fonts). Cached separately and one at a time so a
