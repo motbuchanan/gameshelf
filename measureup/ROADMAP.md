@@ -5,10 +5,15 @@ uploaded against what the last chat thought it shipped. Full build notes stay in
 (in the NOTES zip, never uploaded).
 
 ## Current
-- **v1.58 · Oct 25 2026** (sw cache `measureup-v1-58`). Contains v1.51 through v1.57. Live URL: https://motbuchanan.github.io/gameshelf/measureup/
+- **v1.59 · Oct 26 2026** (sw cache `measureup-v1-59b`). Contains v1.51 through v1.58. Live URL: https://motbuchanan.github.io/gameshelf/measureup/
 - Files in the repo folder: `index.html`, `sw.js`, `manifest.json`, `ROADMAP.md` (this file, new in v1.51).
 
 ## What shipped lately
+- **v1.59 Fit pass (Oct 26), from the Oct 25 Game Shelf repair round.** Text fits from 320px phones to tablets, portrait
+  and landscape: the Garage top bar, the hero cards (Robot Workshop with Ada and Beep, Daily Squawk, Word Lab) and the Bot
+  Garage banners now wrap. Checked with site/tools/fitcheck.py plus a 36-screen sweep using its measuring code at six sizes.
+  Service worker keeps the shelf v73 rule (deletes only its own `measureup-*` caches). Cache renamed `measureup-v1-59b`
+  because `measureup-v1-59` was already live with index v1.58. Fonts: system stacks only, nothing downloaded.
 - **v1.58 Words + Code (Oct 24).** STORY STREET, a new row at the bottom of the map.
   THE DAILY SQUAWK: a new subject, GRAMMAR (concept `gram`, its own Words & Grammar strand, placed by the Soundcheck), taught by
   MAC the macaw. Four desks: Word Detective (tap every noun / verb / adjective / adverb / pronoun in a real sentence),
