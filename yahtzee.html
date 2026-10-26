@@ -28,6 +28,12 @@
     box-shadow:inset 0 0 0 1px rgba(247,243,218,.4);animation:cellpulse 1.6s ease-in-out infinite;}
   @keyframes cellpulse{0%,100%{box-shadow:inset 0 0 0 1px rgba(247,243,218,.35);}50%{box-shadow:inset 0 0 0 2px rgba(247,243,218,.8);}}
   td.cell.done{color:#e8f0e4;font-weight:700;}
+  td.cell.locked{color:#45604f;}
+  #ytoast{position:fixed;left:50%;top:22%;z-index:30;transform:translate(-50%,0) scale(.6);opacity:0;pointer-events:none;
+    padding:12px 22px;border-radius:14px;background:linear-gradient(160deg,#f4c542,#d99a1c);color:#2a1a04;font-weight:800;font-size:19px;text-align:center;
+    box-shadow:0 8px 22px rgba(0,0,0,.5);transition:transform .35s cubic-bezier(.2,1.5,.4,1),opacity .3s;}
+  #ytoast.show{opacity:1;transform:translate(-50%,0) scale(1);}
+  #ytoast small{display:block;font-size:12.5px;font-weight:700;margin-top:3px;}
   tr.section td{background:rgba(0,0,0,.22);color:#9fbdac;font-size:12px;font-weight:700;}
   tr.total td{font-weight:800;font-size:15px;border-top:2px solid #3a5a47;}
   #trayWrap{display:flex;justify-content:center;padding:6px 0 4px;}
@@ -55,9 +61,10 @@
 <div id="card"></div>
 <div id="trayWrap"><div id="trayRim"><canvas id="tray"></canvas></div></div>
 <div id="msg"></div>
+<div id="ytoast"></div>
 <div id="foot"><button class="act" id="rollBtn">Roll</button></div>
 <div class="ov" id="overlay"><div id="confetti"></div><div id="ovTrophy">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText"></p><button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
-<script src="gamenight.js?v=13"></script>
+<script src="gamenight.js?v=14"></script>
 <script src="sfx.js?v=5"></script>
 <script>
 let P={A:{name:"Player 1",main:"#d8312b",light:"#f06a60",dark:"#8d1d19"},B:{name:"Player 2",main:"#2f6fd0",light:"#6fa0ec",dark:"#194182"}};
@@ -86,9 +93,28 @@ function scoreFor(cat,d){const c=counts(d),sum=d.reduce((a,b)=>a+b,0);
     case "yahtzee":return max===5?50:0;
     case "chance":return sum;}
   return 0;}
+// ---- Yahtzee bonus + joker rules ----
+function isYahtzee(d){return d.every(v=>v===d[0]);}
+// joker applies when the roll is a Yahtzee and the Yahtzee box is already filled (50 or 0)
+function jokerOn(card,d){return isYahtzee(d)&&card.yahtzee!==undefined;}
+function bonusDue(card,d){return isYahtzee(d)&&card.yahtzee===50;}
+function allowedCat(card,cat,d){if(card[cat]!==undefined)return false;
+  if(!jokerOn(card,d))return true;
+  const up=CATS.find(c=>c.upper===d[0]);
+  if(card[up.id]===undefined)return cat===up.id;
+  const lowerOpen=CATS.some(c=>!c.upper&&card[c.id]===undefined);
+  const def=CATS.find(c=>c.id===cat);
+  return lowerOpen?!def.upper:!!def.upper;}
+function scoreWith(card,cat,d){
+  if(jokerOn(card,d)){if(cat==="full")return 25;if(cat==="small")return 30;if(cat==="large")return 40;}
+  return scoreFor(cat,d);}
+let _yt=null;
+function yToast(name,total){const t=document.getElementById("ytoast");
+  t.innerHTML="YAHTZEE BONUS +100<small>"+String(name).replace(/[<>&]/g,"")+" now has +"+total+" in bonuses</small>";
+  t.classList.add("show");clearTimeout(_yt);_yt=setTimeout(()=>t.classList.remove("show"),2200);}
 function upperSum(card){return CATS.filter(c=>c.upper).reduce((s,c)=>s+(card[c.id]??0),0);}
 function totalOf(card){const up=upperSum(card),bonus=up>=63?35:0;
-  return up+bonus+CATS.filter(c=>!c.upper).reduce((s,c)=>s+(card[c.id]??0),0);}
+  return up+bonus+(card.ybonus||0)+CATS.filter(c=>!c.upper).reduce((s,c)=>s+(card[c.id]??0),0);}
 function roundsDone(card){return CATS.filter(c=>card[c.id]!==undefined).length;}
 function seatFrom(p){return{name:p.name,main:p.color,light:p.light,dark:p.dark};}
 function newGame(){cards={A:{},B:{}};
@@ -274,18 +300,24 @@ function renderCard(){const host=document.getElementById("card");
   const row=(cat)=>{let cells="";
     for(const pl of seats){const v=cards[pl][cat.id];
       if(v!==undefined)cells+='<td class="cell done">'+v+'</td>';
-      else if(pl===turn&&rolls>0&&phase==="turn"){const pot=scoreFor(cat.id,dice);
-        cells+='<td class="cell mine" data-cat="'+cat.id+'">'+pot+'</td>';}
+      else if(pl===turn&&rolls>0&&phase==="turn"&&!tumbling){
+        if(allowedCat(cards[pl],cat.id,dice)){const pot=scoreWith(cards[pl],cat.id,dice);
+          cells+='<td class="cell mine" data-cat="'+cat.id+'">'+pot+'</td>';}
+        else cells+='<td class="cell locked">\u2013</td>';}
       else cells+='<td class="cell open">\u2013</td>';}
     return '<tr><td class="cat">'+cat.label+'</td>'+cells+'</tr>';};
   CATS.filter(c=>c.upper).forEach(c=>h+=row(c));
   h+='<tr class="section"><td>Upper bonus (63+ \u2192 35)</td>'+seats.map(pl=>'<td>'+(upperSum(cards[pl])>=63?35:upperSum(cards[pl])+"/63")+'</td>').join("")+'</tr>';
   CATS.filter(c=>!c.upper).forEach(c=>h+=row(c));
+  h+='<tr class="section"><td>Yahtzee bonus (+100 each)</td>'+seats.map(pl=>'<td>'+(cards[pl].ybonus||0)+'</td>').join("")+'</tr>';
   h+='<tr class="total"><td>TOTAL</td>'+seats.map(pl=>'<td style="color:'+P[pl].light+'">'+totalOf(cards[pl])+'</td>').join("")+'</tr></table>';
   host.innerHTML=h;
   host.querySelectorAll("td.mine").forEach(td=>td.addEventListener("click",()=>scoreCat(td.dataset.cat)));}
 function scoreCat(cat){if(rolls===0||phase!=="turn"||tumbling)return;
-  cards[turn][cat]=scoreFor(cat,dice);
+  const cd=cards[turn];if(!allowedCat(cd,cat,dice))return;
+  const bonus=bonusDue(cd,dice);
+  cd[cat]=scoreWith(cd,cat,dice);
+  if(bonus){cd.ybonus=(cd.ybonus||0)+100;S("fanfare");yToast(P[turn].name,cd.ybonus);}
   const allDone=roundsDone(cards.A)===13&&(solo||roundsDone(cards.B)===13);
   if(allDone){renderCard();finish();return;}
   if(!solo)turn=turn==="A"?"B":"A";startTurn();}
@@ -301,7 +333,7 @@ function finish(){phase="over";
   const a=totalOf(cards.A),b=totalOf(cards.B);
   const win=a>b?"A":b>a?"B":null;
   const rec={start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
-    winner:win?P[win].name:null,loser:win?P[win==="A"?"B":"A"].name:null,draw:!win,flipWinner:GS.flipWinner,yahtzees:(function(){const s={};s[P.A.name]=(cards.A.yahtzee>=50?1:0);s[P.B.name]=(cards.B.yahtzee>=50?1:0);return s;})(),bonus:(function(){const s={};s[P.A.name]=upperSum(cards.A)>=63?1:0;s[P.B.name]=upperSum(cards.B)>=63?1:0;return s;})(),score:(function(){const s={};s[P.A.name]=a;s[P.B.name]=b;return s;})()};
+    winner:win?P[win].name:null,loser:win?P[win==="A"?"B":"A"].name:null,draw:!win,flipWinner:GS.flipWinner,yahtzees:(function(){const s={};s[P.A.name]=(cards.A.yahtzee>=50?1:0)+(cards.A.ybonus||0)/100;s[P.B.name]=(cards.B.yahtzee>=50?1:0)+(cards.B.ybonus||0)/100;return s;})(),ybonus:(function(){const s={};s[P.A.name]=cards.A.ybonus||0;s[P.B.name]=cards.B.ybonus||0;return s;})(),bonus:(function(){const s={};s[P.A.name]=upperSum(cards.A)>=63?1:0;s[P.B.name]=upperSum(cards.B)>=63?1:0;return s;})(),score:(function(){const s={};s[P.A.name]=a;s[P.B.name]=b;return s;})()};
   GN.recordGame(KEY,rec);
   document.getElementById("ovTitle").textContent=win?P[win].name+" wins!":"Dead tie!";
   document.getElementById("ovTitle").style.color=win?P[win].main:"#e8f0e4";
@@ -324,11 +356,13 @@ GN.rulesButton(document.getElementById("foot"),{title:"Yahtzee",sections:[
  {h:"The upper section",t:"Ones through Sixes score the sum of just those dice. Score 63+ up there (an average of three of each number) and you earn a +35 bonus, and chasing that bonus quietly decides most close games.",
   ex:"Three Fives = 15 in the Fives box: exactly on pace for the bonus. Two Fives = 10 means you'll owe the difference somewhere else."},
  {h:"The lower section",t:"3 of a Kind and 4 of a Kind score ALL five dice. Full House (3+2) = 25. Small Straight (4 in a row) = 30. Large Straight (5 in a row) = 40. Chance = sum of anything. YAHTZEE (five of a kind) = 50."},
- {h:"Extra Yahtzees",t:"A second Yahtzee scores like any other roll: put it in any open box that fits. This version has no +100 bonus."},
+ {h:"Extra Yahtzees",t:"Roll another Yahtzee after you already scored 50 in the YAHTZEE box and you get a +100 bonus, every time it happens. If your YAHTZEE box holds a 0, there is no bonus, but the rules below still apply. If the box is still empty, just score the 50 there. Then the extra Yahtzee works as a joker: if the matching upper box is open (five 5s means Fives), you must score it there. If that box is already filled, pick any open lower box, and Full House, Small Straight and Large Straight pay their full 25, 30 or 40. If every lower box is filled, you must put a 0 in an open upper box. The scorecard only lights up the boxes you are allowed to use.",
+  ex:"You have 50 in YAHTZEE and roll five 4s. Fours is open: score 20 there plus the +100 bonus. Next time it is five 4s again with Fours filled: take Large Straight for 40, plus another +100."},
  {h:"Knowing when to zero",t:"Sometimes the play is sacrificing: a dead roll should zero your least-needed box (Ones and Yahtzee are the usual victims), protecting the boxes that score big.",
   ex:"Final rolls show 2,2,3,4,6 with only Large Straight and Sixes open. Zero the straight: one die of Sixes is worth more than a miracle chase."}]});
 GN.statsButton(document.getElementById("foot"),{title:"Yahtzee",key:KEY,specials:[
   {label:"Yahtzees rolled",of:(r,n)=>r.reduce((a,x)=>a+((x.yahtzees&&x.yahtzees[n])||0),0)},
+  {label:"Yahtzee bonuses",of:(r,n)=>r.reduce((a,x)=>a+((x.ybonus&&x.ybonus[n])||0)/100,0)},
   {label:"63+ bonuses",of:(r,n)=>r.reduce((a,x)=>a+((x.bonus&&x.bonus[n])||0),0)},
   {label:"Best total",of:(r,n)=>r.reduce((a,x)=>Math.max(a,(x.score&&x.score[n])||0),0)},
   {label:"Coin flips won",of:(r,n)=>r.filter(x=>x.flipWinner===n).length}]});

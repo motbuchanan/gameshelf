@@ -737,12 +737,15 @@ GN.recordGame=function(key,rec){
   if(GN.friendly)return; // friendly games leave no trace
 
   if(GN._vsComputer)rec=Object.assign({},rec,{vsComputer:true});
+  /* solo games count as plays, never as head-to-head wins. Keep the player's name on the record. */
+  if(rec&&rec.solo&&!(rec.players&&rec.players.length)&&GN._participants&&GN._participants.length===1)
+    rec=Object.assign({},rec,{players:GN._participants.slice()});
   const l=GN.readGames(key);
   l.push(rec);
   try{localStorage.setItem(key,JSON.stringify(l));}catch(e){_recMem[key]=l;} // storage blocked: keep it for this visit
   mirror(()=>_db.doc("households/"+_hh+"/records/"+key).set({list:FV().arrayUnion(rec)},{merge:true}));
   if(!rec.vsComputer){ // vs-Computer games are recorded + tagged, but kept out of the head-to-head tallies
-    GN.g.addResult(rec.draw?null:rec.winner,rec.loser,rec.durationMs);
+    GN.g.addResult((rec.draw||rec.solo)?null:rec.winner,rec.loser,rec.durationMs);
     try{GN._award(key,rec);}catch(e){}
   }};
 
@@ -754,7 +757,7 @@ GN._award=function(key,rec){
     :(GN._participants&&GN._participants.length)?GN._participants.slice():[];
   if(!players.length){if(rec.winner&&typeof rec.winner==="string"&&!_BADW[rec.winner])players.push(rec.winner);
     if(rec.loser&&!_BADW[rec.loser])players.push(rec.loser);}
-  var winner=(!rec.draw&&realWinner(rec.winner)&&players.indexOf(rec.winner)>=0)?rec.winner:null;
+  var winner=(!rec.draw&&!rec.solo&&realWinner(rec.winner)&&players.indexOf(rec.winner)>=0)?rec.winner:null;
   var metric=A.metricFromRec?A.metricFromRec(key,rec):null;
   var fired=A.applyResult({gameKey:key,players:players,winner:winner,metric:metric,metricPlayer:players[0]});
   if(fired&&fired.length)GN._ceremony(fired);
@@ -877,6 +880,7 @@ const css=`
 .gnRow .v{font-size:12px;color:#bcd6c7;font-variant-numeric:tabular-nums;}
 .gnIll{margin:8px auto 4px;max-width:280px;}.gnIll svg{width:100%;height:auto;display:block;}.gnEx{margin:8px 0 2px;padding:8px 12px;border-left:3px solid #f4c542;background:rgba(244,197,66,.08);border-radius:0 8px 8px 0;font-size:13.5px;line-height:1.5;color:#e8e0c8;text-align:left;}.gnSec{margin-top:8px;color:#9fbdac;font-size:12px;letter-spacing:.6px;text-transform:uppercase;}
 .gnMeta{color:#9fbdac;font-size:13px;text-align:center;max-width:440px;}
+.gnSolo{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:#10202e;background:#9fd3c7;border-radius:999px;padding:1px 7px;vertical-align:1px;}
 /* Easy View: per-device large text & tap targets (toggled on the shelf). Shared chrome only. */
 html.gn-easy .gnTitle{font-size:30px;}
 html.gn-easy .gnBtn{font-size:21px !important;padding:15px 28px !important;}
@@ -1210,7 +1214,10 @@ GN.openStats=function(cfg){injectCSS();
   const old=document.getElementById("gnStats");if(old)old.remove();
   const allRecs=GN.readGames(cfg.key);
   const vsAI=allRecs.filter(r=>r&&r.vsComputer);
-  const recs=allRecs.filter(r=>!(r&&r.vsComputer));
+  /* solo games are counted, but in their own section: never in the head-to-head bars */
+  const soloRecs=allRecs.filter(r=>r&&r.solo&&!r.vsComputer);
+  const recs=allRecs.filter(r=>r&&!r.vsComputer&&!r.solo);
+  const soloOnly=!recs.length&&soloRecs.length>0; // a one-player page: its specials describe the solo games
   const[pa,pb]=GN.lastPair();
   const pairRecs=recs.filter(r=>(r.winner===pa.name||r.winner===pb.name||r.loser===pa.name||r.loser===pb.name));
   let m=0,k=0,dur=0;for(const r of recs){if(r.winner===pa.name)m++;else if(r.winner===pb.name)k++;dur+=r.durationMs||0;}
@@ -1221,12 +1228,13 @@ GN.openStats=function(cfg){injectCSS();
     return '<div class="gnRow"><div class="l">'+label+'</div><div class="bar">'+(none?'':'<span style="width:'+p+'%;background:'+pa.color+'"></span><span style="width:'+(100-p)+'%;background:'+pb.color+'"></span>')+'</div><div class="v">'+va+" / "+vb+'</div></div>';}
   const wrap=document.createElement("div");wrap.className="gnStats";wrap.id="gnStats";
   let h='<h1>'+cfg.title+': Stats</h1>';
-  h+='<div class="gnH2H"><span style="color:'+pa.color+'"><span class="big">'+m+'</span> '+escH(pa.name)+'</span><span style="color:#7d9a88">vs</span><span style="color:'+pb.color+'">'+escH(pb.name)+' <span class="big">'+k+'</span></span></div>';
-  h+='<div class="gnMeta">'+recs.length+' game'+(recs.length===1?"":"s")+' recorded \u00b7 avg '+fmt(recs.length?dur/recs.length:0)+(who?' \u00b7 '+escH(who)+' on a '+streak+'-game streak':'')+'</div>';
+  if(!soloOnly){h+='<div class="gnH2H"><span style="color:'+pa.color+'"><span class="big">'+m+'</span> '+escH(pa.name)+'</span><span style="color:#7d9a88">vs</span><span style="color:'+pb.color+'">'+escH(pb.name)+' <span class="big">'+k+'</span></span></div>';
+  h+='<div class="gnMeta">'+recs.length+(soloRecs.length?' head-to-head':'')+' game'+(recs.length===1?"":"s")+' recorded \u00b7 avg '+fmt(recs.length?dur/recs.length:0)+(who?' \u00b7 '+escH(who)+' on a '+streak+'-game streak':'')+'</div>';}
   if(vsAI.length){var _won=vsAI.filter(r=>r.winner&&!/^Computer/.test(r.winner)).length;
     h+='<div class="gnMeta">Plus '+vsAI.length+' vs Computer: you won '+_won+' (not counted for the record)</div>';}
   if(cfg.specials&&recs.length){h+='<div class="gnSec">This game</div>';
     for(const s of cfg.specials)h+=row(s.label,s.of(recs,pa.name),s.of(recs,pb.name));}
+  if(soloRecs.length)h+=GN._soloStatsHTML(cfg,soloRecs,null,pa,pb);
   const g=GN.g.read();
   h+='<div class="gnSec">Across the whole shelf</div>';
   h+=row("All-game wins",g.wins[pa.name]||0,g.wins[pb.name]||0);
@@ -1238,6 +1246,36 @@ GN.openStats=function(cfg){injectCSS();
   h+='<button class="gnBtn" id="gnX" style="margin-top:10px;">Close</button>';
   wrap.innerHTML=h;document.body.appendChild(wrap);
   wrap.querySelector("#gnX").onclick=()=>wrap.remove();};
+
+/* who played a solo record (older records may have no name saved) */
+GN.soloName=function(r){if(!r)return null;
+  if(r.players&&r.players.length&&typeof r.players[0]==="string")return r.players[0];
+  if(typeof r.player==="string"&&r.player)return r.player;
+  if(typeof r.winner==="string"&&realWinner(r.winner))return r.winner;
+  return null;};
+/* a solo game with a clear success (code cracked, box shut, game won) */
+GN.soloWon=function(r){if(!r)return false;if(r.won===true)return true;
+  const n=GN.soloName(r);return !!(n&&r.winner===n);};
+/* "Solo" section of the Stats overlay. cfg.soloWin = word for a success ("cracked"),
+   cfg.soloBest = {label, of:(recs)=>value or null}. One row per player, marked Solo. */
+GN._soloStatsHTML=function(cfg,soloRecs,row,pa,pb){
+  let h='<div class="gnSec">Solo play</div>';
+  if(row&&cfg.specials)for(const s of cfg.specials)h+=row(s.label,s.of(soloRecs,pa.name),s.of(soloRecs,pb.name));
+  const by={},order=[];let unnamed=0;
+  for(const r of soloRecs){const n=GN.soloName(r);if(!n){unnamed++;continue;}
+    if(!by[n]){by[n]=[];order.push(n);}by[n].push(r);}
+  const anyWin=soloRecs.some(r=>GN.soloWon(r));
+  const word=cfg.soloWin||"won";
+  order.sort((a,b)=>by[b].length-by[a].length);
+  for(const n of order){const l=by[n];
+    let t='<b>'+escH(n)+'</b> <span class="gnSolo">Solo</span> '+l.length+' game'+(l.length===1?'':'s');
+    if(anyWin)t+=' \u00b7 '+l.filter(r=>GN.soloWon(r)).length+' '+word;
+    if(cfg.soloBest){let b=null;try{b=cfg.soloBest.of(l);}catch(e){}
+      if(b!=null&&b!=="")t+=' \u00b7 '+cfg.soloBest.label+' '+escH(b);}
+    h+='<div class="gnMeta">'+t+'</div>';}
+  if(unnamed)h+='<div class="gnMeta"><span class="gnSolo">Solo</span> '+unnamed+' earlier game'+(unnamed===1?'':'s')+' with no name saved</div>';
+  h+='<div class="gnMeta" style="font-size:12px;opacity:.8">Solo games count as plays, not as wins over another player.</div>';
+  return h;};
 
 GN.statsButton=function(container,cfg){injectCSS();
   const b=document.createElement("button");b.className="gnBtn ghost";b.textContent="Stats";

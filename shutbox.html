@@ -67,7 +67,7 @@
 </div>
 <div class="ov" id="overlay"><div id="confetti"></div><div style="font-size:54px;">&#128230;</div><h1 id="ovTitle"></h1><p id="ovText"></p>
   <button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
-<script src="gamenight.js?v=13"></script>
+<script src="gamenight.js?v=14"></script>
 <script src="sfx.js?v=5"></script>
 <script>
 const KEY="sb_games";
@@ -167,7 +167,11 @@ function endRound(left){roundScore[turn]=left;GS.left[P[turn].name]+=left;
   const w=roundScore.A===roundScore.B?null:(roundScore.A<roundScore.B?"A":"B");
   finish(w,false);}
 function finish(w,shutout){phase="over";
-  if(solo){const left=roundScore.A;
+  if(solo){const left=roundScore.A,nm=P.A.name;
+    // solo games count for the stats, marked solo: a play, never a head-to-head win
+    GN.recordGame(KEY,{start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
+      solo:true,winner:null,draw:true,won:!!shutout,players:[nm],player:nm,remaining:left,
+      shutBox:shutout?nm:null,left:(function(){const s={};s[nm]=left;return s;})(),shut:GS.shut});
     document.getElementById("ovTitle").textContent=shutout?(P.A.name+" shut the box!"):"Round over";
     document.getElementById("ovText").textContent=shutout?"Every tile down: the perfect round.":(P.A.name+" left "+left+" on the lid. Lower is better. Go for zero!");
     if(shutout){const box=document.getElementById("confetti"),cols=[P.A.main,P.A.light,"#f4c542","#fff"];
@@ -201,7 +205,8 @@ GN.rulesButton(document.getElementById("foot"),{title:"Shut the Box",sections:[
  {h:"Strategy",t:"Spend BIG tiles early: they're the hardest to shed and the most expensive to be stuck with. Keep little tiles around for awkward rolls: a lone open 1 and 2 can absorb a 3.",
   ex:"Roll 8: taking the 8 keeps maximum flexibility; taking 5+3 keeps the dangerous 8 alive. Take the 8."},
  {h:"The round",t:"Both players take a full turn from the same fresh box; lower leftover total takes the round. A perfect shut-out ends it in glory, and the stats remember every box you shut."}]});
-GN.statsButton(document.getElementById("foot"),{title:"Shut the Box",key:KEY,specials:[
+GN.statsButton(document.getElementById("foot"),{title:"Shut the Box",key:KEY,soloWin:"shut",
+ soloBest:{label:"lowest left",of:l=>{const v=l.map(x=>x.remaining).filter(x=>typeof x==="number");return v.length?Math.min(...v):null;}},specials:[
  {label:"Boxes shut",of:(r,n)=>r.filter(x=>x.shutBox===n).length},
  {label:"Tiles flipped",of:(r,n)=>r.reduce((a,x)=>a+((x.shut&&x.shut[n])||0),0)},
  {label:"Coin flips won",of:(r,n)=>r.filter(x=>x.flipWinner===n).length}]});

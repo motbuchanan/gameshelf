@@ -65,7 +65,7 @@
 </div>
 <div class="ov" id="overlay"><div id="confetti"></div><div style="font-size:54px;">&#127942;</div><h1 id="ovTitle"></h1><p id="ovText" style="color:#cfe6d8;"></p>
   <button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
-<script src="gamenight.js?v=13"></script>
+<script src="gamenight.js?v=14"></script>
 <script src="sfx.js?v=5"></script>
 <script>
 const KEY="farkle_games",GOAL=5000,PIP={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
@@ -202,7 +202,11 @@ document.getElementById("newBtn").addEventListener("click",newGame);
 document.getElementById("ovBtn").addEventListener("click",newGame);
 
 function finish(w){phase="over";
-  if(solo){
+  if(solo){const nm=P.A.name;
+    // solo games count for the stats, marked solo: a play, never a head-to-head win
+    if(!GS.friendly)GN.recordGame(KEY,{start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
+      solo:true,winner:null,draw:true,players:[nm],player:nm,finalScore:total.A,
+      score:(function(){const s={};s[nm]=total.A;return s;})(),farkles:GS.farkles,hotDice:GS.hot,bestTurn:GS.best,goal:GOAL,openMin});
     document.getElementById("ovTitle").textContent=P.A.name+" hit "+GOAL+"!";
     document.getElementById("ovText").textContent="Final score "+total.A+(GS.best.pts?(", biggest turn: "+GS.best.pts):"");
     confettiBurst();S("fanfare");document.getElementById("overlay").classList.add("show");return;}
@@ -229,7 +233,8 @@ GN.rulesButton(document.getElementById("foot"),{title:"Farkle",sections:[
  {h:"The opening rule",t:"The Open/500 button picks your house rule: \u201cOpen\u201d lets anyone bank any amount; \u201c500\u201d means you can't bank your FIRST points of the game until a single turn reaches 500 - the classic high-pressure start."},
  {h:"Banking wisdom",t:"One or two dice left is the danger zone - roughly a coin flip to Farkle on two, worse on one. Banking 300 beats explaining how you lost 1,200.",
   ex:"Turn total 850 with two dice in hand. Bank it. Yes, even though hot dice would feel amazing. BANK it."}]});
-GN.statsButton(document.getElementById("foot"),{title:"Farkle",key:KEY,specials:[
+GN.statsButton(document.getElementById("foot"),{title:"Farkle",key:KEY,
+  soloBest:{label:"best score",of:l=>{const v=l.map(x=>x.finalScore||0);return v.length?Math.max(...v):null;}},specials:[
   {label:"Farkles",of:(recs,name)=>recs.reduce((a,r)=>a+((r.farkles&&r.farkles[name])||0),0)},
   {label:"Hot dice",of:(recs,name)=>recs.reduce((a,r)=>a+((r.hotDice&&r.hotDice[name])||0),0)}]});
 if(window.GNS)GNS.button(document.getElementById("foot"));

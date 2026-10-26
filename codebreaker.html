@@ -66,7 +66,7 @@
   <button class="act" id="cBtn">I'm ready</button></div>
 <div class="ov" id="overlay"><div id="confetti"></div><div style="font-size:54px;">&#128273;</div><h1 id="ovTitle"></h1><p id="ovText"></p>
   <button class="act" id="ovBtn">Play again</button><a href="index.html" style="font-size:14px;padding:9px 16px;border-radius:10px;border:1px solid #3a5a47;background:#15241b;color:#cfe6d8;text-decoration:none;">Back to shelf</a></div>
-<script src="gamenight.js?v=13"></script>
+<script src="gamenight.js?v=14"></script>
 <script src="sfx.js?v=5"></script>
 <script>
 const KEY="cb_games",SLOTS=4,MAXG=10;
@@ -168,7 +168,11 @@ function endRound(cracked){phase="over";render();
     if(round===1){round=2;setter=guesserOf();startRound();}
     else finishGame();},1400);}
 function finishGame(){
-  if(solo){const u=used.A,cracked=u<=MAXG;
+  if(solo){const u=used.A,cracked=u<=MAXG,nm=P.A.name;
+    // solo games count for the stats, marked solo: a play, never a head-to-head win
+    GN.recordGame(KEY,{start:GS.start,end:Date.now(),durationMs:Date.now()-GS.start,
+      solo:true,winner:null,draw:true,won:cracked,players:[nm],player:nm,guessesUsed:Math.min(u,MAXG),
+      guesses:(function(){const s={};s[nm]=u;return s;})(),cracked:(function(){const s={};s[nm]=cracked?1:0;return s;})()});
     document.getElementById("ovTitle").textContent=cracked?("Cracked in "+u+"!"):"The code held!";
     document.getElementById("ovText").textContent=cracked?(P.A.name+" broke it in "+u+" guess"+(u>1?"es":"")+"."):("Out of guesses: the secret code wins this time.");
     if(cracked){const box=document.getElementById("confetti"),cols=[P.A.main,P.A.light,"#f4c542","#fff"];
@@ -202,7 +206,8 @@ GN.rulesButton(document.getElementById("foot"),{title:"Codebreaker",sections:[
   ex:"Code R-Y-G-B, guess R-G-Y-Y: the R earns a black; G and Y are present but misplaced - two whites. The second Y earns nothing: clues never count a code peg twice."},
  {h:"Cracking it",t:"Early guesses should SPREAD colors to learn what's in the code; later guesses rearrange what you know. Every clue rules out thousands of codes - write nothing down, argue everything out loud."},
  {h:"The duel",t:"Both players set and both players guess - the cracker who needed fewer guesses takes the game. A code unbroken in 10 scores as 11 against you, so setters: be cruel."}]});
-GN.statsButton(document.getElementById("foot"),{title:"Code Breaker",key:KEY,specials:[
+GN.statsButton(document.getElementById("foot"),{title:"Code Breaker",key:KEY,soloWin:"cracked",
+ soloBest:{label:"best",of:l=>{const g=l.filter(x=>x.won===true).map(x=>x.guessesUsed||10);if(!g.length)return null;const m=Math.min(...g);return m+(m===1?" guess":" guesses");}},specials:[
  {label:"Codes cracked",of:(r,n)=>r.reduce((a,x)=>a+((x.cracked&&x.cracked[n])||0),0)},
  {label:"Best crack (guesses)",of:(r,n)=>{const w=r.filter(x=>x.guesses&&x.guesses[n]&&x.guesses[n]<=10);return w.length?Math.min(...w.map(x=>x.guesses[n])):0;}},
  {label:"Coin flips won",of:(r,n)=>r.filter(x=>x.flipWinner===n).length}]});
