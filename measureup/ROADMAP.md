@@ -5,10 +5,17 @@ uploaded against what the last chat thought it shipped. Full build notes stay in
 (in the NOTES zip, never uploaded).
 
 ## Current
-- **v1.59 · Oct 26 2026** (sw cache `measureup-v1-59b`). Contains v1.51 through v1.58. Live URL: https://motbuchanan.github.io/gameshelf/measureup/
+- **v1.60 · Oct 27 2026** (sw cache `measureup-v1-60`). Contains v1.51 through v1.59. Live URL: https://motbuchanan.github.io/gameshelf/measureup/
 - Files in the repo folder: `index.html`, `sw.js`, `manifest.json`, `ROADMAP.md` (this file, new in v1.51).
 
 ## What shipped lately
+- **v1.60 History + Money (Oct 27).** HISTORY is a real subject now (its own level and strand; the Soundcheck places it):
+  long ago vs today, timelines, years between and years ago, decades, centuries, Ohio history. Luna's City Museum gets two
+  tabs: TIME DETECTIVE (Mumbles mixes up four inventions; put them in order, then the year math) and the OHIO HISTORY TRAIL
+  (10 stops from Serpent Mound to the Rock Hall, a passport stamp each, the Ohio Trail Passport keepsake for all 10).
+  MONEY & LIFE SKILLS: SHOP, a new robot ability (set the price and profit, make change, count the day's profit), Shop jobs
+  on the Ai Co. Job Board (from the day after the update), 3 Shop parts at the Invention Bench, and WRITE THE BILL after
+  every Ai Co. job (supplies + hours x rate; the change at higher Money levels; +5 coin tip when right).
 - **v1.59 Fit pass (Oct 26), from the Oct 25 Game Shelf repair round.** Text fits from 320px phones to tablets, portrait
   and landscape: the Garage top bar, the hero cards (Robot Workshop with Ada and Beep, Daily Squawk, Word Lab) and the Bot
   Garage banners now wrap. Checked with site/tools/fitcheck.py plus a 36-screen sweep using its measuring code at six sizes.
@@ -84,10 +91,10 @@ uploaded against what the last chat thought it shipped. Full build notes stay in
 - One fixed plot of land, camera-driven; no pointer capture; three currencies; crash-proof art; the red error box stays.
 
 ## Open queue (in order)
-1. Deploy v1.58 (includes v1.51-v1.57). Device check: both news cards, the Candy Bank numbers (fix the all-time total
-   in Grown-ups if the estimate is off), install Dishes + Clean Up, one Ai Co. job end to end.
-2. Halloween night (Oct 31): Count Your Haul with the real bag; Grand Finals + Monster Bash open by themselves.
-3. Grown-ups report in about a week: Rows & Columns, Line Plots, Mean & Median, Coordinates, Area should move.
-4. Device check for v1.58: one Daily Squawk desk, Robot Chapter 6 level 1 with his robot, one Word Lab round.
-5. v1.59 LIFE SKILLS: History wing, Money & Life skills (Ai Co. pricing jobs, a robot Shop ability).
-6. Tuning after play: Pro proof forceL bands, Pro Soundcheck batch size (11) and maxQ (4), tier toast, To-Do row set.
+1. Deploy v1.60 (includes v1.59). Device check on the iPad: one Time Detective case, the first Ohio Trail stop, one Shop
+   day, one Ai Co. job through its bill. Plus v1.58: one Daily Squawk desk, Robot Chapter 6 level 1, one Word Lab round.
+   Check the Candy Bank all-time total in Grown-ups.
+2. Halloween night (Oct 31): Count Your Haul with the real bag; his 10% real-candy payout comes off the Candy Bank total.
+3. Grown-ups report in about a week: see what moved and what he caps; whatever he caps next gets extended next.
+4. Next build ideas: Savings goals and Better Buy at the Bank; Grammar and History Pro bands (13-20) once he caps 12.
+5. Tuning after play: Pro proof forceL bands, Pro Soundcheck batch size (11) and maxQ (4), tier toast, To-Do row set.

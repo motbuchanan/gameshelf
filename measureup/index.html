@@ -928,14 +928,14 @@ svg .charg{will-change:transform}
 <div id="toast"></div>
 <button id="homeBtn" onclick="goHome()" aria-label="Back to Garage">🏠</button>
 <button id="ellyBtn" onclick="openEllyHelp()" aria-label="Ask Elly for help"></button>
-<div id="vbadge">v1.59 · Oct 26</div>
+<div id="vbadge">v1.60 · Oct 27</div>
 
 <script>
 'use strict';
 /* ============ UTILS ============ */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const VERSION='v1.59 · Oct 26';
+const VERSION='v1.60 · Oct 27';
 const RM=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -19552,6 +19552,7 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
     {id:'cs',   n:'Coding & Logic', e:'🤖', base:2, c:['code']}, /* v1.50: QG.code is registered by the Robot Workshop block */
     {id:'sci',  n:'Science', e:'🔬', base:2, c:['sci','space']}, /* v1.52: QG.sci (Science Lab block); v1.54: QG.space (Starlight Dome) */
     {id:'wd',   n:'Words & Grammar', e:'📝', base:2, c:['gram']}, /* v1.58: QG.gram (The Daily Squawk) */
+    {id:'ss',   n:'History', e:'📜', base:2, c:['hist']}, /* v1.60: QG.hist (the City Museum) */
     {id:'mu',   n:'Music', e:'🎵', base:2, c:['conduct']}
   ];
   /* any concept registered later lands in a catch-all strand */
@@ -24979,12 +24980,15 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
     {id:'n2',who:'honey',need:['lift','paint'],t:'Move my heavy beehives out of the way, then paint the greenhouse floor.'},
     {id:'a2',who:'ada',need:['clean','dishes'],t:'The Robot Workshop kitchen is a disaster: parts everywhere AND dirty mugs.'},
     {id:'g2',who:'gus',need:['dig','lift'],t:'Dig up my old garden stones, then carry them to the new path.'}];
+  /* v1.60: later blocks add abilities, jobs and ideas (Shop) through this */
+  window.__aicoHook={ABIL:ABIL,START:START,JOBS:JOBS,JOBS2:JOBS2,IDEAS:null};
   var LV=[{at:0,nm:'Startup'},{at:3,nm:'Garage Helpers'},{at:10,nm:'Neighborhood Favorite'},{at:25,nm:'Town-Wide'},{at:50,nm:'Legendary'}];
   function coLvl(){ var j=V().co.jobs, l=0; LV.forEach(function(x,i){ if(j>=x.at)l=i; }); return l; }
   var IDEAS={lift:['Bigger wheels for heavy loads','A built-in scale on its arms','A trailer to carry more in one trip'],dishes:['A dish rack built into its back','Bubble jets on its fingers','A timer screen on its chest'],clean:['A label maker for the bins','A bigger grabber claw','A camera that knows what things are'],paint:['A paint sprayer for big walls','A tape dispenser arm','A tank that holds more paint'],cook:['A tiny oven in its tummy','A recipe screen','Oven mitts for its claws'],dig:['A metal detector','A drill instead of a shovel','A map screen with grid lines']};
+  window.__aicoHook.IDEAS=IDEAS;
   function hsh(s){ var h=2166136261; s=String(s); for(var i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619); } return h>>>0; }
   function board(){ var v=V(), b=v.board, d=dk(); if(b.day!==d){ b.day=d; b.done={}; b.extra=0; b.cur=null; sv(); }
-    var pool=JOBS.slice(), two=v.co.jobs>=5?JOBS2.slice():[], h=hsh('aico'+d), out=[];
+    var pool=JOBS.filter(function(j){ return !(j.later&&j.later()); }), two=v.co.jobs>=5?JOBS2.filter(function(j){ return !(j.later&&j.later()); }):[], h=hsh('aico'+d), out=[];
     var order=pool.map(function(j,i){ return {j:j,k:hsh(j.id+d)}; }).sort(function(a,b){ return a.k-b.k; }).map(function(x){ return x.j; });
     out.push(order[0],order[1]); if(two.length)out.push(two[h%two.length]); else out.push(order[2]);
     for(var e=0;e<b.extra;e++)out.push(order[3+e]||pool[e%pool.length]);
@@ -25007,6 +25011,7 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
       +'<button class="btn wide ghost" onclick="'+cb(function(){ closeModal(); botHub(); })+'">Back to the garage</button>'); }
   function jobOpen(j,key){ tap(); if(!CUR||CUR.key!==key)CUR={job:j,key:key,tries:0,picked:[],done:{},stage:'pick'};
     if(CUR.stage==='review'){ review(); return; }
+    if(CUR.stage==='bill'&&typeof window.AICO_BILL==='function'){ billNow(); return; }
     if(CUR.stage==='work'){ var next=j.need.filter(function(k){ return !CUR.done[k]; })[0]; if(next){ try{ closeModal(); }catch(e){} START[next](); return; } }
     var c=cust(j.who), two=j.need.length>1;
     modal('<div class="center">'+c.art+'<h2 style="margin:2px 0">'+esc(c.nm)+' needs help</h2></div><div class="speak" style="text-align:left">“'+esc(j.t)+'”</div>'
@@ -25028,7 +25033,10 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
   (window.BOT_ON=window.BOT_ON||[]).push(function(kind){ if(!CUR||CUR.stage!=='work')return; var j=CUR.job; if(j.need.indexOf(kind)<0||CUR.done[kind])return; CUR.done[kind]=1;
     var next=j.need.filter(function(k){ return !CUR.done[k]; })[0];
     if(next)whenFree(function(){ if(!CUR||CUR.job!==j)return; var c=cust(j.who); modal('<div class="center">'+c.art+'<h2 style="margin:2px 0">Part 1 done!</h2></div><div class="speak"><b>'+esc(c.nm)+':</b> “Great start! Now the '+esc(ABIL[next].nm.toLowerCase())+' part.”</div><button class="btn wide" onclick="'+cb(function(){ closeModal(); START[next](); })+'">Part 2: '+ABIL[next].ic+' '+ABIL[next].nm+'</button><button class="btn wide ghost small" onclick="closeModal()">Later (it stays on the board)</button>'); });
+    else if(typeof window.AICO_BILL==='function'){ CUR.stage='bill'; whenFree(billNow); }
     else { CUR.stage='review'; whenFree(review); } });
+  /* v1.60: write the bill (parts + labor) before the customer review */
+  function billNow(){ if(!CUR||CUR.stage!=='bill')return; var my=CUR; if(my.billed){ my.stage='review'; review(); return; } try{ window.AICO_BILL(my.job,cust(my.job.who),function(){ if(CUR!==my)return; CUR.stage='review'; review(); },my); }catch(e){ CUR.stage='review'; review(); } }
   function review(){ if(!CUR||CUR.stage!=='review')return; var j=CUR.job, c=cust(j.who), stars=CUR.right?3:2;
     modal('<div class="center">'+c.art+'<h2 style="margin:2px 0">Step 4. Did it work?</h2><div style="font-size:30px;color:#ffd158">'+'★'.repeat(stars)+'<span style="color:#3a2f6e">'+'★'.repeat(3-stars)+'</span></div></div><div class="speak"><b>'+esc(c.nm)+':</b> “'+(stars===3?'Perfect! You knew exactly what I needed.':'It worked! Next time, read the problem one more time before you pick.')+' Ai Co. is my favorite company.”</div>'
       +'<div class="card" style="text-align:left"><b>Step 5. Make it better</b><div class="sub" style="margin:2px 0 6px;text-align:left">Inventors always ask: how could my robot do this job even better next time? Pick an idea for the Idea Notebook.</div>'
@@ -25258,6 +25266,8 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
   var ABIL_NM={dig:'Dig',cook:'Cook',paint:'Paint',lift:'Lift',dishes:'Dishes',clean:'Clean Up'};
   function has(id){ var v=V(); return !!v.parts[id]; }
   window.__v57has=has;
+  /* v1.60: later abilities add their parts (texts must match their Idea Notebook ideas) */
+  var PART_ART={}; window.__v57addPart=function(p,abil,art){ if(BYID[p.id])return; PARTS.push(p); BYT[p.t]=p; BYID[p.id]=p; if(abil)ABIL_NM[p.k]=abil; if(art)PART_ART[p.id]=art; };
   /* the notebook's ideas, de-duplicated: built-in ones map to PARTS, typed ones become custom parts */
   function ideas(){ var out=[], seen={}; (W56.V().co.ideas||[]).slice().reverse().forEach(function(x){ var p=BYT[x.t], id=p?p.id:'c_'+hsh(x.t); if(seen[id])return; seen[id]=1;
       out.push(p?{id:id,k:p.k,nm:p.nm,t:p.t,eff:p.eff,does:p.does,pc:p.pc,custom:false}:{id:id,k:x.k,nm:x.t,t:x.t,eff:'custom',does:'Your own invention! Any robot job pays +1 coin, and '+bname()+' wears your gold gear badge.',pc:'gears',custom:true}); }); return out; }
@@ -25291,6 +25301,7 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
       case 'drill': return '<path d="M18 73 L10 85 L14 87 Z" fill="#c0c8d8" stroke="#8f97a8" stroke-width="1"/><path d="M12 82 L15 83 M14 79 L16.5 80.5" stroke="#6a6578" stroke-width="1"/>';
       case 'mapscr': return '<rect x="80" y="60" width="12" height="10" rx="1.5" fill="#1d1636" stroke="#46c46a" stroke-width="1"/><path d="M84 60 V70 M88 60 V70 M80 63.3 H92 M80 66.6 H92" stroke="#46c46a" stroke-width=".6"/><circle cx="86" cy="65" r="1.2" fill="#ff5d5d"/>';
     }
+    if(PART_ART[id]&&layer!=='back')return PART_ART[id];
     if(/^c_/.test(id))return '<g transform="translate(30 51)"><circle r="5.5" fill="#ffd158" stroke="#c9a24c" stroke-width="1"/><path d="M0 -8 V-5 M0 5 V8 M-8 0 H-5 M5 0 H8 M-5.6 -5.6 L-3.6 -3.6 M3.6 3.6 L5.6 5.6 M-5.6 5.6 L-3.6 3.6 M3.6 -3.6 L5.6 -5.6" stroke="#c9a24c" stroke-width="2"/><circle r="1.8" fill="#1d1636"/></g>';
     return ''; }
   var HAND=['claw','drill','detector','mitts','scale','recipe','label','sprayer','jets','mapscr'], LEFT=['claw','drill','detector'];
@@ -26033,6 +26044,362 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
     +'.wow-top{flex-wrap:wrap;row-gap:6px}.wow-top .wow-score{min-width:0;overflow-wrap:anywhere}'
     +'.hw-row .tx{min-width:0;overflow-wrap:anywhere}@media (max-width:380px){.hw-row{flex-wrap:wrap}.hw-row .tx{flex:1 1 150px}}';
   document.head.appendChild(st);
+})();
+</script>
+<script>
+/* ================= v1.60 · LIFE SKILLS: HISTORY + MONEY (Oct 27 2026) =================
+   Mot: "I like it. Let's keep going" (the plan: a History wing and Money & Life skills).
+     1. HISTORY is a real concept ('hist', its own History strand), so the Soundcheck places it and checkups revisit it.
+        QG.hist grows from long ago vs today, through years between and years ago, decades and centuries, Ohio history,
+        to timeline estimates (Ohio Social Studies gr 2-4: chronology, timelines, Ohio history, inventions and change).
+        Luna's City Museum gets two new tabs:
+          - TIME DETECTIVE (host Mumbles, the museum curator): four inventions from the museum basement, put them in order
+            oldest to newest, then two year-math questions. Generated from 18 inventions with well-known years.
+          - OHIO HISTORY TRAIL (host Luna): 10 stops from Serpent Mound to the Rock Hall. Each teaches, then asks one
+            question; a right answer stamps the Ohio Passport. All 10 = the Ohio Passport keepsake.
+     2. MONEY & LIFE SKILLS on top of the robot and Ai Co.:
+          - SHOP, a new robot ability (cash drawer): run a stand. Price and profit, make change, count the day.
+          - Ai Co. WRITE THE BILL: after every Ai Co. job, add parts and labor into a bill before the customer review.
+          - Shop jobs on the Job Board, 3 Shop ideas that become Invention Bench parts.
+   Every new thing: MU_NEWS card (seen160), G guides, a teach card before first use, To-Do rows, Grown-Ups card.
+   State: S.v60. Debug: window.__v60. No em dashes, no Unicode 13+ emoji, literal hex in SVG attributes. */
+(function(){
+  if(typeof document==='undefined')return;
+  if(typeof QG==='undefined'||typeof CONCEPT_NAMES==='undefined'||typeof S==='undefined')return;
+  try{ DEF.flags.seen160=false; }catch(e){}
+  var ART=window.TOWN_ART||{}, BYID=window.TOWN_BYID||{}, ITEMS=window.TOWN_ITEMS||[];
+  var W54=window.__v54, W56=window.__v56;
+
+  /* ---------- helpers ---------- */
+  function dk(d){ d=d||new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
+  function yr(){ return new Date().getFullYear(); }
+  function sv(){ try{ if(typeof save==='function')save(); }catch(e){} }
+  function tap(){ try{ if(typeof sTap==='function')sTap(); }catch(e){} }
+  function tst(m){ try{ if(typeof toast==='function')toast(m); }catch(e){} }
+  function good(){ try{ sCorrect(1); }catch(e){} }
+  function bad(){ try{ sWrong(); }catch(e){} }
+  function party(n){ try{ confetti(n||30); }catch(e){} }
+  function fan(){ try{ sFanfare(); }catch(e){} }
+  function notes(n){ try{ addNotes(n); }catch(e){} }
+  function coins(n){ try{ if(window.addCoins)window.addCoins(n); }catch(e){} }
+  function packs(n,why){ try{ if(window.__cc&&__cc.addPacks)__cc.addPacks(n,why); }catch(e){} }
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function modalOn(){ var m=document.getElementById('modal'); return !!(m&&m.classList.contains('on')); }
+  function adj(c,ok){ try{ if(c&&CONCEPT_NAMES[c]&&typeof adjust==='function')adjust(c,!!ok,false,false); }catch(e){} }
+  function L(c){ try{ return Math.max(1,Math.floor(lvlOf(c))); }catch(e){ return 1; } }
+  function R(a,b){ return a+Math.floor(Math.random()*(b-a+1)); }
+  function pk(a){ return a[Math.floor(Math.random()*a.length)]; }
+  function shuf(a){ a=a.slice(); for(var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=a[i]; a[i]=a[j]; a[j]=t; } return a; }
+  function uniq4(ans,wrongs){ var out=[String(ans)]; wrongs.forEach(function(w){ w=String(w); if(out.length<4&&out.indexOf(w)<0&&w&&!/NaN|undefined|Infinity|^-/.test(w))out.push(w); }); return shuf(out); }
+  function numCh(a,cands){ return uniq4(a,cands.filter(function(x){ return x>0&&x!==a; })); }
+  var CB=[]; function cb(fn){ CB.push(fn); if(CB.length>3000)CB=CB.slice(-1500); return '__v60cb('+(CB.length-1)+')'; }
+  window.__v60cb=function(i){ try{ var f=CB[i]; if(f)f(); }catch(e){ try{ __muErr('v160',e); }catch(_){} } };
+  function fr(id,n){ try{ if(typeof frAdd==='function')frAdd(id,n); }catch(e){} }
+  function busyNow(){ try{ if(modalOn())return true; var sc=document.querySelector('.scr.on'); if(sc&&sc.id==='scr-quiz')return true; if(window.__pl&&__pl.run&&__pl.run())return true; }catch(e){} return false; }
+  function whenFree(fn,first){ setTimeout(function go(){ if(busyNow()){ setTimeout(go,2000); return; } try{ fn(); }catch(e){} },first==null?1300:first); }
+  function who(id,sz){ try{ if(id==='luna'&&typeof memberSVG==='function')return memberSVG('luna',sz); var s=citSvg(id,sz); if(s)return s; }catch(e){} return '<span style="font-size:'+Math.round(sz*.6)+'px">'+(id==='mumbles'?'🏺':'📜')+'</span>'; }
+  function teachList(lines){ return '<div class="card" style="text-align:left">'+lines.map(function(x,i){ return '<div style="display:flex;gap:10px;align-items:flex-start;padding:6px 0;'+(i?'border-top:1px solid #2b2350':'')+'"><b style="flex:none;width:24px;height:24px;border-radius:50%;background:#ffd158;color:#1d1636;display:flex;align-items:center;justify-content:center">'+(i+1)+'</b><span style="font-size:15px;line-height:1.35;text-align:left">'+x+'</span></div>'; }).join('')+'</div>'; }
+
+  /* ---------- state ---------- */
+  function V(){ if(!S.v60||typeof S.v60!=='object')S.v60={}; var v=S.v60;
+    if(!v.det||typeof v.det!=='object')v.det={}; ['rounds','right','total','paid'].forEach(function(k){ if(typeof v.det[k]!=='number')v.det[k]=0; }); if(typeof v.det.day!=='string')v.det.day='';
+    if(!v.oh||typeof v.oh!=='object')v.oh={}; if(!v.oh.st||typeof v.oh.st!=='object')v.oh.st={}; if(typeof v.oh.done!=='string')v.oh.done='';
+    if(!v.shop||typeof v.shop!=='object')v.shop={}; ['runs','right','total','profit'].forEach(function(k){ if(typeof v.shop[k]!=='number')v.shop[k]=0; }); if(typeof v.shop.day!=='string')v.shop.day=''; if(!v.shop.items||typeof v.shop.items!=='object')v.shop.items={};
+    if(!v.bill||typeof v.bill!=='object')v.bill={}; ['n','right'].forEach(function(k){ if(typeof v.bill[k]!=='number')v.bill[k]=0; });
+    if(typeof v.since!=='string')v.since=dk();
+    if(!v.seen||typeof v.seen!=='object')v.seen={};
+    return v; }
+  (function(){ if(typeof load==='function'){ var _l=load; window.load=load=function(){ var r=_l.apply(this,arguments); try{ V(); }catch(e){} return r; }; } })();
+  try{ V(); }catch(e){}
+
+  /* ---------- HISTORY is a real concept ---------- */
+  try{ if(!CONCEPT_NAMES.hist)CONCEPT_NAMES.hist='History'; if(DEF&&DEF.skills&&!DEF.skills.hist)DEF.skills.hist=1; if(S.skills&&!S.skills.hist)S.skills.hist=1; }catch(e){}
+
+  /* inventions with well-known years (Time Detective + QG.hist) */
+  var INV=[
+   {id:'press',nm:'printing press',ic:'📜',y:1440,about:true,note:'Johannes Gutenberg’s press printed books fast for the first time.'},
+   {id:'scope',nm:'telescope',ic:'🔭',y:1608,note:'The first telescopes were made in the Netherlands.'},
+   {id:'train',nm:'steam train',ic:'🚂',y:1804,note:'The first steam locomotive pulled wagons on rails in Wales.'},
+   {id:'photo',nm:'photograph',ic:'📷',y:1826,note:'The first photo took about eight hours to make.'},
+   {id:'type',nm:'typewriter',ic:'⌨️',y:1868,note:'Typewriters let people print letters at home.'},
+   {id:'phone',nm:'telephone',ic:'☎️',y:1876,note:'Alexander Graham Bell made the first phone call.'},
+   {id:'phono',nm:'phonograph (record player)',ic:'🎶',y:1877,note:'Thomas Edison, born in Milan, Ohio, built the first machine that could record sound AND play it back.'},
+   {id:'bulb',nm:'light bulb',ic:'💡',y:1879,note:'Edison’s light bulb glowed for many hours.'},
+   {id:'bike',nm:'bicycle with a chain',ic:'🚲',y:1885,note:'The safety bicycle had two same-size wheels and a chain, like bikes today.'},
+   {id:'plane',nm:'airplane',ic:'✈️',y:1903,note:'The Wright brothers from Dayton, Ohio, flew it for 12 seconds.'},
+   {id:'car',nm:'Model T car',ic:'🚗',y:1908,note:'Henry Ford’s Model T was the first car many families could buy.'},
+   {id:'zip',nm:'zipper',ic:'🧥',y:1913,note:'Before zippers, coats closed with buttons and hooks.'},
+   {id:'tv',nm:'television',ic:'📺',y:1927,note:'The first TV pictures were tiny, blurry and black and white.'},
+   {id:'game',nm:'home video game',ic:'🎮',y:1972,note:'The first home game console plugged into a TV.'},
+   {id:'pc',nm:'home computer',ic:'💻',y:1977,note:'Computers small enough for a desk at home went on sale.'},
+   {id:'cd',nm:'music CD',ic:'💿',y:1982,note:'A shiny disc that held a whole album.'},
+   {id:'web',nm:'World Wide Web',ic:'🌐',y:1989,note:'Web pages and links were invented so anyone could share information.'},
+   {id:'smart',nm:'touchscreen smartphone',ic:'📱',y:2007,note:'One glass screen for a phone, a camera, music and the web, in one pocket.'}];
+  var INVBY={}; INV.forEach(function(i){ INVBY[i.id]=i; });
+  function yTxt(i){ return (i.about?'about ':'')+i.y; }
+  var OLD=['a candle lantern','a horse and buggy','a quill pen and ink','a butter churn','a washboard for laundry','a spinning wheel'], NEW=['a smartphone','a microwave oven','a video game','an electric car','a tablet','a laptop'];
+  /* the Ohio History Trail */
+  var OH=[
+   {id:'river',why:'Ohio is an Iroquois word for GREAT RIVER, after the Ohio River.',t:'The Great River',y:null,when:'long, long ago',teach:'Ohio got its name from an Iroquois word that means GREAT RIVER. The Ohio River runs along the whole bottom edge of the state.',q:'Ohio’s name comes from a word that means...',opts:['great river','big lake','buckeye tree','sunny hills'],a:'great river'},
+   {id:'mound',why:'Serpent Mound is a giant earth snake, more than 1,300 feet long.',t:'Serpent Mound',y:null,when:'more than 900 years ago',teach:'Long before Ohio was a state, Native American people built Serpent Mound: an earth hill shaped like a giant snake, more than 1,300 feet long. You can still walk around it today.',q:'Serpent Mound is shaped like a...',opts:['snake','bird','turtle','bear'],a:'snake'},
+   {id:'state',why:'Ohio became the 17th state on March 1, 1803.',t:'The 17th State',y:1803,when:'1803',teach:'On March 1, 1803, Ohio became the 17th state in the United States. Its capital has been Columbus since 1816.',q:'Ohio became a state in...',opts:['1803','1776','1903','1850'],a:'1803'},
+   {id:'canal',why:'The Ohio and Erie Canal ran from Lake Erie to the Ohio River, right through Akron.',t:'The Ohio and Erie Canal',y:1832,when:'1832',teach:'Workers dug a canal by hand from Lake Erie at Cleveland all the way to the Ohio River. It opened in 1832 and ran right through Akron. Mules on the towpath pulled the boats.',q:'The canal connected Lake Erie to the...',opts:['Ohio River','Atlantic Ocean','Grand Canyon','Gulf of Mexico'],a:'Ohio River'},
+   {id:'ugrr',why:'It was a secret chain of safe houses and helpers, not a real train.',t:'The Underground Railroad',y:null,when:'before the Civil War',teach:'Before the Civil War, brave Ohioans like the Rankin family in Ripley helped people escaping slavery travel north to freedom. It was not a real railroad: it was a secret chain of safe houses and helpers.',q:'The Underground Railroad was...',opts:['a secret chain of safe houses and helpers','a train that ran under the ground','a subway in Cleveland','a railroad for mail'],a:'a secret chain of safe houses and helpers'},
+   {id:'edison',why:'Thomas Edison was born in Milan, Ohio, in 1847.',t:'Thomas Edison',y:1847,when:'born 1847',teach:'Thomas Edison was born in Milan, Ohio, in 1847. He invented the phonograph, the first machine that could record sound and play it back, and a light bulb that glowed for hours.',q:'Thomas Edison was born in...',opts:['Milan, Ohio','Paris, France','New York City','Dayton, Ohio'],a:'Milan, Ohio'},
+   {id:'rubber',why:'Akron made so many TIRES that it was called the Rubber Capital of the World.',t:'The Rubber City',y:1898,when:'1898',teach:'Goodyear started in Akron in 1898. Akron made so many tires, for cars, bikes and even giant airships, that it was called the Rubber Capital of the World.',q:'Akron was called the Rubber Capital because it made...',opts:['tires','candy','cars','trains'],a:'tires'},
+   {id:'wright',why:'The Wright brothers ran a bicycle shop in Dayton before they flew.',t:'First Flight',y:1903,when:'1903',teach:'Wilbur and Orville Wright ran a bicycle shop in Dayton, Ohio. In 1903 they flew the first airplane for 12 seconds. Ohio license plates still say Birthplace of Aviation.',q:'Before airplanes, the Wright brothers fixed...',opts:['bicycles','cars','clocks','boats'],a:'bicycles'},
+   {id:'space',why:'Neil Armstrong, the first person on the Moon, was from Wapakoneta, Ohio.',t:'Ohio in Space',y:1969,when:'1962 and 1969',teach:'John Glenn from New Concord, Ohio, was the first American to circle the Earth in space, in 1962. Neil Armstrong from Wapakoneta, Ohio, was the first person to walk on the Moon, in 1969.',q:'The first person to walk on the Moon was from...',opts:['Ohio','Florida','Texas','California'],a:'Ohio'},
+   {id:'rock',why:'The Rock and Roll Hall of Fame opened in Cleveland in 1995.',t:'Rock and Roll',y:1995,when:'1995',teach:'The Rock and Roll Hall of Fame opened in Cleveland in 1995. A Cleveland radio DJ helped make the words "rock and roll" famous in the 1950s.',q:'The Rock and Roll Hall of Fame is in...',opts:['Cleveland','Akron','Columbus','Toledo'],a:'Cleveland'}];
+  var OHBY={}; OH.forEach(function(o){ OHBY[o.id]=o; });
+  function ohN(){ var st=V().oh.st; return OH.filter(function(o){ return st[o.id]; }).length; }
+  function ohNext(){ var st=V().oh.st; for(var i=0;i<OH.length;i++)if(!st[OH[i].id])return i; return OH.length; }
+
+  /* ---------- QG.hist ---------- */
+  function ord(n){ var s=['th','st','nd','rd'], v=n%100; return n+(s[(v-20)%10]||s[v]||s[0]); }
+  function century(y){ return Math.floor((y-1)/100)+1; }
+  function longAgoQ(){ var o=pk(OLD); return {q:'Which one is from LONG AGO?',choices:shuf([o].concat(shuf(NEW).slice(0,3))),a:o,why:'Long ago, people used '+o+'. The others are modern things.'}; }
+  function firstQ(n,gap,showY){ for(var g=0;g<60;g++){ var s=shuf(INV).slice(0,n); var ys=s.map(function(i){ return i.y; }).sort(function(a,b){ return a-b; }); var okGap=true; for(var k=1;k<ys.length;k++)if(ys[k]-ys[k-1]<gap)okGap=false; if(!okGap)continue;
+      var f=s.slice().sort(function(a,b){ return a.y-b.y; })[0]; var lb=function(i){ return 'the '+i.nm+(showY?' ('+yTxt(i)+')':''); }; return {q:'Which came FIRST?'+(showY?' Look at the years: the smallest year is the oldest.':''),choices:shuf(s.map(lb)),a:lb(f),why:'The '+f.nm+' came first ('+yTxt(f)+'). '+s.filter(function(i){ return i!==f; }).sort(function(a,b){ return a.y-b.y; }).map(function(i){ return 'The '+i.nm+': '+i.y; }).join('. ')+'.'}; }
+    return longAgoQ(); }
+  function agoQ(){ var i=pk(INV.filter(function(x){ return !x.about&&x.y>=1800; })), a=yr()-i.y; return {q:'The '+i.nm+' was invented in '+i.y+'. How many years ago was that?',choices:numCh(a,[a+10,a-10,a+1,a-1,a+100]),a:String(a),why:yr()+' minus '+i.y+' is '+a+' years.'}; }
+  function betweenQ(){ for(var g=0;g<40;g++){ var p=shuf(INV.filter(function(x){ return !x.about; })).slice(0,2).sort(function(a,b){ return a.y-b.y; }); var d=p[1].y-p[0].y; if(d<5)continue;
+      return {q:'The '+p[0].nm+' came in '+p[0].y+'. The '+p[1].nm+' came in '+p[1].y+'. How many years apart?',choices:numCh(d,[d+10,d-10,d+1,d-1,d+100]),a:String(d),why:p[1].y+' minus '+p[0].y+' is '+d+'.'}; } return agoQ(); }
+  function decadeQ(){ var y=R(1901,2019); if(y%10===0)y++; var dd=Math.floor(y/10)*10; return {q:'The year '+y+' is in which decade?',choices:uniq4(dd+'s',[(dd-10)+'s',(dd+10)+'s',(Math.floor(y/100)*100)+'s',(dd+20)+'s']),a:dd+'s',why:'A decade is 10 years. '+y+' is between '+dd+' and '+(dd+9)+', so it is in the '+dd+'s.'}; }
+  function centuryQ(){ var i=pk(INV.filter(function(x){ return x.y%100!==0; }).concat([{nm:'United States',y:1776}])), c=century(i.y); var ans=ord(c)+' century';
+    return {q:(i.nm==='United States'?'The United States became a country in 1776.':'The '+i.nm+' came in '+yTxt(i)+'.')+' Which century is that?',choices:uniq4(ans,[ord(c-1)+' century',ord(c+1)+' century',ord(c+2)+' century',ord(c-2)+' century']),a:ans,why:'Years '+((c-1)*100+1)+' to '+(c*100)+' are the '+ord(c)+' century. The century number is one MORE than the first two digits.'}; }
+  function ohioQ(){ var o=pk(OH); return {q:o.q,choices:shuf(o.opts.slice()),a:o.a,why:o.why||(o.teach.split('. ')[0]+'.')}; }
+  function ohioYearQ(){ var o=pk(OH.filter(function(x){ return x.y; })), a=yr()-o.y; var lab={state:'Ohio became a state in 1803',canal:'The Ohio and Erie Canal opened in 1832',edison:'Thomas Edison was born in 1847',rubber:'Goodyear started in Akron in 1898',wright:'The Wright brothers flew in 1903',space:'Neil Armstrong walked on the Moon in 1969',rock:'The Rock Hall opened in 1995'}[o.id];
+    return {q:lab+'. How many years ago was that?',choices:numCh(a,[a+10,a-10,a+1,a-1,a+100]),a:String(a),why:yr()+' minus '+o.y+' is '+a+'.'}; }
+  function aboutQ(){ var p=shuf(INV).slice(0,2).sort(function(a,b){ return a.y-b.y; }); var d=p[1].y-p[0].y; if(d<150)return betweenQ(); var r=Math.round(d/100)*100;
+    return {q:'ABOUT how many years between the '+p[0].nm+' ('+yTxt(p[0])+') and the '+p[1].nm+' ('+p[1].y+')? Round to the nearest hundred.',choices:numCh(r,[r+100,r-100,r+200,Math.round(r/10)]),a:String(r),why:p[1].y+' minus '+p[0].y+' is '+d+', which rounds to '+r+'.'}; }
+  function histQ(Lv){ Lv=Math.max(1,Math.floor(Lv||1));
+    if(Lv<=2)return Math.random()<.6?longAgoQ():firstQ(3,50,true);
+    if(Lv<=4)return pk([function(){ return firstQ(3,25); },longAgoQ,ohioQ])();
+    if(Lv<=6)return pk([agoQ,betweenQ,decadeQ,ohioQ])();
+    if(Lv<=8)return pk([centuryQ,betweenQ,ohioYearQ,function(){ return firstQ(4,8); }])();
+    if(Lv<=10)return pk([centuryQ,ohioYearQ,betweenQ,decadeQ])();
+    return pk([aboutQ,centuryQ,betweenQ,ohioYearQ])(); }
+  try{ if(typeof QG.hist!=='function')QG.hist=function(Lv){ return histQ(Lv); }; }catch(e){}
+
+  /* ---------- TIME DETECTIVE (Mumbles) ---------- */
+  var TD=null;
+  function detMake(){ var lv=L('hist'), gap=lv<4?40:lv<8?15:5, set=null;
+    for(var g=0;g<80&&!set;g++){ var s=shuf(INV).slice(0,4), ys=s.map(function(i){ return i.y; }).sort(function(a,b){ return a-b; }), ok=true; for(var k=1;k<4;k++)if(ys[k]-ys[k-1]<gap)ok=false; if(ok)set=s; }
+    set=set||[INVBY.press,INVBY.photo,INVBY.plane,INVBY.smart];
+    var order=set.slice().sort(function(a,b){ return a.y-b.y; }), exact=order.filter(function(i){ return !i.about; });
+    var qs=[]; var a=exact[0], b=exact[exact.length-1], d=b.y-a.y; qs.push({q:'How many years from the '+a.nm+' ('+a.y+') to the '+b.nm+' ('+b.y+')?',choices:numCh(d,[d+10,d-10,d+1,d-1,d+100]),a:String(d),why:b.y+' minus '+a.y+' is '+d+' years.'});
+    var c=pk(exact), ago=yr()-c.y; qs.push({q:'The '+c.nm+' came in '+c.y+'. How many years ago is that?',choices:numCh(ago,[ago+10,ago-10,ago+1,ago-1,ago+100]),a:String(ago),why:yr()+' minus '+c.y+' is '+ago+' years.'});
+    return {set:set,order:order,qs:qs}; }
+  function detStart(){ tap(); var v=V(); if(!v.seen.det){ v.seen.det=1; sv();
+      modal('<div class="center">'+who('mumbles',72)+'<h2 style="margin:4px 0">🕵️ Time Detective</h2></div>'+teachList(['Mumbles found four inventions in the museum basement, all mixed up.','Put them in ORDER: tap the OLDEST first, then the next, until the NEWEST. That is a TIMELINE.','Then use the years to answer two questions. Years apart = the bigger year MINUS the smaller year.'])+'<button class="btn wide" onclick="'+cb(function(){ closeModal(); detStart(); })+'">Let’s investigate!</button>'); return; }
+    TD=detMake(); TD.placed=[]; TD.miss=0; TD.right=0; TD.i=-1; TD.tok=Math.random(); detDraw(); }
+  function tdLine(){ var ord=TD.placed; return '<div class="v60line">'+TD.order.map(function(x,i){ var p=ord[i]; return '<div class="stop'+(p?' on':'')+'">'+(p?'<span class="ic">'+p.ic+'</span><b>'+esc(p.nm)+'</b><span class="y">'+yTxt(p)+'</span>':'<span class="sub" style="margin:0">'+(i===0?'oldest':i===3?'newest':'?')+'</span>')+'</div>'; }).join('')+'</div>'; }
+  function detDraw(){ var my=TD; var left=TD.set.filter(function(x){ return TD.placed.indexOf(x)<0; });
+    modal('<div class="center">'+who('mumbles',50)+'<div class="sub" style="margin:0">🕵️ Time Detective · put them in order</div></div>'+tdLine()
+      +'<div class="v54ans">'+left.map(function(x){ return '<button class="v60inv" data-id="'+x.id+'"><span style="font-size:24px">'+x.ic+'</span><span>'+esc(x.nm)+'</span></button>'; }).join('')+'</div><div class="jammsg" id="j60Msg" style="min-height:22px">Tap the OLDEST one.</div>');
+    document.querySelectorAll('.v60inv').forEach(function(bt){ bt.addEventListener('click',function(){ if(TD!==my)return; var x=INVBY[bt.getAttribute('data-id')], want=TD.order[TD.placed.length], m=document.getElementById('j60Msg');
+      if(x===want){ TD.placed.push(x); tap(); if(TD.placed.length===4){ var ok=TD.miss===0; mark(ok); TD.ordOK=ok; modal('<div class="center">'+who('mumbles',50)+'<h2 style="margin:2px 0">'+(ok?'🕵️ Case cracked!':'In order!')+'</h2></div>'+tdLine()+'<div class="sub center">'+esc(TD.order.map(function(i){ return i.note; })[0])+'</div><button class="btn wide" onclick="'+cb(function(){ if(TD!==my)return; TD.i=0; detQ(); })+'">Now the year questions →</button>'); return; } detDraw(); }
+      else { TD.miss++; bad(); try{ punch(bt); }catch(e){} if(m)m.innerHTML='Not yet. The <b>'+esc(x.nm)+'</b> is from '+yTxt(x)+'. Is there one even older?'; } }); }); }
+  function detQ(){ var my=TD, q=TD.qs[TD.i]; if(!q){ detEnd(); return; }
+    modal('<div class="center">'+who('mumbles',50)+'<div class="sub" style="margin:0">🕵️ Year question '+(TD.i+1)+' of '+TD.qs.length+'</div></div>'+tdLine()+'<div class="card center" style="font-size:17px;line-height:1.4">'+esc(q.q)+'</div><div class="v54ans">'+q.choices.map(function(c){ return '<button class="v60ab" data-v="'+esc(c)+'">'+esc(c)+'</button>'; }).join('')+'</div><div class="jammsg v60det" id="j60Msg" style="min-height:22px"></div>');
+    var done=false; document.querySelectorAll('.v60ab').forEach(function(b){ b.addEventListener('click',function(){ if(done||TD!==my)return; done=true; var ok=b.getAttribute('data-v')===q.a; mark(ok);
+      document.querySelectorAll('.v60ab').forEach(function(x){ if(x.getAttribute('data-v')===q.a){ x.style.background='#2f8f52'; x.style.borderColor='#7dff8a'; } }); if(!ok){ b.style.borderColor='#ff5d5d'; try{ punch(b); }catch(e){} }
+      var m=document.getElementById('j60Msg'); if(m)m.innerHTML=(ok?'✅ ':'It is <b>'+esc(q.a)+'</b>. ')+esc(q.why);
+      setTimeout(function(){ if(TD!==my||!document.querySelector('#mbox .v60det'))return; TD.i++; detQ(); },ok?1700:3000); }); }); }
+  function mark(ok){ var d=V().det; d.total++; if(ok){ d.right++; TD.right++; good(); } else bad(); adj('hist',ok); sv(); }
+  function detEnd(){ var v=V(), d=v.det, r=TD.right; TD=null; d.rounds++; if(d.day!==dk()){ d.day=dk(); d.paid=0; } var pay=d.paid<3; if(pay){ d.paid++; notes(12); coins(5); } else notes(3); fr('mumbles',1); fr('luna',1); sv(); if(r===3)party(30);
+    modal('<div class="center">'+who('mumbles',80)+'<h2 style="margin:4px 0">🕵️ '+r+' of 3 right</h2><div class="sub">'+(pay?'+12 notes, +5 coins':'+3 notes (3 paid cases a day)')+'</div></div><div class="speak"><b>Mumbles:</b> “'+(r===3?'A perfect case. You read time like a map.':'Every year is a clue. Bigger year minus smaller year, every time.')+'”</div>'
+      +'<button class="btn wide" onclick="'+cb(function(){ closeModal(); detStart(); })+'">Another case</button><button class="btn wide ghost" onclick="'+cb(function(){ closeModal(); try{ histRender(); }catch(e){} })+'">Back to the museum</button>'); }
+
+  /* ---------- OHIO HISTORY TRAIL (Luna) ---------- */
+  ART.v60_ohio='<rect x="9" y="7" width="26" height="32" rx="3" fill="#c8102e" stroke="#7a0a1c" stroke-width="2"/><path d="M14 14 H30 M14 18 H26" stroke="#fff6e8" stroke-width="1.5"/><path d="M17 23 L27 23 L29 29 L22 34 L15 29 Z" fill="#fff6e8"/><circle cx="22" cy="28" r="2.5" fill="#c8102e"/><text x="22" y="39" font-size="4.5" font-weight="900" fill="#fff6e8" text-anchor="middle" font-family="system-ui,sans-serif">OHIO</text>';
+  (function(){ var o={id:'v60_ohio',name:'Ohio Trail Passport',cat:'keepsake',zone:'wall',style:'cool',p:{},grp:'keepsake',keepsake:true}; BYID[o.id]=o; if(ITEMS.indexOf(o)<0){ var ti=-1; for(var i=0;i<ITEMS.length;i++){ if(ITEMS[i].cat==='theme'){ ti=i; break; } } if(ti<0)ITEMS.push(o); else ITEMS.splice(ti,0,o); } })();
+  function ohHtml(){ var v=V(), nx=ohNext(); var html='<div class="center">'+who('luna',60)+'<h2 style="margin:2px 0 0">🗺️ The Ohio History Trail</h2><div class="sub" style="margin:2px 0 6px">Luna’s tour of our state. Learn each stop, answer one question, get a passport stamp. '+ohN()+' of '+OH.length+' stamps.</div></div>';
+    html+='<div class="v60trail">'+OH.map(function(o,i){ var got=!!v.oh.st[o.id], open=i<=nx; return '<button class="v60stamp'+(got?' got':'')+(open?'':' lock')+'" onclick="'+cb(function(){ if(!open){ tst('Visit the stops in order. Next up: '+OH[nx].t+'.'); return; } ohStop(i); })+'"><b>'+(got?'✅':open?'📍':'🔒')+' '+(i+1)+'</b><span>'+esc(o.t)+'</span><span class="y">'+esc(o.when)+'</span></button>'; }).join('')+'</div>';
+    if(nx<OH.length)html+='<button class="btn wide" onclick="'+cb(function(){ ohStop(ohNext()); })+'">📍 Next stop: '+esc(OH[nx].t)+'</button>';
+    else html+='<div class="card center" style="border-color:#ffd158"><b>🏅 Every stamp collected!</b><div class="sub" style="margin:2px 0 0">The Ohio Trail Passport is in your Stuff.</div></div>';
+    return html; }
+  function ohStop(i){ tap(); var o=OH[i]; if(!o)return; var v=V(); if(!v.seen.oh){ v.seen.oh=1; sv();
+      modal('<div class="center">'+who('luna',72)+'<h2 style="margin:4px 0">🗺️ The Ohio History Trail</h2></div>'+teachList(['Ten stops, from the oldest history to the newest. Luna tells you about each one.','Then one question. Get it right and your Ohio Passport gets a stamp.','Missed it? Read the stop again and try. Collect all 10 for the Ohio Trail Passport.'])+'<button class="btn wide" onclick="'+cb(function(){ closeModal(); ohStop(i); })+'">Start the trail</button>'); return; }
+    modal('<div class="center">'+who('luna',60)+'<div class="sub" style="margin:0">Stop '+(i+1)+' of '+OH.length+' · '+esc(o.when)+'</div><h2 style="margin:2px 0">'+esc(o.t)+'</h2></div><div class="card" style="text-align:left;font-size:15px;line-height:1.45">'+esc(o.teach)+'</div><button class="btn wide" onclick="'+cb(function(){ ohAsk(i); })+'">Answer Luna’s question →</button><button class="btn wide ghost small" onclick="closeModal()">Later</button>'); }
+  var OHT=0;
+  function ohAsk(i){ var o=OH[i], opts=shuf(o.opts.slice()), done=false, mt=++OHT;
+    modal('<div class="center">'+who('luna',50)+'<div class="sub" style="margin:0">'+esc(o.t)+'</div></div><div class="card center" style="font-size:17px">'+esc(o.q)+'</div><div class="v54ans">'+opts.map(function(c){ return '<button class="v60ab" data-v="'+esc(c)+'">'+esc(c)+'</button>'; }).join('')+'</div><div class="jammsg v60oh" id="j60Msg" style="min-height:22px"></div>');
+    document.querySelectorAll('.v60ab').forEach(function(b){ b.addEventListener('click',function(){ if(done||OHT!==mt)return; done=true; var ok=b.getAttribute('data-v')===o.a, v=V(), m=document.getElementById('j60Msg'); if(!v.oh.st[o.id])adj('hist',ok); /* re-answering a stamped stop does not move the level */
+      if(ok){ good(); b.style.background='#2f8f52'; b.style.borderColor='#7dff8a'; var first=!v.oh.st[o.id]; v.oh.st[o.id]=dk(); if(first){ notes(6); coins(3); fr('luna',1); } sv();
+        if(m)m.innerHTML='✅ '+(first?'Stamped! +6 notes, +3 coins':'Right again!');
+        var all=ohN()===OH.length&&!v.oh.done; if(all){ v.oh.done=dk(); S.inv=S.inv||{}; S.inv.v60_ohio=(S.inv.v60_ohio||0)+1; notes(40); packs(2,'Ohio Trail'); sv(); }
+        setTimeout(function(){ if(OHT!==mt||!document.querySelector('#mbox .v60oh'))return; closeModal(); try{ histRender(); }catch(e){} if(all){ party(50); fan(); modal('<div class="center">'+who('luna',90)+'<h2 style="margin:4px 0">🏅 Ohio Trail complete!</h2></div><div class="center">'+(typeof itemArt==='function'?itemArt('v60_ohio',80):'')+'</div><div class="speak"><b>Luna:</b> “Ten stops, ten stamps. You know more Ohio history than most grown-ups!”</div><div class="sub center">The Ohio Trail Passport is in your Stuff. +40 notes, +2 card packs.</div><button class="btn wide" onclick="closeModal()">Hooray!</button>'); } else if(i+1<OH.length&&first){ ohStop(i+1); } },1400); }
+      else { bad(); b.style.borderColor='#ff5d5d'; try{ punch(b); }catch(e){} if(m)m.innerHTML='Not quite. Read the stop again, then try.'; setTimeout(function(){ if(OHT!==mt||!document.querySelector('#mbox .v60oh'))return; ohStop(i); },1800); } }); }); }
+
+  /* ---------- the museum gets two new tabs ---------- */
+  function detHtml(){ var d=V().det; return '<div class="center">'+who('mumbles',60)+'<h2 style="margin:2px 0 0">🕵️ Mumbles’s Time Detective</h2><div class="sub" style="margin:2px 0 6px">Four inventions from the basement, all mixed up. Put them in order, then do the year math.</div></div>'
+    +'<div class="card center"><b>'+d.rounds+' cases solved</b> · '+d.right+' right answers<div class="sub" style="margin:2px 0 0">The first 3 cases each day pay +12 notes and +5 coins. '+(d.day===dk()?d.paid+' of 3 today.':'')+'</div></div>'
+    +'<button class="btn wide" onclick="'+cb(detStart)+'">🕵️ Open a new case</button>'; }
+  (function(){ if(typeof histRender!=='function')return; var _hr=histRender;
+    window.histRender=histRender=function(){ var body=document.getElementById('histBody'); if(!body)return;
+      if(HIST!=='det'&&HIST!=='oh'){ _hr.apply(this,arguments); }
+      else { var sc=document.getElementById('histScore'); if(sc)sc.textContent='📜 '+ohN()+'/'+OH.length+' Ohio stamps · '+V().det.rounds+' cases';
+        body.innerHTML='<div class="center"><h2 style="margin:2px 0 0">🏛️ The City Museum</h2></div><div class="lib-tempo"></div>'+(HIST==='det'?detHtml():ohHtml()); }
+      try{ var bar=body.querySelector('.lib-tempo'); if(bar){ bar.innerHTML=[['tl','⏳ Timeline'],['alm','📅 Today'],['mus','🏛️ Museum'],['det','🕵️ Detective'],['oh','🗺️ Ohio Trail']].map(function(t){ return '<button class="btn ghost'+(HIST===t[0]?' sel':'')+'" onclick="histTab(\''+t[0]+'\')">'+t[1]+'</button>'; }).join(''); bar.classList.add('v60tabs'); } }catch(e){} };
+  })();
+  window.v60Museum=function(tab){ tap(); try{ closeModal(); }catch(e){} try{ openHistory(tab||'det'); }catch(e){} };
+
+  /* =====================================================================================================
+     MONEY & LIFE SKILLS: the robot SHOP ability + Ai Co. WRITE THE BILL
+     ===================================================================================================== */
+  function m$(c){ c=Math.round(c); return c<100?c+'¢':'$'+(c/100).toFixed(2); }
+  function mCh(a,cands){ var seen={}, out=[]; seen[a]=1; cands.forEach(function(x){ x=Math.round(x); if(x>0&&!seen[x]){ seen[x]=1; out.push(x); } }); return shuf([a].concat(out.slice(0,3))).map(m$); }
+  function tier(){ var l=L('money'); return l<5?1:l<10?2:3; }
+  function bot(){ try{ return W54.V().bot; }catch(e){ return {name:'',mods:{}}; } }
+  function bname(){ return bot().name||'your robot'; }
+  function bnameC(){ return bot().name||'Your robot'; }
+  function bsvg(sz){ try{ return W54.botSvg(sz,null,'shop'); }catch(e){ return ''; } }
+  function ada(sz){ try{ var s=citSvg('ada',sz); if(s)return s; }catch(e){} return '<span style="font-size:'+Math.round(sz*.6)+'px">🦝</span>'; }
+  var GOODS=[{id:'cookie',nm:'cookie',pl:'cookies',ic:'🍪'},{id:'lemon',nm:'cup of lemonade',pl:'cups of lemonade',ic:'🍋'},{id:'cupcake',nm:'cupcake',pl:'cupcakes',ic:'🧁'},{id:'pretzel',nm:'pretzel',pl:'pretzels',ic:'🥨'},{id:'popcorn',nm:'bag of popcorn',pl:'bags of popcorn',ic:'🍿'}];
+  function five(a,b){ return 5*R(Math.ceil(a/5),Math.floor(b/5)); }
+  function shopSteps(t,g){ var st=[], c,p,n,pay,tot,a,pr,f;
+    /* 1. price and profit */
+    if(t===1){ c=five(10,40); p=five(c+15,95); a=p-c; st.push({k:'price',q:'Each '+g.nm+' costs '+m$(c)+' to make. You sell it for '+m$(p)+'. How much do you EARN on each one? (That is the PROFIT.)',a:a,ch:mCh(a,[p+c,p,c,a+5,a-5,a+10]),why:'Profit = price minus cost. '+m$(p)+' minus '+m$(c)+' is '+m$(a)+'.',sign:m$(p)}); }
+    else if(t===2){ c=five(35,95); p=25*R(Math.ceil((c+25)/25),10); a=p-c; st.push({k:'price',q:'Each '+g.nm+' costs '+m$(c)+' to make. You sell it for '+m$(p)+'. How much profit on each one?',a:a,ch:mCh(a,[p+c,p,c,a+5,a-5,a+25]),why:'Profit = price minus cost. '+m$(p)+' minus '+m$(c)+' is '+m$(a)+'.',sign:m$(p)}); }
+    else { c=five(45,180); pr=five(20,90); a=c+pr; st.push({k:'price',q:'Each '+g.nm+' costs '+m$(c)+' to make. You want to earn '+m$(pr)+' on each one. What price goes on the tag?',a:a,ch:mCh(a,[Math.abs(c-pr),c,pr,a+5,a-5,a+10]),why:'Price = cost PLUS the profit you want. '+m$(c)+' plus '+m$(pr)+' is '+m$(a)+'.',sign:'?'}); p=a; }
+    /* 2. make change */
+    if(t===1){ p=Math.min(p,95); a=100-p; st.push({k:'change',q:'A customer buys 1 '+g.nm+' for '+m$(p)+' and pays with a $1 bill. How much CHANGE do you give back?',a:a,ch:mCh(a,[p,a+5,a-5,a+10,100+p]),why:'Count up from '+m$(p)+' to $1.00: that is '+m$(a)+'.',paid:100,sign:m$(p)}); }
+    else { n=t===2?R(2,4):R(3,6); var ppp=t===2?25*R(2,6):five(85,245); tot=n*ppp; pay=t===2?(tot<500?500:1000):2000; if(tot>=pay)pay=pay*2; a=pay-tot;
+      st.push({k:'change',q:'A customer buys '+n+' '+g.pl+' at '+m$(ppp)+' each and pays with a $'+(pay/100)+' bill. How much change?',a:a,ch:mCh(a,[pay-ppp,tot,a+25,a-25,a+100,a-100]),why:n+' times '+m$(ppp)+' is '+m$(tot)+'. Then $'+(pay/100)+'.00 minus '+m$(tot)+' is '+m$(a)+'.',paid:pay,sign:m$(ppp)}); }
+    /* 3. count the day */
+    n=R(t===1?4:8,t===1?10:20);
+    if(t===1){ p=pk([10,20,25,50]); a=n*p; st.push({k:'day',q:'Today you sold '+n+' '+g.pl+' at '+m$(p)+' each. How much money did you take in?',a:a,ch:mCh(a,[n+p,a+p,a-p,a+10,n*p*2]),why:n+' times '+m$(p)+' is '+m$(a)+'.',sign:m$(p)}); }
+    else { c=five(15,60); p=c+five(15,80); a=n*(p-c); f=t===3?100*R(2,5):0; if(t===3&&a-f<=0)f=100; var A=a-f;
+      st.push({k:'day',q:'Today you sold '+n+' '+g.pl+' at '+m$(p)+' each. Each one cost '+m$(c)+' to make.'+(f?' The table rental was $'+(f/100)+'.':'')+' What was your PROFIT for the day?',a:A,ch:mCh(A,[n*p,n*c,p-c,n*(p+c),f?a:A+n,f?A+f+f:A-n]),why:'Each one earns '+m$(p)+' minus '+m$(c)+' = '+m$(p-c)+'. Times '+n+' is '+m$(a)+'.'+(f?' Minus the $'+(f/100)+' table: '+m$(A)+'.':''),sign:m$(p)}); }
+    st.forEach(function(s){ s.a=m$(s.a); }); return st; }
+  var SH=null;
+  function standSvg(g,sign){ return '<svg width="150" height="62" viewBox="0 0 150 62"><rect x="6" y="30" width="138" height="28" rx="4" fill="#c98a4a" stroke="#8a5630" stroke-width="2"/><path d="M6 12 H144 L136 26 H14 Z" fill="#ff5d5d"/><path d="M28 12 L24 26 M52 12 L50 26 M76 12 V26 M100 12 L102 26 M124 12 L128 26" stroke="#fff6e8" stroke-width="5"/><rect x="88" y="34" width="50" height="20" rx="3" fill="#fff6e8" stroke="#2b2350" stroke-width="1.5"/><text x="113" y="49" font-size="14" font-weight="900" fill="#1d1636" text-anchor="middle" font-family="system-ui,sans-serif">'+esc(sign||'')+'</text></svg>'; }
+  function billSvg(c){ return '<svg width="96" height="44" viewBox="0 0 96 44"><rect x="2" y="2" width="92" height="40" rx="4" fill="#6fbf73" stroke="#2f7a3a" stroke-width="2"/><circle cx="48" cy="22" r="12" fill="#a8dca9" stroke="#2f7a3a" stroke-width="1.5"/><text x="48" y="27" font-size="14" font-weight="900" fill="#1d4d24" text-anchor="middle" font-family="system-ui,sans-serif">$'+(c/100)+'</text></svg>'; }
+  window.shopStart=function(){ tap(); try{ closeModal(); }catch(e){} var v=V(), b=bot(); if(!b.mods.shop){ b.mods.shop=dk(); sv(); }
+    if(!v.seen.shop){ v.seen.shop=1; sv();
+      modal('<div class="center">'+bsvg(110)+'<h2 style="margin:4px 0">🏪 How the Shop works</h2></div>'+teachList(['<b>Cost</b> is what it takes to MAKE one thing. <b>Price</b> is what a customer PAYS for it.','<b>Profit</b> is what you keep: price minus cost. Sell a 50¢ cookie that cost 20¢ to make and you earn 30¢.','<b>Change</b>: when someone pays with a bigger bill, count UP from the total to the bill. That is what you give back.'])
+        +'<div class="speak"><b>Ada:</b> “'+esc(bnameC())+' has a cash drawer now. Three steps: set the price, make change, count the day.”</div><button class="btn wide" onclick="'+cb(window.shopStart)+'">Open the stand!</button>'); return; }
+    var g=pk(GOODS), t=tier(); SH={g:g,t:t,steps:shopSteps(t,g),i:0,right:0}; shopStep(); };
+  function shopStep(){ var my=SH, s=SH.steps[SH.i]; if(!s){ shopEnd(); return; } var lab=['Set the price','Make change','Count the day'][SH.i];
+    modal('<div class="center"><div class="sub" style="margin:0">🏪 '+esc(bnameC())+'’s '+esc(SH.g.nm)+' stand · step '+(SH.i+1)+' of 3: '+lab+'</div><div class="v60stand">'+bsvg(80)+standSvg(SH.g,s.sign)+'</div>'+(s.paid?'<div>'+billSvg(s.paid)+'</div>':'')+'</div>'
+      +'<div class="card center" style="font-size:16px;line-height:1.45">'+SH.g.ic+' '+esc(s.q)+'</div><div class="v54ans">'+s.ch.map(function(c){ return '<button class="v60ab" data-v="'+esc(c)+'">'+esc(c)+'</button>'; }).join('')+'</div><div class="jammsg v60shop" id="j60Msg" style="min-height:22px"></div>');
+    var done=false; document.querySelectorAll('.v60ab').forEach(function(b){ b.addEventListener('click',function(){ if(done||SH!==my)return; done=true; var ok=b.getAttribute('data-v')===s.a, sh=V().shop; sh.total++; if(ok){ sh.right++; SH.right++; good(); } else bad(); adj('money',ok); sv();
+      document.querySelectorAll('.v60ab').forEach(function(x){ if(x.getAttribute('data-v')===s.a){ x.style.background='#2f8f52'; x.style.borderColor='#7dff8a'; } }); if(!ok){ b.style.borderColor='#ff5d5d'; try{ punch(b); }catch(e){} }
+      var m=document.getElementById('j60Msg'); if(m)m.innerHTML=(ok?'✅ ':'It is <b>'+esc(s.a)+'</b>. ')+esc(s.why);
+      setTimeout(function(){ if(SH!==my||!document.querySelector('#mbox .v60shop'))return; SH.i++; shopStep(); },ok?1700:3200); }); }); }
+  function shopEnd(){ var v=V(), sh=v.shop, r=SH.right, g=SH.g; SH=null; var today=sh.day!==dk(); sh.day=dk(); sh.runs++; sh.items[g.id]=(sh.items[g.id]||0)+1;
+    var n=today?15:5, c=today?(8+r*2):r; notes(n); coins(c); fr('ada',1); sv(); try{ W54.jobDone('shop'); }catch(e){} if(r===3)party(30);
+    var sold=Object.keys(sh.items).length;
+    modal('<div class="center">'+bsvg(110)+'<h2 style="margin:4px 0">🏪 Stand closed for the day!</h2><div class="sub">'+r+' of 3 right · +'+n+' notes, +'+c+' coins</div></div>'
+      +'<div class="card center">Stands run: '+sh.runs+' · things sold: '+sold+' of '+GOODS.length+' <div style="font-size:24px;letter-spacing:4px;margin-top:2px">'+GOODS.map(function(x){ return sh.items[x.id]?x.ic:'<span style="opacity:.25">'+x.ic+'</span>'; }).join('')+'</div></div>'
+      +'<div class="speak"><b>Ada:</b> “'+(r===3?'A perfect day of business. Price, change, profit: you nailed all three.':'Every shopkeeper counts twice. You will get faster every day.')+'”</div>'
+      +'<button class="btn wide" onclick="'+cb(window.shopStart)+'">Open again</button><button class="btn wide ghost" onclick="'+cb(function(){ closeModal(); try{ botHub(); }catch(e){} })+'">Back to the garage</button>'); }
+  function shopToday(){ return V().shop.day===dk(); }
+
+  /* ---------- the Shop joins the Bot Garage, Ai Co. and the Invention Bench ---------- */
+  try{ var MODS=window.__v54mods; if(MODS&&!MODS.some(function(m){ return m.id==='shop'; }))MODS.push({id:'shop',ic:'🏪',nm:'Shop',tool:'Cash drawer',what:'Run a stand: set the price, make change, count up the profit.',teach:'money: prices, change and profit',intro:'Your robot can sell things now! Set fair prices, give the right change, and count what you earned.',go:function(){ window.shopStart(); }}); }catch(e){}
+  try{ if(W56&&typeof W56.didToday==='function'){ var _dt=W56.didToday; W56.didToday=function(){ return _dt.apply(this,arguments)||shopToday(); }; } }catch(e){}
+  var AH=window.__aicoHook;
+  try{ if(AH){ AH.ABIL.shop={ic:'🏪',nm:'Shop',why:'A cash drawer sells things and makes change.'}; AH.START.shop=function(){ window.shopStart(); };
+    if(AH.IDEAS&&!AH.IDEAS.shop)AH.IDEAS.shop=['A cash drawer that counts coins','A price tag printer','A sign that lights up'];
+    var canStore=(function(){ try{ localStorage.setItem('__v60t','1'); localStorage.removeItem('__v60t'); return true; }catch(e){ return false; } })();
+    var later=function(){ return canStore&&V().since===dk(); }; /* with storage blocked every visit looks like day one, so never hide them */ /* new jobs join the board from tomorrow, so today's board does not reshuffle */
+    if(!AH.JOBS.some(function(j){ return j.id==='sh1'; })){
+      AH.JOBS.push({id:'sh1',who:'maple',need:['shop'],later:later,t:'I baked way too many cookies for the school fair. Could your robot run my bake sale table?'},
+        {id:'sh2',who:'sam',need:['shop'],later:later,t:'The library is selling old books for a few coins each. I need someone who can make change fast.'},
+        {id:'sh3',who:'piper',need:['shop'],later:later,t:'I made a whole box of friendship bracelets. Help me sell them at the Square?'});
+      AH.JOBS2.push({id:'sh4',who:'vega',need:['cook','shop'],later:later,t:'Star party snacks! Cook something tasty, then sell it at the dome door to raise money for a new telescope.'}); } } }catch(e){}
+  try{ if(window.__v57addPart){ __v57addPart({id:'till',k:'shop',t:'A cash drawer that counts coins',nm:'Coin Counter',pc:'coin slots',eff:'bonus',does:'Shop jobs pay +2 coins: it counts change in a blink.'},'Shop','<rect x="40" y="70" width="20" height="9" rx="2" fill="#2b2350" stroke="#ffd158" stroke-width="1"/><circle cx="45" cy="74.5" r="2" fill="#ffd158"/><circle cx="50" cy="74.5" r="2" fill="#c0c8d8"/><circle cx="55" cy="74.5" r="2" fill="#c98a4a"/>');
+    __v57addPart({id:'tags',k:'shop',t:'A price tag printer',nm:'Tag Printer',pc:'tag rolls',eff:'bonus',does:'Shop jobs pay +2 coins: every item gets a tag.'},'Shop','<rect x="80" y="60" width="11" height="8" rx="1.5" fill="#f4f0ff" stroke="#2b2350" stroke-width="1"/><text x="85.5" y="66.2" font-size="5" font-weight="900" fill="#c8102e" text-anchor="middle" font-family="system-ui,sans-serif">$</text>');
+    __v57addPart({id:'lsign',k:'shop',t:'A sign that lights up',nm:'Light-Up Sign',pc:'light bulbs',eff:'bonus',does:'Shop jobs pay +2 coins: customers see the stand from far away.'},'Shop','<rect x="33" y="5" width="34" height="9" rx="2" fill="#1d1636" stroke="#ffd158" stroke-width="1"/><text x="50" y="12" font-size="6" font-weight="900" fill="#ffd158" text-anchor="middle" font-family="system-ui,sans-serif">OPEN</text>'); } }catch(e){}
+
+  /* ---------- Ai Co.: WRITE THE BILL ---------- */
+  var SUPPLY={dig:'bags of soil',cook:'groceries',paint:'paint cans',lift:'moving straps',dishes:'soap and sponges',clean:'storage bins',shop:'paper bags'};
+  function billMake(job){ var t=tier(), k=job.need[0], sup=SUPPLY[k]||'supplies', s,h,r,tot,q,a,ch,why,pay;
+    if(t===1){ s=100*R(2,9); h=R(1,3); r=500; tot=s+h*r; a=tot; q='What is the TOTAL bill?'; ch=mCh(a,[s+h*100,h*r,s+r,a+100,a-100,a+500]); why=m$(s)+' for '+sup+', plus '+h+' hour'+(h>1?'s':'')+' times $5 = '+m$(h*r)+'. Total: '+m$(tot)+'.'; }
+    else { s=25*R(5,39); h=R(2,4); r=pk([600,800]); tot=s+h*r;
+      if(t===2){ a=tot; q='What is the TOTAL bill?'; ch=mCh(a,[s+r,s+h*100,h*r,a+100,a-25,a+25]); why=m$(s)+' plus '+h+' times '+m$(r)+' ('+m$(h*r)+') is '+m$(tot)+'.'; }
+      else { pay=tot<5000?5000:10000; a=pay-tot; q='They pay with a $'+(pay/100)+' bill. How much CHANGE do they get?'; ch=mCh(a,[tot,pay-s,a+100,a-100,a+25,a+500]); why='The bill is '+m$(s)+' + '+m$(h*r)+' = '+m$(tot)+'. Then $'+(pay/100)+'.00 minus '+m$(tot)+' is '+m$(a)+'.'; } }
+    return {sup:sup,s:s,h:h,r:r,tot:tot,t:t,q:q,ch:ch,a:m$(a),why:why}; }
+  var LASTBILL=null;
+  window.AICO_BILL=function(job,c,done,ctx){ var v=V(); ctx=ctx||{};
+    if(!v.seen.bill){ v.seen.bill=1; sv(); modal('<div class="center">'+ada(70)+'<h2 style="margin:4px 0">🧾 Write the bill</h2></div>'+teachList(['Real companies send a BILL when the job is done.','<b>Supplies</b>: what you used. <b>Labor</b>: hours worked times the price per hour.','Add them up for the TOTAL. Get it right and the customer adds a tip!'])+'<button class="btn wide" onclick="'+cb(function(){ closeModal(); window.AICO_BILL(job,c,done,ctx); })+'">Write it</button>'); return; }
+    /* one bill per job: closing it and pressing Resume shows the SAME bill (no rerolls), and once answered the job goes to the review */
+    if(ctx.billed){ try{ done(); }catch(e){} return; } var B=ctx.bill||billMake(job), answered=false; ctx.bill=B; B.tok=Math.random(); LASTBILL=B; var tok=B.tok;
+    modal('<div class="center">'+(c&&c.art||'')+'<h2 style="margin:2px 0">🧾 Bill for '+esc(c&&c.nm||'the customer')+'</h2></div>'
+      +'<div class="v60bill"><div class="hd">AI CO. · Helper Robots</div><div class="ln"><span>Supplies ('+esc(B.sup)+')</span><b>'+m$(B.s)+'</b></div><div class="ln"><span>Labor: '+B.h+' hour'+(B.h>1?'s':'')+' × '+m$(B.r)+'</span><b>?</b></div><div class="ln tot"><span>TOTAL</span><b>?</b></div></div>'
+      +(B.t===3?'<div class="sub center" style="margin:2px 0">Work out the labor and the total first, then the change.</div>':'')
+      +'<div class="card center" style="font-size:16px">'+esc(B.q)+'</div><div class="v54ans">'+B.ch.map(function(x){ return '<button class="v60ab" data-v="'+esc(x)+'">'+esc(x)+'</button>'; }).join('')+'</div><div class="jammsg v60billq" id="j60Msg" style="min-height:22px"></div>');
+    document.querySelectorAll('.v60ab').forEach(function(b){ b.addEventListener('click',function(){ if(answered||ctx.billed||B.tok!==tok)return; answered=true; ctx.billed=true; var ok=b.getAttribute('data-v')===B.a, bl=V().bill; bl.n++; if(ok){ bl.right++; good(); coins(5); } else bad(); adj('money',ok); sv();
+      document.querySelectorAll('.v60ab').forEach(function(x){ if(x.getAttribute('data-v')===B.a){ x.style.background='#2f8f52'; x.style.borderColor='#7dff8a'; } }); if(!ok){ b.style.borderColor='#ff5d5d'; try{ punch(b); }catch(e){} }
+      var m=document.getElementById('j60Msg'); if(m)m.innerHTML=(ok?'✅ +5 coin tip! ':'It is <b>'+esc(B.a)+'</b>. ')+esc(B.why);
+      setTimeout(function(){ if(B.tok!==tok||!document.querySelector('#mbox .v60billq'))return; try{ done(); }catch(e){} },ok?1900:3600); }); }); };
+
+  /* ================= WIRING ================= */
+  (function(){ if(document.getElementById('v60-css'))return; var st=document.createElement('style'); st.id='v60-css'; st.textContent=
+     '.v60ab,.v60inv{font-size:16px;font-weight:900;padding:12px 8px;border-radius:12px;background:#2b2350;color:#f4f0ff;border:2px solid #3a2f6e;min-height:54px;line-height:1.25;overflow-wrap:anywhere}.v60ab:active,.v60inv:active{transform:scale(.97)}'
+    +'.v60inv{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:14px}'
+    +'.v60line{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;margin:8px 0;position:relative;padding-top:6px;border-top:4px solid #8a7ac8}'
+    +'.v60line .stop{min-height:70px;border-radius:10px;background:#1b1830;border:2px dashed #3a2f6e;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4px 2px;text-align:center;font-size:11px;overflow-wrap:anywhere}'
+    +'.v60line .stop.on{border:2px solid #c58dff;background:#2b2350}.v60line .ic{font-size:22px}.v60line .y{color:#ffd158;font-weight:900;font-size:12px}'
+    +'.v60trail{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:8px 0}.v60stamp{display:flex;flex-direction:column;align-items:flex-start;gap:1px;text-align:left;padding:8px 10px;border-radius:12px;background:#1b1830;border:2px solid #3a2f6e;color:#f4f0ff;min-height:58px;overflow-wrap:anywhere}'
+    +'.v60stamp.got{border-color:#c8102e;background:#2a1520}.v60stamp.lock{opacity:.5}.v60stamp span{font-size:13px;font-weight:800}.v60stamp .y{font-size:11px;color:#ffd158;font-weight:700}'
+    +'.v60stand{display:flex;align-items:flex-end;justify-content:center;gap:0;margin:4px 0}.v60stand svg{max-width:100%}'
+    +'.v60bill{background:#f6f1e3;color:#1d1636;border-radius:6px;padding:10px 12px;margin:6px 0;font-family:ui-monospace,Menlo,monospace;box-shadow:0 4px 12px #0008}.v60bill .hd{font-weight:900;text-align:center;border-bottom:2px dashed #1d1636;padding-bottom:4px;margin-bottom:6px;letter-spacing:1px}'
+    +'.v60bill .ln{display:flex;justify-content:space-between;gap:8px;padding:3px 0;font-size:14px}.v60bill .ln span{min-width:0;overflow-wrap:anywhere}.v60bill .tot{border-top:2px solid #1d1636;margin-top:4px;padding-top:5px;font-weight:900;font-size:16px}'
+    +'.v60tabs{flex-wrap:wrap}'
+    +'@media (max-width:360px){.v60line{grid-template-columns:repeat(2,minmax(0,1fr))}.v60trail{grid-template-columns:1fr}}';
+    document.head.appendChild(st); })();
+
+  /* a 3-star bandmate card used to pop over the Shop, a bill or a history case mid-step (its 500 ms timer does not wait); now it waits */
+  (function(){ var _su=window.starUnlockModal; if(typeof _su!=='function')return; window.starUnlockModal=starUnlockModal=function(id){ var self=this, args=arguments; if(modalOn()){ whenFree(function(){ _su.apply(self,args); },600); return; } return _su.apply(self,args); }; })();
+  (function(){ var _cj=window.coachJam; if(typeof _cj!=='function')return; window.coachJam=function(c){ if(c==='hist'){ window.v60Museum('det'); return; } return _cj.apply(this,arguments); }; })();
+
+  /* What's New */
+  (window.MU_NEWS=window.MU_NEWS||[]).push({flag:'seen160',pri:2,when:function(){ return !!(S.stats&&S.stats.answers>0); },html:function(){
+    var row=function(art,t,s){ return '<div class="card" style="text-align:left;display:flex;gap:10px;align-items:center">'+art+'<div style="flex:1;min-width:0"><b>'+t+'</b><div class="sub" style="margin:2px 0 0;text-align:left">'+s+'</div></div></div>'; };
+    return '<div class="center"><h2 style="margin:4px 0">📜 History and Money!</h2><div class="sub">History is now a real subject with its own level, and your robot can run a shop.</div></div>'
+      +row(who('mumbles',58),'🕵️ Time Detective','At the City Museum, Mumbles needs four inventions put in order, oldest to newest. Then the year math: how many years apart, how long ago.')
+      +row(who('luna',58),'🗺️ The Ohio History Trail','Ten stops with Luna, from Serpent Mound to the first flight to the Moon. Every right answer stamps your Ohio Passport.')
+      +row(bsvg(58),'🏪 Shop + 🧾 bills','A new robot ability: run a stand, set prices, make change, count your profit. And every Ai Co. job now ends with writing the bill.')
+      +'<div class="sub center">Every step is on the 📋 TO DO list.</div>'
+      +'<button class="btn wide" onclick="closeModal();v60Museum(\'det\')">🕵️ Visit the museum</button>'
+      +'<button class="btn wide ghost" onclick="closeModal();shopStart()">🏪 Open the Shop</button>'
+      +'<button class="btn wide ghost small" onclick="closeModal()">Later</button>'; }});
+
+  /* guides */
+  try{ var G=window.__news&&window.__news.G; if(G){
+    if(G['scr-hist'])G['scr-hist'].s=['Five tabs: Timeline, Today (a daily history drop), Museum (then and now), Detective and the Ohio Trail.','Detective: Mumbles mixes up four inventions. Tap the oldest first, then answer two year questions.','Ohio Trail: ten stops with Luna. Read each stop, answer its question, get a passport stamp.'];
+    else G['scr-hist']={who:['member','luna'],t:'The City Museum',s:['Five tabs: Timeline, Today, Museum, Detective and the Ohio Trail.','Detective: put four inventions in order, then do the year math.','Ohio Trail: ten stops, one question each, a stamp for every right answer.']};
+    G['tdet']={who:['cit','mumbles'],t:'Time Detective',s:['Four inventions, all mixed up. Tap the OLDEST one first, then the next, until the newest.','Then two year questions. Years apart = bigger year minus smaller year. Years ago = this year minus that year.','The first 3 cases each day pay +12 notes and +5 coins. Right answers raise your History level.']};
+    G['ohtrail']={who:['member','luna'],t:'The Ohio History Trail',s:['Ten stops in order, from the oldest Ohio history to the newest.','Read the stop, then answer Luna’s question. Right = a passport stamp, +6 notes, +3 coins.','Collect all 10 stamps for the Ohio Trail Passport keepsake.']};
+    G['shop']={who:['cit','ada'],t:'Your robot’s Shop',s:['Install Shop in the Bot Garage (or tap Open the Shop on the news card).','Three steps: set the price (profit = price minus cost), make change (count up to the bill), count the day.','Every stand counts as a robot job. Neighbors post Shop jobs on the Ai Co. Job Board too.']};
+    G['bill']={who:['cit','ada'],t:'Writing the bill',s:['After every Ai Co. job, you write the bill before the review.','Supplies + labor (hours times the price per hour) = the total. Bigger levels ask for the change too.','Right on the first try: the customer adds a +5 coin tip.']};
+  } }catch(e){}
+
+  /* To-Do rows */
+  (window.TODO_EXTRA=window.TODO_EXTRA||[]).push(function(sec){ var out=[], v=V();
+    if(sec==='quests'){ var nx=ohNext(); if(nx<OH.length)out.push({ic:who('luna',40),t:'Ohio History Trail: '+ohN()+' of '+OH.length+' stamps',s:'Next stop: '+OH[nx].t+'. Read it at the City Museum, then answer Luna’s question.',btn:'Go',go:function(){ window.v60Museum('oh'); },key:'ohtrail',top:ohN()===0});
+      if(!v.shop.runs)out.push({ic:'🏪',t:'Open your robot’s Shop',s:'A new ability: set prices, make change, count the profit. It is in the Bot Garage abilities.',btn:'Go',go:function(){ window.shopStart(); },key:'shop',top:true});
+      else if(Object.keys(v.shop.items).length<GOODS.length)out.push({ic:'🏪',t:'Shop: '+Object.keys(v.shop.items).length+' of '+GOODS.length+' things sold',s:'Every stand sells something different. Sell all five.',btn:'Go',go:function(){ window.shopStart(); },key:'shopall',quiet:true}); }
+    if(sec==='dailies'){ var dd=v.det.day===dk()&&v.det.paid>0; out.push({ic:who('mumbles',40),t:'A history case a day',s:dd?'Done today.':'Solve one Time Detective case at the City Museum.',btn:'Go',go:function(){ window.v60Museum('det'); },done:dd,key:'tdet'}); }
+    return out; });
+  try{ if(window.__todo){ var D=__todo.DEST2SCR; if(D&&!D.hist)D.hist='scr-hist';
+    var NR=__todo.NEWS_ROWS; if(NR&&!NR.some(function(r){ return r.t==='Time Detective'; })){
+      NR.unshift({v:'v1.60',t:'Shop + Ai Co. bills',s:'A robot Shop ability (price, change, profit) and a bill to write after every Ai Co. job.',go:function(){ window.shopStart(); },how:'shop'});
+      NR.unshift({v:'v1.60',t:'The Ohio History Trail',s:'Ten stops with Luna, one passport stamp each.',go:function(){ window.v60Museum('oh'); },how:'ohtrail'});
+      NR.unshift({v:'v1.60',t:'Time Detective',s:'Mumbles mixes up four inventions. Put them in order, then do the year math.',go:function(){ window.v60Museum('det'); },how:'tdet'}); } } }catch(e){}
+
+  /* Grown-Ups corner */
+  (function(){ var _og=window.openGrown; if(typeof _og!=='function')return; window.openGrown=function(){ var r=_og.apply(this,arguments); try{ var body=document.getElementById('gwBody'); if(!body)return r; var v=V();
+      var tile=function(k,val){ return '<div class="card" style="flex:1 1 100px;padding:8px 10px;text-align:center;margin:0"><div class="sub" style="margin:0">'+k+'</div><b style="font-size:18px">'+val+'</b></div>'; };
+      body.insertAdjacentHTML('afterbegin','<div class="card" style="text-align:left;margin:8px 0"><b>📜 History + Money (v1.60)</b>'
+        +'<div class="row" style="gap:6px;flex-wrap:wrap;margin:6px 0">'+tile('History',L('hist'))+tile('Detective cases',v.det.rounds+' ('+v.det.right+'/'+v.det.total+')')+tile('Ohio stamps',ohN()+'/'+OH.length)+tile('Money',L('money'))+tile('Shop days',v.shop.runs+' ('+v.shop.right+'/'+v.shop.total+')')+tile('Bills right',v.bill.right+'/'+v.bill.n)+'</div>'
+        +'<div class="sub" style="margin:4px 0 0">History (new concept, placed by the Soundcheck): long ago and today, sequencing events on a timeline, years between and years ago (subtraction with 4-digit years), decades and centuries, rounding spans to the nearest hundred (Ohio Social Studies grades 1-4: chronology and timelines; grade 4: Ohio history, inventions and change). The Ohio Trail covers the state name, Serpent Mound, statehood in 1803, the Ohio and Erie Canal, the Underground Railroad, Edison, Akron rubber, the Wright brothers, Glenn and Armstrong, and the Rock Hall. Money: profit = price minus cost, making change by counting up, multi-item totals, daily profit with a fixed cost (Ohio 2.MD.8, 4.MD.2, financial literacy strand), and Ai Co. bills (supplies + hours times rate). Difficulty follows his Money level.</div></div>'); }catch(e){} return r; }; })();
+
+  window.__v60={V:V,INV:INV,OH:OH,histQ:histQ,longAgoQ:longAgoQ,firstQ:firstQ,agoQ:agoQ,betweenQ:betweenQ,decadeQ:decadeQ,centuryQ:centuryQ,ohioQ:ohioQ,ohioYearQ:ohioYearQ,aboutQ:aboutQ,detMake:detMake,detStart:detStart,getTD:function(){ return TD; },
+    ohStop:ohStop,ohN:ohN,ohNext:ohNext,shopSteps:shopSteps,GOODS:GOODS,getSH:function(){ return SH; },billMake:billMake,lastBill:function(){ return LASTBILL; },tier:tier,m$:m$,century:century,ord:ord};
 })();
 </script>
 </body>
