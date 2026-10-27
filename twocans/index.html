@@ -447,8 +447,8 @@ header .dot{width:46px;height:46px;font-size:22px}
 
 <script src="config.js"></script>
 <script type="module">
-const VERSION = 'v0.18';
-const VDATE = 'Oct 25 2026';
+const VERSION = 'v0.19';
+const VDATE = 'Oct 27 2026';
 const FB_VER = '10.12.2';
 const ROOM = 'main';
 
@@ -518,6 +518,7 @@ const sndGet  = () => tone([784, 1047], .16, .11, .2);
 
 /* ---------- config ---------- */
 const DEMO = new URLSearchParams(location.search).has('demo');
+const SEENDEBUG = new URLSearchParams(location.search).has('seendebug');
 const CFG = window.TWOCANS_CONFIG || null;
 function configReady(){
   if (!CFG || !CFG.firebase || !Array.isArray(CFG.people) || CFG.people.length < 2) return false;
@@ -708,7 +709,7 @@ function denied(){
 }
 function onUser(u){
   stopListening();
-  if (!u){ store.set(UNSENT_K, null); me = null; myUid = null; show('scrLogin'); $('pwStep').classList.add('hidden'); $('whoStep').classList.remove('hidden'); renderWho(); return; }
+  if (!u){ me = null; myUid = null; show('scrLogin'); $('pwStep').classList.add('hidden'); $('whoStep').classList.remove('hidden'); renderWho(); return; }
   const p = personByEmail(u.email);
   if (!p){ denied(); return; }
   me = p; myUid = u.uid;
@@ -723,12 +724,6 @@ function onUser(u){
   const onErr = err => { if (err && String(err.code).includes('permission')) denied(); else toast('Lost connection. It will catch up.'); };
   unsubs.push(B.listen(list => { const prev = msgs; msgs = list; render(prev); }, onErr));
   unsubs.push(B.onSeen(m => { seenMap = m; renderSeen(); }, onErr));
-  const left = unsentList();
-  if (left.length){
-    unsentSave([]);
-    if (!txt.value){ txt.value = left.map(x => x.text).join('\n').slice(0, 4000); autoGrow(); canSend(); updateTyping(); }
-    toast('This did not send before the app closed. Tap Send to try again.', 5000);
-  }
 }
 
 /* ---------- rendering ---------- */
@@ -849,8 +844,29 @@ function render(prev){
   renderSeen();
   maybeMarkSeen();
 }
+function showSeenDebug(){
+  let dbg = document.getElementById('seendbg');
+  if (!dbg){ dbg = document.createElement('div'); dbg.id = 'seendbg';
+    dbg.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:70;background:rgba(27,18,11,.96);color:#9fdca0;font:11px/1.45 ui-monospace,monospace;padding:7px 10px;white-space:pre-wrap;pointer-events:none';
+    document.body.appendChild(dbg); }
+  const mine = msgs.filter(m => m.from === myUid && !m.pending);
+  const lastMsg = msgs[msgs.length - 1];
+  const myLast = mine[mine.length - 1];
+  const otherUid = Object.keys(seenMap).find(k => k !== myUid);
+  const at = otherUid ? seenMap[otherUid] : 0;
+  dbg.textContent = [
+    'SEEN DEBUG ' + VERSION,
+    'me=' + (myUid || '').slice(0, 6) + '  other=' + (other ? other.name : '?'),
+    'msgs=' + msgs.length + '  myMsgs=' + mine.length,
+    'lastMsgIsMine=' + (!!(lastMsg && myLast && lastMsg.id === myLast.id)),
+    'seenMap=' + (Object.keys(seenMap).length ? Object.keys(seenMap).map(k => k.slice(0, 6) + '=' + fmtTime(seenMap[k])).join('  |  ') : '(EMPTY)'),
+    'myLastTs=' + (myLast ? fmtTime(myLast.ts) : '-') + '  otherSeenAt=' + (at ? fmtTime(at) : '-'),
+    'wouldShowReceipt=' + (!!(at && myLast && at >= myLast.ts - 1500))
+  ].join('\n');
+}
 function renderSeen(){
   document.querySelectorAll('.seen').forEach(e => e.remove());
+  if (SEENDEBUG) showSeenDebug();
   if (!myUid) return;
   const mine = msgs.filter(m => m.from === myUid && !m.pending);
   if (!mine.length) return;
@@ -873,7 +889,7 @@ function maybeMarkSeen(){
   const newest = theirs[theirs.length - 1].ts;
   if (newest <= lastMarked) return;
   lastMarked = newest;
-  B.markSeen().catch(() => { lastMarked = 0; });
+  B.markSeen().then(() => { if (SEENDEBUG) toast('seen write OK'); }).catch(e => { lastMarked = 0; if (SEENDEBUG) toast('seen write FAILED: ' + ((e && e.code) || e), 6000); });
 }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible'){ maybeMarkSeen(); } });
 $('list').addEventListener('scroll', () => { stickBottom = nearBottom(); if (stickBottom) $('newPill').classList.add('hidden'); }, { passive:true });
@@ -942,14 +958,7 @@ txt.addEventListener('focus', () => { updateTyping(); setTimeout(() => { if (sti
 txt.addEventListener('blur', updateTyping);
 $('sendBtn').onclick = sendNow;
 let sending = false;
-// Words not yet confirmed by the server are kept on this device (text only, never
-// pictures or voice) so a dropped Wi-Fi plus a closed app does not lose them.
-// Removed the moment the server confirms, and on sign out.
-const UNSENT_K = DEMO ? 'tc.demo.unsent' : 'tc.unsent';
-let unsentSeq = 0;
-function unsentList(){ const v = store.get(UNSENT_K, null); return (v && v.uid === myUid && Array.isArray(v.items)) ? v.items : []; }
-function unsentSave(items){ store.set(UNSENT_K, items.length ? { uid: myUid, items } : null); }
-function sendNow(){
+async function sendNow(){
   const text = txt.value.trim().slice(0, 4000);
   const img = pendingImg ? pendingImg.data : '';
   const aud = pendingAud || '';
@@ -957,26 +966,13 @@ function sendNow(){
   sending = true;
   txt.value = ''; autoGrow(); clearAttach(); pendingAud = null; canSend(); toggleEmoji(false); updateTyping();
   sndSend(); stickBottom = true;
-  const k = Date.now() + '-' + (++unsentSeq);
-  if (text) unsentSave(unsentList().concat([{ k, text }]));
-  const done = () => { clearTimeout(slow); if (text) unsentSave(unsentList().filter(x => x.k !== k)); };
-  // The server only answers once it is back online; say so instead of going quiet.
-  const slow = setTimeout(() => toast('Waiting for the Wi-Fi. It will send when it is back, so keep Two Cans open.', 4500), 8000);
-  let p;
-  try { p = B.send({ text, img, aud }); } catch(e){ p = Promise.reject(e); }
-  Promise.resolve(p).then(done, () => {
-    done();
+  try { await B.send({ text, img, aud }); }
+  catch(e){
     toast('That one did not send. Check the Wi-Fi and try again.', 4000);
-    if (text && !txt.value){ txt.value = text; autoGrow(); }
-    if (img && !pendingImg){ pendingImg = { data: img }; $('attach').classList.remove('hidden'); $('attachImg').src = img; $('attachInfo').textContent = 'Add words if you want, then send.'; }
-    if (aud && !pendingAud) pendingAud = aud;
-    canSend(); updateTyping();
-  });
-  // The send is queued the moment it is handed over (offline too), so Send works
-  // again right away. The short gap only stops one tap sending twice.
-  setTimeout(() => { sending = false; }, 300);
+    if (text && !txt.value){ txt.value = text; autoGrow(); canSend(); }
+  }
+  sending = false;
 }
-window.addEventListener('offline', () => { if (me) toast('No Wi-Fi right now. Messages will send when it is back.', 4000); });
 // Emoji picker. All glyphs are older (<= 2018) so they render on every iPad.
 // Garrett can also tap the emoji key on the iPad keyboard for the full set.
 const EMOJI = {
@@ -1409,10 +1405,10 @@ function renderGame(g){
   const myTurn = g.status==='playing' && g.turn===me.name;
   let st;
   if (g.type==='guess'){
-    if (g.status==='won') st = g.winner===me.name ? 'You guessed it, you win!' : g.winner+' guessed your character';
+    if (g.status==='won') st = g.winner===me.name ? 'You guessed it — you win!' : g.winner+' guessed your character';
     else st = 'Ask questions in the chat, then guess';
   } else if (g.type==='chess'){
-    if (g.status==='won') st = g.winner===me.name ? 'Checkmate, you win!' : 'Checkmate. '+g.winner+' wins';
+    if (g.status==='won') st = g.winner===me.name ? 'Checkmate — you win!' : 'Checkmate — '+g.winner+' wins';
     else if (g.status==='draw') st = 'Draw';
     else st = myTurn ? 'Your move' : 'Waiting for '+g.turn;
   } else if (g.status==='won'){
@@ -1605,7 +1601,7 @@ function renderCheckers(g, myTurn){
   wrap.appendChild(grid);
   if (g.status==='playing' && myTurn){
     const hint=document.createElement('div'); hint.className='ckHint';
-    hint.textContent = chain>=0 ? 'Keep jumping!' : (must ? 'You must jump' : 'You play '+(myColor==='r'?'red':'blue')+'. Tap a piece, then where to go');
+    hint.textContent = chain>=0 ? 'Keep jumping!' : (must ? 'You must jump' : 'You play '+(myColor==='r'?'red':'blue')+' — tap a piece, then where to go');
     wrap.appendChild(hint);
   }
   return wrap;
@@ -1775,7 +1771,7 @@ async function resetBoard(g){
   try { await B.gameSet(g.id, upd); } catch(e){ toast('Could not save. Try again.'); }
 }
 function confirmGuess(g,i){
-  openSheet('Guess '+GW_CHARS[i].n+'?', [{ label:'Yes, '+GW_CHARS[i].n+' is my guess', fn:()=>makeGuess(g,i) }]);
+  openSheet('Guess '+GW_CHARS[i].n+'?', [{ label:'Yes — '+GW_CHARS[i].n+' is my guess', fn:()=>makeGuess(g,i) }]);
   gwGuessMode=false; renderGame(gCur);
 }
 async function makeGuess(g,i){
@@ -1784,7 +1780,7 @@ async function makeGuess(g,i){
   const upd={ status:'won', winner: correct ? me.name : other.name, guessBy:me.name, guessIdx:i, correct };
   try {
     await B.gameSet(g.id, upd);
-    B.send({ text: me.name+(correct ? ' guessed '+GW_CHARS[i].n+' and won Guess Who!' : ' guessed '+GW_CHARS[i].n+'. Wrong! '+other.name+' wins Guess Who.'), img:'', aud:'' }).catch(()=>{});
+    B.send({ text: me.name+(correct ? ' guessed '+GW_CHARS[i].n+' and won Guess Who!' : ' guessed '+GW_CHARS[i].n+' — wrong! '+other.name+' wins Guess Who.'), img:'', aud:'' }).catch(()=>{});
     sndSend();
   } catch(e){ toast('That guess did not save. Try again.'); }
 }
@@ -1981,7 +1977,7 @@ function renderChess(g, myTurn){
   wrap.appendChild(grid);
   if (live){
     const hint=document.createElement('div'); hint.className='chHint';
-    hint.textContent = checkSq>=0 ? 'You’re in check: get out of it' : ('You play '+(amWhite?'white':'black')+'. Tap a piece');
+    hint.textContent = checkSq>=0 ? 'You’re in check — get out of it' : ('You play '+(amWhite?'white':'black')+' — tap a piece');
     wrap.appendChild(hint);
   }
   return wrap;
@@ -2045,8 +2041,7 @@ if ('serviceWorker' in navigator && location.protocol === 'https:'){
     await B.init();
   } catch(e){
     show('scrSetup');
-    document.querySelector('#scrSetup .sub').textContent = 'Could not reach the message service. Check the internet, then tap Try again.';
-    if (!$('retryBtn')){ const rb = document.createElement('button'); rb.id = 'retryBtn'; rb.className = 'big'; rb.textContent = 'Try again'; rb.style.margin = '6px auto 14px'; rb.onclick = () => location.reload(); document.querySelector('#scrSetup .sub').after(rb); }
+    document.querySelector('#scrSetup .sub').textContent = 'Could not reach the message service. Check the internet and reload.';
     showDiag('stopped: ' + ((e && e.message) || 'error').slice(0, 60));
     return;
   }
