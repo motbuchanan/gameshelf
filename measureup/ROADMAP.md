@@ -5,10 +5,16 @@ uploaded against what the last chat thought it shipped. Full build notes stay in
 (in the NOTES zip, never uploaded).
 
 ## Current
-- **v1.60 · Oct 27 2026** (sw cache `measureup-v1-60`). Contains v1.51 through v1.59. Live URL: https://motbuchanan.github.io/gameshelf/measureup/
+- **v1.61 · Oct 29 2026** (sw cache `measureup-v1-61`). Contains v1.51 through v1.60. Live URL: https://motbuchanan.github.io/gameshelf/measureup/
 - Files in the repo folder: `index.html`, `sw.js`, `manifest.json`, `ROADMAP.md` (this file, new in v1.51).
 
 ## What shipped lately
+- **v1.61 Road Trip: Ohio (Oct 29).** On the Road gets a ROAD TRIP card: Gus drives the band to REAL cities, starting
+  close to home (driving takes a long time). Cleveland (Axel; The Voltage plays the Agora) and Sandusky (Boom; our band
+  plays the Grand Pavilion at Cedar Point). Each trip: a ride-along tour tapped at his own pace, 3 questions (right =
+  +2 coins and a happy line; wrong = the answer and a gentle line, no penalty; lines vary), then WATCH the show or PLAY
+  a real gig there. Every band visited joins the HALL OF FAME. HALLOWEEN NOW ENDS OCT 31 (was Nov 7); the candy haul
+  count stays open on Nov 1. Next: v1.62 the rest of Ring 1 + the Long-Haul Bus, v1.63 Thanksgiving (Nov 1).
 - **v1.60 History + Money (Oct 27).** HISTORY is a real subject now (its own level and strand; the Soundcheck places it):
   long ago vs today, timelines, years between and years ago, decades, centuries, Ohio history. Luna's City Museum gets two
   tabs: TIME DETECTIVE (Mumbles mixes up four inventions; put them in order, then the year math) and the OHIO HISTORY TRAIL
