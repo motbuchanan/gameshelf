@@ -928,14 +928,14 @@ svg .charg{will-change:transform}
 <div id="toast"></div>
 <button id="homeBtn" onclick="goHome()" aria-label="Back to Garage">🏠</button>
 <button id="ellyBtn" onclick="openEllyHelp()" aria-label="Ask Elly for help"></button>
-<div id="vbadge">v1.61 · Oct 29</div>
+<div id="vbadge">v1.62 · Oct 29</div>
 
 <script>
 'use strict';
 /* ============ UTILS ============ */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const VERSION='v1.61 · Oct 29';
+const VERSION='v1.62 · Oct 29';
 const RM=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -26498,6 +26498,8 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
   /* ---------- reactions: varied, never the same line twice in a row ---------- */
   var TRIP_RIGHT=['Yes! You were really listening.','That is it! You could be a tour guide.','Right! I am so happy you caught that.','You got it! High five!','Correct! You remember more than I do.','Yes! That is my favorite fact, too.','Nailed it! You are a real traveler now.','Right on! Want to give the tour next time?','Exactly! I knew you would get it.','Yes! I am telling the whole band you got that.'];
   var TRIP_WRONG=['Not quite, and that is okay. I threw a lot at you today.','Close! There was a LOT on that tour.','Nope, but no worries. Even I mix that one up.','Not this time. That is why we visit places more than once.','That is okay! Here is the answer, so it sticks.','Good guess! The real answer is below.','Not quite. Tours are a lot to remember. You did great listening.','No problem! Nobody remembers everything on the first trip.','Almost! Here is the right one.','That is okay. We can always come back and take the tour again.'];
+  var TRIP_END_GOOD_G=['You know this city now! Great listening.','Look at you! You remembered all of it.','That was a great tour. Thanks for listening!','You are a real road-tripper now.','Wow! You could teach this to the whole band.','This city is lucky you visited.'];
+  var TRIP_END_GENTLE_G=['Don’t worry, I threw a lot of information at you today.','That was a LOT of facts for one trip. You did great just listening.','Hey, nobody learns a whole city in one day. We can come back anytime.','The best part was having you along. The facts will stick next time.','Every trip, you remember a little more. That is how it works.','Even grown-ups forget half of a tour. Come back and it will stick.'];
   var TRIP_END_GOOD=['You know this city now! I am so proud to show you my hometown.','Look at you! You remembered all of it.','That was the best tour I ever gave. Thanks for listening!','You are a real road-tripper now.','Wow! You could teach this to the whole band.','My hometown is lucky you visited.'];
   var TRIP_END_GENTLE=['Don’t worry, I threw a lot of information at you today.','That was a LOT of facts for one trip. You did great just listening.','Hey, nobody learns a whole city in one day. We can come back anytime.','The best part was having you here. The facts will stick next time.','I still forget some of this stuff, and I grew up here!','Every trip, you remember a little more. That is how it works.'];
   function pickLine(arr,key){ var t=T(), i, n=0; do{ i=Math.floor(Math.random()*arr.length); n++; }while(arr.length>1&&i===t[key]&&n<20); t[key]=i; return arr[i]; }
@@ -26509,6 +26511,9 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
   function guideOf(c){ try{ if(S.band&&S.band[c.guide])return c.guide; }catch(e){} return 'gus'; }
 
   /* ================= SCREENS ================= */
+  var END_HOOKS=[], RENDER_HOOKS=[]; /* v1.62+: extra lines on the quiz-end card and the Road Trip screen */
+  function guestHTML(gs){ var sv2='', name=gs.id; try{ sv2=opSvg(gs.id,44); }catch(e){} try{ var t=WORD_TRACKS.filter(function(x){ return 'kn_'+x.id===gs.id; })[0]; if(t)name=t.kn; }catch(e){}
+    return '<div class="v61say v61guest">'+sv2+'<div class="speak" style="flex:1;min-width:0;margin:0"><b>'+esc(name)+' rides along:</b> “'+esc(gs.line)+'”</div></div>'; }
   var TT=null; /* the current trip round: {id, step, qs, qi, right, tok}; every card checks its own token */
   function modalOn(){ var m=document.getElementById('modal'); return !!(m&&m.classList.contains('on')); }
   function mbox(){ return document.getElementById('mbox'); }
@@ -26524,7 +26529,7 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
 
   /* ---------- the Road Trip screen ---------- */
   function tripRender(){ var body=document.getElementById('tripBody'); if(!body)return; var t=T(), v=veh();
-    var pr=document.getElementById('tripProg'); if(pr)pr.textContent=tripN()+' / '+TRIP_CITIES.length+' cities';
+    var pr=document.getElementById('tripProg'); if(pr)pr.textContent='🏙️ '+tripN()+'/'+TRIP_CITIES.length;
     var h='<div class="center" style="margin:6px 0"><div class="row" style="justify-content:center;gap:6px;align-items:flex-end">'+msvg('gus',54)+'<span style="font-size:40px">'+v.emoji+'</span></div>'
       +'<div class="sub" style="margin:2px 0 0">'+nfy('We live in Ohio, so we start close to home. Farther cities take a LONG drive.')+'</div></div>';
     h+='<div class="v61sec">Ring 1: Ohio and the states next door</div>';
@@ -26533,6 +26538,7 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
         +'<span>'+nm(g)+' gives the tour · '+c.drive+' away</span>'
         +'<span class="st">'+(done?'✓ visited'+(q?' · best '+q.best+'/'+q.n:''):'New! Tap to drive')+'</span></div></div>'; });
     TRIP_SOON.forEach(function(s){ h+='<div class="v61city lock">'+msvg(s[2],44)+'<div class="tx"><b>'+s[0]+', '+s[1]+'</b><span>'+nm(s[2])+'’s hometown · coming soon</span></div></div>'; });
+    RENDER_HOOKS.forEach(function(f){ try{ h+=f()||''; }catch(e){} });
     h+='<button class="btn wide" onclick="'+cb(function(){ hofOpen(); })+'">🏛️ Hall of Fame ('+tripN()+')</button>';
     body.innerHTML=h; }
   function tripOpen(){ tap(); tripMount(); tripRender(); try{ show('scr-trip'); }catch(e){} var s=document.getElementById('scr-trip'); if(s)s.scrollTop=0;
@@ -26547,7 +26553,7 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
   function live(tok,cls){ return !!(TT&&TT.tok===tok&&modalOn()&&mbox()&&mbox().querySelector('.'+cls)); }
   function tripDrive(tok){ var c=BY[TT.id], v=veh();
     modal('<div class="v61tour"><div class="center"><div class="v61road"><span class="v61veh">'+v.emoji+'</span></div><h2 style="margin:4px 0">Driving to '+c.city+'</h2></div>'
-      +'<div class="speak"><b>'+nm('gus')+':</b> “'+nfy('Driving takes a long time. '+c.city+' is '+c.drive+' from home. Farther states can take a whole day, so someday we will need a bigger bus!')+'”</div>'
+      +'<div class="speak"><b>'+nm('gus')+':</b> “'+nfy('Driving takes a long time. '+c.city+' is '+c.drive+' from home. '+(T().ring>=2?'The Long-Haul Bus is ready for the far states when Ring 2 opens.':'Farther states can take a whole day, so someday we will need a bigger bus!'))+'”</div>'
       +'<button class="btn wide" onclick="'+cb(function(){ if(TT&&TT.tok===tok){ TT.step=0; tripTour(tok); } })+'">We’re here! 🏙️</button>'
       +'<button class="btn wide ghost small" onclick="'+cb(function(){ TT=null; closeModal(); })+'">Turn around</button></div>'); }
   function tripTour(tok){ if(!TT||TT.tok!==tok)return; var c=BY[TT.id], g=guideOf(c), i=TT.step, sp=c.stops[i], last=i===c.stops.length-1;
@@ -26557,6 +26563,7 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
       +'<div class="v61dots">'+c.stops.map(function(_,k){ return '<i class="'+(k<=i?'on':'')+'"></i>'; }).join('')+'</div>'
       +'<div class="v61slide"><div class="ic">'+sp.ic+'</div><b>'+sp.t+'</b></div>'
       +'<div class="v61say">'+msvg(g,52)+'<div class="speak" style="flex:1;min-width:0;margin:0"><b>'+nm(g)+':</b> “'+esc(f)+'”</div></div>'
+      +(i===0&&c.guest?guestHTML(c.guest):'')
       +'<button class="btn wide" onclick="'+cb(function(){ if(!live(tok,'v61tour')||TT.step!==i)return; tap(); if(last){ tripQuizStart(tok); } else { TT.step=i+1; tripTour(tok); } })+'">'+(last?'On to the questions ✏️':'Next →')+'</button>'
       +(i>0?'<button class="btn wide ghost small" onclick="'+cb(function(){ if(!live(tok,'v61tour')||TT.step!==i)return; TT.step=i-1; tripTour(tok); })+'">← Back</button>':'')+'</div>'); }
 
@@ -26575,9 +26582,10 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
       +'<button class="btn wide" onclick="'+cb(function(){ if(!live(tok,'v61quiz')||TT.qi!==qi)return; tap(); if(last)tripQuizEnd(tok); else { TT.qi=qi+1; tripQuiz(tok); } })+'">'+(last?'Done ✓':'Next question →')+'</button></div>'); }
   function tripQuizEnd(tok){ if(!TT||TT.tok!==tok||TT.ended)return; TT.ended=true; var c=BY[TT.id], g=guideOf(c), t=T(), n=TT.qs.length, r=TT.right;
     var prev=t.quiz[c.id]; t.quiz[c.id]={best:Math.max(r,prev?prev.best:0),n:n,last:r,tries:(prev?prev.tries:0)+1}; t.trips++; sv();
-    var happy=r>=2, line=happy?pickLine(TRIP_END_GOOD,'le'):pickLine(TRIP_END_GENTLE,'le'); if(r===n)party(30);
+    var happy=r>=2, line=g==='gus'?(happy?pickLine(TRIP_END_GOOD_G,'le'):pickLine(TRIP_END_GENTLE_G,'le')):(happy?pickLine(TRIP_END_GOOD,'le'):pickLine(TRIP_END_GENTLE,'le')); if(r===n)party(30);
     modal('<div class="v61quiz"><div class="center">'+msvg(g,70)+'<h2 style="margin:4px 0">'+(r===n?'🌟 ':'')+r+' of '+n+' right</h2></div>'
       +'<div class="speak"><b>'+nm(g)+':</b> “'+esc(line)+'”</div>'
+      +END_HOOKS.map(function(f){ try{ return f(c,r,n)||''; }catch(e){ return ''; } }).join('')
       +'<button class="btn wide" onclick="'+cb(function(){ if(!live(tok,'v61quiz')||TT.staged)return; TT.staged=true; tap(); tripStage(tok); })+'">🎤 To the stage</button></div>'); }
 
   /* ---------- the stage: WATCH or PLAY ---------- */
@@ -26658,7 +26666,7 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
   (window.MU_NEWS=window.MU_NEWS||[]).push({flag:'seen161',pri:2,when:function(){ return !!(S.stats&&S.stats.answers>0); },html:function(){
     var row=function(art,t,s){ return '<div class="card" style="text-align:left;display:flex;gap:10px;align-items:center">'+art+'<div style="flex:1;min-width:0"><b>'+t+'</b><div class="sub" style="margin:2px 0 0;text-align:left">'+s+'</div></div></div>'; };
     return '<div class="center"><h2 style="margin:4px 0">🚐 Road Trip!</h2><div class="sub">The band is going on the road to REAL cities.</div></div>'
-      +row(msvg('gus',54),'Drive to a real city','Gus drives. Driving takes a long time, so we start in Ohio: Cleveland and Sandusky. More states are coming.')
+      +row(msvg('gus',54),'Drive to a real city','Gus drives. Driving takes a long time, so we start in Ohio, then the states next door.')
       +row(msvg('axel',54),'Ride along on the tour','The bandmate from that city shows you around with real facts. Then 3 questions. No losing.')
       +row('<span style="font-size:40px">🏛️</span>','Watch or play the show','At the stage, pick WATCH or PLAY. Every band you visit joins the Hall of Fame.')
       +row('<span style="font-size:40px">🎃</span>','Halloween ends Oct 31','Trick-or-treat ends on Halloween night. You can still count your real candy haul on Nov 1.')
@@ -26675,7 +26683,7 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
   /* To-Do rows */
   (window.TODO_EXTRA=window.TODO_EXTRA||[]).push(function(sec){ var out=[];
     if(sec==='quests'){ var n=tripN();
-      if(n<TRIP_CITIES.length)out.push({ic:msvg('gus',40),t:n?'Road Trip: '+n+' of '+TRIP_CITIES.length+' cities':'Take a Road Trip',s:n?'Next: '+TRIP_CITIES.filter(function(c){ return !visited(c.id); })[0].city+'. Tour it, answer 3 questions, watch or play the show.':'Gus drives the band to Cleveland or Sandusky. It is in On the Road.',btn:'Go',go:function(){ tripOpen(); },key:'trip',top:!n}); }
+      if(n<TRIP_CITIES.length)out.push({ic:msvg('gus',40),t:n?'Road Trip: '+n+' of '+TRIP_CITIES.length+' cities':'Take a Road Trip',s:n?'Next: '+TRIP_CITIES.filter(function(c){ return !visited(c.id); })[0].city+'. Tour it, answer 3 questions, watch or play the show.':'Gus drives the band to real cities. It is in On the Road.',btn:'Go',go:function(){ tripOpen(); },key:'trip',top:!n}); }
     return out; });
   try{ if(window.__todo){ var D=__todo.DEST2SCR; if(D&&!D.trip)D.trip='scr-trip';
     var NR=__todo.NEWS_ROWS; if(NR&&!NR.some(function(r){ return r.t==='Road Trip'; })){
@@ -26691,7 +26699,219 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
 
   window.tripOpen=tripOpen; window.hofOpen=hofOpen; window.tripGo=tripGo;
   window.__trip={T:T,TRIP_CITIES:TRIP_CITIES,TRIP_SOON:TRIP_SOON,TRIP_RIGHT:TRIP_RIGHT,TRIP_WRONG:TRIP_WRONG,TRIP_END_GOOD:TRIP_END_GOOD,TRIP_END_GENTLE:TRIP_END_GENTLE,
-    tripQs:tripQs,guideOf:guideOf,tripN:tripN,tripGo:tripGo,tripOpen:tripOpen,hofOpen:hofOpen,getTT:function(){ return TT; },TRIP_VEN:TRIP_VEN};
+    tripQs:tripQs,guideOf:guideOf,END_HOOKS:END_HOOKS,RENDER_HOOKS:RENDER_HOOKS,BY:BY,
+    addCity:function(c,ven){ if(BY[c.id])return; TRIP_CITIES.push(c); BY[c.id]=c; for(var i=TRIP_SOON.length-1;i>=0;i--){ if(TRIP_SOON[i][0]===c.city)TRIP_SOON.splice(i,1); } try{ if(ven&&typeof VEN_BY==='object'&&!VEN_BY[ven.id])VEN_BY[ven.id]=ven; }catch(e){} },
+    render:function(){ tripRender(); },tripN:tripN,tripGo:tripGo,tripOpen:tripOpen,hofOpen:hofOpen,getTT:function(){ return TT; },TRIP_VEN:TRIP_VEN};
+})();
+</script>
+<script>
+/* ================= v1.62 · ROAD TRIP RING 1 + THE LONG-HAUL BUS (Oct 29 2026) =================
+   Mot: "Add the rest of the ring." (measureup-world-plan.md Phase 2)
+     1. SIX MORE RING 1 CITIES, each guided by the bandmate from that state, with real facts (checked Oct 29 2026;
+        sources in BREAK-REPORT.md, v1.62 section): Detroit MI (Krag; Thunderhead at the Fox Theatre), Fayetteville WV (Willow; The Hollow
+        at the Historic Fayette Theater), Indianapolis IN (Tock; our band at the Hilbert Circle Theatre), Hershey PA
+        (Libby; The Lopsiders at Hershey Theatre), Louisville KY (Roscoe; our band at Headliners Music Hall), Philadelphia
+        PA (Fern; The Ragged Edges at Union Transfer). Word Hoard keepers ride along as guests in Detroit and Indianapolis.
+     2. THE LONG-HAUL BUS: 4 parts (wheels, engine, bunks, map). Each Ring 1 city gives one part the first time a trip
+        there gets 2 or more right (a later visit counts if the first one missed). All 4 = the bus is built, S.trip.ring=2,
+        and Ring 2 shows as coming soon. Separate from the shop's Tour Bus, so owning that does not skip the gate.
+   Every new thing: MU_NEWS card (seen162), G guide (bus), a teach line on the first part, To-Do row, Grown-Ups card.
+   Uses window.__trip from v1.61 (addCity, END_HOOKS, RENDER_HOOKS). Debug: window.__v62. No em dashes. */
+(function(){
+  if(typeof document==='undefined')return;
+  if(typeof S==='undefined'||!window.__trip||typeof __trip.addCity!=='function')return;
+  try{ DEF.flags.seen162=false; }catch(e){}
+  var T=__trip.T;
+  function dk(d){ d=d||new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
+  function sv(){ try{ if(typeof save==='function')save(); }catch(e){} }
+  function party(n){ try{ confetti(n||30); }catch(e){} }
+  function nm(id){ try{ return mName(id); }catch(e){ return id; } }
+  function msvg(id,sz){ try{ return memberSVG(id,sz); }catch(e){ return ''; } }
+  function nfy(s){ try{ return nameify(s); }catch(e){ return s; } }
+  function veh(){ try{ return venueVehicle(); }catch(e){ return {emoji:'🚐',name:'the Van'}; } }
+  function tripOpen(){ try{ window.tripOpen(); }catch(e){} }
+  var CB=[]; function cb(fn){ CB.push(fn); if(CB.length>3000)CB=CB.slice(-1500); return '__v62cb('+(CB.length-1)+')'; }
+  window.__v62cb=function(i){ try{ var f=CB[i]; if(f)f(); }catch(e){ try{ __muErr('v162',e); }catch(_){} } };
+  function ven(id,name,emoji,vibe,c1,c2,crowd){ return {id:id,name:name,emoji:emoji,vibe:vibe,best:0,mult:1.5,lead:950,harms:2,encore:1,bg:'radial-gradient(520px 260px at 50% 0%,'+c1+',transparent 70%),linear-gradient(180deg,#120a24,'+c2+')',crowd:crowd}; }
+
+  /* ---------- the six cities (real facts, checked Oct 29 2026) ---------- */
+  var NEW=[
+   {c:{id:'det',st:'Michigan',city:'Detroit',guide:'krag',rival:'thunderhead',band:'Thunderhead',drive:'about 3 hours',
+     stage:{name:'the Fox Theatre',venue:'trip_det'}, guest:{id:'kn_roots',line:'I am from Michigan! Lansing is our capital. I came along to see the Motor City.'},
+     stops:[
+      {ic:'🤘',t:'The Motor City',f:'Welcome to Detroit, Michigan! People call it the Motor City because it is famous for making cars. Big car companies like Ford and General Motors are based in the Detroit area.'},
+      {ic:'🎵',t:'Hitsville U.S.A.',f:'Motown Records started here in 1959. Berry Gordy turned a house into a music studio called Hitsville U.S.A. Stars like Marvin Gaye sang hit songs in its garage studio.'},
+      {ic:'🚗',t:'The assembly line',f:'Henry Ford made a car called the Model T. In 1913, his factory in Highland Park, Michigan started a moving assembly line. Later, Ford’s factories made one Model T every 24 seconds!'},
+      {ic:'🌉',t:'Canada to the south',f:'Across the Detroit River is Windsor, Canada. Windsor is south of Detroit, so here you go south to get to Canada! The Ambassador Bridge crosses the river.'},
+      {ic:'💡',t:'A marble lighthouse',f:'On Belle Isle in Detroit stands a lighthouse built in 1930. It is made of marble and is 58 feet tall. It is the only marble lighthouse in the United States.'},
+      {ic:'🎸',t:'Show time',f:'Last stop: the Fox Theatre! It opened in 1928 as a giant movie palace, and it has more than 5,000 seats. Tonight, Thunderhead plays here!'}],
+     qs:[
+      {q:'What is Detroit famous for making?',a:'cars',w:['boats','trains','bikes'],s:0},
+      {q:'What was the Motown music studio called?',a:'Hitsville U.S.A.',w:['Songville U.S.A.','Tunetown U.S.A.','Beat House U.S.A.'],s:1},
+      {q:'How fast did Ford’s line make a Model T?',a:'every 24 seconds',w:['every 24 minutes','every 24 hours','every 24 days'],s:2},
+      {q:'Which way do you go from Detroit to reach Windsor, Canada?',a:'south',w:['north','east','west'],s:3},
+      {q:'What is the Belle Isle lighthouse made of?',a:'marble',w:['glass','wood','brick'],s:4},
+      {q:'The Fox Theatre opened in 1928. How many years ago was that?',y:1928,s:5}]},
+    v:ven('trip_det','The Fox Theatre, Detroit','🎸','A 1928 movie palace with more than 5,000 seats.','rgba(122,42,160,.4)','#2a0f3a','🎸 Five thousand Detroit fans stomp in the giant golden Fox.')},
+   {c:{id:'fay',st:'West Virginia',city:'Fayetteville',guide:'willow',rival:'hollow',band:'The Hollow',drive:'about 4 and a half hours',
+     stage:{name:'the Historic Fayette Theater',venue:'trip_fay'},
+     stops:[
+      {ic:'🏞️',t:'The gorge',f:'Welcome to Fayetteville, West Virginia! The town sits next to New River Gorge National Park. It became the newest national park in the United States in 2020.'},
+      {ic:'⛏️',t:'Coal mining days',f:'Long ago, miners dug coal in the gorge. Kaymoor was a coal mine near Fayetteville. Its first coal was shipped out in 1900.'},
+      {ic:'🌉',t:'The big arch bridge',f:'The New River Gorge Bridge is a giant arch bridge. It stands 876 feet above the river. It opened in 1977.'},
+      {ic:'🎉',t:'Bridge Day',f:'Bridge Day is on the third Saturday in October. It is the one day of the year people can walk on the bridge. Brave jumpers leap off with parachutes!'},
+      {ic:'🚣',t:'Whitewater',f:'The New River is thought to be one of the oldest rivers in the world. Its fast, bumpy rapids are called whitewater. People ride the rapids in rafts.'},
+      {ic:'🎭',t:'Show time',f:'Last stop: the Historic Fayette Theater on Court Street! It was built in 1937 as a movie house. Tonight, The Hollow plays here.'}],
+     qs:[
+      {q:'New River Gorge is the newest what in the United States?',a:'national park',w:['zoo','city','highway'],s:0},
+      {q:'What did miners dig at Kaymoor?',a:'coal',w:['gold','salt','diamonds'],s:1},
+      {q:'The New River Gorge Bridge opened in 1977. How many years ago was that?',y:1977,s:2},
+      {q:'On Bridge Day, what do brave jumpers use?',a:'parachutes',w:['kites','balloons','umbrellas'],s:3},
+      {q:'The New River is one of the oldest what in the world?',a:'rivers',w:['mountains','caves','lakes'],s:4},
+      {q:'What was the Historic Fayette Theater built as?',a:'a movie house',w:['a train station','a school','a coal mine office'],s:5}]},
+    v:ven('trip_fay','Historic Fayette Theater','🎻','A 1937 movie house on Court Street.','rgba(138,201,38,.3)','#1f2a14','🎻 Rafters and hikers pack the little theater, boots still muddy from the gorge.')},
+   {c:{id:'ind',st:'Indiana',city:'Indianapolis',guide:'tock',rival:'',band:'our band',drive:'about 5 hours',
+     stage:{name:'the Hilbert Circle Theatre',venue:'trip_ind'}, guest:{id:'kn_affix',line:'Indiana is my home state! Indianapolis is the capital. I came for the race track.'},
+     stops:[
+      {ic:'🏛️',t:'The capital',f:'Welcome to Indianapolis, Indiana! It is the capital city of Indiana. The Indiana Statehouse here was finished in 1888.'},
+      {ic:'🏁',t:'The Indy 500',f:'The Indianapolis 500 is a 500-mile car race. The first one was in 1911. The Speedway has more than 250,000 seats, the most of any sports place in the world!'},
+      {ic:'🧱',t:'The Brickyard',f:'In 1909, workers paved the track with 3.2 million bricks. That is why it is called the Brickyard. A strip of the old bricks, one yard wide, is still at the finish line.'},
+      {ic:'🥛',t:'Winners drink milk',f:'In 1936, winner Louis Meyer drank buttermilk after the race. Today, Indy 500 winners are handed milk!'},
+      {ic:'🦕',t:'Children’s Museum',f:'The Children’s Museum of Indianapolis is the world’s largest kids’ museum. It has five floors. You can see dinosaurs there!'},
+      {ic:'🎻',t:'Show time',f:'Last stop: the Hilbert Circle Theatre on Monument Circle! It opened in 1916 as a movie palace. It is home to the Indianapolis Symphony Orchestra, and our band plays here tonight!'}],
+     qs:[
+      {q:'What is Indianapolis to the state of Indiana?',a:'capital city',w:['smallest town','oldest farm','biggest lake'],s:0},
+      {q:'The first Indianapolis 500 race was in 1911. How many years ago was that?',y:1911,s:1},
+      {q:'How many bricks paved the track?',a:'3.2 million',w:['3,200','32 thousand','3.2 billion'],s:2},
+      {q:'What are Indy 500 winners handed?',a:'milk',w:['juice','lemonade','hot cocoa'],s:3},
+      {q:'How many floors does the Children’s Museum have?',a:'five',w:['two','three','ten'],s:4},
+      {q:'Which orchestra calls the Hilbert Circle Theatre home?',a:'Indianapolis Symphony Orchestra',w:['Indiana Pops Band','Indianapolis Jazz Club','Hoosier Marching Band'],s:5}]},
+    v:ven('trip_ind','Hilbert Circle Theatre, Indianapolis','🏁','A 1916 movie palace on Monument Circle.','rgba(255,209,88,.3)','#1a2440','🏁 Race fans in checkered hats fill the theater on Monument Circle.')},
+   {c:{id:'her',st:'Pennsylvania',city:'Hershey',guide:'libby',rival:'lopsiders',band:'The Lopsiders',drive:'about 5 hours',
+     stage:{name:'Hershey Theatre',venue:'trip_her'},
+     stops:[
+      {ic:'🍫',t:'The chocolate town',f:'Welcome to Hershey, Pennsylvania! Milton Hershey’s chocolate factory opened here in 1905. He planned a whole town around it.'},
+      {ic:'🍬',t:'Hershey’s Kisses',f:'Hershey’s Kisses were first made in 1907. At first, people wrapped each one by hand. Today, the company makes more than 70 million Kisses a day.'},
+      {ic:'💡',t:'Kiss streetlights',f:'On Chocolate Avenue, the streetlights look like giant Kisses. Some look wrapped in foil and some look unwrapped. They were first lit in 1963.'},
+      {ic:'🎠',t:'A park for workers',f:'Milton Hershey built a park in 1906 for his factory workers and their families. Its first ride was a merry-go-round, bought in 1908. Today it is called Hersheypark.'},
+      {ic:'🏭',t:'Chocolate World',f:'At Hershey’s Chocolate World, you can take a free tour ride. It shows how a cocoa bean becomes a chocolate bar. You get a sweet treat at the end.'},
+      {ic:'🎭',t:'Show time',f:'Last stop: Hershey Theatre, which opened in 1933! Its ceiling looks like a sky, with tiny lights that twinkle like stars. Tonight, The Lopsiders play here.'}],
+     qs:[
+      {q:'Milton Hershey’s chocolate factory opened in 1905. How many years ago was that?',y:1905,s:0},
+      {q:'How were the first Kisses wrapped?',a:'by hand',w:['by machine','with tape','in paper bags'],s:1},
+      {q:'What do the streetlights on Chocolate Avenue look like?',a:'giant Kisses',w:['candy canes','chocolate bars','ice cream cones'],s:2},
+      {q:'What was the first ride at Hershey’s park?',a:'a merry-go-round',w:['a roller coaster','a water slide','a Ferris wheel'],s:3},
+      {q:'How much does the Chocolate World tour ride cost?',a:'free',w:['$5','$20','$50'],s:4},
+      {q:'What does the Hershey Theatre ceiling look like?',a:'a sky',w:['a chocolate bar','a big drum','a cave'],s:5}]},
+    v:ven('trip_her','Hershey Theatre','🍫','A 1933 theater with a ceiling of twinkling stars.','rgba(79,179,169,.35)','#2a1a12','🍫 The whole room smells a little like chocolate. Nobody minds.')},
+   {c:{id:'lou',st:'Kentucky',city:'Louisville',guide:'roscoe',rival:'',band:'our band',drive:'about 5 and a half hours',
+     stage:{name:'Headliners Music Hall',venue:'trip_lou'},
+     stops:[
+      {ic:'🏙️',t:'River city',f:'Welcome to Louisville, Kentucky! The city sits on the Ohio River. Across the water is the state of Indiana.'},
+      {ic:'🐎',t:'The Kentucky Derby',f:'The Kentucky Derby is a horse race at Churchill Downs, first run in 1875. People call it the most exciting two minutes in sports. The winning horse gets a blanket of red roses.'},
+      {ic:'⚾',t:'The giant bat',f:'Louisville Slugger baseball bats are made here. Outside the museum stands a giant bat that is 120 feet tall. It is the biggest model of a baseball bat in the world.'},
+      {ic:'🥊',t:'The Greatest',f:'Muhammad Ali was born in Louisville in 1942. He was the first boxer to win the heavyweight title three times. The Muhammad Ali Center tells his story.'},
+      {ic:'🎻',t:'Bluegrass music',f:'Bill Monroe from Kentucky is called the Father of Bluegrass. The music got its name from his band, the Blue Grass Boys, named for Kentucky, the Bluegrass State. They played fast songs with fiddle, banjo, and mandolin.'},
+      {ic:'🎸',t:'Show time',f:'Last stop: Headliners Music Hall on Lexington Road! Long ago, big bands practiced music in this building. Tonight, our band plays here!'}],
+     qs:[
+      {q:'What river does Louisville sit on?',a:'the Ohio River',w:['the Mississippi River','the Hudson River','the Colorado River'],s:0},
+      {q:'The first Kentucky Derby was run in 1875. How many years ago was that?',y:1875,s:1},
+      {q:'How tall is the giant bat outside the Louisville Slugger Museum?',a:'120 feet tall',w:['12 feet tall','50 feet tall','300 feet tall'],s:2},
+      {q:'Which famous boxer was born in Louisville?',a:'Muhammad Ali',w:['Joe Louis','Mike Tyson','Sugar Ray Leonard'],s:3},
+      {q:'Who is called the Father of Bluegrass?',a:'Bill Monroe',w:['Johnny Cash','Elvis Presley','Dolly Parton'],s:4},
+      {q:'What road is Headliners Music Hall on?',a:'Lexington Road',w:['Main Street','River Road','Bardstown Road'],s:5}]},
+    v:ven('trip_lou','Headliners Music Hall, Louisville','🐎','A Lexington Road hall where big bands once practiced.','rgba(192,57,43,.35)','#2a1414','🐎 Louisville stomps along like it is Derby Day.')},
+   {c:{id:'phl',st:'Pennsylvania',city:'Philadelphia',guide:'fern',rival:'raggededges',band:'The Ragged Edges',drive:'about 6 and a half hours',
+     stage:{name:'Union Transfer',venue:'trip_phl'},
+     stops:[
+      {ic:'🏛️',t:'City of history',f:'Welcome to Philadelphia, Pennsylvania! Many people call it the birthplace of America. From 1790 to 1800, Philadelphia was the capital of the United States.'},
+      {ic:'✍️',t:'Independence Hall',f:'Independence Hall is a red brick building. The Declaration of Independence was approved here in 1776. The Constitution was signed here in 1787.'},
+      {ic:'🔔',t:'The Liberty Bell',f:'The Liberty Bell used to hang in the tower of Independence Hall. It has a big crack. After it cracked again in 1846, it could not ring anymore.'},
+      {ic:'⚡',t:'Ben Franklin’s kite',f:'Benjamin Franklin lived in Philadelphia. In 1752, he flew a kite in a storm. He showed that lightning is electricity. Never try this, it is very dangerous!'},
+      {ic:'🏃',t:'The Rocky Steps',f:'The Philadelphia Museum of Art has 72 big steps out front. A movie hero named Rocky ran up them in 1976. A statue of Rocky stands at the bottom of the steps.'},
+      {ic:'🎸',t:'Show time',f:'Last stop: Union Transfer, a music hall that opened in 2011! Long ago, its building stored bags for a railway company. Tonight, The Ragged Edges play here.'}],
+     qs:[
+      {q:'From 1790 to 1800, Philadelphia was the capital of what?',a:'the United States',w:['England','France','Mexico'],s:0},
+      {q:'The Declaration of Independence was approved in 1776. How many years ago was that?',y:1776,s:1},
+      {q:'What does the Liberty Bell have?',a:'a big crack',w:['a gold handle','a painted flag','a silver bow'],s:2},
+      {q:'Benjamin Franklin showed that lightning is what?',a:'electricity',w:['fire','water','wind'],s:3},
+      {q:'How many steps are in front of the art museum?',a:'72',w:['12','45','100'],s:4},
+      {q:'Who plays at Union Transfer tonight?',a:'The Ragged Edges',w:['The Liberty Bells','The Kite Flyers','The Rocky Runners'],s:5}]},
+    v:ven('trip_phl','Union Transfer, Philadelphia','🔔','A 2011 music hall in an old railway baggage building.','rgba(79,179,169,.35)','#14242a','🔔 Philly fans cheer so loud you could crack a bell.')}
+  ];
+  NEW.forEach(function(x){ __trip.addCity(x.c,x.v); });
+
+  /* ================= THE LONG-HAUL BUS ================= */
+  var TRIP_PARTS=[{id:'wheels',ic:'⚙️',n:'Big Wheels'},{id:'engine',ic:'🔧',n:'Strong Engine'},{id:'bunks',ic:'🛏️',n:'Sleeping Bunks'},{id:'map',ic:'🗺️',n:'Road Map'}];
+  function partsGot(){ var p=T().parts, got={}; Object.keys(p).forEach(function(k){ if(p[k])got[p[k]]=true; }); return TRIP_PARTS.filter(function(x){ return got[x.id]; }); }
+  function busDone(){ return partsGot().length>=TRIP_PARTS.length; }
+  /* one part per Ring 1 city, the first time a trip there gets 2 or more right (a second visit counts if the first missed) */
+  function tripPart(cityId,right){ var t=T(); if(right<2||t.parts[cityId]||busDone())return null; var have=partsGot().map(function(x){ return x.id; });
+    var nx=TRIP_PARTS.filter(function(x){ return have.indexOf(x.id)<0; })[0]; if(!nx)return null; t.parts[cityId]=nx.id;
+    if(busDone()&&t.ring<2){ t.ring=2; t.busDay=dk(); } sv(); return nx; }
+  function partsRow(){ var got=partsGot().map(function(x){ return x.id; }); return '<div class="v62parts">'+TRIP_PARTS.map(function(x){ var on=got.indexOf(x.id)>=0; return '<div class="'+(on?'on':'')+'"><span>'+(on?x.ic:'❔')+'</span><b>'+x.n+'</b></div>'; }).join('')+'</div>'; }
+  function busSVG(sz,done){ sz=sz||120; var c=done?'#ffd158':'#5a4a9e';
+    return '<svg width="'+sz+'" height="'+Math.round(sz*0.55)+'" viewBox="0 0 120 66"><rect x="4" y="8" width="108" height="42" rx="9" fill="'+c+'" stroke="#221a44" stroke-width="3"/><rect x="12" y="15" width="16" height="13" rx="2" fill="#cfe8ff"/><rect x="32" y="15" width="16" height="13" rx="2" fill="#cfe8ff"/><rect x="52" y="15" width="16" height="13" rx="2" fill="#cfe8ff"/><rect x="72" y="15" width="16" height="13" rx="2" fill="#cfe8ff"/><rect x="92" y="15" width="14" height="22" rx="2" fill="#cfe8ff"/><rect x="4" y="34" width="86" height="5" fill="#c8102e"/><circle cx="28" cy="52" r="10" fill="#221a44"/><circle cx="28" cy="52" r="4" fill="#bbbbbb"/><circle cx="88" cy="52" r="10" fill="#221a44"/><circle cx="88" cy="52" r="4" fill="#bbbbbb"/></svg>'; }
+
+  /* trips aced before v1.62 earn their parts (best 2 or more right) */
+  function backfill(){ try{ var t=T(), n=0; Object.keys(t.quiz).forEach(function(id){ var q=t.quiz[id]; if(q&&q.best>=2&&!t.parts[id]&&!busDone()&&__trip.BY[id]){ if(tripPart(id,q.best))n++; } }); if(n)t.back=(t.back|0)+n; if(n)sv(); return n; }catch(e){ return 0; } }
+  backfill();
+  /* the bus card on the Road Trip screen */
+  __trip.RENDER_HOOKS.push(function(){ var n=partsGot().length, done=busDone();
+    return '<div class="v61sec">The Long-Haul Bus</div><div class="card v62bus'+(done?' done':'')+'"><div class="center">'+busSVG(130,done)+'</div>'
+      +'<div class="sub" style="margin:2px 0 6px">'+(done?'Built! The Long-Haul Bus can drive all day. Ring 2, the farther states, is coming soon.':'Farther states are too far for '+veh().name+'. Every Ring 1 city where you get 2 or more questions right earns a bus part. '+n+' of '+TRIP_PARTS.length+' parts.')+'</div>'
+      +partsRow()+'<button class="btn small ghost" style="margin-top:6px" onclick="'+cb(function(){ try{ muGuide('bus'); }catch(e){} })+'">? How the bus works</button></div>'
+      +(done?'<div class="v61city lock"><span style="font-size:36px;flex:none">🗺️</span><div class="tx"><b>Ring 2: farther states</b><span>New cities, more hometowns · coming soon</span></div></div>':''); });
+
+  /* the part on the quiz-end card */
+  __trip.END_HOOKS.push(function(c,r,n){ var p=tripPart(c.id,r); if(!p){ var t=T(); if(r<2&&!t.parts[c.id]&&!busDone())return '<div class="card v62got miss"><div class="sub" style="margin:0">'+nfy('Get 2 or more right here to earn a part for the Long-Haul Bus. Come back anytime!')+'</div></div>'; return ''; }
+    var k=partsGot().length, first=k===1; if(r!==n)party(30); try{ sFanfare(); }catch(e){}
+    return '<div class="card v62got"><div class="center"><span style="font-size:40px">'+p.ic+'</span><h3 style="margin:2px 0">Bus part: '+p.n+'!</h3>'
+      +'<div class="sub" style="margin:0">'+k+' of '+TRIP_PARTS.length+' parts for the Long-Haul Bus</div></div>'
+      +(first?'<div class="speak" style="margin:6px 0 0"><b>'+nm('gus')+':</b> “'+nfy('Our '+veh().name.replace(/^the /,'')+' can only go so far. With all 4 parts we build the Long-Haul Bus, with bunks to sleep in, so we can drive to the FAR states. Earn a part in each city by getting 2 or more right.')+'”</div>':'')
+      +(busDone()?'<div class="speak" style="margin:6px 0 0"><b>'+nm('gus')+':</b> “'+nfy('That is the last part! The Long-Haul Bus is BUILT. Now we can plan the long drives to Ring 2.')+'”</div>':'')+'</div>'; });
+
+  /* ================= WIRING ================= */
+  (function(){ if(document.getElementById('v62-css'))return; var st=document.createElement('style'); st.id='v62-css'; st.textContent=
+     '.v62bus{text-align:center;border:2px solid #5a4a9e}.v62bus.done{border-color:#ffd158}.v62bus svg{max-width:100%;height:auto}'
+    +'.v62parts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}.v62parts div{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 2px;border-radius:10px;border:2px dashed #3a2f6e;background:#1b1830;min-width:0}'
+    +'.v62parts div.on{border:2px solid #ffd158;background:#2b2350}.v62parts span{font-size:22px}.v62parts b{font-size:11px;line-height:1.2;overflow-wrap:anywhere;text-align:center}'
+    +'.v62got{border:2px solid #ffd158;text-align:left}.v62got.miss{border:2px dashed #5a4a9e}'
+    +'.v61guest{opacity:.95}.v61guest .speak{background:#22304a}'
+    +'@media (max-width:360px){.v62parts{grid-template-columns:repeat(2,minmax(0,1fr))}}';
+    document.head.appendChild(st); })();
+
+  /* What's New */
+  (window.MU_NEWS=window.MU_NEWS||[]).push({flag:'seen162',pri:2,when:function(){ return !!(S.stats&&S.stats.answers>0); },html:function(){
+    var row=function(art,t,s){ return '<div class="card" style="text-align:left;display:flex;gap:10px;align-items:center">'+art+'<div style="flex:1;min-width:0"><b>'+t+'</b><div class="sub" style="margin:2px 0 0;text-align:left">'+s+'</div></div></div>'; };
+    return '<div class="center"><h2 style="margin:4px 0">🚐 Six new Road Trip cities!</h2><div class="sub">Every state next to Ohio is open now.</div></div>'
+      +row(msvg('krag',54),'Detroit, Indianapolis, Louisville','Krag, Tock and Roscoe show you their hometowns.')
+      +row(msvg('willow',54),'Fayetteville, Philadelphia, Hershey','Willow, Fern and Libby show you theirs.')
+      +row(busSVG(70,false),'Build the Long-Haul Bus','Get 2 or more right in a city to earn a bus part. All 4 parts = a bus that can drive to the far states. Trips you already aced count.')
+      +'<div class="sub center">Every step is on the 📋 TO DO list.</div>'
+      +'<button class="btn wide" onclick="'+cb(function(){ closeModal(); tripOpen(); })+'">🚐 Take a Road Trip</button>'
+      +'<button class="btn wide ghost small" onclick="closeModal()">Later</button>'; }});
+
+  /* guides */
+  try{ var G=window.__news&&window.__news.G; if(G){
+    G['bus']={who:['member','gus'],t:'The Long-Haul Bus',s:['Far states take a whole day of driving. The van cannot go that far.','Get 2 or more questions right on a Road Trip to earn a bus part. Each city gives one part. Missed it? Visit again.','All 4 parts (wheels, engine, bunks, map) build the Long-Haul Bus. Then Ring 2, the farther states, comes next.']};
+    if(G['scr-trip'])G['scr-trip'].s=['Gus drives the band to real cities, starting with Ohio and the states next to it.','The bandmate from that city gives the tour. Read each stop, then tap Next. Three questions at the end, no losing.','Get 2 or more right to earn a part for the Long-Haul Bus. Then pick Watch or Play at the stage.'];
+  } }catch(e){}
+
+  /* To-Do rows */
+  (window.TODO_EXTRA=window.TODO_EXTRA||[]).push(function(sec){ var out=[];
+    if(sec==='quests'&&!busDone()){ var n=partsGot().length; out.push({ic:'🚌',t:'Build the Long-Haul Bus: '+n+' of '+TRIP_PARTS.length+' parts',s:'Get 2 or more right on a Road Trip to earn a part. Each city gives one.',btn:'Go',go:function(){ tripOpen(); },key:'bus',quiet:n===0}); }
+    return out; });
+  try{ if(window.__todo){ var NR=__todo.NEWS_ROWS; if(NR&&!NR.some(function(r){ return r.t==='Six new Road Trip cities'; })){
+      NR.unshift({v:'v1.62',t:'Six new Road Trip cities',s:'Detroit, Indianapolis, Louisville, Fayetteville, Philadelphia and Hershey, plus the Long-Haul Bus to build.',go:function(){ tripOpen(); },how:'bus'}); } } }catch(e){}
+
+  /* Grown-Ups corner */
+  (function(){ var _og=window.openGrown; if(typeof _og!=='function')return; window.openGrown=function(){ var r=_og.apply(this,arguments); try{ var body=document.getElementById('gwBody'); if(!body)return r;
+      body.insertAdjacentHTML('afterbegin','<div class="card" style="text-align:left;margin:8px 0"><b>🚌 Road Trip Ring 1 + the Long-Haul Bus (v1.62)</b>'
+        +'<div class="sub" style="margin:4px 0 0">All 8 Ring 1 cities are open: Cleveland and Sandusky OH, Detroit MI, Indianapolis IN, Louisville KY, Fayetteville WV, Philadelphia and Hershey PA. Each tour uses real, checked facts. Bus parts: '+partsGot().length+' of '+TRIP_PARTS.length+' (one per city with 2 or more right). The bus opens Ring 2 (coming). The Tour Bus from the shop does not count; this bus is earned by learning.</div></div>');
+    }catch(e){} return r; }; })();
+
+  window.__v62={TRIP_PARTS:TRIP_PARTS,partsGot:partsGot,busDone:busDone,tripPart:tripPart,CITIES:NEW};
 })();
 </script>
 </body>

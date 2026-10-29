@@ -5,10 +5,16 @@ uploaded against what the last chat thought it shipped. Full build notes stay in
 (in the NOTES zip, never uploaded).
 
 ## Current
-- **v1.61 · Oct 29 2026** (sw cache `measureup-v1-61`). Contains v1.51 through v1.60. Live URL: https://motbuchanan.github.io/gameshelf/measureup/
+- **v1.62 · Oct 29 2026** (sw cache `measureup-v1-62`). Contains v1.51 through v1.61. Live URL: https://motbuchanan.github.io/gameshelf/measureup/
 - Files in the repo folder: `index.html`, `sw.js`, `manifest.json`, `ROADMAP.md` (this file, new in v1.51).
 
 ## What shipped lately
+- **v1.62 Road Trip Ring 1 + the Long-Haul Bus (Oct 29).** Six more real cities, each guided by the bandmate from that
+  state: Detroit (Krag; Thunderhead at the Fox Theatre), Fayetteville WV (Willow; The Hollow at the Historic Fayette
+  Theater), Indianapolis (Tock; our band at the Hilbert Circle Theatre), Hershey (Libby; The Lopsiders at Hershey Theatre),
+  Louisville (Roscoe; our band at Headliners Music Hall), Philadelphia (Fern; The Ragged Edges at Union Transfer). Word Hoard
+  keepers ride along in Detroit and Indianapolis. THE LONG-HAUL BUS: 4 parts, one per city the first time a trip gets 2 or
+  more right; all 4 build the bus and open Ring 2 (coming soon). The shop's Tour Bus does not count. Next: v1.63 Thanksgiving.
 - **v1.61 Road Trip: Ohio (Oct 29).** On the Road gets a ROAD TRIP card: Gus drives the band to REAL cities, starting
   close to home (driving takes a long time). Cleveland (Axel; The Voltage plays the Agora) and Sandusky (Boom; our band
   plays the Grand Pavilion at Cedar Point). Each trip: a ride-along tour tapped at his own pace, 3 questions (right =
