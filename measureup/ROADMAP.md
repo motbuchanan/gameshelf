@@ -5,10 +5,15 @@ uploaded against what the last chat thought it shipped. Full build notes stay in
 (in the NOTES zip, never uploaded).
 
 ## Current
-- **v1.64 · Nov 2 2026** (sw cache `measureup-v1-64`). Contains v1.51 through v1.63. Live URL: https://motbuchanan.github.io/gameshelf/measureup/
+- **v1.65 · Nov 2 2026** (sw cache `measureup-v1-65`). Contains v1.51 through v1.64. Live URL: https://motbuchanan.github.io/gameshelf/measureup/
 - Files in the repo folder: `index.html`, `sw.js`, `manifest.json`, `ROADMAP.md` (this file, new in v1.51).
 
 ## What shipped lately
+- **v1.65 Thanksgiving, part 3 (Nov 2, opens Nov 26).** THE TOWN FEAST, Thanksgiving (Thu Nov 26) through Nov 30: all 8 feast
+  foods on the table (a gold star on the ones Garrett helped with; neighbors bring the rest), dishes he made with Mom get
+  their own spot, tap any dish to taste it, the THANKFUL WALL (8 neighbors' notes with his in the middle), and the Turkey's
+  toast while the band plays. First feast: +25 coins and the Town Feast Plate keepsake. THE GOODBYE: the first town visit in
+  December, the Turkey heads home and leaves the Golden Feather keepsake. Thanksgiving is complete (v1.63 to v1.65).
 - **v1.64 Thanksgiving, part 2 (Nov 2).** THE RECIPE BOX (a button on the Turkey's feast board): 5 real Thanksgiving recipes
   from USDA MyPlate, USDA FNS and University of Illinois Extension (pumpkin muffins, mashed potatoes, cornbread muffins,
   cranberry sauce, apple crisp), with real amounts, GROWN-UP badges on oven, stove and knife steps, a fun fact and allergy
