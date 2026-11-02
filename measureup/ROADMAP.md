@@ -5,10 +5,18 @@ uploaded against what the last chat thought it shipped. Full build notes stay in
 (in the NOTES zip, never uploaded).
 
 ## Current
-- **v1.62 · Oct 29 2026** (sw cache `measureup-v1-62`). Contains v1.51 through v1.61. Live URL: https://motbuchanan.github.io/gameshelf/measureup/
+- **v1.63 · Nov 1 2026** (sw cache `measureup-v1-63`). Contains v1.51 through v1.62. Live URL: https://motbuchanan.github.io/gameshelf/measureup/
 - Files in the repo folder: `index.html`, `sw.js`, `manifest.json`, `ROADMAP.md` (this file, new in v1.51).
 
 ## What shipped lately
+- **v1.63 Thanksgiving, part 1 (Nov 1).** November turns the town to fall: a ring of leaves around the square that grows
+  (more on Nov 10 or after 3 foods, full harvest on Nov 20 or after 6) and a banner. A TURKEY visits for November to host
+  the town feast (no turkey on the menu); Garrett names him the first time he meets him, and he stands on the square
+  (tap him, or the 🦃 FEAST button). FEAST FOODS: 8 neighbors each need help with one food, in their own subject
+  (Slice pie fractions, Honey green-bean skip counting, Gauge potato measuring, Doot sharing rolls, Combo cornbread
+  batches, Fizz cranberry science, Register cider money, Dr. Fig food groups); 2 open each week (Nov 1, 8, 15, 22),
+  3 questions each, no losing, a gold star for 3 of 3. THANKFUL: ask 8 neighbors, then write his own (shows in
+  Grown-Ups). Next: v1.64 recipes with Mom + the leaf robot; v1.65 the feast (Nov 26 to 30) + the Turkey's goodbye.
 - **v1.62 Road Trip Ring 1 + the Long-Haul Bus (Oct 29).** Six more real cities, each guided by the bandmate from that
   state: Detroit (Krag; Thunderhead at the Fox Theatre), Fayetteville WV (Willow; The Hollow at the Historic Fayette
   Theater), Indianapolis (Tock; our band at the Hilbert Circle Theatre), Hershey (Libby; The Lopsiders at Hershey Theatre),

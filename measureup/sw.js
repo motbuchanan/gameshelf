@@ -1,4 +1,4 @@
-const CACHE='measureup-v1-62';
+const CACHE='measureup-v1-63';
 // Delete ONLY old measureup-* caches: the shelf and other apps share this origin's cache storage.
 const CORE=['./','./index.html','./manifest.json'];
 self.addEventListener('install',e=>{
