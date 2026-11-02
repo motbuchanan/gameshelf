@@ -928,14 +928,14 @@ svg .charg{will-change:transform}
 <div id="toast"></div>
 <button id="homeBtn" onclick="goHome()" aria-label="Back to Garage">🏠</button>
 <button id="ellyBtn" onclick="openEllyHelp()" aria-label="Ask Elly for help"></button>
-<div id="vbadge">v1.65 · Nov 2</div>
+<div id="vbadge">v1.66 · Nov 2</div>
 
 <script>
 'use strict';
 /* ============ UTILS ============ */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const VERSION='v1.65 · Nov 2';
+const VERSION='v1.66 · Nov 2';
 const RM=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -20783,7 +20783,9 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
      What's New, Grown-Ups switches, style, exports
      ===================================================================================================== */
   try{ if(typeof DEF==='object'&&DEF.flags)DEF.flags.seen146=false; }catch(e){}
-  (window.MU_NEWS=window.MU_NEWS||[]).push({flag:'seen146',pri:1,html:function(){ hwS();
+  /* v1.66: push the Halloween intro card ONLY in season (like the feast/goodbye cards), so out of season it is never
+     in the queue to be shown OR to have its flag burned. That lets it return next October for a Nov-join player. */
+  if(evActive())(window.MU_NEWS=window.MU_NEWS||[]).push({flag:'seen146',pri:1,when:function(){ try{ return !!evActive(); }catch(e){ return false; } },html:function(){ hwS();
     return '<div class="center"><div class="row" style="justify-content:center;gap:4px">'+nkSvg('patch',62)+nkSvg('boo',62)+nkSvg('stitch',62)+'</div><h2 style="margin:4px 0 0">🎃 Halloween comes to town!</h2><div class="sub">Eight new neighbors are moving onto Hollow Lane.</div></div>'
           +'<div class="card" style="text-align:left"><b>🏚️ New neighbors.</b> <span class="sub" style="display:inline;margin:0">Patch, Stitch and Boo need your help to move in today. More arrive every day. Tap a dark building with a ? on Hollow Lane to start that neighbor\u2019s welcome quest.</span></div>'
           +'<div class="card" style="text-align:left"><b>🚪 Trick-or-treat.</b> <span class="sub" style="display:inline;margin:0">In the apartment buildings, doors with a glowing pumpkin have their porch lights on. Knock, answer, get candy!</span></div>'
@@ -21238,16 +21240,19 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
   function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
   /* ---------- the news queue ---------- */
-  var NEWS_ON=false;
+  /* v1.66: a brand-new player used to get every unseen card in a row (18 by November). Cap the auto-pop to ONE card
+     per city visit; the rest wait for the next visit (and, from v1.68, live on the News Board). */
+  var NEWS_ON=false, newsShownThisVisit=0, NEWS_CAP=1;
   function nextNews(){ try{ if(modalOn())return false; if(!S||!S.flags||!S.flags.introDone)return false;
+      if(newsShownThisVisit>=NEWS_CAP){ NEWS_ON=false; return false; }
       var list=(window.MU_NEWS||[]).slice().sort(function(a,b){ return (a.pri||9)-(b.pri||9); });
       for(var i=0;i<list.length;i++){ var it=list[i]; if(S.flags[it.flag])continue;
         if(typeof it.when==='function'&&!it.when()){ S.flags[it.flag]=true; sv(); continue; }
         var html=''; try{ html=it.html(); }catch(e){ S.flags[it.flag]=true; sv(); continue; }
-        S.flags[it.flag]=true; sv(); modal(html); NEWS_ON=true; return true; }
+        S.flags[it.flag]=true; sv(); modal(html); NEWS_ON=true; newsShownThisVisit++; return true; }
     }catch(e){} NEWS_ON=false; return false; }
   window.muNextNews=nextNews;
-  (function(){ if(typeof openTown!=='function')return; var _ot=openTown; window.openTown=openTown=function(){ var r=_ot.apply(this,arguments); setTimeout(function(){ if(onScreen('scr-town'))nextNews(); },700); return r; }; if(window.BQ)try{ window.BQ.openTown=openTown; }catch(_){} })();
+  (function(){ if(typeof openTown!=='function')return; var _ot=openTown; window.openTown=openTown=function(){ var r=_ot.apply(this,arguments); setTimeout(function(){ if(onScreen('scr-town')){ newsShownThisVisit=0; nextNews(); } },700); return r; }; if(window.BQ)try{ window.BQ.openTown=openTown; }catch(_){} })();
   (function(){ if(typeof closeModal!=='function')return; var _cm=closeModal; window.closeModal=closeModal=function(){ var r=_cm.apply(this,arguments);
     if(NEWS_ON){ setTimeout(function(){ if(onScreen('scr-town')&&!modalOn())nextNews(); else NEWS_ON=false; },450); }
     return r; }; })();
@@ -21287,7 +21292,11 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
 
   /* ---------- labeled pills ---------- */
   function labelPills(){ try{ var top=document.getElementById('twShellTop'); if(!top)return;
-      var h=top.querySelector('[data-go="hw"]'); if(h&&!/HALLOWEEN/.test(h.innerHTML)){ var n=(window.__hw&&window.__hw.candyTotal)?window.__hw.candyTotal():0; h.innerHTML='🎃 HALLOWEEN <b style="background:#ff8a1e;color:#1d1636;border-radius:8px;padding:0 5px;margin-left:2px">'+n+'</b>'; }
+      /* v1.66: the HALLOWEEN pill used to stay up all winter. Hide it out of season; the candy bank keeps the total. */
+      var evOn=false; try{ evOn=!!(window.__hw&&window.__hw.evActive&&window.__hw.evActive()); }catch(e){}
+      var h=top.querySelector('[data-go="hw"]');
+      if(h&&!evOn){ h.style.display='none'; }
+      else if(h){ h.style.display=''; if(!/HALLOWEEN/.test(h.innerHTML)){ var n=(window.__hw&&window.__hw.candyTotal)?window.__hw.candyTotal():0; h.innerHTML='🎃 HALLOWEEN <b style="background:#ff8a1e;color:#1d1636;border-radius:8px;padding:0 5px;margin-left:2px">'+n+'</b>'; } }
       var c=top.querySelector('[data-go="cc"]'); if(c&&!/CARDS/.test(c.innerHTML)){ var cc=(S&&S.cc)||{}; c.innerHTML='🃏 CARDS · Rk '+(cc.rank||1)+(cc.packs?' <b style="background:#ff5d5d;border-radius:8px;padding:0 5px;margin-left:2px">'+cc.packs+'</b>':''); } }catch(e){} }
   (function(){ if(typeof renderTown!=='function')return; var _rt=renderTown; window.renderTown=renderTown=function(){ var r=_rt.apply(this,arguments); labelPills(); return r; }; if(window.BQ)try{ window.BQ.renderTown=renderTown; }catch(_){} })();
   var _mo=null; try{ _mo=new MutationObserver(function(){ labelPills(); }); var t0=setInterval(function(){ var top=document.getElementById('twShellTop'); if(top){ _mo.observe(top,{childList:true,subtree:true,characterData:true}); clearInterval(t0); } },1000); }catch(e){}
@@ -22645,7 +22654,11 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
       if(tot&&done<tot)out.push({ic:artOf('cit','glitch',40),t:'Card album: '+done+' of '+tot+' pages complete',s:'Every right answer anywhere fills the pack bar. Open packs in the Card Club, finish a page for a bonus.',btn:'Go',go:function(){ townGo('cc'); },key:'album',quiet:true}); }
     extra('quests',out); return out; }
   /* v1.52: later blocks add rows through window.TODO_EXTRA = [function(section){ return [rows] }] */
-  function extra(sec,out){ (window.TODO_EXTRA||[]).forEach(function(f){ try{ var tops=[]; (f(sec)||[]).forEach(function(r){ if(r.top)tops.push(r); else out.push(r); }); for(var i=tops.length-1;i>=0;i--)out.unshift(tops[i]); }catch(e){} }); }
+  /* v1.66: gather every TODO_EXTRA block's top rows, then order them by an optional r.pri (lower = first, default 50)
+     so "Meet the visitor" leads instead of whatever module registered last. Stable for equal pri = registration order. */
+  function extra(sec,out){ var allTops=[]; (window.TODO_EXTRA||[]).forEach(function(f){ try{ (f(sec)||[]).forEach(function(r){ if(r.top)allTops.push(r); else out.push(r); }); }catch(e){} });
+    allTops.sort(function(a,b){ return (a.pri==null?50:a.pri)-(b.pri==null?50:b.pri); });
+    for(var i=allTops.length-1;i>=0;i--)out.unshift(allTops[i]); }
 
   function dailies(){ var out=[], td=today();
     if(window.__pl){ var pend=safe(function(){ return __pl.pending().length; },0);
@@ -22751,7 +22764,8 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
   /* ---------- the screen, the pill, the route ---------- */
   /* the pill strip is right-anchored and never wrapped, so on a narrow screen the left-most pills (TO DO, ROBOTS, CARDS) fell
      off the edge. Let it span the width and wrap; gaps pass taps through to the land (v139 rule: the shell never blocks the map). */
-  (function(){ if(document.getElementById('td-css'))return; var st=document.createElement('style'); st.id='td-css'; st.textContent='#twShellTop{left:10px;flex-wrap:wrap;justify-content:flex-end;pointer-events:none}#twShellTop .twPill{pointer-events:auto}#twShellTop>*{pointer-events:auto}'; document.head.appendChild(st); })();
+  (function(){ if(document.getElementById('td-css'))return; var st=document.createElement('style'); st.id='td-css'; st.textContent='#twShellTop{left:10px;flex-wrap:wrap;justify-content:flex-end;pointer-events:none}#twShellTop .twPill{pointer-events:auto}#twShellTop>*{pointer-events:auto}'
+    +'.twPill.tdPulse{animation:tdPulse 1s ease-in-out 3}@keyframes tdPulse{0%,100%{box-shadow:0 0 0 0 #ffd15800}50%{box-shadow:0 0 0 4px #ffd158,0 0 14px 4px #ffd158aa}}'; document.head.appendChild(st); })();
   window.openTodo=function(v){ tap(); if(v)TD_VIEW=v; zScr('scr-todo','tdScore','tdBody','This is your To-Do list: open quests with the step you are on, today’s jobs, what is new in town, and every place in the city.'); render(); try{ show('scr-todo'); }catch(e){} var s=document.getElementById('scr-todo'); if(s)s.scrollTop=0; PR().todoDay=today(); sv(); };
   (function(){ var _tg=townGo; window.townGo=townGo=function(dest){ if(dest==='todo'){ openTodo(); return; } return _tg.apply(this,arguments); }; })();
   function pill(){ try{ var top=document.getElementById('twShellTop'); if(!top)return; var p=top.querySelector('[data-go="todo"]'); if(!p){ p=document.createElement('div'); p.className='twPill'; p.setAttribute('data-go','todo'); p.style.borderColor='#ffd158'; top.insertBefore(p,top.firstChild); }
@@ -22761,7 +22775,10 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
   function hubBtn(){ try{ var bar=document.querySelector('#scr-hub .topbar'); if(!bar||bar.querySelector('.td-hub'))return; var b=document.createElement('button'); b.className='btn ghost small td-hub'; b.textContent='📋 To-Do'; b.setAttribute('onclick','openTodo()'); bar.appendChild(b); }catch(e){} }
   hubBtn();
   /* once a day, when he lands in the city with things waiting, Elly points at the list */
-  function nudge(){ try{ if(!S.flags||!S.flags.introDone||!S.flags.seen151)return; if(modalOn())return; var p=PR(); if(p.nudgeDay===today())return; var n=countActionable(); if(!n)return; p.nudgeDay=today(); sv(); tst('📋 '+n+' thing'+(n>1?'s':'')+' to do today. Tap TO DO at the top.'); }catch(e){} }
+  /* v1.66: the old nudge toast sat at the top-center and covered the TO DO pill it was pointing at. Pulse the pill itself
+     (the count is already on it) so the hint lands ON the button, not over it. */
+  function nudge(){ try{ if(!S.flags||!S.flags.introDone||!S.flags.seen151)return; if(modalOn())return; var p=PR(); if(p.nudgeDay===today())return; var n=countActionable(); if(!n)return;
+      var el=document.querySelector('#twShellTop [data-go="todo"]'); if(el){ p.nudgeDay=today(); sv(); el.classList.remove('tdPulse'); void el.offsetWidth; el.classList.add('tdPulse'); setTimeout(function(){ try{ el.classList.remove('tdPulse'); }catch(e){} },3200); } }catch(e){} }
   (function(){ if(typeof openTown!=='function')return; var _ot=openTown; window.openTown=openTown=function(){ var r=_ot.apply(this,arguments); setTimeout(nudge,2200); return r; }; if(window.BQ)try{ window.BQ.openTown=openTown; }catch(_){} })();
 
   /* ================= GUIDE AUDIT: a "? How to play" for every screen in the game =================
@@ -25180,7 +25197,7 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
   (window.MU_NEWS=window.MU_NEWS||[]).push({flag:'seen156b',pri:1,when:function(){ return !!(S.stats&&S.stats.answers>0); },html:function(){ tally(); var b=CB2(), per=Math.round(100/Math.max(1,b.pct)), about=(100%Math.max(1,b.pct))?'about ':'';
     return '<div class="center">'+(typeof elly==='function'?elly(70):'')+'<h2 style="margin:4px 0">🏦 Elly’s Candy Bank is open!</h2></div><div class="speak" style="text-align:left"><b>Elly:</b> “Every '+about+per+' candy you collect turns into 1 piece of REAL candy. Even candy you spend still counts! You have collected '+b.life+' so far.<br><br>Until October 31 you also got candy for helping neighbors with Ai Co., robot jobs, Coach’s Pick, and every 5 right answers.<br><br>And on Halloween night: count your REAL candy and your robot makes a graph of it!”</div>'
       +'<button class="btn wide" onclick="closeModal();candyBank()">🏦 Open the Candy Bank</button><button class="btn wide ghost small" onclick="closeModal()">Later</button>'; }});
-  try{ var G2=window.__news&&window.__news.G; if(G2)G2['bank']={who:['elly',''],t:'Elly’s Candy Bank',s:['The bank counts ALL the candy you ever collect, even candy you spend.','Every 10 candy collected = 1 piece of REAL candy from a grown-up (they can change the deal).','Earn candy by trick-or-treating, Ai Co. jobs, robot jobs, Coach’s Pick and right answers (until Oct 31).']}; }catch(e){}
+  try{ var G2=window.__news&&window.__news.G; if(G2)G2['bank']={who:['elly',''],t:'Elly’s Candy Bank',s:['The bank counts ALL the candy you ever collect, even candy you spend.','Every 10 candy collected = 1 piece of REAL candy from a grown-up (they can change the deal).','Candy is earned during the Halloween event in October: trick-or-treating, Ai Co. jobs, robot jobs, Coach’s Pick and right answers. Your total stays in the bank year-round.']}; }catch(e){}
   try{ if(window.__todo&&__todo.NEWS_ROWS&&!__todo.NEWS_ROWS.some(function(r){ return r.t==='Elly’s Candy Bank'; }))__todo.NEWS_ROWS.unshift({v:'v1.56',t:'Elly’s Candy Bank',s:'All the candy you collect counts toward REAL candy, even what you spend. On Halloween night, graph your real haul.',go:function(){ candyBank(); },how:'bank'}); }catch(e){}
   (function(){ var _og=window.openGrown; if(typeof _og!=='function')return; window.openGrown=function(){ var r=_og.apply(this,arguments); try{ var body=document.getElementById('gwBody'); if(!body)return r; tally(); var b=CB2(), re=realEarned(), inp='style="width:80px;padding:8px;border-radius:10px;border:1px solid #3a2f6e;background:#1b1830;color:#f4f0ff;font-weight:800"';
       body.insertAdjacentHTML('afterbegin','<div class="card" style="text-align:left;margin:8px 0"><b>🏦 Candy Bank (the real-candy deal)</b>'
@@ -26664,13 +26681,14 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
   try{ if(typeof ACH==='object')ACH.forEach(function(a){ if(a.id==='venues'){ a.cur=function(){ return Object.keys(S.gigBest||{}).filter(function(k){ return !/^trip_/.test(k); }).length; }; } }); }catch(e){}
 
   /* What's New */
-  (window.MU_NEWS=window.MU_NEWS||[]).push({flag:'seen161',pri:2,when:function(){ return !!(S.stats&&S.stats.answers>0); },html:function(){
+  /* v1.66: a brand-new player should get the current-state card (seen162: six cities + bus), not this older intro card
+     too. If they have not seen either, suppress this one so only seen162 shows. */
+  (window.MU_NEWS=window.MU_NEWS||[]).push({flag:'seen161',pri:2,when:function(){ try{ if(!(S.stats&&S.stats.answers>0))return false; return !!(S.flags&&S.flags.seen162); }catch(e){ return false; } },html:function(){
     var row=function(art,t,s){ return '<div class="card" style="text-align:left;display:flex;gap:10px;align-items:center">'+art+'<div style="flex:1;min-width:0"><b>'+t+'</b><div class="sub" style="margin:2px 0 0;text-align:left">'+s+'</div></div></div>'; };
     return '<div class="center"><h2 style="margin:4px 0">🚐 Road Trip!</h2><div class="sub">The band is going on the road to REAL cities.</div></div>'
       +row(msvg('gus',54),'Drive to a real city','Gus drives. Driving takes a long time, so we start in Ohio, then the states next door.')
       +row(msvg('axel',54),'Ride along on the tour','The bandmate from that city shows you around with real facts. Then 3 questions. No losing.')
       +row('<span style="font-size:40px">🏛️</span>','Watch or play the show','At the stage, pick WATCH or PLAY. Every band you visit joins the Hall of Fame.')
-      +row('<span style="font-size:40px">🎃</span>','Halloween ends Oct 31','Trick-or-treat ends on Halloween night. You can still count your real candy haul on Nov 1.')
       +'<div class="sub center">Every step is on the 📋 TO DO list.</div>'
       +'<button class="btn wide" onclick="'+cb(function(){ closeModal(); tripOpen(); })+'">🚐 Take a Road Trip</button>'
       +'<button class="btn wide ghost small" onclick="closeModal()">Later</button>'; }});
@@ -26695,7 +26713,7 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
       var tile=function(k,val){ return '<div class="card" style="flex:1 1 100px;padding:8px 10px;text-align:center;margin:0"><div class="sub" style="margin:0">'+k+'</div><b style="font-size:18px">'+val+'</b></div>'; };
       body.insertAdjacentHTML('afterbegin','<div class="card" style="text-align:left;margin:8px 0"><b>🚐 Road Trip (v1.61)</b>'
         +'<div class="row" style="gap:6px;flex-wrap:wrap;margin:6px 0">'+tile('Cities visited',tripN()+'/'+TRIP_CITIES.length)+tile('Trips taken',t.trips)+tile('Tour questions',t.right+'/'+t.asked)+'</div>'
-        +'<div class="sub" style="margin:4px 0 0">Geography and reading for information: a guided tour of a real city (real facts, checked against sources), then 3 recall questions. Wrong answers show the right answer and the slide it came from, with no penalty. Some questions ask "how many years ago" (subtraction with years). Ohio first; more states unlock as the bus gets bigger. Halloween now ends Oct 31; the candy haul count stays open on Nov 1.</div></div>');
+        +'<div class="sub" style="margin:4px 0 0">Geography and reading for information: a guided tour of a real city (real facts, checked against sources), then 3 recall questions. Wrong answers show the right answer and the slide it came from, with no penalty. Some questions ask "how many years ago" (subtraction with years). Ohio first; more states unlock as the bus gets bigger.</div></div>');
     }catch(e){} return r; }; })();
 
   window.tripOpen=tripOpen; window.hofOpen=hofOpen; window.tripGo=tripGo;
@@ -27221,7 +27239,7 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
   /* To-Do rows */
   (window.TODO_EXTRA=window.TODO_EXTRA||[]).push(function(sec){ var out=[]; if(!tgOn())return out; var t=TG();
     if(sec==='quests'){
-      if(!t.name)out.push({ic:turkeySVG(40),t:'Meet the visitor on the town square',s:'Somebody new is in town for November. Go say hello and give him a name!',btn:'Go',go:function(){ tgHub(); },key:'tgname',top:true});
+      if(!t.name)out.push({ic:turkeySVG(40),t:'Meet the visitor on the town square',s:'Somebody new is in town for November. Go say hello and give him a name!',btn:'Go',go:function(){ tgHub(); },key:'tgname',top:true,pri:1});
       else { var open=FOODS.filter(function(f){ return foodOpen(f)&&!(t.food[f.id]&&t.food[f.id].done); });
         if(open.length){ var f=open[0]; out.push({ic:'<span style="font-size:30px">'+f.ic+'</span>',t:'Feast: help '+nm(f.who)+' with the '+f.n.toLowerCase(),s:f.sub+'. 3 questions, no losing. '+foodsDone()+' of '+FOODS.length+' foods gathered.',btn:'Go',go:function(){ foodStart(f.id); },key:'tgfood',top:true}); }
         else if(foodsDone()<FOODS.length){ var nx=nextOpenDay(); out.push({ic:'<span style="font-size:30px">🍽️</span>',t:'Feast foods: '+foodsDone()+' of '+FOODS.length,s:nx?'Two new foods open on Nov '+nx+'.':'All open foods are gathered.',btn:'Go',go:function(){ tgHub(); },key:'tgfood',quiet:true}); }
@@ -27393,7 +27411,13 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
 
   /* ---------- "We made it!" needs a grown-up ---------- */
   /* a grown-up question: 2-digit times 1-digit, close wrong answers */
-  function gateQ(){ var a=13+Math.floor(Math.random()*76), b=3+Math.floor(Math.random()*7), c=a*b; return [a+' × '+b,String(c),[c,c+b,c-b,c+20-b].map(String)]; }
+  /* v1.66: the old distractors (c, c+b, c-b, c+20-b) always left the answer second-smallest, so a kid could pass by
+     tapping the second-lowest number. Straddle the answer with wrong values at varied distances so rank is not a tell. */
+  function gateQ(){ var a=13+Math.floor(Math.random()*76), b=3+Math.floor(Math.random()*7), c=a*b;
+    var pool=[c+b,c-b,c+a,c-a,c+10,c-10], seen={}, w=[]; pool.sort(function(){ return Math.random()-0.5; });
+    for(var i=0;i<pool.length&&w.length<3;i++){ var v=pool[i]; if(v>0&&v!==c&&!seen[v]){ seen[v]=1; w.push(v); } }
+    while(w.length<3){ var v2=c+(Math.floor(Math.random()*21)-10); if(v2>0&&v2!==c&&!seen[v2]){ seen[v2]=1; w.push(v2); } }
+    return [a+' × '+b,String(c),[c].concat(w).map(String)]; }
   var GATES=null;
   function madeGate(id){ var r=RBY[id]; if(!r)return; tap(); var g=gateQ(), ops=shuf(g[2]), tok={}; MP=null;
     modal('<div class="v64gate"><div class="center"><div style="font-size:44px">'+r.ic+'</div><h2 style="margin:2px 0">Grown-up check</h2><div class="sub">Did you make '+esc(r.n.toLowerCase())+' together? A grown-up answers: what is '+g[0]+'?</div></div>'
@@ -27409,6 +27433,11 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
      ===================================================================================================== */
   var W54=window.__v54, AH=window.__aicoHook;
   function bot(){ try{ return W54.V().bot; }catch(e){ return {name:'',mods:{}}; } }
+  /* v1.66: a robot "exists" only once the player has built one (named it, chosen a part, or installed any ability other
+     than the rake mod that rakeStart itself adds). Used to stop rake starting with no robot (the "Install DigCook" leak). */
+  function hasRobot(){ try{ var b=bot(); if(!b)return false; if(b.name)return true; if(b.head||b.eyes||b.body||b.move)return true; var m=b.mods||{}; for(var k in m){ if(k!=='rake')return true; } return false; }catch(e){ return false; } }
+  /* leaves fall September through November */
+  function rakeSeason(){ try{ var mo=now().getMonth(); return mo>=8&&mo<=10; }catch(e){ return false; } }
   function bnameC(){ return bot().name||'Your robot'; }
   function bsvg(sz){ try{ return W54.botSvg(sz); }catch(e){ return ''; } }
   function rakeArt(sz){ return '<div class="v64rk">'+bsvg(sz)+'<span class="rk">🍂</span></div>'; }
@@ -27425,7 +27454,11 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
     else { var p=pk([2,3,4,5]); st.push({q:'The neighbor pays '+p+' coins for every bag. How many coins for '+bags+' bags?',vis:'',a:String(p*bags),ch:numCh(p*bags,[p+bags,p*bags+p,p*bags-p,p*(bags+1)]),why:bags+' × '+p+' = '+(p*bags)+' coins.'}); }
     return st; }
   var RK=null;
-  window.rakeStart=function(){ tap(); try{ closeModal(); }catch(e){} var v=V(), b=bot(); if(b&&b.mods&&!b.mods.rake){ b.mods.rake=dk(); sv(); }
+  window.rakeStart=function(){ tap(); try{ closeModal(); }catch(e){}
+    if(!hasRobot()){ modal('<div class="center">'+rakeArt(96)+'<h2 style="margin:4px 0">Build a robot first</h2></div>'
+        +'<div class="speak"><b>Hank:</b> “A rake needs a robot to hold it! Give yours a body and a name in the Bot Garage, then it can rake every yard in town.”</div>'
+        +'<button class="btn wide" onclick="'+cb(function(){ closeModal(); try{ botHub(); }catch(e){} })+'">To the Bot Garage</button><button class="btn wide ghost small" onclick="closeModal()">Later</button>'); return; }
+    var v=V(), b=bot(); if(b&&b.mods&&!b.mods.rake){ b.mods.rake=dk(); sv(); }
     if(!v.seen.rake){ v.seen.rake=1; sv();
       modal('<div class="center">'+rakeArt(110)+'<h2 style="margin:4px 0">🍂 How Rake works</h2></div>'
         +'<div class="card" style="text-align:left"><div style="padding:4px 0"><b>1.</b> Count the piles: rows times piles in each row.</div><div style="padding:4px 0;border-top:1px solid #2b2350"><b>2.</b> Fill the bags: share the piles equally into bags.</div><div style="padding:4px 0;border-top:1px solid #2b2350"><b>3.</b> The time it takes, or what the neighbor pays.</div></div>'
@@ -27516,7 +27549,7 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
     var row=function(art,t,s){ return '<div class="card" style="text-align:left;display:flex;gap:10px;align-items:center">'+art+'<div style="flex:1;min-width:0"><b>'+t+'</b><div class="sub" style="margin:2px 0 0;text-align:left">'+s+'</div></div></div>'; };
     return '<div class="center"><h2 style="margin:4px 0">🍂 More for November!</h2></div>'
       +row('<span style="font-size:40px">📖</span>','The Recipe Box','5 real Thanksgiving recipes. Practice measuring with cups and spoons, then ask Mom if you can make one together!')
-      +row(rakeArt(54),'Your robot can RAKE','Rake neighbors’ yards: count the piles, fill the bags. Rake jobs join the Ai Co. Job Board tomorrow.')
+      +row(rakeArt(54),'Your robot can RAKE','Rake neighbors’ yards: count the piles, fill the bags. Rake jobs are on the Ai Co. Job Board all fall.')
       +row('<span style="font-size:40px">🍂</span>','Robot Workshop: Leaf Day','Chapter 8: program your robot to rake every leaf pile in the yard.')
       +'<div class="sub center">Every step is on the 📋 TO DO list.</div>'
       +'<button class="btn wide" onclick="'+cb(function(){ recipeBox(); })+'">📖 Open the Recipe Box</button><button class="btn wide ghost small" onclick="closeModal()">Later</button>'; }});
@@ -27532,7 +27565,8 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
     try{ if(tgOn()){ var p=practicedN(), m=madeN();
       if(!p)out.push({ic:'<span style="font-size:30px">📖</span>',t:'Open the Recipe Box',s:'Practice measuring a real Thanksgiving recipe, then ask Mom if you can make it together.',btn:'Go',go:function(){ recipeBox(); },key:'recipes',top:true});
       else if(m<RECIPES.length)out.push({ic:'<span style="font-size:30px">🧑‍🍳</span>',t:'Recipe Box: '+p+' practiced, '+m+' made with Mom',s:'Ask Mom if you can make one together this week!',btn:'Go',go:function(){ recipeBox(); },key:'recipes',quiet:true}); } }catch(e){}
-    try{ var b=bot(); if(b&&b.mods&&!b.mods.rake)out.push({ic:rakeArt(40),t:'Teach your robot to RAKE',s:'Fall jobs! Count leaf piles, fill bags, figure the time or the pay.',btn:'Go',go:function(){ window.rakeStart(); },key:'rake',top:tgOn()}); }catch(e){}
+    /* v1.66: only offer the rake row when a robot exists AND it is fall; otherwise it sat there year-round, even with no robot. */
+    try{ var b=bot(); if(hasRobot()&&rakeSeason()&&b&&b.mods&&!b.mods.rake)out.push({ic:rakeArt(40),t:'Teach your robot to RAKE',s:'Fall jobs! Count leaf piles, fill bags, figure the time or the pay.',btn:'Go',go:function(){ window.rakeStart(); },key:'rake',top:tgOn()}); }catch(e){}
     try{ if(window.__rb&&__rb.chDone('until')&&!__rb.chDone('leaf'))out.push({ic:'<span style="font-size:30px">🍂</span>',t:'Robot Workshop: Leaf Day',s:'Chapter 8: rake every pile in 4 yards with GO and Repeat.',btn:'Go',go:function(){ try{ rbHub(); }catch(e){} },key:'leafch',quiet:true}); }catch(e){}
     return out; });
   try{ if(window.__todo&&tgOn()){ var NR=__todo.NEWS_ROWS; if(NR&&!NR.some(function(r){ return r.t==='Recipe Box + Rake'; })){
@@ -27716,7 +27750,7 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
   (function(){ var _og=window.openGrown; if(typeof _og!=='function')return; window.openGrown=function(){ var r=_og.apply(this,arguments); try{ var body=document.getElementById('gwBody'); if(!body)return r; var f=FS(), t=TG();
       body.insertAdjacentHTML('afterbegin','<div class="card" style="text-align:left;margin:8px 0"><b>🍽️ Town feast (v1.65)</b><div class="sub" style="text-align:left;margin:4px 0 0">'
         +(f.n?'Garrett came to the feast '+f.n+' time'+(f.n===1?'':'s')+'.':(now().getMonth()===10?'The feast is open from Thanksgiving (the 4th Thursday of November) through Nov 30.':'He did not come to the feast this year.'))+' Foods he helped with: '+TGX.foodsDone()+' of '+TGX.FOODS.length+'. Dishes made with Mom: '+madeDishes().length+'.'
-        +(t.bye?' The Turkey said goodbye on '+esc(t.bye)+' (Golden Feather keepsake).':!t.name?'':now().getMonth()===10?' On the first visit in December the Turkey says goodbye and leaves a Golden Feather keepsake.':'')+'</div></div>');
+        +(t.bye?' The Turkey said goodbye on '+esc((function(k){ try{ var p=String(k).split('-'); var M=(typeof MONTHS!=='undefined'&&MONTHS)?MONTHS:null; return M?(M[(+p[1])-1]+' '+(+p[2])+', '+p[0]):k; }catch(e){ return k; } })(t.bye))+' (Golden Feather keepsake).':!t.name?'':now().getMonth()===10?' On the first visit in December the Turkey says goodbye and leaves a Golden Feather keepsake.':'')+'</div></div>');
     }catch(e){} return r; }; })();
 
   window.feastStart=feastStart;
