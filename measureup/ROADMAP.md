@@ -5,10 +5,17 @@ uploaded against what the last chat thought it shipped. Full build notes stay in
 (in the NOTES zip, never uploaded).
 
 ## Current
-- **v1.63 · Nov 1 2026** (sw cache `measureup-v1-63`). Contains v1.51 through v1.62. Live URL: https://motbuchanan.github.io/gameshelf/measureup/
+- **v1.64 · Nov 2 2026** (sw cache `measureup-v1-64`). Contains v1.51 through v1.63. Live URL: https://motbuchanan.github.io/gameshelf/measureup/
 - Files in the repo folder: `index.html`, `sw.js`, `manifest.json`, `ROADMAP.md` (this file, new in v1.51).
 
 ## What shipped lately
+- **v1.64 Thanksgiving, part 2 (Nov 2).** THE RECIPE BOX (a button on the Turkey's feast board): 5 real Thanksgiving recipes
+  from USDA MyPlate, USDA FNS and University of Illinois Extension (pumpkin muffins, mashed potatoes, cornbread muffins,
+  cranberry sauce, apple crisp), with real amounts, GROWN-UP badges on oven, stove and knife steps, a fun fact and allergy
+  notes. Garrett practices measuring every ingredient with tap-to-fill cups (1, 1/2, 1/3, 1/4) and spoons (tbsp, tsp, 1/2,
+  1/4), then asks Mom if they can make it together; "We made it!" needs a grown-up answer. THE LEAF ROBOT: a RAKE ability
+  (Hank; rows x piles, bags, time or pay) with Rake jobs on the Ai Co. Job Board and 3 Rake parts at the Invention Bench,
+  and Robot Workshop CHAPTER 8: LEAF DAY (4 yards, leaf piles work like bolts). Next: v1.65 the feast (Nov 26 to 30).
 - **v1.63 Thanksgiving, part 1 (Nov 1).** November turns the town to fall: a ring of leaves around the square that grows
   (more on Nov 10 or after 3 foods, full harvest on Nov 20 or after 6) and a banner. A TURKEY visits for November to host
   the town feast (no turkey on the menu); Garrett names him the first time he meets him, and he stands on the square
