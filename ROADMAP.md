@@ -25,6 +25,12 @@ ships or a decision changes. Keep entries short. Status tags:
   no leak-out links). Tile art = Mot-supplied sand-carved bird icon (base64 img in the
   toy `art` field). sw.js precache += `nazca/index.html`, `nazca/manifest.json`,
   `nazca/sw.js`, `nazca/icon-192.png`; CACHE + visible badge bumped 59/61 → **v62**.
+- [x] **The Keep in the Old Video Games box** (shelf **v76**, 2026-11-03): Mot's living-valley
+  walker added as a cartridge after Bloodstream so Garrett can wander it and help test.
+  LINKED, not copied: href `https://motbuchanan.com/thekeep/?from=shelf` (same origin as the shelf; `from=shelf` makes The Keep v0.25.1+ show a "⌂ Shelf" back button), because
+  The Keep is multi-file and ships new versions often in the site repo; it has no links out of
+  itself. Sticker = `thekeep-sticker.png` (from the-keep-icon.png). No shelf records, so no
+  GAME_KEYS or achievements entry. sw.js precache += the sticker only; CACHE + badge 75 to **v76**.
 - [x] **v75 fits the screen** (shelf **v75**, 2026-10-25). Fit check (site tools/fitcheck.py:
   320, 360, 412px and 640x360 landscape) now runs on every build. Fixed: badge names in
   Achievements wrap instead of cutting off; the shelf home drawer decks (Gin Rummy and the
