@@ -146,8 +146,8 @@ export const STYLE = {
   d10: { body: '#2f8a5a', ink: '#fff4dc', size: 1.1 },
   d12: { body: '#d0802a', ink: '#24170f', size: 0.98 },
   d20: { body: '#2a9aa0', ink: '#fff4dc', size: 1.0 },
-  pt: { body: '#22543a', ink: '#f0c44c', size: 1.15 },
-  po: { body: '#efe2c4', ink: '#2a1d18', size: 1.15 },
+  pt: { body: '#22543a', ink: '#ffd84a', size: 1.3 },
+  po: { body: '#efe2c4', ink: '#1a0f0a', size: 1.3 },
 };
 export const TYPE_FOR_SIDES = { 4: 'd4', 6: 'd6', 8: 'd8', 10: 'd10', 12: 'd12', 20: 'd20' };
 
@@ -326,7 +326,7 @@ function simulate(types, W, D) {
     const x = (types.length === 1 ? 0 : -spread / 2 + spread * i / (types.length - 1)) + (float() - 0.5) * 0.6;
     b.position.set(x, 2.6 + float() * 1.5 + (i % 2) * 1.2, D / 2 - 1.6);
     b.quaternion.setFromEuler(float() * 6.28, float() * 6.28, float() * 6.28);
-    b.velocity.set((float() - 0.5) * 6 - x * 0.6, 2 + float() * 3, -(6 + float() * 5) * Math.min(1.4, D / 7));
+    b.velocity.set((float() - 0.5) * 6 - x * 0.6, 2 + float() * 3, -(4 + float() * 4) * Math.min(1.2, D / 8));
     b.angularVelocity.set((float() - 0.5) * 30, (float() - 0.5) * 30, (float() - 0.5) * 30);
     world.addBody(b);
     return b;
@@ -369,7 +369,12 @@ function turnFor(def, targetValue, landedFace) {
 
 // ---------- the dice tray ----------
 let container, glCanvas, flatCanvas, renderer, scene, camera, trayMesh, raf = 0;
-let mode = '3d', onSlow = null, live = [], tray = { W: 10, D: 6.5 };
+let mode = '3d', onSlow = null, live = [], tray = { W: 10, D: 6.5 }, pendingTray = null;
+function applyPendingTray() {
+  if (!pendingTray) return;
+  tray = pendingTray; pendingTray = null;
+  if (scene) { buildTray(); fitCamera(); }
+}
 let lastResult = [];
 
 export function init(el, opts = {}) {
@@ -386,6 +391,7 @@ export function init(el, opts = {}) {
 export function getMode() { return mode; }
 
 export function setMode(m) {
+  clearTags();
   if (m === '3d' && !setup3D()) m = '2d';
   mode = m;
   if (glCanvas) glCanvas.style.display = mode === '3d' ? 'block' : 'none';
@@ -409,8 +415,8 @@ function setup3D() {
   }
   scene = new THREE.Scene();
   camera = new THREE.PerspectiveCamera(32, 1.5, 0.1, 200);
-  scene.add(new THREE.HemisphereLight(0xfff2d8, 0x3a2a1c, 1.6));
-  const sun = new THREE.DirectionalLight(0xffffff, 1.6);
+  scene.add(new THREE.HemisphereLight(0xfff2d8, 0x6a5a48, 2.2));
+  const sun = new THREE.DirectionalLight(0xffffff, 1.3);
   sun.position.set(-4, 10, 6);
   scene.add(sun);
   buildTray();
@@ -449,7 +455,7 @@ function fitCamera() {
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
   // Move the camera in until the tray (with its rim) just fills the view.
-  const rim = 0.9, tilt = 0.42, corners = [];
+  const rim = 0.9, tilt = 0.3, corners = [];
   for (const x of [-1, 1]) for (const z of [-1, 1]) corners.push(new THREE.Vector3(x * (tray.W / 2 + rim), 0, z * (tray.D / 2 + rim)));
   const v = new THREE.Vector3();
   let dist = 40;
@@ -471,15 +477,18 @@ function resize() {
   // Tray shape follows the box it sits in, so the felt fills the view.
   const Wt = w >= h ? 10 : 7.5;
   const want = { W: Wt, D: Math.round(Math.min(13, Math.max(5.5, Wt * (h / w) * 1.25)) * 2) / 2 };
-  if (!rolling && (want.W !== tray.W || want.D !== tray.D)) {
-    tray = want;
-    if (scene) { buildTray(); live.forEach(d => scene.remove(d.group)); live = []; }
-  }
+  // Never reshape the tray under dice that are showing. A new shape waits for the next throw.
+  pendingTray = (want.W !== tray.W || want.D !== tray.D) ? want : null;
+  if (pendingTray && !live.length && !rolling) applyPendingTray();
   if (renderer) {
-    const k = Math.max(2, Math.floor(w / 360)); // ~360px+ internal buffer -> chunky but readable pixels
-    renderer.setSize(Math.max(1, Math.round(w / k)), Math.max(1, Math.round(h / k)), false);
+    // Aim for about 420 render pixels across the tray on any screen, counting real device pixels,
+    // so phones get the same readable dice as tablets. Whole-number scale keeps pixels square.
+    const dpr = window.devicePixelRatio || 1;
+    const k = Math.max(1, Math.round((w * dpr) / 420));
+    renderer.setSize(Math.max(1, Math.round(w * dpr / k)), Math.max(1, Math.round(h * dpr / k)), false);
     fitCamera();
     renderer.render(scene, camera);
+    placeTags();
   }
   flatCanvas.width = Math.max(1, Math.round(w / 3)); flatCanvas.height = Math.max(1, Math.round(h / 3));
   draw2D(lastFlat);
@@ -525,6 +534,9 @@ function roll3D(items) {
   rolling = true;
   cancelAnimationFrame(raf);
   live.forEach(d => { scene.remove(d.group); scene.remove(d.shadow); });
+  live = [];
+  clearTags();
+  applyPendingTray();
   const types = items.map(d => d.type);
   let sim = null;
   for (let tries = 0; tries < 25 && !sim; tries++) sim = simulate(types, tray.W, tray.D);
@@ -557,11 +569,48 @@ function roll3D(items) {
       renderer.render(scene, camera);
       if (idx < total - 1) { raf = requestAnimationFrame(tick); return; }
       rolling = false;
+      showTags(items);
       if (frameCount > 30 && slowFrames / frameCount > 0.5 && onSlow) onSlow();
       resolve(items);
     };
     raf = requestAnimationFrame(tick);
   });
+}
+
+// ---------- result tags: a big readable number floats over each landed die ----------
+let tags = [], tagItems = null;
+function tagText(d) {
+  if (d.type === 'pt') return d.value === 0 ? '00' : String(d.value * 10);
+  return String(d.value);
+}
+function clearTags() { tags.forEach(t => t.remove()); tags = []; tagItems = null; }
+function placeTags() {
+  if (!tagItems || !camera) return;
+  const w = container.clientWidth, h = container.clientHeight;
+  const c = new THREE.Vector3(), top = new THREE.Vector3();
+  const screenUp = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
+  live.forEach((o, i) => {
+    const t = tags[i]; if (!t) return;
+    // Put the tag just above the die's outline on screen, never on top of the die.
+    const r = STYLE[o.def.type].size * DIE_SCALE * 1.05;
+    c.copy(o.group.position);
+    top.copy(c).addScaledVector(screenUp, r).project(camera);
+    c.project(camera);
+    t.style.left = ((c.x + 1) / 2 * w) + 'px';
+    t.style.top = Math.max(34, (1 - top.y) / 2 * h - 4) + 'px';
+  });
+}
+function showTags(items) {
+  clearTags();
+  tagItems = items;
+  items.forEach(d => {
+    const t = document.createElement('div');
+    t.className = 'die-tag die-tag-' + d.type;
+    t.textContent = tagText(d);
+    container.appendChild(t);
+    tags.push(t);
+  });
+  placeTags();
 }
 
 // Test hook: read what each 3D die is actually showing, from the drawn mesh.
