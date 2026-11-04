@@ -928,14 +928,14 @@ svg .charg{will-change:transform}
 <div id="toast"></div>
 <button id="homeBtn" onclick="goHome()" aria-label="Back to Garage">🏠</button>
 <button id="ellyBtn" onclick="openEllyHelp()" aria-label="Ask Elly for help"></button>
-<div id="vbadge">v1.66 · Nov 2</div>
+<div id="vbadge">v1.67 · Nov 4</div>
 
 <script>
 'use strict';
 /* ============ UTILS ============ */
 const $=s=>document.querySelector(s);
 const $$=s=>Array.from(document.querySelectorAll(s));
-const VERSION='v1.66 · Nov 2';
+const VERSION='v1.67 · Nov 4';
 const RM=window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
 const pick=a=>a[Math.floor(Math.random()*a.length)];
@@ -27755,6 +27755,129 @@ if(window.BQ)Object.assign(window.BQ,{openHistory:openHistory,TL_EVENTS:TL_EVENT
 
   window.feastStart=feastStart;
   window.__v65={feastOpen:feastOpen,byeTime:byeTime,FS:FS,feastStart:feastStart,byeCard:byeCard,madeDishes:madeDishes,TASTE:TASTE,getFT:function(){ return FT; }};
+})();
+</script>
+<script>
+/* ================= v1.67 · HALLOWEEN PUT AWAY, THE EVENT HALL (Nov 4 2026) =================
+   Out of season (any month but October) the town no longer shows Halloween as if it were still on:
+     - The HOLLOW LANE (pumpkins & costumes) and MIDNIGHT ROW (contests & candy) districts leave the map.
+       In their place sits one EVENT HALL row: the Event Hall (every holiday event, on now or finished)
+       and, in November, the Harvest Feast.
+     - No candy count anywhere in the town, top bar or To-Do outside the candy season (October, plus the
+       Halloween-night / Nov 1 haul window). The Candy Bank To-Do row and its news card wait for October.
+     - The Halloween page still opens from the Event Hall: neighbors, quests, costumes, ribbons and stamps
+       are all kept. Its candy bag is folded away out of season.
+   Nothing is taken from a save: candy totals, costumes, keepsakes, ribbons and the real-candy deal record
+   (Grown-Ups corner) are untouched. MOONLIGHT ROW and HOLLOW HILL (where the new neighbors live) stay.
+   ============================================================================================================ */
+(function(){
+  function hw(){ return window.__hw||null; }
+  function hwOn(){ try{ return !!(hw()&&hw().evActive()); }catch(e){ return false; } }
+  function d0(){ try{ return window.__hwNow?new Date(window.__hwNow):new Date(); }catch(e){ return new Date(); } }
+  function haulWin(){ var d=d0(); return (d.getMonth()===9&&d.getDate()===31)||(d.getMonth()===10&&d.getDate()===1); }
+  function candySeason(){ return hwOn()||haulWin(); }
+  function tgOn(){ try{ return !!(window.__tg&&__tg.tgOn&&__tg.tgOn()); }catch(e){ return d0().getMonth()===10; } }
+  function hwYear(){ var d=d0(); return d.getMonth()>=9?d.getFullYear():d.getFullYear()-1; }
+  function arrivedN(){ try{ return (hw().arrivedList()||[]).length; }catch(e){ return 0; } }
+  function e(s){ return (typeof esc==='function')?esc(s):String(s); }
+  window.__v167={hwOn:hwOn,candySeason:candySeason,tgOn:tgOn};
+
+  /* ---------- 1. the map: Halloween districts out, the Event Hall in ---------- */
+  function hallProg(){ var n=(tgOn()?1:0)+1; return n+' event'+(n===1?'':'s')+' inside'; }
+  (function(){ if(typeof townPlan!=='function')return; var _tp=townPlan; window.townPlan=townPlan=function(){ var rows=_tp.apply(this,arguments);
+    try{ if(hwOn())return rows;
+      var at=-1; for(var i=0;i<rows.length;i++){ if(rows[i]&&rows[i].name==='HOLLOW LANE'){ at=i; break; } }
+      if(at<0)return rows;
+      var y=rows[at].y;
+      rows=rows.filter(function(r){ return !(r&&(r.name==='HOLLOW LANE'||r.name==='MIDNIGHT ROW')); });
+      var slots=[{col:'#e8c55a',tg:'EVENTS',nm:'Event Hall',host:'boom',prog:hallProg(),go:'events'}];
+      if(tgOn())slots.push({col:'#e67e22',tg:'NOVEMBER',nm:'Harvest Feast',host:'boom',prog:'on all November',go:'tg'});
+      rows.splice(at,0,{y:y,name:'EVENT HALL',sub:'holidays, now and past',color:'#e8c55a',slots:slots});
+    }catch(err){ try{ window.__muErr&&window.__muErr('townPlan(v167)',err); }catch(_){} }
+    return rows; }; })();
+
+  /* ---------- 2. the Event Hall ---------- */
+  function feastYear(){ var d=d0(); return d.getMonth()>=10?d.getFullYear():d.getFullYear()-1; }
+  function feastMemory(){ var T=(typeof S!=='undefined'&&S&&S.tg)||{};
+    var foods=0; try{ Object.keys(T.food||{}).forEach(function(k){ if(T.food[k]&&T.food[k].done)foods++; }); }catch(err){}
+    var thanks=0; try{ thanks=Object.keys(T.thanks||{}).length; }catch(err){}
+    var html='<div class="center"><div style="font-size:54px;line-height:1">🦃</div><h2 style="margin:4px 0 0">The November Feast '+feastYear()+'</h2><div class="sub">The feast is over. Here is what you did.</div></div>'
+      +'<div class="card" style="text-align:left">'+(T.name?'<b>'+e(T.name)+'</b> the Turkey hosted the feast.<br>':'')+'Feast foods gathered: <b>'+foods+' of 8</b><br>Thankful notes collected: <b>'+thanks+'</b>'
+      +(T.mine?'<br>You were thankful for: “'+e(T.mine)+'”':'')+'</div>'
+      +'<div class="sub center">The Turkey comes back next November.</div>'
+      +'<button class="btn wide" id="ev167back">Back to the Event Hall</button>';
+    if(typeof modal==='function')modal(html);
+    var bk=document.getElementById('ev167back'); if(bk)bk.addEventListener('click',function(){ openEvents(); }); }
+  function openEvents(){
+    var left=8-arrivedN();
+    var html='<div class="center"><h2 style="margin:4px 0 0">🏛️ The Event Hall</h2><div class="sub">Every holiday event lives here, the one on now and the ones that are over.</div></div>';
+    if(tgOn())html+='<div class="card" style="text-align:left"><b>🦃 The November Feast</b> <span class="sub" style="display:inline;margin:0">· on now</span><div class="sub" style="margin:2px 0 6px;text-align:left">Help the neighbors gather the feast foods and fill the Thankful Wall.</div><button class="btn wide" id="ev167tg">Go to the Feast</button></div>';
+    html+='<div class="card" style="text-align:left"><b>🎃 Halloween '+hwYear()+'</b> <span class="sub" style="display:inline;margin:0">· '+(hwOn()?'on now':'ended Oct 31')+'</span>'
+      +'<div class="sub" style="margin:2px 0 6px;text-align:left">'+(hwOn()?'Trick-or-treat, the pumpkin hunt, costumes and the contest.':'The new neighbors stayed! Visit them, finish their welcome quests, and wear your costume.')+(left>0?' <b>'+left+' neighbor'+(left===1?' still wants':'s still want')+' to move in.</b>':'')+'</div>'
+      +'<button class="btn wide" id="ev167hw">Open the Halloween page</button></div>';
+    if(!tgOn()&&!hwOn())html+='<div class="card" style="text-align:left"><b>🦃 The November Feast '+feastYear()+'</b> <span class="sub" style="display:inline;margin:0">· ended Nov 30</span><div class="sub" style="margin:2px 0 6px;text-align:left">See the foods you gathered and what you were thankful for.</div><button class="btn wide" id="ev167fm">See your Feast memories</button></div>';
+    html+='<button class="btn wide ghost small" onclick="closeModal()">Close</button>';
+    if(typeof modal==='function')modal(html);
+    var a=document.getElementById('ev167tg'); if(a)a.addEventListener('click',function(){ try{ closeModal(); }catch(err){} try{ townGo('tg'); }catch(err){} });
+    var fm=document.getElementById('ev167fm'); if(fm)fm.addEventListener('click',function(){ feastMemory(); });
+    var b=document.getElementById('ev167hw'); if(b)b.addEventListener('click',function(){ try{ closeModal(); }catch(err){} try{ if(typeof window.hwHub==='function')window.hwHub(); else townGo('hw'); }catch(err){} }); }
+  window.openEvents=openEvents;
+  (function(){ if(typeof townGo!=='function')return; var _tg=townGo; window.townGo=townGo=function(dest){ if(dest==='events'){ try{ if(typeof sfx==='function')sfx('tap'); }catch(err){} openEvents(); return; } return _tg.apply(this,arguments); }; })();
+
+  /* ---------- 2b. Flap's welcome quest out of season: the candy step becomes a sharing question ---------- */
+  (function(){ if(candySeason())return; try{ var Q=hw()&&hw().QUESTS; var st=Q&&Q.flap&&Q.flap.steps; if(!st)return;
+    for(var i=0;i<st.length;i++){ if(st[i]&&st[i].t==='candy'){ st[i]={t:'ask',say:'Bats love sharing! Help me set up my snack table.',q:'I put out 6 snacks. My friends eat 3. How many are left?',choices:['3','2','4','9'],a:'3',concept:'sub'}; } } }catch(err){} })();
+
+  /* ---------- 3. no candy count anywhere a kid looks, out of season ----------
+     Covers the Halloween page (candy bag + header), the Costume Shop and Night Market headers, the Card Shop
+     header and its candy-pack button, the "+3 candy" move-in line, and the To-Do's old "Hollow Lane" hint.
+     Every write checks the text first, so the watcher settles after one pass (no loop). */
+  function setTxt(el,t){ if(el&&el.textContent!==t)el.textContent=t; }
+  function stripCandy(id){ var el=document.getElementById(id); if(!el)return; var t=el.textContent||''; if(t.indexOf('🍬')<0)return;
+    var n=t.replace(/🍬\s*\d+(\s*candy)?\s*(·\s*)?/g,'').replace(/\s*·\s*$/,'').trim(); setTxt(el,n||'🎃'); }
+  function tidy(){ if(candySeason())return; try{
+      var hs=document.getElementById('scr-hw');
+      if(hs&&hs.classList.contains('on')){ setTxt(document.getElementById('hwScore'),'🎃 Halloween '+hwYear());
+        var body=document.getElementById('hwBody'); if(body){ [].slice.call(body.querySelectorAll('.card')).forEach(function(c){ var b=c.querySelector('b'); if(b&&/Your candy bag/.test(b.textContent))c.parentNode.removeChild(c); });
+          var h2=body.querySelector('h2'); if(h2&&/Spooky Season/.test(h2.textContent))h2.textContent='🎃 Halloween '+hwYear(); } }
+      stripCandy('hwcScore'); stripCandy('hwmScore'); stripCandy('ccsScore');
+      var cs=document.getElementById('ccsBody'); if(cs)[].slice.call(cs.querySelectorAll('button')).forEach(function(bt){ if(/^🍬\s*\d+\s*candy$/.test((bt.textContent||'').trim())&&bt.style.display!=='none')bt.style.display='none'; });
+      var mb=document.getElementById('mbox'); if(mb)[].slice.call(mb.querySelectorAll('.sub')).forEach(function(x){ var t=x.textContent||''; if(t.indexOf('+3 candy · ')>=0&&!x.children.length)setTxt(x,t.replace('+3 candy · ','')); });
+      var td=document.getElementById('tdBody'); if(td)[].slice.call(td.querySelectorAll('.sub')).forEach(function(x){ var t=x.textContent||''; if(t.indexOf('house on Hollow Lane')>=0&&!x.children.length)setTxt(x,t.replace(/A "\?" house on Hollow Lane means a quest is waiting\./,'Their welcome quests are in the Event Hall.')); });
+    }catch(err){} }
+  (function(){ var _oh=window.hwHub; if(typeof _oh==='function')window.hwHub=function(){ var r=_oh.apply(this,arguments); tidy(); return r; }; })();
+  try{ var queued=false; var mo=new MutationObserver(function(){ if(queued)return; queued=true; (window.requestAnimationFrame||setTimeout)(function(){ queued=false; tidy(); }); });
+    var start=function(){ if(document.body&&!candySeason())mo.observe(document.body,{childList:true,subtree:true}); };
+    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start); else start(); }catch(err){}
+
+  /* ---------- 4. the To-Do: no Candy Bank row, no stale Halloween "new" rows out of season ---------- */
+  (function(){ var X=window.TODO_EXTRA; if(!X||!X.length)return;
+    for(var i=0;i<X.length;i++){ (function(f,i){ var src=''; try{ src=String(f); }catch(err){}
+      if(src.indexOf("key:'bank'")<0)return;
+      X[i]=function(sec){ var rows=f.apply(this,arguments)||[]; if(candySeason())return rows; return rows.filter(function(r){ return !(r&&(r.key==='bank'||r.key==='haul')); }); };
+    })(X[i],i); } })();
+  (function(){ if(candySeason())return; try{ var NR=window.__todo&&__todo.NEWS_ROWS; if(!NR)return;
+      for(var i=NR.length-1;i>=0;i--){ var r=NR[i]; if(r&&(r.how==='bank'||r.how==='scr-hw'))NR.splice(i,1); }
+      if(!NR.some(function(r){ return r.how==='events'; }))NR.unshift({v:'v1.67',t:'The Event Hall',s:'Holiday events that are on now or finished live here. Halloween neighbors, quests and costumes are inside.',go:function(){ openEvents(); },how:'events'});
+    }catch(err){} })();
+  (window.TODO_EXTRA=window.TODO_EXTRA||[]).push(function(sec){ var out=[];
+    if(sec==='quests'&&!hwOn()){ var left=8-arrivedN(); var avail=0; try{ avail=(hw().NK||[]).filter(function(n){ return !hw().arrivedList().includes(n.id)&&hw().available(n.id); }).length; }catch(err){}
+      if(left>0&&avail>0)out.push({ic:'🏛️',t:'Halloween neighbors still moving in',s:avail+' of them can move in now. Their welcome quests are in the Event Hall.',btn:'Go',go:function(){ openEvents(); },key:'ev167',quiet:true}); }
+    return out; });
+
+  /* ---------- 5. news: the Candy Bank card waits for October (not burned); the Event Hall is announced ---------- */
+  (function(){ if(candySeason())return; try{ var N=window.MU_NEWS; if(!N)return;
+      for(var i=N.length-1;i>=0;i--){ if(N[i]&&N[i].flag==='seen156b')N.splice(i,1); } }catch(err){} })();
+  if(!hwOn())(window.MU_NEWS=window.MU_NEWS||[]).push({flag:'seen167',pri:3,when:function(){ return !!(S.stats&&S.stats.answers>0)&&!!(S.flags&&S.flags.seen146); },html:function(){
+    return '<div class="center"><div style="font-size:54px;line-height:1">🏛️</div><h2 style="margin:4px 0">Halloween is put away</h2></div>'
+      +'<div class="speak" style="text-align:left"><b>Elly:</b> “Halloween is over, so Hollow Lane and Midnight Row are packed up. Everything you earned is still yours! The new neighbors stayed on Moonlight Row and Hollow Hill. The Halloween page is now inside the <b>Event Hall</b>, where every holiday event lives.”</div>'
+      +'<button class="btn wide" onclick="closeModal();openEvents()">🏛️ Visit the Event Hall</button><button class="btn wide ghost small" onclick="closeModal()">Later</button>'; }});
+  try{ var G=window.__news&&window.__news.G; if(G)G['events']={who:['elly',''],t:'The Event Hall',s:['Every holiday event lives here: the one on now, and the ones that are over.','Halloween is inside: the new neighbors, their welcome quests, your costumes and your ribbons.','When an event ends it moves in here, so you never lose anything.']}; }catch(err){}
+
+  /* ---------- 6. Grown-Ups corner note ---------- */
+  (function(){ var _og=window.openGrown; if(typeof _og!=='function')return; window.openGrown=function(){ var r=_og.apply(this,arguments);
+    try{ var body=document.getElementById('gwBody'); if(body&&!document.getElementById('gw167'))body.insertAdjacentHTML('beforeend','<div class="card" id="gw167" style="text-align:left;margin:8px 0"><b>🏛️ Events out of season (v1.67)</b><div class="sub" style="text-align:left;margin:2px 0 0">After October, the Halloween districts leave the map and the kid-facing candy counts hide until next October. Nothing is deleted: the Candy Bank card above still shows the all-time total and the real-candy deal. Halloween lives in the Event Hall.</div></div>'); }catch(err){}
+    return r; }; })();
 })();
 </script>
 </body>

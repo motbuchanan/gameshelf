@@ -5,10 +5,11 @@ uploaded against what the last chat thought it shipped. Full build notes stay in
 (in the NOTES zip, never uploaded).
 
 ## Current
-- **v1.66 · Nov 2 2026** (sw cache `measureup-v1-66`). Contains v1.51 through v1.65 plus the November fix pass. Live URL: https://motbuchanan.github.io/gameshelf/measureup/
+- **v1.67 · Nov 4 2026** (sw cache `measureup-v1-67`). Contains v1.51 through v1.66 plus Halloween put away (the Event Hall). Live URL: https://motbuchanan.github.io/gameshelf/measureup/
 - Files in the repo folder: `index.html`, `sw.js`, `manifest.json`, `ROADMAP.md` (this file, new in v1.51).
 
 ## What shipped lately
+- **v1.67 Halloween put away, the Event Hall (Nov 4).** Outside October, the Hollow Lane and Midnight Row districts leave the map. In their place is one EVENT HALL row: the Event Hall (every holiday event, on now or finished) and, in November, the Harvest Feast. No candy count shows in the town, top bar or To-Do outside October (plus the Halloween-night and Nov 1 haul days). The Candy Bank row and its news card come back next October. The Halloween page opens from the Event Hall with neighbors, welcome quests, costumes, ribbons and stamps; its candy bag is folded away out of season. Nothing is taken from a save: candy totals, costumes, keepsakes and the real-candy deal (Grown-Ups corner) are kept. Moonlight Row and Hollow Hill, where the new neighbors live, stay on the map.
 - **v1.66 November fix pass (Nov 2) - Phase 1 of the Calm the Town plan, no layout moves.** News flood capped to one What's New card per city visit (was ~18 in a row for a new player). The Halloween "trick or treat" card no longer shows in November. The grown-up "We made it!" check needs real math (the answer is no longer always the second-smallest number). Rake needs a built robot and is fall-only (killed the "Install DigCook" leak and the year-round rake row). Stale Halloween text removed from the Road Trip card and Candy Bank. No duplicate Road Trip card for new players. The HALLOWEEN pill is hidden out of season. "Meet the visitor" leads the To-Do. The daily nudge pulses the TO DO pill instead of a toast that covered it. The goodbye date reads "November 30, 2026". Phases 2 to 4 (fewer pills, neighborhoods, a News Board, one To-Do "Next") are still to come, each its own gate.
 - **v1.65 Thanksgiving, part 3 (Nov 2, opens Nov 26).** THE TOWN FEAST, Thanksgiving (Thu Nov 26) through Nov 30: all 8 feast
   foods on the table (a gold star on the ones Garrett helped with; neighbors bring the rest), dishes he made with Mom get
