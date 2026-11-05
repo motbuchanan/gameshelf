@@ -3,6 +3,13 @@ import { GAME_TITLE, VERSION, BUILD_DATE, getSettings, setSettings } from './con
 import R from './rules.js';
 import dice, { STYLE, drawPixelText } from './dice.js';
 import { GLOSSARY } from './glossary.js';
+import S from './sprites.js';
+import { CAST, GEAR, HERO_OPTIONS, SKINS, HAIRS, CLOTH } from './art.js';
+import { int as rint } from './rng.js';
+import creator from './creator.js';
+import board from './board.js';
+import C from './combat.js';
+import story from './story.js';
 
 const $ = id => document.getElementById(id);
 
@@ -22,17 +29,26 @@ function guard(fn) {
 
 // ---------- explain cards ----------
 let cardOpen = false;
-export function explain(id) {
+export function explain(id, extra) {
   const g = GLOSSARY[id];
   if (!g) return;
-  $('card-title').textContent = g.title;
-  $('card-body').textContent = g.body;
-  $('card-prereq').textContent = g.prereq || '';
+  showCard({ title: g.title, body: g.body, prereq: g.prereq, extra });
+}
+// Any card: title, words, an optional extra picture area, and an optional animated character.
+export function showCard({ title, body, prereq, extra, spec }) {
+  const ex = $('card-extra'); ex.innerHTML = '';
+  if (extra) ex.appendChild(extra);
+  bioChar = spec ? { spec } : null;
+  $('card-sprite').classList.toggle('hidden', !spec);
+  if (spec) drawBio(0);
+  $('card-title').textContent = title;
+  $('card-body').textContent = body;
+  $('card-prereq').textContent = prereq || '';
   $('card').classList.remove('hidden');
   cardOpen = true;
   $('card-ok').focus();
 }
-function closeCard() { $('card').classList.add('hidden'); cardOpen = false; }
+function closeCard() { $('card').classList.add('hidden'); cardOpen = false; bioChar = null; }
 
 let toastTimer = 0;
 export function toast(msg, ms = 2600) {
@@ -243,6 +259,151 @@ function wire() {
   $('update-pill').addEventListener('click', () => location.reload());
 }
 
+
+// ---------- screens ----------
+let screen = 'adventure-screen';
+// The Adventure tab shows whichever adventure view is active: the hero sheet, a story scene, or a fight.
+let advView = 'adventure-screen';
+const ADV_VIEWS = ['adventure-screen', 'story-screen', 'battle-screen'];
+export function setAdvView(id, backToSheet) {
+  advView = id;
+  if (id === 'adventure-screen' && backToSheet) creator.go('sheet');
+  showScreen(id);
+}
+function showScreen(id) {
+  if (id === 'adventure-screen') id = advView;
+  screen = id;
+  document.querySelectorAll('.screen').forEach(el => el.classList.toggle('hidden', el.id !== id));
+  document.querySelectorAll('.navbtn').forEach(b => b.classList.toggle('on', b.dataset.screen === id || (b.dataset.screen === 'adventure-screen' && ADV_VIEWS.includes(id))));
+  if (id === 'tray-screen') dice.mount($('tray'));
+  if (id === 'gallery-screen') startAnim(); else stopAnim();
+  if (id === 'adventure-screen') creator.startAnim(); else creator.stopAnim();
+  if (id === 'battle-screen') board.draw();
+}
+
+// ---------- Heroes & Monsters gallery (Phase 2) ----------
+const hero = JSON.parse(JSON.stringify(CAST.find(c => c.id === 'hero').spec));
+let heroPose = 'idle', bioChar = null;
+const OPT_LABEL = { head: 'Head', body: 'Body', mainHand: 'Weapon hand', offHand: 'Other hand', back: 'On your back', people: 'People', skin: 'Skin', hair: 'Hair', hairColor: 'Hair color', cloth: 'Clothes color' };
+const LAYER_SLOTS = ['head', 'body', 'mainHand', 'offHand', 'back'];
+const PEOPLE_NAME = { human: 'Human', elf: 'Elf', dwarf: 'Dwarf' };
+const HAIR_NAME = { short: 'Short', spiky: 'Spiky', long: 'Long', ponytail: 'Ponytail', bun: 'Bun', curly: 'Curly', braids: 'Braids', none: 'Bald' };
+const SWATCH = { skin: SKINS, hairColor: HAIRS, cloth: CLOTH };
+
+function optValue(key) { return LAYER_SLOTS.includes(key) ? (hero.layers[key] || null) : hero[key]; }
+function setOpt(key, v) {
+  if (LAYER_SLOTS.includes(key)) { if (v) hero.layers[key] = v; else delete hero.layers[key]; }
+  else hero[key] = v;
+  renderHeroOptions(); drawHero(); renderHeroGear();
+}
+function optLabel(key, v) {
+  if (v == null) return 'Nothing';
+  if (LAYER_SLOTS.includes(key)) return GEAR[v].name;
+  if (key === 'people') return PEOPLE_NAME[v];
+  if (key === 'hair') return HAIR_NAME[v];
+  return v[0].toUpperCase() + v.slice(1);
+}
+// A tiny preview of one gear item on a plain kid.
+function gearThumb(key, v) {
+  const c = document.createElement('canvas'); c.width = 32; c.height = 40;
+  const spec = { build: 'kid', people: 'human', skin: hero.skin, hair: 'short', hairColor: 'brown', cloth: 'brown', layers: { body: 'tunic' } };
+  if (v) spec.layers[key] = v;
+  S.draw(c.getContext('2d'), spec, 0, 0, 1);
+  return c;
+}
+function renderHeroOptions() {
+  const box = $('hero-options');
+  box.innerHTML = '';
+  Object.keys(OPT_LABEL).forEach(key => {
+    const row = document.createElement('div'); row.className = 'optrow';
+    row.innerHTML = `<span class="lbl">${OPT_LABEL[key]}</span>`;
+    const chips = document.createElement('div'); chips.className = 'chips';
+    HERO_OPTIONS[key].forEach(v => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'ochip' + (optValue(key) === v ? ' on' : '');
+      if (LAYER_SLOTS.includes(key) && key !== 'body') b.appendChild(gearThumb(key, v));
+      if (SWATCH[key]) { const sw = document.createElement('span'); sw.className = 'swatch'; sw.style.background = SWATCH[key][v][1]; b.appendChild(sw); }
+      b.appendChild(document.createTextNode(optLabel(key, v)));
+      b.addEventListener('click', () => setOpt(key, v));
+      chips.appendChild(b);
+    });
+    row.appendChild(chips); box.appendChild(row);
+  });
+}
+function renderHeroGear() {
+  const L = hero.layers, bits = [];
+  if (L.mainHand) bits.push(`<b>${GEAR[L.mainHand].name}</b> (damage ${GEAR[L.mainHand].dice})`);
+  if (L.offHand) bits.push(`<b>${GEAR[L.offHand].name}</b>`);
+  if (L.head) bits.push(`<b>${GEAR[L.head].name}</b>`);
+  $('hero-gear').innerHTML = bits.length ? 'Carrying: ' + bits.join(', ') : 'Empty-handed. Pick something from the options.';
+}
+function drawHero(frame = animFrame) {
+  const c = $('hero-canvas'), x = c.getContext('2d');
+  x.clearRect(0, 0, 32, 40);
+  S.draw(x, hero, 0, 0, 1, frame, heroPose);
+}
+function buildCast() {
+  const box = $('cast');
+  box.innerHTML = '';
+  CAST.filter(c => c.id !== 'hero').forEach(ch => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'castcard' + (ch.group === 'monsters' ? ' monster' : '');
+    const c = document.createElement('canvas'); c.width = 32; c.height = 40; c.dataset.cast = ch.id;
+    b.appendChild(c);
+    b.insertAdjacentHTML('beforeend', `<span>${ch.name}</span><span class="role">${ch.role}</span>`);
+    b.addEventListener('click', () => showBio(ch));
+    box.appendChild(b);
+  });
+}
+function drawCast(frame) {
+  document.querySelectorAll('canvas[data-cast]').forEach((c, i) => {
+    const ch = CAST.find(k => k.id === c.dataset.cast), x = c.getContext('2d');
+    x.clearRect(0, 0, 32, 40);
+    S.draw(x, ch.spec, 0, 0, 1, (frame + i) % 2);
+  });
+}
+function showBio(ch) {
+  bioChar = ch;
+  $('card-extra').innerHTML = '';
+  $('card-title').textContent = ch.name;
+  $('card-body').textContent = ch.bio;
+  $('card-prereq').textContent = ch.role + (ch.spec.layers && ch.spec.layers.mainHand ? '. Weapon: ' + GEAR[ch.spec.layers.mainHand].name + ' (' + GEAR[ch.spec.layers.mainHand].dice + ')' : '');
+  $('card-sprite').classList.remove('hidden');
+  drawBio(0);
+  $('card').classList.remove('hidden'); cardOpen = true;
+}
+function drawBio(frame) {
+  if (!bioChar) return;
+  const x = $('card-sprite').getContext('2d');
+  x.clearRect(0, 0, 32, 40);
+  S.draw(x, bioChar.spec, 0, 0, 1, frame, Math.floor(performance.now() / 1400) % 3 === 2 ? 'attack' : 'idle');
+}
+let animFrame = 0, animTimer = 0;
+function startAnim() {
+  stopAnim();
+  const tick = () => { animFrame ^= 1; drawHero(); drawCast(animFrame); drawBio(animFrame); };
+  tick(); animTimer = setInterval(tick, 480);
+}
+function stopAnim() { clearInterval(animTimer); animTimer = 0; }
+function surprise() {
+  for (const key of Object.keys(OPT_LABEL)) {
+    const opts = HERO_OPTIONS[key];
+    const v = opts[rint(0, opts.length - 1)];
+    if (LAYER_SLOTS.includes(key)) { if (v) hero.layers[key] = v; else delete hero.layers[key]; } else hero[key] = v;
+  }
+  if (!hero.layers.body) hero.layers.body = 'tunic';
+  renderHeroOptions(); drawHero(); renderHeroGear();
+}
+function wireGallery() {
+  document.querySelectorAll('.navbtn').forEach(b => b.addEventListener('click', () => { if (!locked) showScreen(b.dataset.screen); }));
+  $('hero-attack').addEventListener('click', () => {
+    heroPose = 'attack'; drawHero();
+    setTimeout(() => { heroPose = 'idle'; drawHero(); }, 450);
+  });
+  $('hero-random').addEventListener('click', surprise);
+  renderHeroOptions(); renderHeroGear(); buildCast(); drawHero(0); drawCast(0);
+}
+
 function registerSW() {
   if (!('serviceWorker' in navigator)) return;
   const hadController = !!navigator.serviceWorker.controller;
@@ -276,9 +437,14 @@ function start() {
   renderBag();
   $('result').innerHTML = '<div class="say">Pick a skill, then roll. Tap any <b>?</b> to learn what it means.</div>';
   wire();
+  wireGallery();
+  creator.init({ explain, toast, playChapter: id => story.play(id), chapterTitle: id => story.chapterTitle(id) });
+  board.init({ lock, unlock, isLocked, explain, showCard });
+  story.init({ setAdvView, toast, lock, unlock });
+  showScreen('adventure-screen');
   registerSW();
   // Test hook (read-only use in automated checks).
-  window.__rpg = { dice, rules: R, state, bag, lock, unlock, isLocked };
+  window.__rpg = { combat: C, dice, rules: R, state, bag, lock, unlock, isLocked, sprites: S, hero, showScreen, creator, board, story };
 }
 
 start();

@@ -384,7 +384,20 @@ export function init(el, opts = {}) {
   flatCanvas.className = 'dice-flat';
   container.appendChild(flatCanvas);
   setMode(opts.mode || '3d');
-  new ResizeObserver(() => resize()).observe(container);
+  ro = new ResizeObserver(() => resize());
+  ro.observe(container);
+  resize();
+}
+
+// Move the dice table into another box (the fight screen borrows it for attack rolls).
+let ro = null;
+export function mount(el) {
+  if (!el || el === container) return;
+  clearTags();
+  container = el;
+  container.appendChild(flatCanvas);
+  if (glCanvas) container.appendChild(glCanvas);
+  if (ro) { ro.disconnect(); ro.observe(container); }
   resize();
 }
 
@@ -675,6 +688,6 @@ function roll2D(items) {
   });
 }
 
-export default { init, setMode, getMode, roll, rollSet, readVisual, isRolling, setTimeScale, TYPE_FOR_SIDES, drawPixelText };
+export default { init, mount, setMode, getMode, roll, rollSet, readVisual, isRolling, setTimeScale, TYPE_FOR_SIDES, drawPixelText };
 // Exposed for Node-side geometry tests.
 export const _test = { getDef, turnFor, symmetries, hullFaces, simulate, buildGeometry };
