@@ -72,7 +72,7 @@ function makeTile(id, v) {
   }
   return cv;
 }
-function tileArt(id, x, y) {
+export function tileArt(id, x, y) {
   const v = id === 'stream' ? (hash(x, y) + frame) % 2 + (y % 2) * 2 : hash(x, y) % 4;
   const k = id + v;
   return TILE_ART[k] || (TILE_ART[k] = makeTile(id, v));
@@ -512,4 +512,4 @@ export function start(fightDef, texts, hero) {
   });
 }
 
-export default { init, start, setFast, state, draw, tileCenter, isPlayerTurn };
+export default { init, start, setFast, state, draw, tileCenter, isPlayerTurn, tileArt };

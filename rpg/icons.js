@@ -15,6 +15,10 @@ const MAPS = {
   star: { rows: ['....k....', '...kYk...', 'kkkkYkkkk', 'kYYYYYYYk', '.kYYYYYk.', '..kYYYk..', '.kYYkYYk.', '.kYk.kYk.', '.kk...kk.'], col: { Y: '#f0c44c' } },
   flagb: { rows: ['kkkkk..', 'kBBBBk.', 'kBwBBBk', 'kBBBBk.', 'kkkkk..', 'k......', 'k......'], col: { B: '#4a8ee8', w: '#bcdcff' } },
   flagr: { rows: ['kkkkk..', 'kRRRRk.', 'kRwRRRk', 'kRRRRk.', 'kkkkk..', 'k......', 'k......'], col: { R: '#e8503a', w: '#ffc0b0' } },
+  die: { rows: ['.kkkkkkk.', 'kWWWWWWWk', 'kWkWWWkWk', 'kWWWWWWWk', 'kWWWkWWWk', 'kWWWWWWWk', 'kWkWWWkWk', 'kWWWWWWWk', '.kkkkkkk.'], col: { W: '#f3e6cc' } },
+  turns: { rows: ['...kkk...', '..kGGGk..', '.kGk.kGk.', 'kGk...kGk', 'kk.....kk', 'kGk...kGk', '.kGk.kGk.', '..kGGGk..', '...kkk...'], col: { G: '#6cbf5a' } },
+  burst: { rows: ['k...k...k', '.kOkOkOk.', '..kOOOk..', 'kOOOyOOOk', '.kOyyyOk.', 'kOOOyOOOk', '..kOOOk..', '.kOkOkOk.', 'k...k...k'], col: { O: '#e8903a', y: '#f0c44c' } },
+  book: { rows: ['kkkkkkkkk', 'kRRRRRRyk', 'kRyyyyRyk', 'kRRRRRRyk', 'kRyyyRRyk', 'kRRRRRRyk', 'kRRRRRRyk', 'kkkkkkkyk', '.kwwwwwwk'], col: { R: '#b8442e', y: '#f0c44c', w: '#f3e6cc' } },
   target: { rows: ['..kkkkk..', '.kRwwwRk.', 'kRwRRRwRk', 'kwRwwwRwk', 'kwRwRwRwk', 'kwRwwwRwk', 'kRwRRRwRk', '.kRwwwRk.', '..kkkkk..'], col: { R: '#e84a4a', w: '#f3e6cc' } },
 };
 
