@@ -28,6 +28,8 @@ function currentSpec() {
   if (step === 'sheet' || step === -1) { const s = save.get(); if (s && s.hero) return P.spriteSpec(s.hero); }
   const h = draftHero();
   if (!draft.weapon && STEPS[step] !== 'review' && STEPS[step] !== 'weapon') h.gear.mainHand = null;
+  // Helmet off while you pick your people and your look, so your hair shows.
+  if (STEPS[step] === 'people' || STEPS[step] === 'look') h.gear.head = null;
   return P.spriteSpec(h);
 }
 

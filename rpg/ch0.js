@@ -10,7 +10,7 @@ export const CH0 = {
   },
   look: {
     heading: 'What do you look like?',
-    say: 'Look in the puddle by the well. That is you! Change anything you like. You can always come back.',
+    say: 'Look in the puddle by the well. That is you! Your bucket helmet is off so you can see your hair. Change anything you like.',
   },
   name: {
     heading: 'What is your name?',
