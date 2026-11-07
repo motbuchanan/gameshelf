@@ -209,7 +209,7 @@ function renderStep() {
     say(CH0.sheet.say);
     // The gold button plays the next chapter. Finished chapters can be replayed with the small buttons.
     const flags = s.flags || {};
-    const avail = ['ch1', 'ch2', 'ch3', 'ch4', 'ch5', 'ch6'].filter(id => chapterTitle(id));
+    const avail = Array.from({ length: 30 }, (_, i) => 'ch' + (i + 1)).filter(id => chapterTitle(id));
     const cur = avail.includes(s.chapter) ? s.chapter : avail.filter(id => flags[id]).pop() || 'ch1';
     const again = !!flags[cur];
     const play = document.createElement('button'); play.type = 'button'; play.className = 'btn big-btn play-btn'; play.id = 'adv-play';

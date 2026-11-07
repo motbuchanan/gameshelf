@@ -235,11 +235,15 @@ function playerPanel() {
       <span class="todo-i${tag ? '' : ' done'}">${I.icon('target', 22)}<span>${b.mode === 'hp' ? 'Attack' : 'Tag'}</span></span>
       <button class="q act" id="b-help" type="button" aria-label="How turns work">?</button>
     </div>
-    ${tag && u.trick && u.trick.left > 0 ? `<button id="b-trick" class="btn act trick-btn" type="button">${I.icon('burst', 22)} ${esc(u.trick.name)} <span class="trick-left">${Array.from({ length: u.trick.left }, () => I.icon('star', 14)).join('')}</span></button>` : ''}
+    ${tag ? (u.tricks || []).filter(t => t.left > 0).map(t => `<button id="b-trick-${t.id}" class="btn act trick-btn" type="button">${I.icon(t.heal ? 'heart' : 'burst', 22)} ${esc(t.name)} <span class="trick-left">${Array.from({ length: t.left }, () => I.icon('star', 14)).join('')}</span></button>`).join('') : ''}
+    ${tag && b.calm ? `<button id="b-talk" class="btn act trick-btn" type="button">${I.icon('bubble', 22)} Talk <span class="trick-left">${Array.from({ length: b.calm.max }, (_, i) => I.icon('bubble', 14, i >= b.calm.value)).join('')}</span></button>` : ''}
+    ${tag && u.char && u.char.items && u.char.items.potion > 0 && u.flags < u.maxFlags ? `<button id="b-potion" class="btn act trick-btn" type="button">${I.icon('heart', 22)} Drink a potion (${u.char.items.potion})</button>` : ''}
     ${tag && C.canOpenCage(b, u) ? `<button id="b-cage" class="btn act trick-btn" type="button">${I.icon('hammer', 22)} Open the cage!</button>` : ''}
     <button id="b-done" class="btn big-btn act" type="button">Done</button>`);
   $('b-help').addEventListener('click', () => { if (!H.isLocked()) H.explain('turns'); });
-  if ($('b-trick')) $('b-trick').addEventListener('click', () => { if (!H.isLocked() && playerTurn) aimTrick(); });
+  (u.tricks || []).forEach(t => { const el = $('b-trick-' + t.id); if (el) el.addEventListener('click', () => { if (!H.isLocked() && playerTurn) { C.useTrick(u, t.id); aimTrick(); } }); });
+  if ($('b-talk')) $('b-talk').addEventListener('click', () => { if (!H.isLocked() && playerTurn) playerTalk(); });
+  if ($('b-potion')) $('b-potion').addEventListener('click', () => { if (!H.isLocked() && playerTurn) playerPotion(); });
   if ($('b-cage')) $('b-cage').addEventListener('click', () => { if (!H.isLocked() && playerTurn) playerCage(); });
   $('b-done').addEventListener('click', () => { if (!H.isLocked() && playerTurn) endPlayerTurn(); });
 }
@@ -250,7 +254,7 @@ function confirmPanel(target) {
   overlay.targets = [{ x: target.x, y: target.y }]; draw();
   actPanel(`
     <div class="confirm">
-      <div class="confirm-h">${b.mode === 'hp' ? 'Attack' : 'Tag'} <b>${esc(target.name)}</b> with your ${esc(GEAR[u.weapon].name.toLowerCase())}?</div>
+      <div class="confirm-h">${b.mode === 'hp' ? 'Attack' : 'Tag'} <b>${esc(target.name)}</b> with your ${esc(C.weaponName(u).toLowerCase())}?</div>
       <div class="confirm-row" style="--sc:${I.STAT_COLOR[stat]}">${I.icon(I.STAT_ICON[stat], 22)}<span>${P.SKILLS[ch.skill].name}</span>${I.meter(ch.value, I.STAT_COLOR[stat], 'small')}</div>
       ${ch.cover ? `<div class="confirm-note">${I.icon('shield', 16)} ${esc(target.name)} is hiding in a bush, so it's harder.</div>` : ''}
       ${ch.armor ? `<div class="confirm-note">${I.icon('shield', 16)} ${esc(target.name)} wears armor, so it's a little harder.</div>` : ''}
@@ -269,9 +273,11 @@ function aimTrick() {
   const u = C.current(b);
   aiming = true; aimCenter = null;
   overlay.reach = []; overlay.targets = [];
-  overlay.aim = C.areaCenters(b, u).filter(t => !(t.x === u.x && t.y === u.y));
+  overlay.aim = u.trick.heal
+    ? b.units.filter(e => e.side === u.side && !e.out && !e.bystander && G.dist(u, e) <= u.trick.range).map(e => ({ x: e.x, y: e.y }))
+    : C.areaCenters(b, u).filter(t => !(t.x === u.x && t.y === u.y));
   draw();
-  say('hero', `Tap a square to aim your ${u.trick.name}.`);
+  say('hero', u.trick.heal ? `Tap a friend (or yourself) to ${u.trick.name}.` : `Tap a square to aim your ${u.trick.name}.`);
   actPanel(`<button id="b-cancel" class="btn act" type="button">Not yet</button>`);
   $('b-cancel').addEventListener('click', () => { if (!H.isLocked()) cancelAim(); });
 }
@@ -301,6 +307,30 @@ function aimAt(x, y) {
     showPlayerOptions();
   });
 }
+// Talking instead of fighting: roll Talk; good rolls fill the calm bubbles.
+async function playerTalk() {
+  const u = C.current(b);
+  H.lock(); actPanel('');
+  const roll = await rollPop(u, C.talkChance(b, u), 'You talk to ' + (T.TALK_TARGET || 'them'), true, { luck: true });
+  const res = C.talk(b, u, roll);
+  strip(); draw();
+  const lines = T.CALM_LINES || [];
+  say(T.TALK_WHO || null, res.gain ? (lines[Math.min(b.calm.value, lines.length) - 1] || 'Hmm...') : (T.TALK_FAIL || 'Hmph. I am not listening.'));
+  await waitTap('OK');
+  H.unlock();
+  if (b.result) { playerTurn = false; finishTurn(); return; }
+  showPlayerOptions();
+}
+async function playerPotion() {
+  const u = C.current(b);
+  H.lock(); actPanel('');
+  const amt = C.drinkPotion(b, u);
+  floater(u.x, u.y, '+' + amt, '#7be08a'); strip(); draw();
+  say('hero', `Glug glug. ${amt} hearts back!`);
+  await wait(fast ? 10 : 900);
+  H.unlock();
+  showPlayerOptions();
+}
 async function playerCage() {
   H.lock(); actPanel('');
   const kid = C.openCage(b);
@@ -321,7 +351,7 @@ function unitCard(u) {
   const flags = Array.from({ length: u.maxFlags }, (_, i) => I.icon(hp ? 'heart' : (u.side === 'hero' ? 'flagb' : 'flagr'), hp ? 16 : 22, i >= u.flags)).join('');
   ex.innerHTML = `<div class="uc-row"><b>${hp ? 'Hearts' : 'Flags'}</b><span class="uc-hearts">${flags}</span></div>
     ${hp ? `<div class="uc-row"><b>Armor</b><span>${u.armor ? I.icon('shield', 18) + ' Harder to hit (' + u.armor + ' squares)' : 'No armor'}</span></div>` : ''}
-    <div class="uc-row" style="--sc:${I.STAT_COLOR[stat]}"><b>${hp ? 'Hits with' : 'Tags with'}</b><span>${esc(GEAR[u.weapon].name)}${hp ? ' ' + I.icon('die', 16) + ' ' + esc(C.weaponDice(u)) : ''}</span></div>
+    <div class="uc-row" style="--sc:${I.STAT_COLOR[stat]}"><b>${hp ? 'Hits with' : 'Tags with'}</b><span>${esc(C.weaponName(u))}${hp ? ' ' + I.icon('die', 16) + ' ' + esc(C.weaponDice(u)) : ''}</span></div>
     <div class="uc-row">${I.icon(I.STAT_ICON[stat], 20)}<span>${P.SKILLS[u.use.skill].name}</span>${I.meter(ch, I.STAT_COLOR[stat], 'small')}</div>
     <div class="uc-row">${I.icon(u.use.range > 1 ? 'target' : 'boot', 18)}<span>${u.use.range > 1 ? 'Reaches ' + u.use.range + ' squares' : 'Reaches the squares right next to them'}</span></div>`;
   H.showCard({
@@ -428,18 +458,18 @@ async function rollPop(actor, chanceValue, title, isPlayer, opts = {}) {
 }
 
 // The damage dice: roll the weapon's dice in the tray and show how many hearts come off.
-async function damagePop(u, target, tier, note, isPlayer) {
+async function damagePop(u, target, tier, note, isPlayer, titleWord) {
   const dmg = C.rollDamage(note, tier);
   const pop = $('bdice-pop');
   pop.classList.remove('hidden');
   dice.mount($('bdice'));
   const extra = tier === 'legendary' ? 'Legendary: the first die counts as its highest number, plus one more die!' : tier === 'exceptional' ? 'Exceptional: you get one extra die!' : '';
-  $('bresult').innerHTML = `<div class="br-title">Damage on ${esc(target.id === 'hero' ? 'you' : target.name)}</div>
+  $('bresult').innerHTML = `<div class="br-title">${titleWord ? esc(titleWord) + '!' : 'Damage on ' + esc(target.id === 'hero' ? 'you' : target.name)}</div>
     <div class="br-body"><div class="br-side"><div class="br-tier">${I.icon('die', 22)} ${esc(note)}${extra ? '' : ''}</div>${extra ? `<div class="br-need">${esc(extra)}</div>` : ''}<div class="br-hearts" id="br-hearts"></div></div></div><div id="br-btn"></div>`;
   if (!b.taught.damage && (u.side === 'hero')) { b.taught.damage = true; say('hollis', T.DAMAGE_TEACH); }
   await new Promise(r => requestAnimationFrame(r));
   await dice.rollSet(dmg.dice.map(d => ({ sides: d.sides, value: d.value })));
-  $('br-hearts').innerHTML = `<span>${Array.from({ length: Math.min(dmg.total, 16) }, () => I.icon('heart', 22)).join('')}</span><b>${dmg.total} ${dmg.total === 1 ? 'heart' : 'hearts'}!</b>`;
+  $('br-hearts').innerHTML = `<span>${Array.from({ length: Math.min(dmg.total, 16) }, () => I.icon('heart', 22)).join('')}</span><b>${titleWord ? '+' : ''}${dmg.total} ${dmg.total === 1 ? 'heart' : 'hearts'}${titleWord ? ' back' : ''}!</b>`;
   if (isPlayer) await new Promise(res => { $('br-btn').innerHTML = '<button id="b-ok" class="btn big-btn" type="button">OK</button>'; $('b-ok').addEventListener('click', res, { once: true }); });
   else await Promise.race([wait(1300), new Promise(res => pop.addEventListener('click', res, { once: true }))]);
   pop.classList.add('hidden');
@@ -485,9 +515,16 @@ async function doArea(u, center) {
   const roll = await rollPop(u, chv, `${mine ? 'You cast' : u.name + ':'} ${u.trick.name}`, mine, { luck: b.mode === 'hp' });
   u.pose = 'idle';
   const tier = R.tierFor(chv, roll.value);
-  const dmg = b.mode === 'hp' && C.FLAGS_FOR[tier] ? await damagePop(u, { name: u.trick.r ? 'everyone in the orange squares' : 'that square', id: 'area' }, tier, u.trick.dice || '1d4', mine) : null;
+  const dmg = b.mode === 'hp' && C.FLAGS_FOR[tier] ? await damagePop(u, { name: u.trick.heal ? 'friend' : u.trick.r ? 'everyone in the orange squares' : 'that square', id: 'area' }, tier, u.trick.dice || '1d4', mine, u.trick.heal ? 'Healing' : null) : null;
   const scaredBefore = { ...b.scared };
   const res = C.resolveArea(b, u, center, roll, dmg);
+  if (res.heal) {
+    res.results.forEach(r => { const t = C.unitById(b, r.id); if (r.healed) floater(t.x, t.y, '+' + r.healed, '#7be08a'); });
+    overlay.area = []; strip(); draw();
+    say(u.id, res.results.some(r => r.healed) ? (T.HEAL_LINE || 'All better!') : (T.HEAL_MISS || 'Oops, the spell fizzled.'));
+    await wait(fast ? 10 : 1000);
+    return;
+  }
   for (const id in b.scared) if (b.scared[id] && !scaredBefore[id]) { const g = C.unitById(b, id); floater(g.x, g.y, 'Eek! Fire!', '#ffd060'); }
   res.results.forEach(r => { const t = C.unitById(b, r.id); floater(t.x, t.y, r.lost ? '-' + r.lost : 'Miss', '#ff8070'); });
   say(u.id, T.AREA_RESULT[res.tier]);
@@ -502,6 +539,7 @@ async function computerTurn(u) {
   const plan = C.nextPlan(b, u, def);
   if (plan.teach && !(T.TEACH || {})[plan.teach]) { b.taught[plan.teach] = true; plan.teach = null; }
   const act = plan.action && plan.action.type;
+  if (act === 'area' && plan.action.trick) C.useTrick(u, plan.action.trick);
   if (act === 'scared') {
     say(u.id, T.SCARED || 'Fire! FIRE! Keep it away from me!');
     floater(u.x, u.y, 'Scared!', '#ffd060');
@@ -549,7 +587,14 @@ async function computerTurn(u) {
     await wait(fast ? 10 : 1400);
   }
   if (plan.action && plan.action.type === 'attack') await doAttack(u, C.unitById(b, plan.action.target));
-  if (plan.action && plan.action.type === 'area') await doArea(u, plan.action.center);
+  if (plan.action && plan.action.type === 'area') { if (plan.action.trick) C.useTrick(u, plan.action.trick); await doArea(u, plan.action.center); }
+  if (act === 'summon') {
+    const made = C.summon(b, u);
+    made.forEach(c => floater(c.x, c.y, 'Caw!', '#c8c0e0'));
+    strip(); draw();
+    say(u.id, T.SUMMON || 'Come, my crows!');
+    await wait(fast ? 10 : 1100);
+  }
   if (plan.action && plan.action.type === 'flee') {
     floater(u.x, u.y, 'Runs!', '#f3e6cc');
     await animateWalk(u, u.x, u.y, [{ x: u.x === 0 ? -1 : u.x === b.map.w - 1 ? b.map.w : u.x, y: u.y === 0 ? -1 : u.y === b.map.h - 1 ? b.map.h : u.y }]);

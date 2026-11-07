@@ -64,6 +64,14 @@ const PLAY = [
   { id: 'flip', name: 'Flip the dice', icon: 'die' },
   { id: 'coins', name: 'Coins', icon: 'coin' },
   { id: 'team', name: 'Picking a team', icon: 'turns' },
+  { id: 'trailmap', name: 'The trail map', icon: 'boot' },
+  { id: 'camp', name: 'Camping', icon: 'heart' },
+  { id: 'pack', name: 'Pack hunters', icon: 'flagr' },
+  { id: 'patch', name: 'Patch Up', icon: 'heart' },
+  { id: 'potion', name: 'Healing potion', icon: 'heart' },
+  { id: 'bag', name: 'Your bag', icon: 'book' },
+  { id: 'talk', name: 'Talking', icon: 'bubble' },
+  { id: 'flying', name: 'Flying', icon: 'feather' },
 ];
 
 // ---------- who you have met ----------

@@ -38,6 +38,16 @@ export const PAL = {
   glow: '#ffd23a',
   ember: '#ff7a2a',
   nose: '#1a120c',
+  wolf: ['#4e5258', '#80868e', '#b4bac2'],
+  wolfdark: ['#2a2c32', '#4a4e56', '#6e747c'],
+  wolfbelly: ['#8a8a86', '#c4c2ba', '#e8e6de'],
+  crow: ['#14121c', '#2a2838', '#4a4860'],
+  beak: ['#9a6a12', '#e0a92a', '#ffe27a'],
+  brass: ['#7a5a1a', '#c49a3a', '#f0d07a'],
+  moss: ['#3a5a2a', '#5e8a3e', '#8cba5c'],
+  mossmane: ['#2a3a1a', '#44602a', '#62803e'],
+  vine: ['#2c4a1e', '#4a7a2c', '#74a84a'],
+  thorn: ['#3a2a14', '#5a4020', '#7a5a30'],
   spot: '#4a3420',
   shine: '#ffffff',
 };
@@ -64,6 +74,7 @@ export const CLOTH = {
   purple: ['#4a2a6e', '#7a4fb0', '#a880d8'],
   teal: ['#1e5a5c', '#2a9aa0', '#5ccac8'],
   brown: ['#4a3020', '#7a5232', '#a07a50'],
+  black: ['#18141e', '#2e2838', '#4a4258'],
 };
 
 // ---------- gear catalog ----------
@@ -430,6 +441,52 @@ function drawGnoll(ctx) {
   drawMain(g, item(L.mainHand), hx, hy, ang);
 }
 
+// ---------- Book Two creatures ----------
+function drawWolf(ctx) {
+  const { g, bob: b, pose } = ctx;
+  const atk = pose === 'attack';
+  line(g, 24, 25 + b, 29, 20 + b, 3, 'skin'); line(g, 29, 20 + b, 30, 17 + b, 2, 'skin');
+  ellipse(g, 17, 26 + b, 8, 5, 'skin');
+  ellipse(g, 17, 29 + b, 6, 2, 'belly');
+  for (const [x, y] of [[11, 29], [14, 30], [19, 30], [22, 29]]) { rect(g, x, y + (b && x % 2 ? 0 : 0), 2, 37 - y, 'skin'); rect(g, x - 1, 37, 3, 1, 'skin'); }
+  const hy = atk ? 22 : 19;
+  ellipse(g, 9, hy + b, 5, 4, 'skin');
+  poly(g, [[3, hy + b], [8, hy - 1 + b], [8, hy + 3 + b], [3, hy + 2 + b]], 'skin');
+  g.set(2, hy + 1 + b, 'nose');
+  poly(g, [[7, hy - 4 + b], [9, hy - 8 + b], [11, hy - 3 + b]], 'skin');
+  poly(g, [[10, hy - 4 + b], [12, hy - 8 + b], [13, hy - 3 + b]], 'skin');
+  g.set(8, hy - 1 + b, 'glow'); g.set(8, hy - 1 + b, 'glow');
+  if (atk) { rect(g, 3, hy + 3 + b, 5, 1, 'mouth'); g.set(4, hy + 3 + b, 'tooth'); g.set(6, hy + 3 + b, 'tooth'); }
+  else rect(g, 4, hy + 2 + b, 4, 1, 'mouth');
+}
+function drawCrow(ctx) {
+  const { g, frame, pose } = ctx;
+  const up = frame === 1, atk = pose === 'attack', y0 = up ? -2 : 0;
+  poly(g, [[21, 30 + y0], [28, 34 + y0], [27, 36 + y0], [21, 32 + y0]], 'skin');
+  ellipse(g, 16, 28 + y0, 6, 5, 'skin');
+  ellipse(g, atk ? 9 : 11, 22 + y0, 4, 4, 'skin');
+  const bx = atk ? 5 : 7;
+  poly(g, [[bx, 21 + y0], [bx - 4, 23 + y0], [bx, 24 + y0]], 'beak');
+  g.set(bx + 2, 21 + y0, 'glow');
+  if (up) poly(g, [[13, 26 + y0], [21, 13 + y0], [25, 17 + y0], [20, 27 + y0]], 'skin');
+  else poly(g, [[13, 26], [25, 27], [22, 33], [15, 31]], 'skin');
+  line(g, 15, 33 + y0, 15, 37, 1, 'beak'); line(g, 18, 33 + y0, 18, 37, 1, 'beak');
+}
+function drawOwl(ctx) {
+  const { g, bob: b, pose } = ctx;
+  rect(g, 12, 35, 3, 2, 'beak'); rect(g, 17, 35, 3, 2, 'beak');
+  ellipse(g, 16, 27 + b, 8, 8, 'skin');
+  const wing = pose === 'attack' ? -4 : 0;
+  poly(g, [[8, 22 + b], [5, 30 + b + wing], [9, 33 + b]], 'skin'); poly(g, [[24, 22 + b], [27, 30 + b + wing], [23, 33 + b]], 'skin');
+  ellipse(g, 16, 29 + b, 3, 3, 'iron'); g.set(16, 29 + b, 'glow');
+  for (const [x, y] of [[16, 25], [19, 29], [16, 32], [13, 29]]) g.set(x, y + b, 'iron');
+  ellipse(g, 16, 17 + b, 8, 6, 'skin');
+  poly(g, [[9, 13 + b], [10, 7 + b], [13, 12 + b]], 'skin'); poly(g, [[23, 13 + b], [22, 7 + b], [19, 12 + b]], 'skin');
+  ellipse(g, 16, 18 + b, 6, 4, 'tin');
+  for (const ex of [13, 19]) { ellipse(g, ex, 17 + b, 2, 2, 'glow'); g.set(ex, 17 + b, 'eye'); }
+  g.set(16, 20 + b, 'beak'); g.set(16, 21 + b, 'beak');
+}
+
 export const BUILDS = {
   kid: {
     palette: s => ({ skin: SKINS[s.skin] || SKINS.peach, hair: HAIRS[s.hairColor] || HAIRS.brown, cloth: CLOTH[s.cloth] || CLOTH.green }),
@@ -437,7 +494,10 @@ export const BUILDS = {
   },
   goblin: { palette: s => ({ skin: PAL.goblin, hood: CLOTH[s.cloth] || PAL.hood }), draw: drawGoblin },
   kobold: { palette: () => ({ skin: PAL.kobold }), draw: drawKobold },
-  gnoll: { palette: () => ({ skin: PAL.fur }), draw: drawGnoll },
+  gnoll: { palette: s => ({ skin: PAL[s.fur] || PAL.fur, mane: PAL[s.mane] || PAL.mane }), draw: drawGnoll },
+  wolf: { palette: s => ({ skin: PAL[s.fur] || PAL.wolf, belly: PAL.wolfbelly }), draw: drawWolf },
+  crow: { palette: () => ({ skin: PAL.crow }), draw: drawCrow },
+  owl: { palette: () => ({ skin: PAL.brass }), draw: drawOwl },
 };
 
 // ---------- the first cast ----------
@@ -530,6 +590,27 @@ export const CAST = [
     spec: { build: 'gnoll', layers: { mainHand: 'flail' } },
     bio: 'A huge hyena-headed raider who bosses the goblins and kobolds around. He laughs when he is angry. He laughs a lot.',
   },
+  // Book Two
+  { id: 'wolf', name: 'Gray Wolf', role: 'Enemy', group: 'monsters', spec: { build: 'wolf' },
+    bio: 'Wolves hunt in packs. Two wolves next to the same kid makes them extra dangerous. When the pack leader runs, they all run.' },
+  { id: 'wolfleader', name: 'Wolf Pack Leader', role: 'Enemy', group: 'monsters', spec: { build: 'wolf', fur: 'wolfdark' },
+    bio: 'The biggest, darkest wolf. It howls to call the pack. Beat the leader and the rest give up.' },
+  { id: 'crow', name: 'Black Crow', role: 'Enemy', group: 'monsters', spec: { build: 'crow' },
+    bio: 'Clever birds that steal shiny things. They fly over walls and water, so you need to reach them with a slingshot, a bow, or Spark.' },
+  { id: 'owl', name: 'Clockwork Owl', role: 'Enemy', group: 'monsters', spec: { build: 'owl' },
+    bio: 'A wind-up guard made of brass. Very hard to hit, and fire barely warms it. Slow, though.' },
+  { id: 'thornbeast', name: 'Thorn Beast', role: 'Enemy', group: 'monsters', spec: { build: 'gnoll', fur: 'vine', mane: 'thorn', layers: {} },
+    bio: 'A huge creature made of vines and brambles. Bramble grew it to guard her.' },
+  { id: 'bramble', name: 'Bramble Blackfeather', role: 'The witch of the old tower', group: 'monsters',
+    spec: { build: 'kid', people: 'elf', skin: 'peach', hair: 'bun', hairColor: 'white', cloth: 'black', layers: { body: 'tunic', head: 'hood', mainHand: 'broomstick', back: 'cape' } },
+    bio: 'A grumpy old forest witch with a flock of crows. She loves the trees more than anything.' },
+  { id: 'mossback', name: 'Mossback', role: 'The bridge troll', group: 'friends', spec: { build: 'gnoll', fur: 'moss', mane: 'mossmane', layers: {} },
+    bio: 'A big, polite troll who guards the Riverbend bridge. Loves riddles, hates rudeness, and has moss growing behind his ears.' },
+  { id: 'inkwing', name: 'Inkwing', role: 'Crow friend', group: 'friends', spec: { build: 'crow' },
+    bio: 'Bramble\'s smartest crow. Once a spy, now a friend who scouts ahead.' },
+  { id: 'woodcutter', name: 'Old Alder', role: 'The old woodcutter', group: 'town',
+    spec: { build: 'kid', people: 'human', skin: 'tan', hair: 'short', hairColor: 'white', cloth: 'brown', layers: { body: 'padded', mainHand: 'club' } },
+    bio: 'Riverbend\'s oldest woodcutter. He remembers the grove, and he is sorry about it.' },
 ];
 
 // Hero gear choices shown in the gallery. null = nothing in that slot.

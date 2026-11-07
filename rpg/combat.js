@@ -11,7 +11,7 @@ import { CAST } from './art.js';
 import { weaponUse } from './items.js';
 import { GEAR } from './art.js';
 import { MONSTERS, armorOf } from './monsters.js';
-import { SPARK } from './roster.js';
+import { SPARK, PATCH } from './roster.js';
 
 export const FLAGS_FOR = { legendary: 3, exceptional: 2, success: 1, fail: 0, disaster: 0 };
 export const COVER = 20;      // a target in a bush is this much harder to hit
@@ -34,6 +34,8 @@ function makeMonster(d) {
     weapon: m.weapon, use, skills: m.skills, armor: m.armor, finesse: m.finesse, retreatAt: m.retreatAt || 0,
     trick: null, prefersBush: !!d.prefersBush, bystander: !!d.bystander,
     boss: !!m.boss, sweepDice: m.sweepDice || null,
+    dice: m.dice || null, weaponName: m.dice ? m.weapon : null,
+    pack: !!m.pack, leader: !!m.leader, fly: !!m.fly, fireResist: !!m.fireResist, summoner: !!m.summoner,
   };
 }
 
@@ -49,19 +51,25 @@ export function makeUnit(d, hero, mode = 'flags') {
     char = P.makeHero({ name: d.name || c.name.split(' ')[0], people: spec.people, bestAt: d.bestAt, weapon: spec.layers.mainHand });
   }
   if (d.offHand) { spec.layers.offHand = d.offHand; char.gear.offHand = d.offHand; }
+  // Tricks and spells: from the fight data, plus spells the kid has learned. trick = the one being used right now.
+  const tricks = [].concat(d.tricks || [], d.trick ? [d.trick] : []);
+  const spells = char.spells || [];
+  if (spells.includes('spark') && !tricks.some(t => t.id === 'spark')) tricks.push(SPARK);
+  if (spells.includes('patch') && !tricks.some(t => t.id === 'patch')) tricks.push(PATCH);
   const weapon = char.gear.mainHand;
   const use = weaponUse(weapon);
   const hp = mode === 'hp' ? (d.id === 'hero' ? Math.max(1, char.hp) : P.hpMax(char)) : d.flags;
   const maxHp = mode === 'hp' ? P.hpMax(char) : d.flags;
-  return {
+  return withTricks({
     id: d.id, name: char.name, side: d.side, ai: d.ai, spec, char, cast: d.id,
     x: d.x, y: d.y, move: d.move || P.MOVE,
     flags: hp, maxFlags: maxHp, out: false,
     weapon, use, armor: mode === 'hp' ? armorOf(char.gear) : 0, finesse: char.stats.finesse, retreatAt: 0,
-    trick: d.trick ? { ...d.trick, left: d.trick.uses } : ((char.spells || []).includes('spark') ? { ...SPARK, left: SPARK.uses } : null),
+    trick: null, tricks: [],
     prefersBush: !!d.prefersBush, bystander: !!d.bystander,
-  };
+  }, tricks);
 }
+function withTricks(u, tricks) { u.tricks = tricks.map(t => ({ ...t, left: t.uses })); u.trick = u.tricks.find(t => !t.heal) || u.tricks[0] || null; return u; }
 
 export function createBattle(def, hero) {
   const map = G.makeMap(def.map);
@@ -75,6 +83,7 @@ export function createBattle(def, hero) {
   const b = { map, units, mode, order: (def.order || units.filter(u => !u.bystander).map(u => u.id)).slice(), turn: 0, round: 1, result: null,
     taught: { ...(def.taught || {}) }, ts: { moved: false, acted: false }, roundCap: def.roundCap || ROUND_CAP, capResult: def.capResult || 'tie',
     scared: {}, danger: [], warn: !!def.warn, fireScares: !!def.fireScares, bossPhase: 0,
+    calm: def.calm ? { value: def.calm.start || 0, max: def.calm.max || 3, bonus: def.calm.bonus || 0 } : null,
     cage: def.cage ? { ...def.cage, open: false } : null };
   return b;
 }
@@ -121,12 +130,20 @@ export function chance(b, u, target, opts = {}) {
   const base = skillValue(u, skillId);
   const cover = !opts.ignoreCover && target && G.terrainAt(b.map, target.x, target.y).cover;
   const armor = b.mode === 'hp' && target && !opts.ignoreArmor ? (target.armor || 0) : 0;
-  return { skill: skillId, base, cover: !!cover, armor, value: Math.max(MIN_CHANCE, base - (cover ? COVER : 0) - armor) };
+  const pack = packBonus(b, u, target);
+  return { skill: skillId, base, cover: !!cover, armor, pack, value: Math.max(MIN_CHANCE, Math.min(R.SKILL_CAP || 95, base + pack - (cover ? COVER : 0) - armor)) };
 }
 
 // Damage dice for a hit, by how well it went (real fights).
 //   It works: the weapon's dice. Exceptional: one extra die. Legendary: the weapon's dice at their highest, plus one extra die.
-export function weaponDice(u) { return (u.trickDice) || (GEAR[u.weapon] && GEAR[u.weapon].dice) || '1d4'; }
+export function weaponDice(u) { return u.dice || (GEAR[u.weapon] && GEAR[u.weapon].dice) || '1d4'; }
+export function weaponName(u) { return u.weaponName || (GEAR[u.weapon] ? GEAR[u.weapon].name : 'claws'); }
+// Wolves: a pack bonus when another wolf is right next to the same target.
+export const PACK_BONUS = 15;
+export function packBonus(b, u, target) {
+  if (!u.pack || !target) return 0;
+  return b.units.some(o => o !== u && o.pack && !o.out && o.side === u.side && G.dist(o, target) <= 1) ? PACK_BONUS : 0;
+}
 export function rollDamage(note, tier, rollFn = R.rollDice) {
   if (!FLAGS_FOR[tier]) return { dice: [], total: 0 };
   const { dice: sides, mod } = R.parseDice(note);
@@ -170,13 +187,22 @@ export function areaTiles(b, u, center) { return G.area(b.map, u.trick.shape, ce
 export function areaCenters(b, u) {
   return G.inRange(b.map, u, u.trick.range).concat([{ x: u.x, y: u.y }]);
 }
+export function useTrick(u, id) { const t = (u.tricks || []).find(x => x.id === id); if (t) u.trick = t; return u.trick; }
 export function resolveArea(b, u, center, roll, dmg) {
   const tiles = areaTiles(b, u, center);
-  const hit = enemiesOf(b, u).filter(e => tiles.some(t => t.x === e.x && t.y === e.y));
   const ch = chance(b, u, null, { skill: u.trick.skill, ignoreCover: true });
   const tier = R.tierFor(ch.value, roll.value);
   const amount = b.mode === 'hp' ? (FLAGS_FOR[tier] ? (dmg ? dmg.total : rollDamage(u.trick.dice || '1d4', tier).total) : 0) : FLAGS_FOR[tier];
-  const results = hit.map(e => ({ id: e.id, lost: pull(e, amount), out: e.out }));
+  // Patch Up: friends in the square get hearts back instead.
+  if (u.trick.heal) {
+    const pals = b.units.filter(e => e.side === u.side && !e.out && !e.bystander && tiles.some(t => t.x === e.x && t.y === e.y));
+    const results = pals.map(e => { const before = e.flags; e.flags = Math.min(e.maxFlags, e.flags + amount); return { id: e.id, healed: e.flags - before }; });
+    u.trick.left--; b.ts.acted = true;
+    return { tier, results, chance: ch, tiles, heal: true };
+  }
+  const hit = enemiesOf(b, u).filter(e => tiles.some(t => t.x === e.x && t.y === e.y));
+  // Clockwork owls shrug off fire: half damage.
+  const results = hit.map(e => ({ id: e.id, lost: pull(e, u.trick.fire && e.fireResist ? Math.max(1, Math.floor(amount / 2)) * (amount ? 1 : 0) : amount), out: e.out }));
   if (u.trick.fire && b.fireScares && amount) hit.filter(e => e.boss && !e.out).forEach(e => { b.scared[e.id] = 1; });
   u.trick.left--; b.ts.acted = true;
   checkOver(b);
@@ -223,7 +249,48 @@ export function flee(b, u) { u.out = true; u.fled = true; b.ts.acted = true; che
 export const onEdge = (b, u) => u.x === 0 || u.y === 0 || u.x === b.map.w - 1 || u.y === b.map.h - 1;
 export const wantsToFlee = (b, u) => b.mode === 'hp' && u.side === 'monster' && u.retreatAt > 0 && u.flags <= u.retreatAt;
 
+// When the pack leader is out, every wolf runs.
+function routCheck(b) {
+  if (b.units.some(u => u.leader && u.out)) b.units.filter(u => u.pack && !u.out).forEach(u => { u.retreatAt = 999; });
+}
+// Talking a boss down (def.calm): each good Talk roll adds calm; full calm ends the fight peacefully.
+export function talkChance(b, u) {
+  const base = skillValue(u, 'talk') + (b.calm ? b.calm.bonus || 0 : 0);
+  return Math.max(MIN_CHANCE, Math.min(95, base));
+}
+export function talk(b, u, roll) {
+  const value = talkChance(b, u), tier = R.tierFor(value, roll.value);
+  const gain = FLAGS_FOR[tier] || 0;
+  b.calm.value = Math.min(b.calm.max, b.calm.value + gain);
+  b.ts.acted = true;
+  if (b.calm.value >= b.calm.max) b.result = 'calm';
+  return { tier, value, gain };
+}
+// A healing potion from the bag: 2d4 + 2 hearts.
+export function drinkPotion(b, u, rollFn = R.rollDice) {
+  const items = u.char && u.char.items; if (!items || !(items.potion > 0)) return 0;
+  items.potion--;
+  const amt = rollFn('2d4').total + 2, before = u.flags;
+  u.flags = Math.min(u.maxFlags, u.flags + amt);
+  b.ts.acted = true;
+  return u.flags - before;
+}
+// Bramble calls two crows to her side.
+export function summon(b, u) {
+  const free = G.area(b.map, 'circle', { x: u.x, y: u.y }, { r: 2 }).filter(t => G.terrainAt(b.map, t.x, t.y).id !== 'tree' && !unitAt(b, t.x, t.y));
+  const made = [];
+  b.summons = (b.summons || 0);
+  for (const t of free.slice(0, 2)) {
+    b.summons++;
+    const c = makeUnit({ id: 'sc' + b.summons, monster: 'crow', name: 'Crow', x: t.x, y: t.y }, null, b.mode);
+    b.units.push(c); b.order.push(c.id); made.push(c);
+  }
+  b.ts.acted = true;
+  return made;
+}
+
 export function checkOver(b) {
+  routCheck(b);
   if (b.result) return b.result;
   const heroes = b.units.filter(u => u.side === 'hero' && !u.out && !u.bystander).length;
   const monsters = b.units.filter(u => u.side === 'monster' && !u.out && !u.bystander).length;
@@ -333,15 +400,30 @@ export function planTurn(b, u) {
     return plan;
   }
 
+  // Summoner (Bramble): every fourth turn, call crows if fewer than two are flying.
+  if (u.summoner) {
+    b.summonTick = (b.summonTick || 0) + 1;
+    const crows = b.units.filter(e => e.fly && !e.out && e.side === u.side).length;
+    if (b.summonTick % 4 === 1 && crows < 2) { plan.action = { type: 'summon' }; return plan; }
+  }
+  // Patch Up: heal a friend who is down to half hearts or less.
+  const healT = (u.tricks || []).find(t => t.heal && t.left > 0);
+  if (healT) {
+    const hurt = b.units.filter(e => e.side === u.side && !e.out && !e.bystander && e.flags <= e.maxFlags / 2 && G.dist(u, e) <= healT.range)
+      .sort((a, c) => a.flags / a.maxFlags - c.flags / c.maxFlags)[0];
+    if (hurt) { u.trick = healT; plan.action = { type: 'area', center: { x: hurt.x, y: hurt.y }, trick: healT.id }; plan.teach = once('heal'); return plan; }
+  }
+  const dmgT = (u.tricks || []).find(t => !t.heal && t.left > 0);
+  if (dmgT) u.trick = dmgT;
   // Area trick: use it when it can catch at least one enemy (and the kid still has uses).
-  if (u.trick && u.trick.left > 0) {
+  if (u.trick && !u.trick.heal && u.trick.left > 0) {
     let best = null;
     for (const c of areaCenters(b, u)) {
       const tilesHit = areaTiles(b, u, c);
       const n = foes.filter(e => tilesHit.some(t => t.x === e.x && t.y === e.y)).length;
       if (n && (!best || n > best.n)) best = { c, n };
     }
-    if (best) { plan.action = { type: 'area', center: best.c }; plan.teach = once('area'); return plan; }
+    if (best) { plan.action = { type: 'area', center: best.c, trick: u.trick.id }; plan.teach = once('area'); return plan; }
   }
 
   if (u.use.range > 1) {
@@ -411,7 +493,8 @@ export function autoplay(b, rollFn, def) {
     if (plan.moveTo) doMove(b, u, plan.moveTo.x, plan.moveTo.y);
     const a = plan.action && plan.action.type;
     if (a === 'attack') resolveAttack(b, u, unitById(b, plan.action.target), rollFn());
-    if (a === 'area') resolveArea(b, u, plan.action.center, rollFn());
+    if (a === 'area') { if (plan.action.trick) useTrick(u, plan.action.trick); resolveArea(b, u, plan.action.center, rollFn()); }
+    if (a === 'summon') summon(b, u);
     if (a === 'flee') flee(b, u);
     if (a === 'windup') bossWindup(b, u);
     if (a === 'sweep') resolveSweep(b, u, rollFn());
@@ -422,4 +505,4 @@ export function autoplay(b, rollFn, def) {
   return b.result;
 }
 
-export default { FLAGS_FOR, COVER, ROUND_CAP, makeUnit, createBattle, addUnit, removeUnit, initBonus, rollInitiative, weaponDice, rollDamage, flee, onEdge, wantsToFlee, bossWindup, resolveSweep, scare, canOpenCage, openCage, afterTurn, unitById, current, enemiesOf, friendsOf, unitAt, skillValue, moveTiles, targets, chance, doMove, resolveAttack, areaTiles, areaCenters, resolveArea, checkOver, endTurn, planTurn, scriptedPlan, nextPlan, autoplay };
+export default { FLAGS_FOR, COVER, ROUND_CAP, weaponName, packBonus, useTrick, talk, talkChance, drinkPotion, summon, makeUnit, createBattle, addUnit, removeUnit, initBonus, rollInitiative, weaponDice, rollDamage, flee, onEdge, wantsToFlee, bossWindup, resolveSweep, scare, canOpenCage, openCage, afterTurn, unitById, current, enemiesOf, friendsOf, unitAt, skillValue, moveTiles, targets, chance, doMove, resolveAttack, areaTiles, areaCenters, resolveArea, checkOver, endTurn, planTurn, scriptedPlan, nextPlan, autoplay };

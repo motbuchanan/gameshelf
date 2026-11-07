@@ -45,11 +45,13 @@ export function reachable(map, unit, units = [], budget = unit.move) {
     const cur = open.shift();
     if (cur.cost > best.get(key(cur.x, cur.y)).cost) continue;
     for (const [dx, dy] of DIRS) {
-      if (!canStep(map, cur.x, cur.y, dx, dy)) continue;
       const nx = cur.x + dx, ny = cur.y + dy, k = key(nx, ny);
+      // Fliers (crows) go over logs and water, but not through trees.
+      if (unit.fly) { if (!inside(map, nx, ny) || terrainAt(map, nx, ny).id === 'tree') continue; }
+      else if (!canStep(map, cur.x, cur.y, dx, dy)) continue;
       const o = occ.get(k);
       if (o && o.side !== unit.side) continue; // enemies block
-      const c = cur.cost + terrainAt(map, nx, ny).cost;
+      const c = cur.cost + (unit.fly ? 1 : terrainAt(map, nx, ny).cost);
       if (c > budget) continue;
       const had = best.get(k);
       if (had && had.cost <= c) continue;

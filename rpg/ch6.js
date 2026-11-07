@@ -218,8 +218,9 @@ export const SCENES = {
   finale: {
     end: true,
     party: true,
+    book: 1,
     title: 'The End of Book One',
-    text: 'You saved your friends, beat Grubjaw, and made friends with monsters. Book Two, Who Is B?, comes in a future update.',
+    text: 'You saved your friends, beat Grubjaw, and made friends with monsters. Book Two, Who Is B?, starts with Chapter 7.',
   },
 };
 

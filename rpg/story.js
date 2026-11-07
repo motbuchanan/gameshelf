@@ -23,13 +23,18 @@ import dice from './dice.js';
 import save from './save.js';
 import board from './board.js';
 import { CAST, GEAR } from './art.js';
-import { ROSTER, SPARK, START_PARTY } from './roster.js';
+import { ROSTER, SPARK, PATCH, START_PARTY } from './roster.js';
+import { int as rint } from './rng.js';
 import CH1 from './ch1.js';
 import CH2 from './ch2.js';
 import CH3 from './ch3.js';
 import CH4 from './ch4.js';
 import CH5 from './ch5.js';
 import CH6 from './ch6.js';
+import CH7 from './ch7.js';
+import CH8 from './ch8.js';
+import CH9 from './ch9.js';
+import CH10 from './ch10.js';
 import C from './combat.js';
 import book from './book.js';
 
@@ -47,7 +52,11 @@ const CHAPTERS = {
   ch3: { title: 'Chapter 3: The Trail', scenes: CH3.SCENES, fights: CH3.FIGHTS, texts: CH3.TEXT, next: 'ch4' },
   ch4: { title: 'Chapter 4: The Warren', scenes: CH4.SCENES, fights: CH4.FIGHTS, texts: CH4.TEXT, next: 'ch5' },
   ch5: { title: 'Chapter 5: The Gnoll\'s Camp', scenes: CH5.SCENES, fights: CH5.FIGHTS, texts: CH5.TEXT, next: 'ch6' },
-  ch6: { title: 'Chapter 6: Home Again', scenes: CH6.SCENES, fights: {}, texts: CH6.TEXT, next: null },
+  ch6: { title: 'Chapter 6: Home Again', scenes: CH6.SCENES, fights: {}, texts: CH6.TEXT, next: 'ch7' },
+  ch7: { title: 'Chapter 7: The Wide World', scenes: CH7.SCENES, fights: CH7.FIGHTS, texts: CH7.TEXT, next: 'ch8' },
+  ch8: { title: 'Chapter 8: Riverbend', scenes: CH8.SCENES, fights: CH8.FIGHTS, texts: CH8.TEXT, next: 'ch9' },
+  ch9: { title: 'Chapter 9: The Old Tower', scenes: CH9.SCENES, fights: CH9.FIGHTS, texts: CH9.TEXT, next: 'ch10' },
+  ch10: { title: 'Chapter 10: Bramble', scenes: CH10.SCENES, fights: CH10.FIGHTS, texts: CH10.TEXT, next: null },
 };
 export const hasChapter = id => !!CHAPTERS[id];
 export function chapterTitle(chId) { return CHAPTERS[chId] ? CHAPTERS[chId].title : ''; }
@@ -84,6 +93,7 @@ function join(ids) {
 }
 function test1(c) {
   if (c.startsWith('party:')) return party().includes(c.slice(6));
+  if (c.startsWith('item:')) { const it = (sv() && sv().hero && sv().hero.items) || {}; return (it[c.slice(5)] || 0) > 0; }
   if (c.startsWith('bestAt:')) return hero && hero.bestAt === c.slice(7);
   if (c.startsWith('!')) return !test1(c.slice(1));
   return !!storyFlags()[c];
@@ -171,7 +181,9 @@ function applyEffects(sc) {
     if (g.coins) s.coins = (s.coins || 0) + g.coins;
     if (g.spell) { s.hero.spells = s.hero.spells || []; if (!s.hero.spells.includes(g.spell)) s.hero.spells.push(g.spell); }
     if (g.talent) { s.hero.talents = s.hero.talents || []; if (!s.hero.talents.includes(g.talent)) s.hero.talents.push(g.talent); }
+    if (g.items) { s.hero.items = s.hero.items || {}; for (const k in g.items) s.hero.items[k] = (s.hero.items[k] || 0) + g.items[k]; }
   }
+  if (sc.use) { s.hero.items = s.hero.items || {}; [].concat(sc.use).forEach(k => { s.hero.items[k] = Math.max(0, (s.hero.items[k] || 0) - 1); }); }
   if (sc.hurt) s.hero.hp = Math.max(1, (s.hero.hp || P.hpMax(s.hero)) - sc.hurt);
   if (sc.heal) { s.hero.hp = P.hpMax(s.hero); s.hero.luck = P.LUCK_MAX; }
   if (sc.meet) [].concat(sc.meet).forEach(id => book.meet(id));
@@ -182,14 +194,16 @@ function applyEffects(sc) {
 // ---------- scenes ----------
 async function playScene(id) {
   if (id === 'fight' || String(id).startsWith('fight:')) return fight(id === 'fight' ? 'main' : id.slice(6));
-  const sc = ch.scenes[id];
+  let sc = ch.scenes[id];
   if (!sc) throw new Error('missing scene ' + id);
+  // random: pick one of several scenes (riddles change each time you play)
+  if (sc.random) return playScene(sc.random[rint(0, sc.random.length - 1)]);
   if (sc.end) return chapterEnd(sc);
   applyEffects(sc);
   if (sc.hurt) H.toast(`Ouch! You lose ${sc.hurt === 1 ? 'a heart' : sc.hurt + ' hearts'}.`);
   const act = $('story-act');
   const lines = (sc.lines || []).filter(cond);
-  const waitsAfter = sc.choices || sc.check || sc.pickTeam || sc.hub;
+  const waitsAfter = sc.choices || sc.check || sc.pickTeam || sc.hub || sc.trailmap;
   for (let i = 0; i < lines.length; i++) {
     showLine(lines[i]);
     const last = i === lines.length - 1;
@@ -208,6 +222,7 @@ async function playScene(id) {
   }
   if (sc.pickTeam) await pickTeam(sc.pickTeam);
   if (sc.hub) return playScene(await hub(sc.hub, id));
+  if (sc.trailmap) return playScene(await trailMap(sc.trailmap));
   if (sc.levelUp) await levelUpScreen(sc.levelUp, sc.talentLine);
   const nx = (sc.nextIf || []).find(cond);
   return playScene(nx ? nx.go : sc.next);
@@ -219,7 +234,8 @@ async function runCheck(chk) {
   const s = sv(); const h = s.hero;
   const helper = chk.help && party().includes(chk.help) ? chk.help : null;
   const sk = P.SKILLS[chk.skill], stat = sk.stat, base = P.skill(h, chk.skill);
-  const value = R.clampSkill(base + (helper ? HELP_BONUS : 0) + (chk.bonus || 0));
+  const flagBonus = Object.entries(chk.bonusIf || {}).filter(([f]) => test1(f)).reduce((a, [, v]) => a + v, 0);
+  const value = R.clampSkill(base + (helper ? HELP_BONUS : 0) + (chk.bonus || 0) + flagBonus);
   speaker = 'hero'; drawFace();
   $('story-name').textContent = '';
   $('story-say').innerHTML = `<div class="chk"><div class="chk-h">${esc(fill(chk.label))}</div>
@@ -277,7 +293,7 @@ function buildFight(name) {
     const ids = (d.team.from === 'picked' && Array.isArray(f.team) ? f.team : party()).filter(id => !(d.team.exclude || []).includes(id)).slice(0, d.team.spots.length);
     ids.forEach((id, i) => {
       const r = clone(ROSTER[id] || {}), spot = d.team.spots[i];
-      if (id === 'pim' && f.spark) r.trick = { ...SPARK };
+      if (id === 'pim' && f.spark) { r.trick = null; r.tricks = f.patch ? [SPARK, PATCH] : [SPARK]; }
       const unit = { id, side: 'hero', ai: 'friend', ...r, x: spot.x, y: spot.y };
       if (r.monster) unit.id = id;
       d.units.push(unit);
@@ -291,6 +307,8 @@ function buildFight(name) {
   if (d.surpriseIf) d.surprise = [].concat(d.surpriseIf).some(test1);
   if (d.warnIf) d.warn = test1(d.warnIf);
   if (d.fireIf) d.fireScares = test1(d.fireIf);
+  if (d.calm && d.calm.startIf) d.calm.start = Object.entries(d.calm.startIf).filter(([k]) => test1(k)).reduce((a, [, v]) => a + v, 0);
+  if (d.calm && d.calm.bonusIf) d.calm.bonus = Object.entries(d.calm.bonusIf).filter(([k]) => test1(k)).reduce((a, [, v]) => a + v, 0);
   return d;
 }
 async function fight(name) {
@@ -314,6 +332,23 @@ async function fight(name) {
   H.setAdvView('story-screen');
   startAnim();
   return playScene((def.then && def.then[result]) || result);
+}
+
+// ---------- the trail map ----------
+// A parchment map of places joined by dotted paths. Tap a place you can reach to go there.
+async function trailMap(m) {
+  speaker = null; drawFace();
+  $('story-name').textContent = m.title || 'The map';
+  const nodes = m.nodes.filter(cond);
+  const at = nodes.find(n => n.id === m.here) || null;
+  const lines = (m.paths || []).map(([a, c]) => { const p = m.nodes.find(n => n.id === a), q = m.nodes.find(n => n.id === c); return p && q ? `<line x1="${p.x}" y1="${p.y}" x2="${q.x}" y2="${q.y}"/>` : ''; }).join('');
+  $('story-say').innerHTML = `<div class="tmap"><p>${esc(fill(m.text || 'Where to next?'))}</p>
+    <div class="tmap-box"><svg viewBox="0 0 100 60" preserveAspectRatio="none" aria-hidden="true">${lines}</svg>
+    ${m.nodes.map(n => { const ok = nodes.includes(n) && n.go; return `<button type="button" id="map-${n.id}" class="tmap-node${n.id === m.here ? ' here' : ''}${ok ? ' go' : ''}" style="left:${n.x}%;top:${n.y / 60 * 100}%" ${ok ? '' : 'aria-disabled="true" tabindex="-1"'}><span class="tmap-dot">${I.icon(n.icon || (n.id === m.here ? 'star' : 'boot'), 18)}</span><span class="tmap-label">${esc(n.label)}</span></button>`; }).join('')}
+    </div></div>`;
+  $('story-act').innerHTML = '';
+  void at;
+  return new Promise(res => nodes.filter(n => n.go).forEach(n => $('map-' + n.id).addEventListener('click', () => { setFlags(n.set); res(n.go); }, { once: true })));
 }
 
 // ---------- pick your team ----------
@@ -377,7 +412,7 @@ async function hub(h, hubId) {
       grid.appendChild(b);
     });
     const act = $('story-act'); act.innerHTML = '';
-    if (h.shop) act.appendChild(button('hub-shop', 'Shop at the smithy', false, async () => { await shop(); res(hubId); }));
+    if (h.shop) act.appendChild(button('hub-shop', h.shopLabel || 'Shop at the smithy', false, async () => { await shop(h.shop === true ? null : h.shop); res(hubId); }));
     act.appendChild(button('hub-done', h.doneLabel || 'Done in town', true, () => res(h.done)));
   });
 }
@@ -387,33 +422,41 @@ export const SHOP = [
   { id: 'steelsword', price: 10 }, { id: 'shortbow', price: 10 }, { id: 'buckler', price: 6 },
   { id: 'ironcap', price: 6 }, { id: 'padded', price: 5 }, { id: 'cape', price: 3 },
 ];
-async function shop() {
-  const s = sv(); const h = s.hero; h.bag = h.bag || [];
-  speaker = 'smith'; drawFace();
-  $('story-name').textContent = 'Brenna';
+// Bag items (not gear): bought by count, used in the story or in fights.
+export const ITEMS = { rope: { name: 'Rope', what: 'Climb and cross things' }, lantern: { name: 'Lantern', what: 'Light in the dark' }, potion: { name: 'Healing potion', what: 'Drink in a fight: hearts back' } };
+async function shop(opts) {
+  const s = sv(); const h = s.hero; h.bag = h.bag || []; h.items = h.items || {};
+  const stock = (opts && opts.stock) || SHOP;
+  speaker = (opts && opts.who) || 'smith'; drawFace();
+  $('story-name').textContent = (opts && opts.name) || 'Brenna';
   const act = $('story-act');
   await new Promise(res => {
     const render = () => {
-      const rows = SHOP.map(it => {
+      const itemRows = stock.filter(it => ITEMS[it.id]).map(it => `<div class="shop-row"><canvas width="32" height="40" data-g=""></canvas><b>${esc(ITEMS[it.id].name)}${h.items[it.id] ? ' (' + h.items[it.id] + ')' : ''}</b><span>${esc(ITEMS[it.id].what)}</span><button class="btn small${(s.coins || 0) >= it.price ? '' : ' off'}" id="shop-buy-${it.id}" type="button">${I.icon('coin', 14)} ${it.price}</button></div>`).join('');
+      const rows = stock.filter(it => GEAR[it.id]).map(it => {
         const g = GEAR[it.id], own = h.bag.includes(it.id) || Object.values(h.gear).includes(it.id), wearing = h.gear[g.slot] === it.id;
         const what = g.dice ? `${I.icon('die', 16)} ${g.dice}` : ({ buckler: 'Armor', ironcap: 'Armor', padded: 'Armor', cape: 'Looks great' }[it.id] || '');
         const btn = wearing ? '<span class="shop-on">Wearing</span>' : own ? `<button class="btn small" id="shop-wear-${it.id}" type="button">Wear</button>`
           : `<button class="btn small${(s.coins || 0) >= it.price ? '' : ' off'}" id="shop-buy-${it.id}" type="button">${I.icon('coin', 14)} ${it.price}</button>`;
         return `<div class="shop-row"><canvas width="32" height="40" data-g="${it.id}"></canvas><b>${esc(g.name)}</b><span>${what}</span>${btn}</div>`;
       }).join('');
-      const bagRows = h.bag.filter(id => !SHOP.some(it => it.id === id) && GEAR[id] && h.gear[GEAR[id].slot] !== id)
+      const bagRows = h.bag.filter(id => !stock.some(it => it.id === id) && GEAR[id] && h.gear[GEAR[id].slot] !== id)
         .map(id => `<div class="shop-row"><canvas width="32" height="40" data-g="${id}"></canvas><b>${esc(GEAR[id].name)}</b><span>In your bag</span><button class="btn small" id="shop-wear-${id}" type="button">Wear</button></div>`).join('');
-      $('story-say').innerHTML = `<div class="shop"><p>"Real gear for real heroes. Goblin junk pays for it!"</p><div class="hub-coins">${I.icon('coin', 22)} <b>${s.coins || 0}</b> coins</div>${rows}${bagRows}</div>`;
+      $('story-say').innerHTML = `<div class="shop"><p>${esc((opts && opts.say) || '"Real gear for real heroes. Goblin junk pays for it!"')}</p><div class="hub-coins">${I.icon('coin', 22)} <b>${s.coins || 0}</b> coins</div>${itemRows}${rows}${bagRows}</div>`;
       $('story-say').querySelectorAll('canvas[data-g]').forEach(cv => {
+        if (!cv.dataset.g) { cv.remove(); return; }
         const g = GEAR[cv.dataset.g];
         const spec = { ...P.spriteSpec(h), layers: { ...P.spriteSpec(h).layers, [g.slot]: cv.dataset.g } };
         S.draw(cv.getContext('2d'), spec, 0, 0, 1, 0);
       });
-      SHOP.concat(h.bag.map(id => ({ id }))).forEach(it => {
+      stock.concat(h.bag.map(id => ({ id }))).forEach(it => {
         const buy = $('shop-buy-' + it.id), wear = $('shop-wear-' + it.id);
         if (buy) buy.addEventListener('click', () => {
           if ((s.coins || 0) < it.price) { H.toast('Not enough coins yet.'); return; }
-          s.coins -= it.price; giveGear(it.id); save.write(); hero = h; H.toast(GEAR[it.id].name + ' is yours!'); render();
+          s.coins -= it.price;
+          if (ITEMS[it.id]) { h.items[it.id] = (h.items[it.id] || 0) + 1; H.toast(ITEMS[it.id].name + ' goes in your bag!'); }
+          else { giveGear(it.id); H.toast(GEAR[it.id].name + ' is yours!'); }
+          save.write(); hero = h; render();
         });
         if (wear) wear.addEventListener('click', () => { giveGear(it.id); save.write(); hero = h; render(); });
       });
@@ -475,13 +518,13 @@ function chapterEnd(sc) {
     s.flags = s.flags || {};
     s.flags[ch.id] = ch.result || 'done';
     if (ch.next && chapterNum(s.chapter || 'ch1') <= chapterNum(ch.id)) s.chapter = ch.next;
-    if (!ch.next) s.flags.bookOne = true;
+    if (sc.book) s.flags['book' + sc.book] = true;
     if (s.hero && chapterNum(ch.id) >= 2) { s.hero.hp = P.hpMax(s.hero); s.hero.luck = P.LUCK_MAX; }  // chapter end = rest
     save.write();
   }
   speaker = null; drawFace();
   $('story-name').textContent = '';
-  const portraits = sc.party ? `<div class="end-party" id="end-party">${['hero', ...party()].map(id => `<canvas width="32" height="40" data-k="${id}"></canvas>`).join('')}</div>` : '';
+  const portraits = sc.party ? `<div class="end-party" id="end-party">${['hero', ...party(), ...(sc.extraFaces || [])].map(id => `<canvas width="32" height="40" data-k="${id}"></canvas>`).join('')}</div>` : '';
   $('story-say').innerHTML = `<div class="end-title">${I.icon('star', 32)}<span>${esc(sc.title)}</span>${I.icon('star', 32)}</div>${portraits}<p>${esc(fill(sc.text))}</p>`;
   $('story-say').querySelectorAll('#end-party canvas').forEach(cv => S.draw(cv.getContext('2d'), specFor(cv.dataset.k), 0, 0, 1, 0));
   const act = $('story-act'); act.innerHTML = '';
