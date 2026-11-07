@@ -53,6 +53,11 @@ const PLAY = [
   { id: 'cover', name: 'Cover', place: 'bush' },
   { id: 'range', name: 'Range', icon: 'target' },
   { id: 'area', name: 'Area', icon: 'burst' },
+  { id: 'armor', name: 'Armor', icon: 'shield' },
+  { id: 'initiative', name: 'Who goes first', icon: 'feather' },
+  { id: 'damage', name: 'Damage dice', icon: 'hammer' },
+  { id: 'retreat', name: 'Running away', icon: 'boot' },
+  { id: 'knocked', name: 'Knocked down', icon: 'star' },
 ];
 
 // ---------- who you have met ----------

@@ -32,7 +32,7 @@ export const CH0 = {
     begin: 'Begin the adventure',
   },
   sheet: {
-    say: 'Your hero is saved. Tap the gold button to play Chapter 1, or tap anything on your sheet to learn about it.',
+    say: 'Your hero is saved. Tap the gold button to play the next chapter, or tap anything on your sheet to learn about it.',
   },
 };
 

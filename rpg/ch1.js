@@ -122,7 +122,7 @@ export const CH1_SCENES = {
   end: {
     end: true,
     title: 'End of Chapter 1',
-    text: 'Chapter 2, Not Pretend Anymore, comes in the next update.',
+    text: 'Something is out there in Whisper Woods. Chapter 2, Not Pretend Anymore, is next.',
   },
 };
 

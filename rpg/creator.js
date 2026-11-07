@@ -207,11 +207,26 @@ function renderStep() {
   if (step === 'sheet') {
     const s = save.get();
     say(CH0.sheet.say);
-    const done1 = s.flags && s.flags.ch1;
+    // The gold button plays the next chapter. Finished chapters can be replayed with the small buttons.
+    const flags = s.flags || {};
+    const avail = ['ch1', 'ch2', 'ch3', 'ch4', 'ch5', 'ch6'].filter(id => chapterTitle(id));
+    const cur = avail.includes(s.chapter) ? s.chapter : avail.filter(id => flags[id]).pop() || 'ch1';
+    const again = !!flags[cur];
     const play = document.createElement('button'); play.type = 'button'; play.className = 'btn big-btn play-btn'; play.id = 'adv-play';
-    play.innerHTML = `${I.icon('star', 24)}<span>${done1 ? 'Play again: ' : 'Play '}${esc(chapterTitle('ch1'))}</span>`;
-    play.addEventListener('click', () => { stopAnim(); playChapter('ch1'); });
+    play.innerHTML = `${I.icon('star', 24)}<span>${again ? 'Play again: ' : 'Play '}${esc(chapterTitle(cur))}</span>`;
+    play.addEventListener('click', () => { stopAnim(); playChapter(cur); });
     panel.appendChild(play);
+    const older = avail.filter(id => id !== cur && flags[id]);
+    if (older.length) {
+      const row = document.createElement('div'); row.className = 'replay-row';
+      older.forEach(id => {
+        const r = document.createElement('button'); r.type = 'button'; r.className = 'btn small'; r.id = 'adv-replay-' + id;
+        r.textContent = 'Replay ' + chapterTitle(id).split(':')[0];
+        r.addEventListener('click', () => { stopAnim(); playChapter(id); });
+        row.appendChild(r);
+      });
+      panel.appendChild(row);
+    }
     sheet(s.hero, body);
     panel.appendChild(body);
     codeButtons(panel, true);

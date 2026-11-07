@@ -42,7 +42,28 @@ export const STARTER_WEAPONS = ['woodsword', 'stick', 'slingshot'];
 export const LUCK_MAX = 3;
 export const MOVE = 4;
 
-export function hpMax(c) { return 6 + Math.floor(c.stats.might / 10) + Math.floor(c.stats.resolve / 10); }
+// Hearts: 6, plus a little from Might and Resolve, plus 2 for every level after the first.
+export function hpMax(c) { return 6 + Math.floor(c.stats.might / 10) + Math.floor(c.stats.resolve / 10) + 2 * ((c.level || 1) - 1); }
+
+// Leveling up. Each new level: +2 max hearts, +5 to the stat the hero is best at, and one new practiced skill they pick.
+export const BEST_STAT = { brave: 'might', sneaky: 'finesse', clever: 'wits' };
+export const LEVEL_STAT_GAIN = 5;
+// Up to 3 skills to offer: ones not practiced yet, the hero's own kind first.
+export function levelSkillChoices(c) {
+  const mine = { brave: ['tough', 'climb', 'shove', 'cheer'], sneaky: ['aim', 'climb', 'notice', 'track'], clever: ['track', 'talk', 'cheer', 'aim'] }[c.bestAt] || [];
+  const rest = Object.keys(SKILLS);
+  return [...new Set([...mine, ...rest])].filter(id => !(c.trained || []).includes(id)).slice(0, 3);
+}
+// Returns what grew, so the level-up screen can show it.
+export function levelUp(c, skillId) {
+  const before = { level: c.level, hp: hpMax(c), stat: c.stats[BEST_STAT[c.bestAt]] };
+  const stat = BEST_STAT[c.bestAt];
+  c.level = (c.level || 1) + 1;
+  c.stats[stat] += LEVEL_STAT_GAIN;
+  if (skillId && SKILLS[skillId] && !c.trained.includes(skillId)) c.trained.push(skillId);
+  c.hp = hpMax(c); c.luck = LUCK_MAX;
+  return { level: c.level, stat, statBefore: before.stat, statAfter: c.stats[stat], hpBefore: before.hp, hpAfter: c.hp, skill: skillId };
+}
 
 export function skill(c, id) {
   const def = SKILLS[id];
@@ -86,4 +107,4 @@ export function spriteSpec(c) {
 
 export const party = { hero: null };
 
-export default { STATS, STAT_NAME, SKILLS, BEST_AT, PEOPLE, STARTER_WEAPONS, LUCK_MAX, MOVE, hpMax, skill, statsFor, makeHero, spriteSpec, party };
+export default { STATS, STAT_NAME, SKILLS, BEST_AT, PEOPLE, STARTER_WEAPONS, LUCK_MAX, MOVE, hpMax, BEST_STAT, LEVEL_STAT_GAIN, levelSkillChoices, levelUp, skill, statsFor, makeHero, spriteSpec, party };

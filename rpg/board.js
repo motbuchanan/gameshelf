@@ -119,7 +119,7 @@ export function draw() {
     c.beginPath(); c.ellipse((p.x + 0.5) * t, (p.y + 0.86) * t, t * 0.42, t * 0.15, 0, 0, Math.PI * 2); c.fill();
   }
   // units, back rows first so front kids overlap
-  const live = b.units.filter(u => !u.out).sort((a, z) => unitScreen(a).y - unitScreen(z).y);
+  const live = b.units.filter(u => !u.out && !u.gone).sort((a, z) => unitScreen(a).y - unitScreen(z).y);
   for (const u of live) {
     const p = unitScreen(u);
     const w = t * 0.92, h = w * 1.25;
@@ -143,7 +143,19 @@ export function draw() {
   });
 }
 
+function drawHearts(c, u, p, t) {
+  // A heart bar: one red block per heart, grey once lost. Long bars get thinner blocks.
+  if (u.bystander) return;
+  const n = u.maxFlags, wMax = t * 0.9, seg = Math.max(2, Math.min(t / 9, wMax / n - 1)), h = Math.max(4, Math.round(t / 11));
+  const total = n * (seg + 1) - 1, x0 = (p.x + 0.5) * t - total / 2, y0 = (p.y - 0.22) * t;
+  c.fillStyle = '#1a120c'; c.fillRect(x0 - 2, y0 - 2, total + 4, h + 4);
+  for (let i = 0; i < n; i++) {
+    c.fillStyle = i < u.flags ? (u.side === 'hero' ? '#e84a4a' : '#e8903a') : 'rgba(90,80,70,0.9)';
+    c.fillRect(x0 + i * (seg + 1), y0, seg, h);
+  }
+}
 function drawFlags(c, u, p, t) {
+  if (b.mode === 'hp') return drawHearts(c, u, p, t);
   const n = u.maxFlags, s = Math.max(5, Math.round(t / 9)), gap = s + 2;
   const x0 = (p.x + 0.5) * t - (n * gap) / 2, y0 = (p.y - 0.3) * t;
   const col = u.side === 'hero' ? '#4a8ee8' : '#e8503a';
@@ -181,6 +193,7 @@ function strip() {
   const cur = C.current(b);
   b.order.forEach((id, i) => {
     const u = C.unitById(b, id);
+    if (!u || u.gone) return;
     const d = document.createElement('button'); d.type = 'button';
     d.className = 'tface ' + u.side + (u === cur && !b.result ? ' on' : '') + (u.out ? ' out' : '');
     d.setAttribute('aria-label', u.name);
@@ -209,7 +222,7 @@ function playerPanel() {
   actPanel(`
     <div class="todo">
       <span class="todo-i${walk ? '' : ' done'}">${I.icon('boot', 22)}<span>Walk</span></span>
-      <span class="todo-i${tag ? '' : ' done'}">${I.icon('target', 22)}<span>Tag</span></span>
+      <span class="todo-i${tag ? '' : ' done'}">${I.icon('target', 22)}<span>${b.mode === 'hp' ? 'Attack' : 'Tag'}</span></span>
       <button class="q act" id="b-help" type="button" aria-label="How turns work">?</button>
     </div>
     <button id="b-done" class="btn big-btn act" type="button">Done</button>`);
@@ -223,9 +236,10 @@ function confirmPanel(target) {
   overlay.targets = [{ x: target.x, y: target.y }]; draw();
   actPanel(`
     <div class="confirm">
-      <div class="confirm-h">Tag <b>${esc(target.name)}</b> with your ${esc(GEAR[u.weapon].name.toLowerCase())}?</div>
+      <div class="confirm-h">${b.mode === 'hp' ? 'Attack' : 'Tag'} <b>${esc(target.name)}</b> with your ${esc(GEAR[u.weapon].name.toLowerCase())}?</div>
       <div class="confirm-row" style="--sc:${I.STAT_COLOR[stat]}">${I.icon(I.STAT_ICON[stat], 22)}<span>${P.SKILLS[ch.skill].name}</span>${I.meter(ch.value, I.STAT_COLOR[stat], 'small')}</div>
       ${ch.cover ? `<div class="confirm-note">${I.icon('shield', 16)} ${esc(target.name)} is hiding in a bush, so it's harder.</div>` : ''}
+      ${ch.armor ? `<div class="confirm-note">${I.icon('shield', 16)} ${esc(target.name)} wears armor, so it's a little harder.</div>` : ''}
       <div class="row two">
         <button id="b-cancel" class="btn act" type="button">Not yet</button>
         <button id="b-roll" class="btn big-btn act" type="button">Roll!</button>
@@ -237,18 +251,20 @@ function confirmPanel(target) {
 
 // ---------- cards ----------
 function unitCard(u) {
-  const c = CAST.find(k => k.id === u.id);
+  const c = CAST.find(k => k.id === (u.cast || u.id));
   const ch = C.skillValue(u, u.use.skill), stat = P.SKILLS[u.use.skill].stat;
   const ex = document.createElement('div'); ex.className = 'unitcard';
-  const flags = Array.from({ length: u.maxFlags }, (_, i) => I.icon(u.side === 'hero' ? 'flagb' : 'flagr', 22, i >= u.flags)).join('');
-  ex.innerHTML = `<div class="uc-row"><b>Flags</b><span>${flags}</span></div>
-    <div class="uc-row" style="--sc:${I.STAT_COLOR[stat]}"><b>Tags with</b><span>${esc(GEAR[u.weapon].name)}</span></div>
+  const hp = b.mode === 'hp';
+  const flags = Array.from({ length: u.maxFlags }, (_, i) => I.icon(hp ? 'heart' : (u.side === 'hero' ? 'flagb' : 'flagr'), hp ? 16 : 22, i >= u.flags)).join('');
+  ex.innerHTML = `<div class="uc-row"><b>${hp ? 'Hearts' : 'Flags'}</b><span class="uc-hearts">${flags}</span></div>
+    ${hp ? `<div class="uc-row"><b>Armor</b><span>${u.armor ? I.icon('shield', 18) + ' Harder to hit (' + u.armor + ' squares)' : 'No armor'}</span></div>` : ''}
+    <div class="uc-row" style="--sc:${I.STAT_COLOR[stat]}"><b>${hp ? 'Hits with' : 'Tags with'}</b><span>${esc(GEAR[u.weapon].name)}${hp ? ' ' + I.icon('die', 16) + ' ' + esc(C.weaponDice(u)) : ''}</span></div>
     <div class="uc-row">${I.icon(I.STAT_ICON[stat], 20)}<span>${P.SKILLS[u.use.skill].name}</span>${I.meter(ch, I.STAT_COLOR[stat], 'small')}</div>
     <div class="uc-row">${I.icon(u.use.range > 1 ? 'target' : 'boot', 18)}<span>${u.use.range > 1 ? 'Reaches ' + u.use.range + ' squares' : 'Reaches the squares right next to them'}</span></div>`;
   H.showCard({
-    title: u.id === 'hero' ? u.name + ' (you)' : (c ? c.name : u.name),
-    body: u.id === 'hero' ? 'That\'s you! You only control yourself in this game. Your friends take their own turns.' : (u.side === 'monster' ? 'Playing a monster today. ' : 'On your team today. ') + (c ? c.bio : ''),
-    prereq: u.out ? 'Out of flags. Cheering from the log.' : (u.side === 'hero' ? 'Hero team (blue flags)' : 'Monster team (red flags)'),
+    title: u.id === 'hero' ? u.name + ' (you)' : (u.char ? (c ? c.name : u.name) : u.name + ' the ' + (c ? c.name.toLowerCase() : 'monster')),
+    body: u.id === 'hero' ? 'That\'s you! You only control yourself in this fight. Your friends take their own turns.' : (hp ? (u.side === 'monster' ? '' : 'On your team. ') : (u.side === 'monster' ? 'Playing a monster today. ' : 'On your team today. ')) + (c ? c.bio : ''),
+    prereq: hp ? (u.out ? (u.fled ? 'Ran away.' : 'Knocked down, sitting this one out.') : (u.side === 'hero' ? 'Your team' : 'Monster')) : (u.out ? 'Out of flags. Cheering from the log.' : (u.side === 'hero' ? 'Hero team (blue flags)' : 'Monster team (red flags)')),
     extra: ex, spec: u.spec,
   });
 }
@@ -286,8 +302,8 @@ function floater(x, y, text, color) {
 }
 
 // The dice pop-up: shows the chance squares, rolls the real dice, marks the square that came up.
-async function rollPop(actor, chanceValue, title, isPlayer) {
-  const roll = R.rollD100();
+async function rollPop(actor, chanceValue, title, isPlayer, opts = {}) {
+  let roll = R.rollD100();
   const pop = $('bdice-pop');
   pop.classList.remove('hidden');
   dice.mount($('bdice'));
@@ -307,10 +323,22 @@ async function rollPop(actor, chanceValue, title, isPlayer) {
   tierEl.textContent = (roll.value) + '! ' + I.TIER_WORD[tier];
   tierEl.style.color = tier === 'fail' ? '#c9b48e' : I.TIER_COLOR[tier];
   if (isPlayer) {
-    await new Promise(res => {
-      $('br-btn').innerHTML = '<button id="b-ok" class="btn big-btn" type="button">OK</button>';
-      $('b-ok').addEventListener('click', res, { once: true });
+    const hero = actor && actor.char;
+    const canLuck = opts.luck && hero && hero.luck > 0 && (tier === 'fail' || tier === 'disaster');
+    if (canLuck && !b.taught.luck) { b.taught.luck = true; say('hollis', T.LUCK_TEACH); }
+    const again = await new Promise(res => {
+      const clovers = hero ? Array.from({ length: P.LUCK_MAX }, (_, i) => I.icon('clover', 18, i >= hero.luck)).join('') : '';
+      $('br-btn').innerHTML = canLuck
+        ? `<div class="row two"><button id="b-ok" class="btn" type="button">Keep it</button><button id="b-luck" class="btn big-btn" type="button">${I.icon('clover', 22)} Roll again</button></div><div class="br-clovers">${clovers}</div>`
+        : '<button id="b-ok" class="btn big-btn" type="button">OK</button>';
+      $('b-ok').addEventListener('click', () => res(false), { once: true });
+      if (canLuck) $('b-luck').addEventListener('click', () => res(true), { once: true });
     });
+    if (again) {
+      hero.luck--;
+      pop.classList.add('hidden');
+      return rollPop(actor, chanceValue, title + ' (Luck!)', isPlayer, opts);
+    }
   } else {
     await Promise.race([wait(1500), new Promise(res => pop.addEventListener('click', res, { once: true }))]);
   }
@@ -318,9 +346,29 @@ async function rollPop(actor, chanceValue, title, isPlayer) {
   return roll;
 }
 
+// The damage dice: roll the weapon's dice in the tray and show how many hearts come off.
+async function damagePop(u, target, tier, note, isPlayer) {
+  const dmg = C.rollDamage(note, tier);
+  const pop = $('bdice-pop');
+  pop.classList.remove('hidden');
+  dice.mount($('bdice'));
+  const extra = tier === 'legendary' ? 'Legendary: the first die counts as its highest number, plus one more die!' : tier === 'exceptional' ? 'Exceptional: you get one extra die!' : '';
+  $('bresult').innerHTML = `<div class="br-title">Damage on ${esc(target.id === 'hero' ? 'you' : target.name)}</div>
+    <div class="br-body"><div class="br-side"><div class="br-tier">${I.icon('die', 22)} ${esc(note)}${extra ? '' : ''}</div>${extra ? `<div class="br-need">${esc(extra)}</div>` : ''}<div class="br-hearts" id="br-hearts"></div></div></div><div id="br-btn"></div>`;
+  if (!b.taught.damage && (u.side === 'hero')) { b.taught.damage = true; say('hollis', T.DAMAGE_TEACH); }
+  await new Promise(r => requestAnimationFrame(r));
+  await dice.rollSet(dmg.dice.map(d => ({ sides: d.sides, value: d.value })));
+  $('br-hearts').innerHTML = `<span>${Array.from({ length: Math.min(dmg.total, 16) }, () => I.icon('heart', 22)).join('')}</span><b>${dmg.total} ${dmg.total === 1 ? 'heart' : 'hearts'}!</b>`;
+  if (isPlayer) await new Promise(res => { $('br-btn').innerHTML = '<button id="b-ok" class="btn big-btn" type="button">OK</button>'; $('b-ok').addEventListener('click', res, { once: true }); });
+  else await Promise.race([wait(1300), new Promise(res => pop.addEventListener('click', res, { once: true }))]);
+  pop.classList.add('hidden');
+  return dmg;
+}
+
 function announceOuts(before) {
-  for (const u of b.units) if (u.out && !before.has(u.id)) {
+  for (const u of b.units) if (u.out && !u.gone && !before.has(u.id)) {
     if (u.id === 'hero') continue;
+    if (b.mode === 'hp') return fill(u.fled ? T.FLED_LINE : (u.side === 'monster' ? T.FLED_LINE : T.KNOCKED_LINE), { who: u.name });
     return fill(T.OUT_LINE, { who: u.name });
   }
   return null;
@@ -330,10 +378,14 @@ async function doAttack(u, target) {
   const ch = C.chance(b, u, target);
   const before = new Set(b.units.filter(k => k.out).map(k => k.id));
   u.pose = 'attack'; draw();
-  const roll = await rollPop(u, ch.value, `${u.id === 'hero' ? 'You tag' : u.name + ' tags'} ${target.name}`, u.id === 'hero');
+  const hp = b.mode === 'hp', verb = hp ? (u.id === 'hero' ? 'You attack' : u.name + ' attacks') : (u.id === 'hero' ? 'You tag' : u.name + ' tags');
+  if (hp && ch.armor && !b.taught.armor && u.side === 'hero') { b.taught.armor = true; say('pim', T.ARMOR_TEACH); await waitTap('Got it!'); }
+  const roll = await rollPop(u, ch.value, `${verb} ${target.id === 'hero' ? 'you' : target.name}`, u.id === 'hero', { luck: hp });
   u.pose = 'idle';
-  const res = C.resolveAttack(b, u, target, roll);
-  if (res.lost) floater(target.x, target.y, '-' + res.lost, u.side === 'hero' ? '#ff8070' : '#80b8ff');
+  const tier = R.tierFor(ch.value, roll.value);
+  const dmg = hp && C.FLAGS_FOR[tier] ? await damagePop(u, target, tier, C.weaponDice(u), u.id === 'hero') : null;
+  const res = C.resolveAttack(b, u, target, roll, dmg);
+  if (res.lost) floater(target.x, target.y, '-' + res.lost, hp ? '#ff6050' : (u.side === 'hero' ? '#ff8070' : '#80b8ff'));
   else floater(target.x, target.y, res.tier === 'disaster' ? 'Oops!' : 'Miss', '#f3e6cc');
   say(u.id, fill(T.RESULT[res.tier], { target: target.id === 'hero' ? 'You' : target.name, actor: u.id === 'hero' ? 'You' : u.name }));
   strip(); draw();
@@ -347,9 +399,12 @@ async function doArea(u, center) {
   overlay.area = C.areaTiles(b, u, center); draw();
   const before = new Set(b.units.filter(k => k.out).map(k => k.id));
   u.pose = 'attack';
-  const roll = await rollPop(u, C.chance(b, u, null, { skill: u.trick.skill, ignoreCover: true }).value, `${u.name}: ${u.trick.name}`, false);
+  const chv = C.chance(b, u, null, { skill: u.trick.skill, ignoreCover: true }).value;
+  const roll = await rollPop(u, chv, `${u.name}: ${u.trick.name}`, false);
   u.pose = 'idle';
-  const res = C.resolveArea(b, u, center, roll);
+  const tier = R.tierFor(chv, roll.value);
+  const dmg = b.mode === 'hp' && C.FLAGS_FOR[tier] ? await damagePop(u, { name: 'everyone in the orange squares', id: 'area' }, tier, u.trick.dice || '1d4', false) : null;
+  const res = C.resolveArea(b, u, center, roll, dmg);
   res.results.forEach(r => { const t = C.unitById(b, r.id); floater(t.x, t.y, r.lost ? '-' + r.lost : 'Miss', '#ff8070'); });
   say(u.id, T.AREA_RESULT[res.tier]);
   overlay.area = []; strip(); draw();
@@ -382,6 +437,13 @@ async function computerTurn(u) {
   }
   if (plan.action && plan.action.type === 'attack') await doAttack(u, C.unitById(b, plan.action.target));
   if (plan.action && plan.action.type === 'area') await doArea(u, plan.action.center);
+  if (plan.action && plan.action.type === 'flee') {
+    floater(u.x, u.y, 'Runs!', '#f3e6cc');
+    await animateWalk(u, u.x, u.y, [{ x: u.x === 0 ? -1 : u.x === b.map.w - 1 ? b.map.w : u.x, y: u.y === 0 ? -1 : u.y === b.map.h - 1 ? b.map.h : u.y }]);
+    C.flee(b, u); strip(); draw();
+    say(null, fill(T.FLED_LINE, { who: u.name }));
+    await wait(fast ? 10 : 1000);
+  }
   H.unlock();
 }
 
@@ -433,10 +495,55 @@ function endPlayerTurn() {
 }
 
 async function finishTurn() {
+  const r0 = b.round;
   const next = C.endTurn(b);
   strip(); draw();
   if (!next) return endFight();
-  await runTurn(next);
+  if (b.round !== r0) await runEvents(b.round);
+  if (b.result) return endFight();
+  await runTurn(C.current(b).out ? C.endTurn(b) || next : next);
+}
+
+// Story moments that happen at the start of a round (from the chapter data).
+async function runEvents(round) {
+  for (const ev of (def.events || []).filter(e => e.round === round)) {
+    if (ev.type !== 'snatch') continue;
+    H.lock();
+    for (const d of ev.spawn) C.addUnit(b, d, null);
+    draw();
+    for (const ln of ev.lines) { say(ln.who, ln.text); await waitTap(ln === ev.lines[ev.lines.length - 1] ? 'OK' : 'Next'); }
+    // the kobolds drag the kids off the edge of the map
+    const moves = Object.entries(ev.grab).map(([kob, kid]) => [C.unitById(b, kob), C.unitById(b, kid)]);
+    await Promise.all(moves.map(([k, kid]) => animateWalk(kid, kid.x, kid.y, [{ x: k.x, y: k.y }])));
+    moves.forEach(([k, kid]) => { kid.x = k.x; kid.y = k.y; });
+    await Promise.all(moves.flatMap(([k, kid]) => [animateWalk(k, k.x, k.y, [{ x: -1, y: k.y }]), animateWalk(kid, kid.x, kid.y, [{ x: -1, y: kid.y }])]));
+    moves.forEach(([k, kid]) => { C.removeUnit(b, k.id); C.removeUnit(b, kid.id); });
+    strip(); draw();
+    H.unlock();
+  }
+}
+
+// Who goes first: the player rolls a d20 in the tray; everyone else's roll shows in the list.
+async function initiative() {
+  H.lock();
+  say('hollis', T.INIT_TEACH);
+  await waitTap('Roll!', 'b-init');
+  const me = C.unitById(b, 'hero');
+  const list = C.rollInitiative(b);
+  const mine = list.find(e => e.id === 'hero');
+  const pop = $('bdice-pop');
+  pop.classList.remove('hidden'); dice.mount($('bdice'));
+  $('bresult').innerHTML = `<div class="br-title">Who goes first?</div><div class="br-body"><div class="br-side"><div class="br-tier" id="br-tier">Rolling...</div></div></div><div class="init-list" id="init-list"></div><div id="br-btn"></div>`;
+  await new Promise(r => requestAnimationFrame(r));
+  await dice.rollSet([{ sides: 20, value: mine.roll }]);
+  $('br-tier').innerHTML = `You rolled ${mine.roll}${mine.bonus ? `, plus ${mine.bonus} for quick feet` : ''}: <b>${mine.total}</b>`;
+  $('init-list').innerHTML = list.map((e, i) => `<div class="init-row ${e.side}${e.id === 'hero' ? ' me' : ''}"><span class="init-n">${i + 1}</span><canvas width="32" height="40" data-u="${e.id}"></canvas><span class="init-name">${esc(e.id === 'hero' ? 'You' : C.unitById(b, e.id).name)}</span><span class="init-tot">${e.total}</span></div>`).join('');
+  $('init-list').querySelectorAll('canvas').forEach(cv => S.draw(cv.getContext('2d'), C.unitById(b, cv.dataset.u).spec, 0, 0, 1, 0));
+  await new Promise(res => { $('br-btn').innerHTML = '<button id="b-ok" class="btn big-btn" type="button">Let\'s go!</button>'; $('b-ok').addEventListener('click', res, { once: true }); });
+  pop.classList.add('hidden');
+  strip(); draw();
+  H.unlock();
+  void me;
 }
 
 async function runTurn(u) {
@@ -493,7 +600,7 @@ function wire() {
   if (wired) return; wired = true;
   $('board').addEventListener('pointerdown', onTap);
   new ResizeObserver(() => layout()).observe($('board-wrap'));
-  $('b-legend').addEventListener('click', () => { if (!H.isLocked()) H.explain('flags'); });
+  $('b-legend').addEventListener('click', () => { if (!H.isLocked()) H.explain(b && b.mode === 'hp' ? 'hp' : 'flags'); });
 }
 
 // Start a fight. Resolves with 'win', 'lose' or 'tie'.
@@ -505,8 +612,10 @@ export function start(fightDef, texts, hero) {
   wire();
   return new Promise(res => {
     done = res;
-    requestAnimationFrame(() => {
+    requestAnimationFrame(async () => {
       layout(); strip(); startBob();
+      $('b-legend').textContent = b.mode === 'hp' ? 'Hearts?' : 'Flags?';
+      if (b.mode === 'hp') await initiative();
       runTurn(C.current(b));
     });
   });
