@@ -111,6 +111,9 @@ export function draw() {
   });
   fill(overlay.reach, 'rgba(90,160,255,0.22)', 'rgba(180,220,255,0.95)');
   fill(overlay.area, 'rgba(255,150,40,0.45)', 'rgba(255,200,90,0.95)');
+  if (overlay.aim) fill(overlay.aim, 'rgba(255,150,40,0.12)', 'rgba(255,200,90,0.7)');
+  // The boss is winding up: with the Laugh clue, the squares he'll sweep glow red.
+  if (b.warn && b.danger.length) fill(b.danger, frame % 2 ? 'rgba(230,40,30,0.38)' : 'rgba(230,40,30,0.24)', 'rgba(255,120,100,0.95)');
   // the kid whose turn it is stands on a gold ring
   const cur = C.current(b);
   if (cur && !cur.out && !b.result) {
@@ -126,6 +129,13 @@ export function draw() {
     const pose = u.pose || 'idle';
     c.drawImage(S.sprite(u.spec, (frame + (u.x + u.y)) % 2, pose), (p.x + 0.04) * t, (p.y + 0.95) * t - h, w, h);
     drawFlags(c, u, p, t);
+  }
+  // the cage (until someone opens it)
+  if (b.cage && !b.cage.open) {
+    const x0 = b.cage.x * t, y0 = b.cage.y * t - t * 0.15, w = t, h = t * 1.1;
+    c.fillStyle = '#3a2a1a'; c.fillRect(x0 + 2, y0, w - 4, t * 0.08); c.fillRect(x0 + 2, y0 + h - t * 0.08, w - 4, t * 0.08);
+    c.fillStyle = '#8a8a90';
+    for (let i = 0; i < 6; i++) c.fillRect(x0 + 4 + i * (w - 10) / 5, y0, Math.max(2, t / 18), h);
   }
   // red target boxes go on top of the kids
   overlay.targets.forEach(p => {
@@ -225,8 +235,12 @@ function playerPanel() {
       <span class="todo-i${tag ? '' : ' done'}">${I.icon('target', 22)}<span>${b.mode === 'hp' ? 'Attack' : 'Tag'}</span></span>
       <button class="q act" id="b-help" type="button" aria-label="How turns work">?</button>
     </div>
+    ${tag && u.trick && u.trick.left > 0 ? `<button id="b-trick" class="btn act trick-btn" type="button">${I.icon('burst', 22)} ${esc(u.trick.name)} <span class="trick-left">${Array.from({ length: u.trick.left }, () => I.icon('star', 14)).join('')}</span></button>` : ''}
+    ${tag && C.canOpenCage(b, u) ? `<button id="b-cage" class="btn act trick-btn" type="button">${I.icon('hammer', 22)} Open the cage!</button>` : ''}
     <button id="b-done" class="btn big-btn act" type="button">Done</button>`);
   $('b-help').addEventListener('click', () => { if (!H.isLocked()) H.explain('turns'); });
+  if ($('b-trick')) $('b-trick').addEventListener('click', () => { if (!H.isLocked() && playerTurn) aimTrick(); });
+  if ($('b-cage')) $('b-cage').addEventListener('click', () => { if (!H.isLocked() && playerTurn) playerCage(); });
   $('b-done').addEventListener('click', () => { if (!H.isLocked() && playerTurn) endPlayerTurn(); });
 }
 
@@ -247,6 +261,55 @@ function confirmPanel(target) {
     </div>`);
   $('b-cancel').addEventListener('click', () => { if (!H.isLocked()) { confirmTarget = null; showPlayerOptions(); } });
   $('b-roll').addEventListener('click', () => { if (!H.isLocked() && confirmTarget) playerAttack(confirmTarget); });
+}
+
+// Aiming a trick (Spark): orange outlines show where it can go; tap one to see what it hits.
+let aiming = false, aimCenter = null;
+function aimTrick() {
+  const u = C.current(b);
+  aiming = true; aimCenter = null;
+  overlay.reach = []; overlay.targets = [];
+  overlay.aim = C.areaCenters(b, u).filter(t => !(t.x === u.x && t.y === u.y));
+  draw();
+  say('hero', `Tap a square to aim your ${u.trick.name}.`);
+  actPanel(`<button id="b-cancel" class="btn act" type="button">Not yet</button>`);
+  $('b-cancel').addEventListener('click', () => { if (!H.isLocked()) cancelAim(); });
+}
+function cancelAim() { aiming = false; aimCenter = null; overlay.aim = null; overlay.area = []; showPlayerOptions(); }
+function aimAt(x, y) {
+  const u = C.current(b);
+  aimCenter = { x, y };
+  overlay.area = C.areaTiles(b, u, aimCenter); draw();
+  const ch = C.chance(b, u, null, { skill: u.trick.skill, ignoreCover: true }), stat = P.SKILLS[ch.skill].stat;
+  actPanel(`
+    <div class="confirm">
+      <div class="confirm-h">Cast <b>${esc(u.trick.name)}</b> here?</div>
+      <div class="confirm-row" style="--sc:${I.STAT_COLOR[stat]}">${I.icon(I.STAT_ICON[stat], 22)}<span>${P.SKILLS[ch.skill].name}</span>${I.meter(ch.value, I.STAT_COLOR[stat], 'small')}</div>
+      <div class="row two">
+        <button id="b-cancel" class="btn act" type="button">Not yet</button>
+        <button id="b-roll" class="btn big-btn act" type="button">Roll!</button>
+      </div>
+    </div>`);
+  $('b-cancel').addEventListener('click', () => { if (!H.isLocked()) cancelAim(); });
+  $('b-roll').addEventListener('click', async () => {
+    if (H.isLocked() || !aimCenter) return;
+    const c0 = aimCenter; aiming = false; aimCenter = null; overlay.aim = null;
+    H.lock(); actPanel('');
+    await doArea(u, c0);
+    H.unlock();
+    if (b.result) { playerTurn = false; finishTurn(); return; }
+    showPlayerOptions();
+  });
+}
+async function playerCage() {
+  H.lock(); actPanel('');
+  const kid = C.openCage(b);
+  floater(b.cage.x, b.cage.y, 'Free!', '#9be08a');
+  strip(); draw();
+  say(kid ? kid.id : null, T.CAGE_OPEN || 'Free! Finally! Now let me at him!');
+  await waitTap('OK');
+  H.unlock();
+  showPlayerOptions();
 }
 
 // ---------- cards ----------
@@ -325,6 +388,24 @@ async function rollPop(actor, chanceValue, title, isPlayer, opts = {}) {
   if (isPlayer) {
     const hero = actor && actor.char;
     const canLuck = opts.luck && hero && hero.luck > 0 && (tier === 'fail' || tier === 'disaster');
+    const flipped = R.flip(roll), flipTier = R.tierFor(chanceValue, flipped.value);
+    const canFlip = opts.luck && hero && (hero.talents || []).includes('flip') && !b.flipUsed && C.FLAGS_FOR[flipTier] && !C.FLAGS_FOR[tier];
+    if (canFlip) {
+      const useFlip = await new Promise(res => {
+        $('br-btn').innerHTML = `<div class="br-need">Flip the dice talent: swap the two dice to make ${flipped.value}!</div><div class="row two"><button id="b-noflip" class="btn" type="button">No thanks</button><button id="b-flip" class="btn big-btn" type="button">Flip the dice!</button></div>`;
+        $('b-noflip').addEventListener('click', () => res(false), { once: true });
+        $('b-flip').addEventListener('click', () => res(true), { once: true });
+      });
+      if (useFlip) {
+        b.flipUsed = true;
+        roll = flipped;
+        $('br-tier').innerHTML = `Flipped! ${roll.value}! ${esc(I.TIER_WORD[flipTier])}`;
+        $('br-tier').style.color = I.TIER_COLOR[flipTier];
+        await new Promise(res => { $('br-btn').innerHTML = '<button id="b-ok" class="btn big-btn" type="button">OK</button>'; $('b-ok').addEventListener('click', res, { once: true }); });
+        pop.classList.add('hidden');
+        return roll;
+      }
+    }
     if (canLuck && !b.taught.luck) { b.taught.luck = true; say('hollis', T.LUCK_TEACH); }
     const again = await new Promise(res => {
       const clovers = hero ? Array.from({ length: P.LUCK_MAX }, (_, i) => I.icon('clover', 18, i >= hero.luck)).join('') : '';
@@ -400,11 +481,14 @@ async function doArea(u, center) {
   const before = new Set(b.units.filter(k => k.out).map(k => k.id));
   u.pose = 'attack';
   const chv = C.chance(b, u, null, { skill: u.trick.skill, ignoreCover: true }).value;
-  const roll = await rollPop(u, chv, `${u.name}: ${u.trick.name}`, false);
+  const mine = u.ai === 'player';
+  const roll = await rollPop(u, chv, `${mine ? 'You cast' : u.name + ':'} ${u.trick.name}`, mine, { luck: b.mode === 'hp' });
   u.pose = 'idle';
   const tier = R.tierFor(chv, roll.value);
-  const dmg = b.mode === 'hp' && C.FLAGS_FOR[tier] ? await damagePop(u, { name: 'everyone in the orange squares', id: 'area' }, tier, u.trick.dice || '1d4', false) : null;
+  const dmg = b.mode === 'hp' && C.FLAGS_FOR[tier] ? await damagePop(u, { name: u.trick.r ? 'everyone in the orange squares' : 'that square', id: 'area' }, tier, u.trick.dice || '1d4', mine) : null;
+  const scaredBefore = { ...b.scared };
   const res = C.resolveArea(b, u, center, roll, dmg);
+  for (const id in b.scared) if (b.scared[id] && !scaredBefore[id]) { const g = C.unitById(b, id); floater(g.x, g.y, 'Eek! Fire!', '#ffd060'); }
   res.results.forEach(r => { const t = C.unitById(b, r.id); floater(t.x, t.y, r.lost ? '-' + r.lost : 'Miss', '#ff8070'); });
   say(u.id, T.AREA_RESULT[res.tier]);
   overlay.area = []; strip(); draw();
@@ -416,6 +500,16 @@ async function doArea(u, center) {
 async function computerTurn(u) {
   H.lock();
   const plan = C.nextPlan(b, u, def);
+  if (plan.teach && !(T.TEACH || {})[plan.teach]) { b.taught[plan.teach] = true; plan.teach = null; }
+  const act = plan.action && plan.action.type;
+  if (act === 'scared') {
+    say(u.id, T.SCARED || 'Fire! FIRE! Keep it away from me!');
+    floater(u.x, u.y, 'Scared!', '#ffd060');
+    await wait(fast ? 10 : 1200);
+    C.afterTurn(b, u, plan);
+    H.unlock();
+    return;
+  }
   if (plan.teach) {
     b.taught[plan.teach] = true;
     if (plan.moveTo) overlay.reach = C.moveTiles(b, u).tiles;
@@ -424,6 +518,14 @@ async function computerTurn(u) {
     say(u.id, T.TEACH[plan.teach]);
     await waitTap('Got it!');
     overlay.reach = []; overlay.area = []; draw();
+  } else if (act === 'windup') {
+    say(u.id, b.warn ? (T.WINDUP_WARN || 'HA HA HA HA!') : (T.WINDUP || 'Heh. Heh heh.'));
+    actPanel(`<div class="waiting">${esc(u.name)}'s turn</div>`);
+    await wait(700);
+  } else if (act === 'sweep') {
+    say(u.id, T.SWEEP || 'FLAIL SWEEP!');
+    actPanel(`<div class="waiting">${esc(u.name)}'s turn</div>`);
+    await wait(500);
   } else {
     const lines = T.CHATTER[u.id] || ['...'];
     say(u.id, lines[(b.round + b.turn) % lines.length]);
@@ -435,6 +537,17 @@ async function computerTurn(u) {
     const path = C.doMove(b, u, plan.moveTo.x, plan.moveTo.y);
     await animateWalk(u, sx, sy, path);
   }
+  if (act === 'windup') {
+    C.bossWindup(b, u); draw();
+    if (b.warn) { say('nell', T.WARN_LINE || 'He\'s laughing! Get out of the red squares!'); await waitTap('Got it!'); }
+  }
+  if (act === 'sweep') await doSweep(u);
+  if (act === 'cage') {
+    const kid = C.openCage(b);
+    floater(b.cage.x, b.cage.y, 'Free!', '#9be08a'); strip(); draw();
+    say(kid ? kid.id : null, T.CAGE_OPEN || 'Free! Finally!');
+    await wait(fast ? 10 : 1400);
+  }
   if (plan.action && plan.action.type === 'attack') await doAttack(u, C.unitById(b, plan.action.target));
   if (plan.action && plan.action.type === 'area') await doArea(u, plan.action.center);
   if (plan.action && plan.action.type === 'flee') {
@@ -444,7 +557,30 @@ async function computerTurn(u) {
     say(null, fill(T.FLED_LINE, { who: u.name }));
     await wait(fast ? 10 : 1000);
   }
+  C.afterTurn(b, u, plan);
   H.unlock();
+}
+
+// The boss's big flail sweep: one roll, and every kid in the danger squares gets hit.
+async function doSweep(u) {
+  const before = new Set(b.units.filter(x => x.out).map(x => x.id));
+  const area = b.danger.slice();
+  overlay.area = area; draw();
+  const chv = C.chance(b, u, null, { skill: 'swing', ignoreCover: true, ignoreArmor: true }).value;
+  u.pose = 'attack'; draw();
+  const roll = await rollPop(u, chv, `${u.name}: flail sweep!`, false);
+  u.pose = 'idle';
+  const tier = R.tierFor(chv, roll.value);
+  const hitAny = C.enemiesOf(b, u).some(e => area.some(t => t.x === e.x && t.y === e.y));
+  const dmg = C.FLAGS_FOR[tier] && hitAny ? await damagePop(u, { name: 'everyone in the red squares', id: 'area' }, tier, u.sweepDice || '1d6', false) : null;
+  const res = C.resolveSweep(b, u, roll, dmg || { total: 0 });
+  overlay.area = [];
+  res.results.forEach(r => { const t = C.unitById(b, r.id); if (r.lost) floater(t.x, t.y, '-' + r.lost, '#ff6050'); });
+  strip(); draw();
+  say(u.id, !hitAny ? (T.SWEEP_MISS || 'Hey! Where did everybody go?') : C.FLAGS_FOR[tier] ? (T.SWEEP_HIT || 'HA HA! Take that!') : (T.SWEEP_MISS || 'Whoops! Missed!'));
+  const out = announceOuts(before);
+  await wait(fast ? 10 : 1100);
+  if (out) { say(null, out); await wait(fast ? 10 : 1000); }
 }
 
 function showPlayerOptions() {
@@ -507,7 +643,7 @@ async function finishTurn() {
 // Story moments that happen at the start of a round (from the chapter data).
 async function runEvents(round) {
   for (const ev of (def.events || []).filter(e => e.round === round)) {
-    if (ev.type !== 'snatch') continue;
+    if (ev.type !== 'snatch') { await simpleEvent(ev); continue; }
     H.lock();
     for (const d of ev.spawn) C.addUnit(b, d, null);
     draw();
@@ -523,13 +659,27 @@ async function runEvents(round) {
   }
 }
 
+// say: just lines. remove: units leave (buttons distract goblins, Sniffle calls off the kobolds). scare: Grubjaw fears the torch.
+async function simpleEvent(ev) {
+  H.lock();
+  for (const ln of ev.lines || []) { say(ln.who, ln.text); await waitTap('Next'); }
+  if (ev.type === 'remove') {
+    const leaving = ev.ids.map(id => C.unitById(b, id)).filter(u => u && !u.out);
+    await Promise.all(leaving.map(u => animateWalk(u, u.x, u.y, [{ x: u.x >= b.map.w / 2 ? b.map.w : -1, y: u.y }])));
+    leaving.forEach(u => C.removeUnit(b, u.id));
+  }
+  if (ev.type === 'scare') { C.scare(b, ev.id, ev.turns || 1); const g = C.unitById(b, ev.id); if (g) floater(g.x, g.y, 'Scared!', '#ffd060'); }
+  strip(); draw();
+  H.unlock();
+}
+
 // Who goes first: the player rolls a d20 in the tray; everyone else's roll shows in the list.
 async function initiative() {
   H.lock();
-  say('hollis', T.INIT_TEACH);
+  say(def.surprise ? 'nell' : 'hollis', def.surprise ? (T.SURPRISE || 'We snuck up on them! Every one of us goes before the monsters.') : (T.INIT_TEACH || 'Everybody roll to see who goes first!'));
   await waitTap('Roll!', 'b-init');
   const me = C.unitById(b, 'hero');
-  const list = C.rollInitiative(b);
+  const list = C.rollInitiative(b, undefined, !!def.surprise);
   const mine = list.find(e => e.id === 'hero');
   const pop = $('bdice-pop');
   pop.classList.remove('hidden'); dice.mount($('bdice'));
@@ -576,6 +726,10 @@ function onTap(ev) {
   if (!b || H.isLocked() || b.result) return;
   const t = tileAt(ev); if (!t) return;
   const who = C.unitAt(b, t.x, t.y);
+  if (playerTurn && aiming) {
+    if (overlay.aim && overlay.aim.some(p => p.x === t.x && p.y === t.y)) return aimAt(t.x, t.y);
+    return;
+  }
   if (playerTurn) {
     const me = C.current(b);
     if (!b.ts.acted && who && who.side !== me.side && C.targets(b, me).includes(who)) return confirmPanel(who);
@@ -608,7 +762,7 @@ export function start(fightDef, texts, hero) {
   def = fightDef; T = texts;
   b = C.createBattle(fightDef, hero);
   overlay = { reach: [], targets: [], area: [] };
-  heroFirstDone = false; heroOutSaid = false; playerTurn = false; anim = null; floaters = [];
+  heroFirstDone = !!fightDef.skipHeroFirst; heroOutSaid = false; playerTurn = false; anim = null; floaters = []; aiming = false; aimCenter = null;
   wire();
   return new Promise(res => {
     done = res;
@@ -616,7 +770,10 @@ export function start(fightDef, texts, hero) {
       layout(); strip(); startBob();
       $('b-legend').textContent = b.mode === 'hp' ? 'Hearts?' : 'Flags?';
       if (b.mode === 'hp') await initiative();
-      runTurn(C.current(b));
+      await runEvents(0);
+      if (b.result) return endFight();
+      const first = C.current(b);
+      runTurn(first.out ? C.endTurn(b) : first);
     });
   });
 }

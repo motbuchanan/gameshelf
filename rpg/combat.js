@@ -11,6 +11,7 @@ import { CAST } from './art.js';
 import { weaponUse } from './items.js';
 import { GEAR } from './art.js';
 import { MONSTERS, armorOf } from './monsters.js';
+import { SPARK } from './roster.js';
 
 export const FLAGS_FOR = { legendary: 3, exceptional: 2, success: 1, fail: 0, disaster: 0 };
 export const COVER = 20;      // a target in a bush is this much harder to hit
@@ -22,16 +23,17 @@ const clone = o => JSON.parse(JSON.stringify(o));
 function makeMonster(d) {
   const m = MONSTERS[d.monster];
   if (!m) throw new Error('unknown monster ' + d.monster);
-  const c = CAST.find(k => k.id === m.cast);
+  const c = CAST.find(k => k.id === d.id) || CAST.find(k => k.id === m.cast);   // named friends (Sniffle, Pudge) have their own look
   const spec = clone(c.spec);
   const use = { ...weaponUse(m.weapon), ...(m.range ? { range: m.range } : {}) };
   if (m.range) use.skill = 'aim';
   return {
-    id: d.id, name: d.name || m.name, side: d.side || 'monster', ai: d.ai || 'monster', spec, char: null, cast: m.cast,
+    id: d.id, name: d.name || m.name, side: d.side || 'monster', ai: d.ai || 'monster', spec, char: null, cast: c.id,
     x: d.x, y: d.y, move: m.move,
     flags: m.hp, maxFlags: m.hp, out: false,
     weapon: m.weapon, use, skills: m.skills, armor: m.armor, finesse: m.finesse, retreatAt: m.retreatAt || 0,
     trick: null, prefersBush: !!d.prefersBush, bystander: !!d.bystander,
+    boss: !!m.boss, sweepDice: m.sweepDice || null,
   };
 }
 
@@ -56,7 +58,7 @@ export function makeUnit(d, hero, mode = 'flags') {
     x: d.x, y: d.y, move: d.move || P.MOVE,
     flags: hp, maxFlags: maxHp, out: false,
     weapon, use, armor: mode === 'hp' ? armorOf(char.gear) : 0, finesse: char.stats.finesse, retreatAt: 0,
-    trick: d.trick ? { ...d.trick, left: d.trick.uses } : null,
+    trick: d.trick ? { ...d.trick, left: d.trick.uses } : ((char.spells || []).includes('spark') ? { ...SPARK, left: SPARK.uses } : null),
     prefersBush: !!d.prefersBush, bystander: !!d.bystander,
   };
 }
@@ -65,8 +67,15 @@ export function createBattle(def, hero) {
   const map = G.makeMap(def.map);
   const mode = def.mode || 'flags';
   const units = def.units.map(d => makeUnit(d, hero, mode));
+  // Later chapters toughen the monsters: def.boost = { hp, skill } is added to every monster on the monster side.
+  if (def.boost) units.filter(u => u.side === 'monster' && u.skills).forEach(u => {
+    u.flags += def.boost.hp || 0; u.maxFlags += def.boost.hp || 0;
+    u.skills = Object.fromEntries(Object.entries(u.skills).map(([k, v]) => [k, v + (def.boost.skill || 0)]));
+  });
   const b = { map, units, mode, order: (def.order || units.filter(u => !u.bystander).map(u => u.id)).slice(), turn: 0, round: 1, result: null,
-    taught: { ...(def.taught || {}) }, ts: { moved: false, acted: false }, roundCap: def.roundCap || ROUND_CAP, capResult: def.capResult || 'tie' };
+    taught: { ...(def.taught || {}) }, ts: { moved: false, acted: false }, roundCap: def.roundCap || ROUND_CAP, capResult: def.capResult || 'tie',
+    scared: {}, danger: [], warn: !!def.warn, fireScares: !!def.fireScares, bossPhase: 0,
+    cage: def.cage ? { ...def.cage, open: false } : null };
   return b;
 }
 
@@ -77,9 +86,11 @@ export function removeUnit(b, id) { const u = unitById(b, id); if (u) { u.out = 
 
 // Who goes first: everyone rolls d20 plus their Finesse bonus. Highest goes first; ties go to the heroes.
 export function initBonus(u) { return Math.floor((u.finesse || 0) / 10); }
-export function rollInitiative(b, d20 = () => R.rollDice('1d20').total) {
+// surprise: the heroes snuck up, so all of them go before any monster.
+export function rollInitiative(b, d20 = () => R.rollDice('1d20').total, surprise = false) {
   const list = b.units.filter(u => !u.bystander && !u.out).map(u => { const roll = d20(u); return { id: u.id, roll, bonus: initBonus(u), total: roll + initBonus(u), side: u.side }; });
-  list.sort((a, c) => (c.total - a.total) || ((a.side === 'hero' ? 0 : 1) - (c.side === 'hero' ? 0 : 1)));
+  const sideRank = e => (e.side === 'hero' ? 0 : 1);
+  list.sort((a, c) => (surprise ? sideRank(a) - sideRank(c) : 0) || (c.total - a.total) || (sideRank(a) - sideRank(c)));
   b.init = list; b.order = list.map(e => e.id); b.turn = 0;
   return list;
 }
@@ -166,9 +177,45 @@ export function resolveArea(b, u, center, roll, dmg) {
   const tier = R.tierFor(ch.value, roll.value);
   const amount = b.mode === 'hp' ? (FLAGS_FOR[tier] ? (dmg ? dmg.total : rollDamage(u.trick.dice || '1d4', tier).total) : 0) : FLAGS_FOR[tier];
   const results = hit.map(e => ({ id: e.id, lost: pull(e, amount), out: e.out }));
+  if (u.trick.fire && b.fireScares && amount) hit.filter(e => e.boss && !e.out).forEach(e => { b.scared[e.id] = 1; });
   u.trick.left--; b.ts.acted = true;
   checkOver(b);
   return { tier, results, chance: ch, tiles };
+}
+
+// ---------- the boss: Grubjaw ----------
+// His turns go: normal attack, then he winds up (laughing), then a big flail sweep hits every kid next to him.
+// With the Laugh clue, the windup squares show on the map and friends step out of them.
+// With the Fire clue, a Spark (or the torch) scares him and he loses his next turn.
+export function bossWindup(b, u) {
+  b.danger = G.area(b.map, 'circle', { x: u.x, y: u.y }, { r: 1 }).filter(t => !(t.x === u.x && t.y === u.y));
+  b.bossPhase = 2;
+}
+export function resolveSweep(b, u, roll, dmg) {
+  const ch = chance(b, u, null, { skill: 'swing', ignoreCover: true, ignoreArmor: true });
+  const tier = R.tierFor(ch.value, roll.value);
+  const amount = FLAGS_FOR[tier] ? (dmg ? dmg.total : rollDamage(u.sweepDice || '1d6', tier).total) : 0;
+  const hit = enemiesOf(b, u).filter(e => b.danger.some(t => t.x === e.x && t.y === e.y));
+  const results = hit.map(e => ({ id: e.id, lost: pull(e, amount), out: e.out }));
+  b.danger = []; b.bossPhase = 0;
+  b.ts.acted = true;
+  checkOver(b);
+  return { tier, value: ch.value, roll, results };
+}
+export function scare(b, id, turns = 1) { b.scared[id] = Math.max(b.scared[id] || 0, turns); }
+
+// ---------- the cage ----------
+export function canOpenCage(b, u) {
+  return !!(b.cage && !b.cage.open && u.side === 'hero' && !u.out && G.dist(u, b.cage) <= 1);
+}
+export function openCage(b) {
+  const kid = unitById(b, b.cage.kid);
+  b.cage.open = true; b.ts.acted = true;
+  if (kid) {
+    kid.bystander = false; kid.ai = 'friend';
+    if (!b.order.includes(kid.id)) b.order.splice(b.turn + 1, 0, kid.id);
+  }
+  return kid;
 }
 
 // A hurt monster on the edge of the map runs away and is out of the fight.
@@ -238,6 +285,43 @@ export function planTurn(b, u) {
   const field = distanceField(b, foes);
   const isBush = t => G.terrainAt(b.map, t.x, t.y).cover;
   const once = c => (b.taught[c] ? null : c);
+
+  // Scared of fire: loses this turn.
+  if (b.scared[u.id] > 0) { plan.action = { type: 'scared' }; return plan; }
+  // The boss: wind up, then sweep.
+  if (u.boss) {
+    if (b.bossPhase === 2) { plan.action = { type: 'sweep' }; return plan; }
+    if (b.bossPhase === 1) {
+      const step = options.slice().sort((a, c) => (fd(field, a.x, a.y) - fd(field, c.x, c.y)) || (a.cost - c.cost))[0];
+      if (step !== stay) plan.moveTo = { x: step.x, y: step.y };
+      plan.action = { type: 'windup' };
+      return plan;
+    }
+  }
+  // Friends who know about the Laugh step out of the danger squares.
+  if (u.side === 'hero' && b.warn && b.danger.length) {
+    const safe = options.filter(t => !b.danger.some(d => d.x === t.x && d.y === t.y));
+    if (safe.length && safe.length < options.length) {
+      options.length = 0; options.push(...safe);
+      if (!safe.includes(stay)) {
+        const hitsFrom = safe.map(t => ({ t, hits: canHitFrom(b, u, t.x, t.y) })).filter(o => o.hits.length);
+        const o = hitsFrom[0] || { t: safe.sort((a, c) => a.cost - c.cost)[0], hits: [] };
+        plan.moveTo = { x: o.t.x, y: o.t.y };
+        if (o.hits.length) plan.action = { type: 'attack', target: pickTarget(b, u, o.hits).id };
+        plan.teach = once('dodge');
+        return plan;
+      }
+    }
+  }
+  // The cage opener heads for the cage and lets the kid out.
+  if (b.cage && !b.cage.open && b.cage.opener === u.id) {
+    if (G.dist(u, b.cage) <= 1) { plan.action = { type: 'cage' }; return plan; }
+    const near = options.filter(t => G.dist(t, b.cage) <= 1);
+    const pick = (near.length ? near : options).slice().sort((a, c) => (G.dist(a, b.cage) - G.dist(c, b.cage)) || (a.cost - c.cost))[0];
+    if (pick !== stay) plan.moveTo = { x: pick.x, y: pick.y };
+    if (G.dist(pick, b.cage) <= 1) plan.action = { type: 'cage' };
+    return plan;
+  }
 
   // Hurt monsters run: off the map if they're on the edge, otherwise as far from the kids as they can, toward an edge.
   if (wantsToFlee(b, u)) {
@@ -313,19 +397,29 @@ export function scriptedPlan(b, u, def) {
 export function nextPlan(b, u, def) { return scriptedPlan(b, u, def) || planTurn(b, u); }
 
 // Run a whole fight with every side computer-controlled (the hero plays like a friend). For balance sims and tests.
+// After a unit's turn: count down being scared, and move the boss to his next phase.
+export function afterTurn(b, u, plan) {
+  if (plan && plan.action && plan.action.type === 'scared') { b.scared[u.id]--; return; }
+  if (u.boss && b.bossPhase === 0) b.bossPhase = 1;
+}
 export function autoplay(b, rollFn, def) {
   let guard = 0;
   let u = current(b);
-  while (!b.result && guard++ < 500) {
+  while (!b.result && guard++ < 800) {
     const plan = nextPlan(b, u, def);
     if (plan.teach) b.taught[plan.teach] = true;
     if (plan.moveTo) doMove(b, u, plan.moveTo.x, plan.moveTo.y);
-    if (plan.action && plan.action.type === 'attack') resolveAttack(b, u, unitById(b, plan.action.target), rollFn());
-    if (plan.action && plan.action.type === 'area') resolveArea(b, u, plan.action.center, rollFn());
-    if (plan.action && plan.action.type === 'flee') flee(b, u);
+    const a = plan.action && plan.action.type;
+    if (a === 'attack') resolveAttack(b, u, unitById(b, plan.action.target), rollFn());
+    if (a === 'area') resolveArea(b, u, plan.action.center, rollFn());
+    if (a === 'flee') flee(b, u);
+    if (a === 'windup') bossWindup(b, u);
+    if (a === 'sweep') resolveSweep(b, u, rollFn());
+    if (a === 'cage') openCage(b);
+    afterTurn(b, u, plan);
     u = endTurn(b);
   }
   return b.result;
 }
 
-export default { FLAGS_FOR, COVER, ROUND_CAP, makeUnit, createBattle, addUnit, removeUnit, initBonus, rollInitiative, weaponDice, rollDamage, flee, onEdge, wantsToFlee, unitById, current, enemiesOf, friendsOf, unitAt, skillValue, moveTiles, targets, chance, doMove, resolveAttack, areaTiles, areaCenters, resolveArea, checkOver, endTurn, planTurn, scriptedPlan, nextPlan, autoplay };
+export default { FLAGS_FOR, COVER, ROUND_CAP, makeUnit, createBattle, addUnit, removeUnit, initBonus, rollInitiative, weaponDice, rollDamage, flee, onEdge, wantsToFlee, bossWindup, resolveSweep, scare, canOpenCage, openCage, afterTurn, unitById, current, enemiesOf, friendsOf, unitAt, skillValue, moveTiles, targets, chance, doMove, resolveAttack, areaTiles, areaCenters, resolveArea, checkOver, endTurn, planTurn, scriptedPlan, nextPlan, autoplay };

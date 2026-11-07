@@ -464,14 +464,46 @@ export const CAST = [
     bio: 'Reads everything, including the scary parts. Carries Gran\'s book of tricks and swears one of them really works.',
   },
   {
-    id: 'tobin', name: 'Tobin Marsh', role: 'Taken by the goblins (human)', group: 'kids',
+    id: 'tobin', name: 'Tobin Marsh', role: 'The loud one (human)', group: 'kids',
     spec: { build: 'kid', people: 'human', skin: 'deep', hair: 'spiky', hairColor: 'black', cloth: 'mustard', layers: { body: 'tunic', mainHand: 'stick' } },
     bio: 'The youngest kid in the game, and the loudest. Always "it" when nobody else wants to be.',
   },
   {
-    id: 'juni', name: 'Juni Thatch', role: 'Taken by the goblins (dwarf)', group: 'kids',
+    id: 'juni', name: 'Juni Thatch', role: 'The fixer (dwarf)', group: 'kids',
     spec: { build: 'kid', people: 'dwarf', skin: 'peach', hair: 'bun', hairColor: 'auburn', cloth: 'blue', layers: { body: 'padded' } },
-    bio: 'Fixes anything with string and stubbornness. Was building a fort when the goblins came.',
+    bio: 'Fixes anything with string and stubbornness. Always building a fort somewhere.',
+  },
+  // Monster friends (they join if you are kind to them)
+  {
+    id: 'sniffle', name: 'Sniffle', role: 'Kobold friend', group: 'friends',
+    spec: { build: 'kobold', layers: { mainHand: 'broomstick' } },
+    bio: 'A little kobold who sweeps up the gnoll\'s camp and gets yelled at all day. Sneezes when he is nervous, which is always.',
+  },
+  {
+    id: 'pudge', name: 'Pudge', role: 'Goblin friend', group: 'friends',
+    spec: { build: 'goblin', cloth: 'blue', layers: { mainHand: 'club', head: 'hood' } },
+    bio: 'A round goblin who guarded the warren door. Hates baths, loves snacks, and turns out to be pretty nice once you share.',
+  },
+  // Millbrook grown-ups
+  {
+    id: 'gran', name: 'Gran Ashgrove', role: 'Pim\'s Gran', group: 'town',
+    spec: { build: 'kid', people: 'elf', skin: 'peach', hair: 'bun', hairColor: 'white', cloth: 'purple', layers: { body: 'padded', offHand: 'book' } },
+    bio: 'Knows a trick for everything and a story about everyone. Her book of tricks is older than the town.',
+  },
+  {
+    id: 'baker', name: 'Mister Stoutbarrel', role: 'The baker (Hollis\'s dad)', group: 'town',
+    spec: { build: 'kid', people: 'dwarf', skin: 'tan', hair: 'short', hairColor: 'red', cloth: 'mustard', layers: { body: 'tunic' } },
+    bio: 'Makes the best pies in Millbrook and the loudest jokes. Covered in flour from morning to night.',
+  },
+  {
+    id: 'smith', name: 'Brenna the Smith', role: 'The blacksmith (runs the shop)', group: 'town',
+    spec: { build: 'kid', people: 'human', skin: 'brown', hair: 'short', hairColor: 'black', cloth: 'brown', layers: { body: 'padded', mainHand: 'steelsword' } },
+    bio: 'Fixes plows, shoes horses, and sells real gear. Buys goblin junk because "you never know."',
+  },
+  {
+    id: 'captain', name: 'Captain Ward', role: 'The guard captain', group: 'town',
+    spec: { build: 'kid', people: 'human', skin: 'peach', hair: 'short', hairColor: 'brown', cloth: 'blue', layers: { body: 'tunic', head: 'ironcap', mainHand: 'spear', offHand: 'buckler' } },
+    bio: 'Leads the Millbrook guard. Very serious, very brave, and very embarrassed about the bridge.',
   },
   {
     id: 'goblin', name: 'Goblin Raider', role: 'Enemy', group: 'monsters',

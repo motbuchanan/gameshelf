@@ -5,7 +5,8 @@ export const MONSTERS = {
   goblin:       { cast: 'goblin',        name: 'Goblin',        hp: 7, armor: 5, finesse: 40, skills: { swing: 64, aim: 30 }, weapon: 'rustknife', move: 4, retreatAt: 2 },
   goblinarcher: { cast: 'goblinarcher',  name: 'Goblin archer', hp: 5, armor: 0, finesse: 45, skills: { swing: 25, aim: 65 }, weapon: 'shortbow',  move: 4, retreatAt: 1, range: 6 },
   kobold:       { cast: 'kobold',        name: 'Kobold',        hp: 4, armor: 0, finesse: 50, skills: { swing: 35, aim: 30 }, weapon: 'spear',     move: 5, retreatAt: 1 },
-  koboldtrapper:{ cast: 'koboldtrapper', name: 'Kobold trapper',hp: 5, armor: 0, finesse: 50, skills: { swing: 30, aim: 40 }, weapon: 'spear',     move: 5, retreatAt: 1 },
+  koboldtrapper:{ cast: 'koboldtrapper', name: 'Kobold trapper',hp: 6, armor: 0, finesse: 50, skills: { swing: 30, aim: 40 }, weapon: 'spear',     move: 5, retreatAt: 1 },
+  gnoll:        { cast: 'gnoll',         name: 'Grubjaw',       hp: 44, armor: 10, finesse: 30, skills: { swing: 60, aim: 20 }, weapon: 'flail',     move: 4, retreatAt: 0, boss: true, sweepDice: '1d8' },
 };
 
 // Armor from what a kid is wearing.

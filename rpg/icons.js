@@ -19,6 +19,7 @@ const MAPS = {
   turns: { rows: ['...kkk...', '..kGGGk..', '.kGk.kGk.', 'kGk...kGk', 'kk.....kk', 'kGk...kGk', '.kGk.kGk.', '..kGGGk..', '...kkk...'], col: { G: '#6cbf5a' } },
   burst: { rows: ['k...k...k', '.kOkOkOk.', '..kOOOk..', 'kOOOyOOOk', '.kOyyyOk.', 'kOOOyOOOk', '..kOOOk..', '.kOkOkOk.', 'k...k...k'], col: { O: '#e8903a', y: '#f0c44c' } },
   book: { rows: ['kkkkkkkkk', 'kRRRRRRyk', 'kRyyyyRyk', 'kRRRRRRyk', 'kRyyyRRyk', 'kRRRRRRyk', 'kRRRRRRyk', 'kkkkkkkyk', '.kwwwwwwk'], col: { R: '#b8442e', y: '#f0c44c', w: '#f3e6cc' } },
+  coin: { rows: ['..kkkkk..', '.kYYYYYk.', 'kYYwYYyYk', 'kYwYYYyYk', 'kYYYYYyYk', 'kYYYYYyYk', 'kYyyyyyYk', '.kYYYYYk.', '..kkkkk..'], col: { Y: '#f0c44c', y: '#b8861c', w: '#fff2b0' } },
   target: { rows: ['..kkkkk..', '.kRwwwRk.', 'kRwRRRwRk', 'kwRwwwRwk', 'kwRwRwRwk', 'kwRwwwRwk', 'kRwRRRwRk', '.kRwwwRk.', '..kkkkk..'], col: { R: '#e84a4a', w: '#f3e6cc' } },
 };
 

@@ -55,9 +55,9 @@ export function levelSkillChoices(c) {
   return [...new Set([...mine, ...rest])].filter(id => !(c.trained || []).includes(id)).slice(0, 3);
 }
 // Returns what grew, so the level-up screen can show it.
-export function levelUp(c, skillId) {
-  const before = { level: c.level, hp: hpMax(c), stat: c.stats[BEST_STAT[c.bestAt]] };
-  const stat = BEST_STAT[c.bestAt];
+export function levelUp(c, skillId, statChoice) {
+  const stat = statChoice && STATS.includes(statChoice) ? statChoice : BEST_STAT[c.bestAt];
+  const before = { level: c.level, hp: hpMax(c), stat: c.stats[stat] };
   c.level = (c.level || 1) + 1;
   c.stats[stat] += LEVEL_STAT_GAIN;
   if (skillId && SKILLS[skillId] && !c.trained.includes(skillId)) c.trained.push(skillId);

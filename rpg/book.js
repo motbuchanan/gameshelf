@@ -25,7 +25,7 @@ const BIO = {
 const PEOPLE_WORD = { human: 'human', elf: 'elf', dwarf: 'dwarf' };
 
 const SHELVES = [
-  { id: 'kids', name: 'Kids', icon: 'star' },
+  { id: 'kids', name: 'People', icon: 'star' },
   { id: 'monsters', name: 'Monsters', icon: 'flagr' },
   { id: 'gear', name: 'Gear', icon: 'hammer' },
   { id: 'places', name: 'Places', icon: 'boot' },
@@ -58,6 +58,12 @@ const PLAY = [
   { id: 'damage', name: 'Damage dice', icon: 'hammer' },
   { id: 'retreat', name: 'Running away', icon: 'boot' },
   { id: 'knocked', name: 'Knocked down', icon: 'star' },
+  { id: 'check', name: 'Skill checks', icon: 'target' },
+  { id: 'helper', name: 'A friend helps', icon: 'star' },
+  { id: 'spark', name: 'Spark', icon: 'burst' },
+  { id: 'flip', name: 'Flip the dice', icon: 'die' },
+  { id: 'coins', name: 'Coins', icon: 'coin' },
+  { id: 'team', name: 'Picking a team', icon: 'turns' },
 ];
 
 // ---------- who you have met ----------
@@ -85,9 +91,13 @@ function heroEntry() {
     bio: 'This is where your hero lives. Make your hero on the Adventure tab and they will show up here.' };
 }
 function kidEntries() {
+  const s = save.get(), joined = (s && s.party) || [];
   return [heroEntry(), ...CAST.filter(c => c.group === 'kids' && c.id !== 'hero').map(c => ({
     id: c.id, name: c.name, role: ROLE[c.id], spec: c.spec, bio: BIO[c.id] || c.bio,
-  }))];
+  })),
+  // Monster friends show up once they join. Town grown-ups show up once you're back in Millbrook.
+  ...CAST.filter(c => c.group === 'friends' && joined.includes(c.id)).map(c => ({ id: c.id, name: c.name, role: c.role, spec: c.spec, bio: c.bio })),
+  ...CAST.filter(c => c.group === 'town' && s && s.flags && (s.flags.ch5 || s.flags.ch2story)).map(c => ({ id: c.id, name: c.name, role: c.role, spec: c.spec, bio: c.bio }))];
 }
 function monsterEntries() {
   return CAST.filter(c => c.group === 'monsters').map(c => ({ id: c.id, name: c.name, role: ROLE[c.id], spec: c.spec, bio: c.bio, locked: !isMet(c.id) }));
