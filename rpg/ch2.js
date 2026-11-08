@@ -3,6 +3,7 @@
 
 export const CH2_FIGHT = {
   id: 'ch2-ambush',
+  xp: 5, floor: 2, xpWhy: 'You fought off the goblins!',
   mode: 'hp',
   // . grass   b bush (cover)   m mud (2 steps)   L log (blocks)   t tree (blocks)   ~ stream (no wading)
   map: [

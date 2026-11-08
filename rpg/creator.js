@@ -139,9 +139,21 @@ function numberTiles(hero) {
   };
   const rep = (n, name, size, used = 0) => Array.from({ length: n }, (_, i) => I.icon(name, size, i >= n - used)).join('');
   row('hp', 'Hearts', rep(P.hpMax(hero), 'heart', 18, Math.max(0, P.hpMax(hero) - hero.hp)), 'v-hp');
-  row('luck', 'Luck', rep(P.LUCK_MAX, 'clover', 22, P.LUCK_MAX - hero.luck), 'v-luck');
-  row('move', 'Steps', rep(P.MOVE, 'boot', 22), 'v-move');
+  row('luck', 'Luck', rep(P.luckMax(hero), 'clover', 22, P.luckMax(hero) - hero.luck), 'v-luck');
+  row('move', 'Steps', rep(P.moveOf(hero), 'boot', 22), 'v-move');
   row('level', 'Level', `${I.icon('star', 26)}<b class="lvl">${hero.level}</b>`, 'v-level');
+  // The XP star bar: how close the next level is. Tap it to learn about XP.
+  const xp = P.xpProgress(hero);
+  const xb = document.createElement('button'); xb.type = 'button'; xb.className = 'vital v-xp'; xb.dataset.vital = 'xp'; xb.id = 'xp-bar';
+  xb.setAttribute('aria-label', `XP: ${xp.have} of ${xp.need} to level ${(hero.level || 1) + 1}. Tap to learn about XP.`);
+  xb.innerHTML = `<span class="vital-name">XP</span><span class="vital-icons xp-line">${I.xpStar(28)}<span class="xp-track"><span class="xp-fill" style="width:${Math.round(xp.frac * 100)}%"></span></span><span class="xp-num">${xp.need ? xp.have + ' / ' + xp.need : 'Max'}</span></span>`;
+  xb.addEventListener('click', () => explain('xp'));
+  box.appendChild(xb);
+  if ((hero.talents || []).length) {
+    const tb = document.createElement('div'); tb.className = 'chips talents';
+    hero.talents.forEach(t => tb.appendChild(chip((P.TALENTS[t] || { name: 'Flip the dice' }).name, false, () => explain(t))));
+    box.appendChild(tb);
+  }
   return box;
 }
 
@@ -210,7 +222,10 @@ function renderStep() {
     // The gold button plays the next chapter. Finished chapters can be replayed with the small buttons.
     const flags = s.flags || {};
     const avail = Array.from({ length: 30 }, (_, i) => 'ch' + (i + 1)).filter(id => chapterTitle(id));
-    const cur = avail.includes(s.chapter) ? s.chapter : avail.filter(id => flags[id]).pop() || 'ch1';
+    let cur = avail.includes(s.chapter) ? s.chapter : avail.filter(id => flags[id]).pop() || 'ch1';
+    // A save from an older version can point at what used to be the last chapter. If that one is done and a newer one exists, offer it.
+    const nextOf = id => 'ch' + ((parseInt(id.slice(2), 10) || 0) + 1);
+    while (flags[cur] && avail.includes(nextOf(cur))) cur = nextOf(cur);
     const again = !!flags[cur];
     const play = document.createElement('button'); play.type = 'button'; play.className = 'btn big-btn play-btn'; play.id = 'adv-play';
     play.innerHTML = `${I.icon('star', 24)}<span>${again ? 'Play again: ' : 'Play '}${esc(chapterTitle(cur))}</span>`;

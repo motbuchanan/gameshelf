@@ -9,6 +9,9 @@ export const ROSTER = {
   pudge: { monster: 'goblin', name: 'Pudge' },
   mossback: { monster: 'troll', name: 'Mossback' },
   inkwing: { monster: 'crow', name: 'Inkwing' },
+  bolt: { monster: 'bolt', name: 'Bolt' },
+  // Wren fixes things: her wrench can jam a clockwork monster for a turn.
+  wren: { monster: 'wren', name: 'Wren', tricks: [{ id: 'jam', name: 'Jam it', skill: 'fingers', shape: 'circle', r: 0, range: 4, uses: 2, dice: '1d4', jam: true }] },
 };
 // Spark: the first spell, from page 9 of Gran's book. A little ball of fire at one square.
 export const SPARK = { id: 'spark', name: 'Spark', skill: 'lore', shape: 'circle', r: 0, range: 5, uses: 2, dice: '1d6', fire: true };

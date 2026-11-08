@@ -27,6 +27,8 @@ export const TEXT = {
 export const FIGHTS = {
   bramble: {
     id: 'ch10-bramble',
+    xpKey: 'bramble',
+    xp: 12, floor: 5, xpWhy: 'You beat Bramble!',
     mode: 'hp',
     map: [
       '...........',
@@ -47,7 +49,7 @@ export const FIGHTS = {
     ],
     team: { from: 'picked', exclude: ['inkwing'], spots: [{ x: 3, y: 7 }, { x: 7, y: 7 }, { x: 5, y: 7 }] },
     calm: { max: 4, bonusIf: { diary: 15, woodcutter: 10, heardGrove: 5 }, startIf: { talkedFirst: 1 } },
-    roundCap: 16, capResult: 'win', boost: { hp: 0, skill: 0 },
+    roundCap: 16, capResult: 'win', boost: { hp: -2, skill: -6 },
     taught: CH7.LEARNED, skipHeroFirst: true,
     meets: ['bramble', 'thornbeast', 'crow'],
     events: [{ round: 0, type: 'say', lines: [{ who: 'pim', text: 'You don\'t have to only fight! Tap Talk on your turn to talk to her. Every good Talk roll fills a bubble. Fill them all, and she might listen.' }] }],
@@ -75,6 +77,8 @@ export const SCENES = {
       great: 'talk_peace', ok: 'talk_some', miss: 'talk_no' },
   },
   talk_peace: {
+    xpKey: 'bramble',
+    xp: 12, xpFloor: 5, xpWhy: 'You talked Bramble down! That counts as winning.',
     lines: [
       { who: 'hero', text: 'We know someone cut down your grove. We\'re sorry. That was wrong. But scaring people won\'t bring the trees back.' },
       { who: 'bramble', text: '...' },
@@ -175,7 +179,7 @@ export const SCENES = {
   end: {
     end: true, party: true, book: 2, extraFaces: ['bramble'],
     title: 'The End of Book Two',
-    text: 'You found B, and you made a friend instead of an enemy. Book Three, The Silver Mask, comes in a future update.',
+    text: 'You found B, and you made a friend instead of an enemy. Book Three, The Silver Mask, starts in Chapter 11.',
   },
 };
 

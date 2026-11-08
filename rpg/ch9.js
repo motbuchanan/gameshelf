@@ -14,8 +14,36 @@ export const TEXT = {
 };
 
 export const FIGHTS = {
+  // A small fight a wrong lever can cause: crows drop out of a trapdoor.
+  levercrows: {
+    id: 'ch9-levercrows',
+    xp: 3, xpWhy: 'You beat the trapdoor crows!',
+    mode: 'hp',
+    map: [
+      'ttttttttttt',
+      't.........t',
+      't..b...b..t',
+      't.........t',
+      't...L.L...t',
+      't.........t',
+      't.........t',
+      'ttttt.ttttt',
+    ],
+    units: [
+      { id: 'hero', side: 'hero', ai: 'player', x: 5, y: 6 },
+      { id: 'r1', monster: 'crow', name: 'Crow', x: 3, y: 1 },
+      { id: 'r2', monster: 'crow', name: 'Crow', x: 5, y: 1 },
+      { id: 'r3', monster: 'crow', name: 'Crow', x: 7, y: 1 },
+    ],
+    team: { from: 'picked', exclude: ['inkwing'], spots: [{ x: 4, y: 6 }, { x: 6, y: 6 }, { x: 5, y: 5 }] },
+    roundCap: 10, capResult: 'win', boost: { hp: 3, skill: 10 },
+    taught: CH7.LEARNED, skipHeroFirst: true,
+    then: { win: 'levers_retry', lose: 'levers_retry' },
+  },
+
   thorns: {
     id: 'ch9-thorns',
+    xp: 5,
     mode: 'hp',
     map: [
       'ttt..t..ttt',
@@ -34,12 +62,14 @@ export const FIGHTS = {
       { id: 'v3', monster: 'crow', name: 'Crow', x: 7, y: 1 },
     ],
     team: { from: 'party', exclude: ['inkwing'], spots: [{ x: 4, y: 6 }, { x: 6, y: 6 }, { x: 3, y: 6 }, { x: 7, y: 6 }, { x: 4, y: 5 }, { x: 6, y: 5 }] },
-    roundCap: 10, capResult: 'win', boost: { hp: 2, skill: 12 },
+    roundCap: 10, capResult: 'win', boost: { hp: 5, skill: 14 },
     taught: CH7.LEARNED, skipHeroFirst: true,
     then: { win: 'tower_door', lose: 'thorns_lose' },
   },
   owls: {
     id: 'ch9-owls',
+    xpKey: 'owls',
+    xp: 7, xpWhy: 'You beat the clockwork owls!',
     mode: 'hp',
     map: [
       'ttttttttttt',
@@ -58,7 +88,7 @@ export const FIGHTS = {
       { id: 'o3', monster: 'owl', name: 'Owl', x: 5, y: 2 },
     ],
     team: { from: 'picked', exclude: ['inkwing'], spots: [{ x: 3, y: 6 }, { x: 7, y: 6 }, { x: 4, y: 6 }] },
-    roundCap: 14, capResult: 'win', boost: { hp: 0, skill: 10 },
+    roundCap: 14, capResult: 'win', boost: { hp: 0, skill: 0 },
     taught: CH7.LEARNED, skipHeroFirst: true,
     meets: ['owl'],
     events: [{ round: 0, type: 'say', lines: [{ who: 'pim', text: 'Clockwork owls! Their brass is really hard to hit, and fire barely warms them. Spark only does half.' }, { who: 'juni', text: 'But they\'re SLOW. Gang up on one at a time!' }] }],
@@ -151,9 +181,29 @@ export const SCENES = {
       { label: 'Yellow, blue, red', go: 'levers_bad' },
     ],
   },
-  levers_bad: {
+  levers_bad: { nextIf: [{ if: 'leverCrows', go: 'levers_wet' }], next: 'levers_trap' },
+  levers_trap: {
+    set: { leverCrows: true },
+    lines: [
+      { who: 'narrator', text: 'CLUNK. A trapdoor in the ceiling falls open, and three of Bramble\'s crows tumble out. They are NOT happy about it.' },
+      { who: 'pim', text: 'Wrong lever! Get ready!' },
+    ],
+    next: 'fight:levercrows',
+  },
+  levers_retry: {
+    lines: [{ who: 'pim', text: 'Okay. Let\'s look at that painting one more time. It\'s a sunrise: blue sky, then red, then yellow.' }],
+    choices: [
+      { label: 'Blue, red, yellow', go: 'levers_ok' },
+      { label: 'Red, yellow, blue', go: 'levers_bad' },
+      { label: 'Yellow, blue, red', go: 'levers_bad' },
+    ],
+  },
+  levers_wet: {
     hurt: 1,
-    lines: [{ who: 'narrator', text: 'CLUNK. A trapdoor opens, and a bucket of cold water dumps on everybody. Brrr! The levers reset. Try again!' }],
+    lines: [
+      { who: 'narrator', text: 'CLUNK. This time it\'s a bucket of cold water. SPLOOSH! Brrr! The levers reset.' },
+      { who: 'pim', text: 'I\'ve got it! A sunrise goes blue, then red, then yellow. Blue, red, yellow!' },
+    ],
     choices: [
       { label: 'Blue, red, yellow', go: 'levers_ok' },
       { label: 'Red, yellow, blue', go: 'levers_bad' },
@@ -161,6 +211,7 @@ export const SCENES = {
     ],
   },
   levers_ok: {
+    xp: 1, xpWhy: 'You solved the lever puzzle!',
     lines: [{ who: 'narrator', text: 'Click, click, CLICK. The door swings open! Up the stairs to floor two.' }],
     next: 'mirror',
   },
@@ -190,6 +241,7 @@ export const SCENES = {
     ],
   },
   mirror_ok: {
+    xp: 1, xpWhy: 'You solved the mirror puzzle!',
     lines: [{ who: 'narrator', text: 'The sunbeam bounces off the mirror and lands right on the sun lock. It glows, and CLICK! Up to floor three.' }],
     next: 'tiles',
   },
@@ -218,6 +270,8 @@ export const SCENES = {
   },
   owls_sneak: { check: { skill: 'sneak', help: 'nell', label: 'Sneak past the clockwork owls', great: 'owls_snuck', ok: 'owls_snuck', miss: 'owls_noticed' } },
   owls_snuck: {
+    xpKey: 'owls',
+    xp: 7, xpWhy: 'You sneaked past the owls! That counts as winning!',
     lines: [{ who: 'narrator', text: 'The owls tick and tock and stare at the wall. The kids slip right past them, up the last stairs.' }],
     next: 'diary',
   },

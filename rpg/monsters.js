@@ -11,14 +11,23 @@ export const MONSTERS = {
   wolf:         { cast: 'wolf',          name: 'Wolf',          hp: 7, armor: 0, finesse: 55, skills: { swing: 50, aim: 0 }, weapon: 'fangs', dice: '1d6', move: 6, retreatAt: 2, pack: true },
   wolfleader:   { cast: 'wolfleader',    name: 'Pack leader',   hp: 12, armor: 5, finesse: 55, skills: { swing: 55, aim: 0 }, weapon: 'fangs', dice: '1d8', move: 6, retreatAt: 3, pack: true, leader: true },
   crow:         { cast: 'crow',          name: 'Crow',          hp: 5, armor: 0, finesse: 70, skills: { swing: 50, aim: 0 }, weapon: 'beak', dice: '1d4', move: 6, retreatAt: 1, fly: true },
-  owl:          { cast: 'owl',           name: 'Clockwork owl', hp: 12, armor: 25, finesse: 20, skills: { swing: 55, aim: 0 }, weapon: 'talons', dice: '1d6', move: 3, retreatAt: 0, fireResist: true },
+  owl:          { cast: 'owl',           name: 'Clockwork owl', hp: 12, armor: 25, finesse: 20, skills: { swing: 55, aim: 0 }, weapon: 'talons', dice: '1d6', move: 3, retreatAt: 0, fireResist: true, clockwork: true },
   thornbeast:   { cast: 'thornbeast',    name: 'Thorn beast',   hp: 16, armor: 10, finesse: 25, skills: { swing: 60, aim: 0 }, weapon: 'vines', dice: '1d8', move: 3, retreatAt: 0 },
   bramble:      { cast: 'bramble',       name: 'Bramble',       hp: 26, armor: 5, finesse: 45, skills: { swing: 30, aim: 60 }, weapon: 'thornbolt', dice: '1d6', move: 3, retreatAt: 0, range: 5, summoner: true },
+  mouse:        { cast: 'mouse',         name: 'Windup mouse',  hp: 1, armor: 0, finesse: 75, skills: { swing: 45, aim: 0 }, weapon: 'teeth', dice: '1d4', move: 6, retreatAt: 0, clockwork: true },
+  windcat:      { cast: 'windcat',       name: 'Windup cat',    hp: 6, armor: 5, finesse: 65, skills: { swing: 55, aim: 0 }, weapon: 'claws', dice: '1d6', move: 5, retreatAt: 0, clockwork: true },
+  bolt:         { cast: 'bolt',          name: 'Bolt',          hp: 12, armor: 10, finesse: 55, skills: { swing: 55, aim: 0 }, weapon: 'fangs', dice: '1d6', move: 5, retreatAt: 0, clockwork: true },
+  // Book Three: the clock tower and Wren's workshop
+  knight:       { cast: 'knight',        name: 'Clockwork knight', hp: 14, armor: 30, finesse: 15, skills: { swing: 60, aim: 0 }, weapon: 'sword', dice: '1d8', move: 2, retreatAt: 0, clockwork: true },
+  bear:         { cast: 'bear',          name: 'Brass bear',    hp: 18, armor: 15, finesse: 25, skills: { swing: 60, aim: 0 }, weapon: 'paws', dice: '1d8', move: 3, retreatAt: 0, clockwork: true },
+  bird:         { cast: 'bird',          name: 'Clockwork bird', hp: 4, armor: 5, finesse: 70, skills: { swing: 50, aim: 0 }, weapon: 'beak', dice: '1d4', move: 6, retreatAt: 0, fly: true, clockwork: true },
+  beast:        { cast: 'beast',         name: 'Clockwork beast', hp: 46, armor: 15, finesse: 25, skills: { swing: 60, aim: 55 }, weapon: 'gears', dice: '2d6', range: 4, move: 3, retreatAt: 0, boss: true, sweepDice: '1d10', summoner: true, summonKind: 'mouse', clockwork: true, big: true, restTurns: 3 },
+  wren:         { cast: 'wren',          name: 'Wren',          hp: 10, armor: 10, finesse: 50, skills: { swing: 45, aim: 50, fingers: 70 }, weapon: 'wrench', dice: '1d6', move: 4, retreatAt: 0 },
   troll:        { cast: 'mossback',      name: 'Mossback',      hp: 18, armor: 5, finesse: 20, skills: { swing: 55, aim: 0 }, weapon: 'fists', dice: '1d8', move: 3, retreatAt: 0 },
 };
 
 // Armor from what a kid is wearing.
-export const ARMOR = { bucket: 5, ironcap: 10, hood: 0, padded: 5, potlid: 5, buckler: 10 };
+export const ARMOR = { weldmask: 10, bucket: 5, ironcap: 10, hood: 0, padded: 5, potlid: 5, buckler: 10, helmet: 15, roundshield: 15, chainshirt: 10 };
 export function armorOf(gear) {
   let a = 0;
   for (const k in gear) a += ARMOR[gear[k]] || 0;

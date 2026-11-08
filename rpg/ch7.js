@@ -19,8 +19,66 @@ export const TEXT = {
 };
 
 export const FIGHTS = {
+  // A small, optional fight: two young wolves on the hill path (sneak past them, or wake them up).
+  scouts: {
+    id: 'ch7-scouts',
+    xpKey: 'den',
+    xp: 3, xpWhy: 'You chased off the young wolves!',
+    mode: 'hp',
+    map: [
+      'ttt..t..ttt',
+      't.........t',
+      '...b...b...',
+      '...........',
+      '..L.....L..',
+      '...........',
+      't.........t',
+      'ttt.....ttt',
+    ],
+    units: [
+      { id: 'hero', side: 'hero', ai: 'player', x: 5, y: 6 },
+      { id: 's1', monster: 'wolf', name: 'Young wolf', x: 4, y: 1 },
+      { id: 's2', monster: 'wolf', name: 'Young wolf', x: 6, y: 1 },
+    ],
+    team: { from: 'party', exclude: ['inkwing'], spots: [{ x: 4, y: 6 }, { x: 6, y: 6 }, { x: 3, y: 6 }, { x: 7, y: 6 }, { x: 4, y: 7 }, { x: 6, y: 7 }] },
+    roundCap: 10, capResult: 'win', boost: { hp: 4, skill: 10 },
+    taught: LEARNED, skipHeroFirst: true,
+    meets: ['wolf'],
+    then: { win: 'den_win', lose: 'den_lose' },
+  },
+  // A small, optional fight: crows swoop in when you splash into the creek.
+  creekcrows: {
+    id: 'ch7-creekcrows',
+    xpKey: 'stones',
+    xp: 3, xpWhy: 'You shooed the snack thieves!',
+    mode: 'hp',
+    map: [
+      '...........',
+      '.b.~~~~~.b.',
+      '...~...~...',
+      '...~~.~~...',
+      '...........',
+      '.L.......L.',
+      '...........',
+      'tt.......tt',
+    ],
+    units: [
+      { id: 'hero', side: 'hero', ai: 'player', x: 5, y: 6 },
+      { id: 'q1', monster: 'crow', name: 'Crow', x: 4, y: 2 },
+      { id: 'q2', monster: 'crow', name: 'Crow', x: 6, y: 2 },
+      { id: 'q3', monster: 'crow', name: 'Crow', x: 5, y: 0 },
+    ],
+    team: { from: 'party', exclude: ['inkwing'], spots: [{ x: 4, y: 6 }, { x: 6, y: 6 }, { x: 3, y: 6 }, { x: 7, y: 6 }, { x: 4, y: 7 }, { x: 6, y: 7 }] },
+    roundCap: 10, capResult: 'win', boost: { hp: 3, skill: 10 },
+    taught: LEARNED, skipHeroFirst: true,
+    meets: ['crow'],
+    events: [{ round: 0, type: 'say', lines: [{ who: 'pim', text: 'Crows can fly over the water! Slingshots and bows can reach them there.' }] }],
+    then: { win: 'stones_win', lose: 'stones_lose' },
+  },
+
   wolves: {
     id: 'ch7-wolves',
+    xp: 5,
     mode: 'hp',
     map: [
       'tt.t...t.tt',
@@ -92,12 +150,12 @@ export const SCENES = {
       { who: 'nell', text: 'Look at the crows. Hundreds of them. They\'re all flying toward that tower.' },
     ],
     set: { sawTower: true },
-    next: 'map2',
+    next: 'den',
   },
   hills_slide: {
     hurt: 1,
     lines: [{ who: 'narrator', text: 'Whoops! {name} slides all the way down on the seat of their pants. Hollis laughs so hard he has to sit down.' }],
-    next: 'map2',
+    next: 'den',
   },
   creek: {
     lines: [
@@ -106,18 +164,94 @@ export const SCENES = {
     ],
     choices: [
       { label: 'Try to catch the big fish', go: 'fish' },
-      { label: 'Keep walking', go: 'map2c' },
+      { label: 'Keep walking', go: 'stones' },
     ],
   },
   fish: { check: { skill: 'fingers', help: 'tobin', label: 'Catch the big fish', great: 'fish_win', ok: 'fish_win', miss: 'fish_splash' } },
   fish_win: {
     lines: [{ who: 'narrator', text: 'Splash! {name} pulls out a fish as big as Tobin. The fisherman cheers and pays you.' }],
     give: { coins: 5 },
-    next: 'map2c',
+    next: 'stones',
   },
   fish_splash: {
     lines: [{ who: 'narrator', text: 'The fish pulls {name} right into the creek! Everybody gets splashed. The fisherman laughs and pays you anyway.' }],
     give: { coins: 2 },
+    next: 'stones',
+  },
+  // Puzzle or fight: two young wolves asleep on the path.
+  den: {
+    lines: [
+      { who: 'narrator', text: 'Halfway down the far side of the hill, two young wolves are curled up asleep, right in the middle of the path.' },
+      { who: 'nell', text: '(whispering) We could tiptoe past. Or go the long way through the brambles. Or... wake them up.' },
+    ],
+    choices: [
+      { label: 'Tiptoe past', go: 'den_sneak' },
+      { label: 'Take the long way (ouch, prickles)', go: 'den_long' },
+      { label: 'Wake them up and fight', go: 'fight:scouts' },
+    ],
+  },
+  den_sneak: { check: { skill: 'sneak', help: 'nell', label: 'Tiptoe past the sleeping wolves', great: 'den_snuck', ok: 'den_snuck', miss: 'den_woke' } },
+  den_snuck: {
+    xpKey: 'den',
+    xp: 3, xpWhy: 'You tiptoed past the wolves! That counts as winning.',
+    lines: [{ who: 'narrator', text: 'Tiptoe, tiptoe. One wolf snores. The other one twitches its paw, dreaming. Nobody wakes up.' }],
+    next: 'map2',
+  },
+  den_woke: {
+    lines: [{ who: 'narrator', text: 'SNAP! Tobin steps on a stick. Two pairs of yellow eyes pop open. Grrrr!' }],
+    next: 'fight:scouts',
+  },
+  den_long: {
+    hurt: 1,
+    lines: [{ who: 'narrator', text: 'The long way is full of prickly brambles. Ouch, ouch, OUCH. But nobody wakes the wolves.' }],
+    next: 'map2',
+  },
+  den_win: {
+    lines: [{ who: 'narrator', text: 'The young wolves yip and run off over the hill. Hollis puffs out his chest. "We did that."' }],
+    next: 'map2',
+  },
+  den_lose: {
+    lines: [{ who: 'narrator', text: 'The young wolves chase the kids all the way down the hill, then get bored and wander off. Phew.' }],
+    next: 'map2',
+  },
+  // Puzzle or fight: stepping stones across the creek.
+  stones: {
+    lines: [
+      { who: 'narrator', text: 'The path crosses Silver Creek on stepping stones. Some of the stones wobble. Crows watch from a dead tree. They look hungry for snacks.' },
+      { who: 'juni', text: 'Wobbly stones are clean. Stones that never move get covered in green moss. Step on the mossy ones!' },
+    ],
+    choices: [
+      { label: 'Step on the green mossy stone', go: 'stones2' },
+      { label: 'Step on the shiny clean stone', go: 'stones_splash' },
+      { label: 'Jump! Skip the first stone', go: 'stones_splash' },
+    ],
+  },
+  stones2: {
+    lines: [{ who: 'narrator', text: 'Squish. The mossy stone doesn\'t move at all. Two more stones to the other side: a gray one with moss on top, and a pale one with none.' }],
+    choices: [
+      { label: 'The pale stone with no moss', go: 'stones_splash' },
+      { label: 'The gray stone with moss on top', go: 'stones_across' },
+    ],
+  },
+  stones_across: {
+    xpKey: 'stones',
+    xp: 1, xpWhy: 'You solved the stepping-stone puzzle!',
+    lines: [{ who: 'narrator', text: 'Squish, squish, hop! Everyone crosses with dry feet. The crows grumble and stay in their tree.' }],
+    next: 'map2c',
+  },
+  stones_splash: {
+    lines: [
+      { who: 'narrator', text: 'WOBBLE... SPLASH! Down goes {name}, and the snack bag goes flying!' },
+      { who: 'narrator', text: 'CAW! CAW! The crows dive for the snacks!' },
+    ],
+    next: 'fight:creekcrows',
+  },
+  stones_win: {
+    lines: [{ who: 'narrator', text: 'The crows flap away with nothing. Tobin hugs the snack bag. "MY snacks."' }],
+    next: 'map2c',
+  },
+  stones_lose: {
+    lines: [{ who: 'narrator', text: 'The crows fly off with one cookie. Just one. Tobin will talk about that cookie for weeks.' }],
     next: 'map2c',
   },
   map2: {

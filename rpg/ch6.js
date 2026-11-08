@@ -1,4 +1,4 @@
-// Chapter 6: Home Again. The party, the town, the shop, side jobs, level 5, and the letter from B.
+// Chapter 6: Home Again. The party, the town, the shop, side jobs, and the letter from B.
 // Text uses {name} for the hero's name. No em dashes.
 import CH5 from './ch5.js';
 
@@ -212,7 +212,7 @@ export const SCENES = {
       { who: 'narrator', text: 'Nobody knows. The world is bigger than Millbrook and Whisper Woods. Much bigger. And somewhere out there is B.' },
       { who: 'hollis', text: '{name}? I think we have another adventure coming.' },
     ],
-    levelUp: 'stat',
+    levelUp: true,
     next: 'finale',
   },
   finale: {

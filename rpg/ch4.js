@@ -21,6 +21,8 @@ const LEARNED = { ...CH3.LEARNED, area: false };
 export const FIGHTS = {
   door: {
     id: 'ch4-door',
+    xpKey: 'door',
+    xp: 5,
     mode: 'hp',
     map: [
       'ttttt.ttttt',
@@ -46,6 +48,7 @@ export const FIGHTS = {
   },
   tunnel: {
     id: 'ch4-tunnel',
+    xp: 7, xpWhy: 'A hard fight, and you won it!',
     mode: 'hp',
     map: [
       'ttttttttttt',
@@ -88,6 +91,8 @@ export const SCENES = {
     ],
   },
   back: {
+    xpKey: 'door',
+    xp: 5, xpWhy: 'You found a secret way in! No fight needed.',
     lines: [
       { who: 'narrator', text: 'Around the far side of the hill, behind a bush, there\'s a tiny door that smells like cookies.' },
       { who: 'sniffle', text: 'Knock three times, then sneeze. Achoo! See? Open!', if: 'party:sniffle' },
@@ -110,6 +115,8 @@ export const SCENES = {
   },
   front_sneak: { check: { skill: 'sneak', help: 'nell', label: 'Sneak past Pudge', great: 'front_snuck', ok: 'front_snuck', miss: 'front_caught' } },
   front_snuck: {
+    xpKey: 'door',
+    xp: 5, xpWhy: 'You sneaked past Pudge! That counts as winning!',
     lines: [{ who: 'narrator', text: 'Pudge turns around to scratch his back on the door frame, and the kids slip right past him into the dark.' }],
     next: 'tunnels',
   },
@@ -122,6 +129,8 @@ export const SCENES = {
   },
   front_talk: { check: { skill: 'talk', help: 'pim', label: 'Make friends with Pudge', great: 'pudge_friend', ok: 'pudge_friend', miss: 'pudge_grumpy' } },
   pudge_friend: {
+    xpKey: 'door',
+    xp: 5, xpWhy: 'You made a friend instead of fighting!',
     lines: [
       { who: 'hero', text: 'Hi, Pudge. Do you want a snack? We have plenty.' },
       { who: 'pudge', text: 'A snack? For ME? Nobody shares with Pudge. Grubjaw eats all the good stuff.' },
@@ -285,11 +294,12 @@ export const SCENES = {
     lines: [
       { who: 'narrator', text: 'Out under the stars, the kids rest. Tobin shares the snacks he saved in his pockets.' },
       { who: 'pim', text: 'One more day. Then we get Juni.' },
+      { who: 'hollis', text: 'Hey {name}, want to learn my secret trick? If a roll goes wrong, flip the two dice around. 82 becomes 28!' },
+      { who: 'narrator', text: 'New talent: Flip the dice! Once each fight, if you miss, you can swap the two dice.' },
     ],
     heal: true,
     give: { talent: 'flip' },
     levelUp: true,
-    talentLine: 'New talent: Flip the dice! Once each fight, if you miss, you can swap the two dice. 82 becomes 28!',
     next: 'night',
   },
   night: {

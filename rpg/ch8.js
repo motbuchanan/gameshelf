@@ -16,8 +16,36 @@ export const TEXT = {
 };
 
 export const FIGHTS = {
+  // A small, optional fight: two hungry wolves sniffing at Turnip the goat.
+  goatwolves: {
+    id: 'ch8-goatwolves',
+    xpKey: 'goatwolves',
+    xp: 3, xpWhy: 'You saved Turnip from the wolves!',
+    mode: 'hp',
+    map: [
+      'tt.t...t.tt',
+      't.........t',
+      '..b.....b..',
+      '...........',
+      '.....L.....',
+      '...........',
+      't.........t',
+      'tt.......tt',
+    ],
+    units: [
+      { id: 'hero', side: 'hero', ai: 'player', x: 5, y: 6 },
+      { id: 'g1', monster: 'wolf', name: 'Hungry wolf', x: 3, y: 1 },
+      { id: 'g2', monster: 'wolf', name: 'Hungry wolf', x: 7, y: 1 },
+    ],
+    team: { from: 'party', exclude: ['inkwing'], spots: [{ x: 4, y: 6 }, { x: 6, y: 6 }, { x: 3, y: 6 }, { x: 7, y: 6 }, { x: 4, y: 7 }, { x: 6, y: 7 }] },
+    roundCap: 10, capResult: 'win', boost: { hp: 4, skill: 10 },
+    taught: CH7.LEARNED, skipHeroFirst: true,
+    then: { win: 'goat_saved', lose: 'goat_lose' },
+  },
+
   crows: {
     id: 'ch8-crows',
+    xp: 5,
     mode: 'hp',
     map: [
       'tt.......tt',
@@ -41,7 +69,7 @@ export const FIGHTS = {
       { id: 'c8', monster: 'crow', name: 'Crow', x: 6, y: 3 },
     ],
     team: { from: 'party', exclude: ['inkwing'], spots: [{ x: 3, y: 6 }, { x: 7, y: 6 }, { x: 2, y: 7 }, { x: 8, y: 7 }, { x: 1, y: 6 }, { x: 9, y: 6 }] },
-    roundCap: 12, capResult: 'win', boost: { hp: 2, skill: 14 },
+    roundCap: 12, capResult: 'win', boost: { hp: 2, skill: 10 },
     taught: CH7.LEARNED, skipHeroFirst: true,
     meets: ['crow'],
     events: [{ round: 0, type: 'say', lines: [{ who: 'pim', text: 'Crows can fly over the water! Swords can\'t reach them out there. Use slingshots, bows and Spark, or wait for them to swoop in close.' }] }],
@@ -53,7 +81,7 @@ const R1 = (id, q, opts, right) => ({
   lines: [{ who: 'mossback', text: q }],
   choices: opts.map((o, k) => ({ label: o, go: k === right ? id + '_ok' : id + '_no' })),
 });
-const OK = (next, line) => ({ lines: [{ who: 'mossback', text: line }], next });
+const OK = (next, line) => ({ xp: 1, xpKey: 'riddle-' + next, xpWhy: 'You solved a riddle!', lines: [{ who: 'mossback', text: line }], next });
 const NO = (next, line) => ({ lines: [{ who: 'mossback', text: line }], set: { riddleMiss: true }, next });
 
 export const SCENES = {
@@ -115,6 +143,7 @@ export const SCENES = {
   },
   town: {
     hub: {
+      place: 'Riverbend',
       text: 'Riverbend! Tap someone to talk, or visit the shop. Tap Done when you are ready to go on.',
       people: [
         { id: 'library', who: 'pim', label: 'The library', go: 'library' },
@@ -157,11 +186,33 @@ export const SCENES = {
   goat: { nextIf: [{ if: 'goat_done', go: 'goat_again' }], next: 'goat_ask' },
   goat_ask: {
     lines: [{ who: 'narrator', text: 'A girl is crying. "My goat, Turnip, ran away! He\'s somewhere in town!"' }],
-    check: { skill: 'track', help: 'nell', label: 'Follow the goat tracks', great: 'goat_found', ok: 'goat_found', miss: 'goat_silly' },
+    check: { skill: 'track', help: 'nell', label: 'Follow the goat tracks', great: 'goat_found', ok: 'goat_found', miss: 'goat_far' },
   },
   goat_again: { lines: [{ who: 'narrator', text: 'Turnip the goat is home, eating a hat. Everyone is happy except the hat.' }], next: 'town' },
   goat_found: { lines: [{ who: 'narrator', text: 'Turnip is in the bakery, eating a pie. The girl hugs him and gives you coins.' }], give: { coins: 4 }, set: { goat_done: true }, next: 'town' },
-  goat_silly: { lines: [{ who: 'narrator', text: 'You can\'t find Turnip. Then Turnip finds YOU, and headbutts {name} into a haystack. Found him!' }], give: { coins: 3 }, set: { goat_done: true }, next: 'town' },
+  goat_far: {
+    lines: [
+      { who: 'narrator', text: 'Turnip isn\'t anywhere in town. You follow the bleats out past the fence... and stop.' },
+      { who: 'narrator', text: 'Turnip is backed up against a rock. Two hungry wolves are sniffing at him. BAAA!' },
+    ],
+    choices: [
+      { label: 'Scare them off (look big and loud!)', go: 'goat_scare' },
+      { label: 'Fight them', go: 'fight:goatwolves' },
+    ],
+  },
+  goat_scare: { check: { skill: 'brave', help: 'hollis', label: 'Look big and loud to scare the wolves', great: 'goat_scared', ok: 'goat_scared', miss: 'goat_noscare' } },
+  goat_scared: {
+    xpKey: 'goatwolves',
+    xp: 3, xpWhy: 'You scared the wolves away! That counts as winning.',
+    lines: [{ who: 'narrator', text: '{name} waves both arms and yells "SHOO!" so loud that a bird falls off a branch. The wolves run for it.' }],
+    next: 'goat_saved',
+  },
+  goat_noscare: {
+    lines: [{ who: 'narrator', text: '{name} yells "Shoo!" but it comes out as a squeak. The wolves just look at you. Grrr.' }],
+    next: 'fight:goatwolves',
+  },
+  goat_saved: { lines: [{ who: 'narrator', text: 'Turnip trots home right behind you, very proud of himself. The girl hugs him and gives you coins.' }], give: { coins: 4 }, set: { goat_done: true }, next: 'town' },
+  goat_lose: { lines: [{ who: 'narrator', text: 'The wolves chase everyone back to the fence. Then Turnip headbutts the last wolf right in the bottom. It runs away crying. Go, Turnip!' }], give: { coins: 3 }, set: { goat_done: true }, next: 'town' },
   wheel: { nextIf: [{ if: 'wheel_done', go: 'wheel_again' }], next: 'wheel_ask' },
   wheel_ask: {
     lines: [{ who: 'juni', text: 'The water wheel is jammed. If you lift that beam, I can get the stick out.' }],

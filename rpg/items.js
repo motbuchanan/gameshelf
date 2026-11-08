@@ -3,6 +3,7 @@
 export const WEAPON_USE = {
   slingshot: { skill: 'aim', range: 6 },
   shortbow:  { skill: 'aim', range: 8 },
+  longbow:   { skill: 'aim', range: 8 },
   dagger:    { skill: 'aim', range: 1, quick: true },
   rustknife: { skill: 'aim', range: 1, quick: true },
 };

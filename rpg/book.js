@@ -7,6 +7,7 @@ import save from './save.js';
 import { CAST, GEAR } from './art.js';
 import { GLOSSARY } from './glossary.js';
 import { tileArt } from './board.js';
+import F from './friends.js';
 
 const $ = id => document.getElementById(id);
 let H = { explain() {}, showCard() {} };
@@ -17,6 +18,7 @@ const ROLE = {
   hollis: 'The brave one', nell: 'The sneaky one', pim: 'The clever one',
   tobin: 'The loud one', juni: 'The fixer',
   goblin: 'Monster', goblinarcher: 'Monster', kobold: 'Monster', koboldtrapper: 'Monster', gnoll: 'Big boss',
+  knight: 'Monster', bear: 'Monster', bird: 'Monster', beast: 'Big boss',
 };
 const BIO = {
   tobin: 'The youngest kid in the game, and the loudest. Always "it" when nobody else wants to be.',
@@ -35,7 +37,12 @@ const SHELVES = [
 let shelf = 'kids';
 
 const GEAR_IDS = ['woodsword', 'stick', 'slingshot', 'broomstick', 'dagger', 'club', 'bucket', 'satchel'];
+// Gearwick's real gear joins the shelf once you've seen the smith (Chapter 12).
+const GEAR_IDS_B3 = ['longsword', 'longbow', 'roundshield', 'helmet', 'chainshirt'];
+const GEAR_IDS_WREN = ['wrench', 'weldmask'];
 const PLACE_IDS = ['grass', 'bush', 'mud', 'log', 'tree', 'stream'];
+// The clock tower's floors join the shelf once you've met a clockwork knight (Chapter 13).
+const PLACE_IDS_B3 = ['floor', 'wall', 'crate', 'beltr'];
 const PLAY = [
   { id: 'percentile', name: 'The 100 dice', icon: 'die' },
   { id: 'skill', name: 'Chance squares', icon: 'target', grid: true },
@@ -47,7 +54,9 @@ const PLAY = [
   { id: 'luck', name: 'Luck', icon: 'clover' },
   { id: 'hp', name: 'Hearts', icon: 'heart' },
   { id: 'move', name: 'Steps', icon: 'boot' },
+  { id: 'xp', name: 'XP stars', icon: 'star' },
   { id: 'level', name: 'Level', icon: 'star' },
+  { id: 'talent', name: 'Talents', icon: 'star' },
   { id: 'flags', name: 'Flags', icon: 'flagb' },
   { id: 'turns', name: 'Taking turns', icon: 'turns' },
   { id: 'cover', name: 'Cover', place: 'bush' },
@@ -72,6 +81,12 @@ const PLAY = [
   { id: 'bag', name: 'Your bag', icon: 'book' },
   { id: 'talk', name: 'Talking', icon: 'bubble' },
   { id: 'flying', name: 'Flying', icon: 'feather' },
+  { id: 'friendlevel', name: 'Friends grow too', icon: 'star' },
+  { id: 'hometeam', name: 'Home Team jobs', icon: 'turns' },
+  { id: 'scout', name: 'Scouting', icon: 'feather' },
+  { id: 'stuck', name: 'Stuck and jammed', icon: 'shield' },
+  { id: 'throwing', name: 'Throwing things', icon: 'hammer' },
+  { id: 'fixing', name: 'Fixing', icon: 'hammer' },
 ];
 
 // ---------- who you have met ----------
@@ -100,12 +115,14 @@ function heroEntry() {
 }
 function kidEntries() {
   const s = save.get(), joined = (s && s.party) || [];
+  // Once friends level up (Book Three), each friend's page shows their level.
+  const lvl = id => (s && s.friends && s.friends[id] ? ' · Level ' + F.level(s, id) : '');
   return [heroEntry(), ...CAST.filter(c => c.group === 'kids' && c.id !== 'hero').map(c => ({
-    id: c.id, name: c.name, role: ROLE[c.id], spec: c.spec, bio: BIO[c.id] || c.bio,
+    id: c.id, name: c.name, role: ROLE[c.id] + lvl(c.id), spec: c.spec, bio: BIO[c.id] || c.bio,
   })),
   // Monster friends show up once they join. Town grown-ups show up once you're back in Millbrook.
-  ...CAST.filter(c => c.group === 'friends' && joined.includes(c.id)).map(c => ({ id: c.id, name: c.name, role: c.role, spec: c.spec, bio: c.bio })),
-  ...CAST.filter(c => c.group === 'town' && s && s.flags && (s.flags.ch5 || s.flags.ch2story)).map(c => ({ id: c.id, name: c.name, role: c.role, spec: c.spec, bio: c.bio }))];
+  ...CAST.filter(c => c.group === 'friends' && (joined.includes(c.id) || (['wren', 'dragon'].includes(c.id) && isMet(c.id)))).map(c => ({ id: c.id, name: c.name, role: c.role + lvl(c.id), spec: c.spec, bio: c.bio })),
+  ...CAST.filter(c => c.group === 'town' && s && s.flags && (s.flags.ch5 || s.flags.ch2story) && (!['toymaker', 'peddler', 'gearsmith'].includes(c.id) || isMet(c.id))).map(c => ({ id: c.id, name: c.name, role: c.role, spec: c.spec, bio: c.bio }))];
 }
 function monsterEntries() {
   return CAST.filter(c => c.group === 'monsters').map(c => ({ id: c.id, name: c.name, role: ROLE[c.id], spec: c.spec, bio: c.bio, locked: !isMet(c.id) }));
@@ -166,8 +183,8 @@ function fillShelf() {
       onTap: () => H.showCard({ title: '???', body: 'You have not met this monster yet. Keep adventuring, and when you meet it, its picture shows up here.', extra: silhouette(m.spec) }) })
     : tile({ pic: spriteCanvas(m.spec), name: m.name, role: m.role, cls: 'monster',
       onTap: () => H.showCard({ title: m.name, body: m.bio, prereq: m.role, spec: m.spec }) })));
-  if (shelf === 'gear') GEAR_IDS.forEach(id => add(tile({ pic: gearPic(id), name: GEAR[id].name, onTap: () => H.explain('gear_' + id) })));
-  if (shelf === 'places') PLACE_IDS.forEach(id => add(tile({ pic: placePic(id), name: glossTitle('terrain_' + id, id), onTap: () => H.explain('terrain_' + id) })));
+  if (shelf === 'gear') [...GEAR_IDS, ...(isMet('gearsmith') ? GEAR_IDS_B3 : []), ...(isMet('wren') ? GEAR_IDS_WREN : [])].forEach(id => add(tile({ pic: gearPic(id), name: GEAR[id].name, onTap: () => H.explain('gear_' + id) })));
+  if (shelf === 'places') [...PLACE_IDS, ...(isMet('knight') ? PLACE_IDS_B3 : [])].forEach(id => add(tile({ pic: placePic(id), name: glossTitle('terrain_' + id, id), onTap: () => H.explain('terrain_' + id) })));
   if (shelf === 'powers') {
     P.STATS.forEach(st => add(tile({ pic: I.icon(I.STAT_ICON[st], 56), name: P.STAT_NAME[st], role: I.STAT_WORD[st], cls: 'stat',
       onTap: () => H.explain('stat_' + st) })));

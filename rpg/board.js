@@ -67,6 +67,35 @@ function makeTile(id, v) {
     px(c, 2, 2, 12, 8, '#245a26'); px(c, 3, 1, 10, 10, '#245a26');
     px(c, 4, 2, 4, 3, '#3a7a34'); px(c, 9, 5, 3, 2, '#3a7a34'); px(c, 5, 7, 2, 1, '#1a4a1c');
   }
+  // Book Three: indoors
+  if (id === 'floor' || id === 'beltr' || id === 'beltl' || id === 'crate') {
+    px(c, 0, 0, 16, 16, '#6a6058');
+    px(c, 0, 7, 16, 1, '#4e463e'); px(c, 0, 15, 16, 1, '#4e463e');
+    px(c, (v * 5) % 16, 0, 1, 7, '#4e463e'); px(c, (v * 5 + 8) % 16, 8, 1, 7, '#4e463e');
+    px(c, 3 + v, 3, 2, 1, '#7a7068'); px(c, 10 - v, 11, 2, 1, '#7a7068');
+  }
+  if (id === 'beltr' || id === 'beltl') {
+    px(c, 0, 2, 16, 12, K); px(c, 0, 3, 16, 10, '#3e4652');
+    const dir = id === 'beltr' ? 1 : -1;
+    for (let k = 0; k < 3; k++) {
+      const x0 = ((k * 6 + (frame % 2) * 3 * dir) % 18 + 18) % 18 - 1;
+      for (let j = 0; j < 3; j++) { const xx = dir > 0 ? x0 + j : x0 + 2 - j; px(c, xx, 5 + j, 1, 1, '#e0a92a'); px(c, xx, 10 - j, 1, 1, '#e0a92a'); }
+    }
+    px(c, 0, 3, 16, 1, '#6f7b8c');
+  }
+  if (id === 'crate') {
+    px(c, 2, 3, 12, 11, K); px(c, 3, 4, 10, 9, '#a8703a');
+    px(c, 3, 4, 10, 1, '#d29a58'); px(c, 3, 8, 10, 1, '#6e4220'); px(c, 7, 4, 1, 9, '#6e4220');
+  }
+  if (id === 'wall') {
+    px(c, 0, 0, 16, 16, '#3a3430');
+    px(c, 0, 0, 16, 1, '#5a524a'); px(c, 0, 8, 16, 1, '#2a2420');
+    // a big brass gear set into the wall
+    px(c, 4, 3, 8, 10, '#7a5a1a'); px(c, 3, 4, 10, 8, '#7a5a1a');
+    px(c, 5, 4, 6, 8, '#c49a3a'); px(c, 4, 5, 8, 6, '#c49a3a');
+    px(c, 7, 7, 2, 2, '#3a3430');
+    px(c, 7, 2, 2, 1, '#c49a3a'); px(c, 7, 13, 2, 1, '#c49a3a'); px(c, 2, 7, 1, 2, '#c49a3a'); px(c, 13, 7, 1, 2, '#c49a3a');
+  }
   if (id === 'stream') {
     px(c, 0, 0, 16, 16, '#3a7ac0');
     const o = v % 2 ? 4 : 0;
@@ -75,7 +104,7 @@ function makeTile(id, v) {
   return cv;
 }
 export function tileArt(id, x, y) {
-  const v = id === 'stream' ? (hash(x, y) + frame) % 2 + (y % 2) * 2 : hash(x, y) % 4;
+  const v = id === 'stream' ? (hash(x, y) + frame) % 2 + (y % 2) * 2 : (id === 'beltr' || id === 'beltl') ? frame % 2 : hash(x, y) % 4;
   const k = id + v;
   return TILE_ART[k] || (TILE_ART[k] = makeTile(id, v));
 }
@@ -121,7 +150,17 @@ async function impact(target, lost, big) {
   floater(target.x, target.y, '-' + lost, '#ff6050', big);
 }
 // Anyone newly knocked out or run off fades and floats away instead of vanishing.
+// Second Wind: show it the moment it happens.
+function windCheck() {
+  for (const u of b.units) if (u.windNow) {
+    u.windNow = false;
+    floater(u.x, u.y, 'Second wind! +3', '#7be08a', true);
+    sfx.heal();
+    say(u.id, 'Not yet! Second wind!');
+  }
+}
 function markOuts(before) {
+  windCheck();
   let any = false;
   for (const u of b.units) if (u.out && !u.gone && !before.has(u.id) && !u.outAt) { u.outAt = performance.now(); any = true; }
   if (any) { sfx.knockOut(); juice(560); }
@@ -286,14 +325,19 @@ function playerPanel() {
     </div>
     ${tag ? (u.tricks || []).filter(t => t.left > 0).map(t => `<button id="b-trick-${t.id}" class="btn act trick-btn" type="button">${I.icon(t.heal ? 'heart' : 'burst', 22)} ${esc(t.name)} <span class="trick-left">${Array.from({ length: t.left }, () => I.icon('star', 14)).join('')}</span></button>`).join('') : ''}
     ${tag && b.calm ? `<button id="b-talk" class="btn act trick-btn" type="button">${I.icon('bubble', 22)} Talk <span class="trick-left">${Array.from({ length: b.calm.max }, (_, i) => I.icon('bubble', 14, i >= b.calm.value)).join('')}</span></button>` : ''}
-    ${tag && u.char && u.char.items && u.char.items.potion > 0 && u.flags < u.maxFlags ? `<button id="b-potion" class="btn act trick-btn" type="button">${I.icon('heart', 22)} Drink a potion (${u.char.items.potion})</button>` : ''}
+    ${tag && !bagCount(u) && u.char && u.char.items && u.char.items.potion > 0 && u.flags < u.maxFlags ? `<button id="b-potion" class="btn act trick-btn" type="button">${I.icon('heart', 22)} Drink a potion (${u.char.items.potion})</button>` : ''}
     ${tag && C.canOpenCage(b, u) ? `<button id="b-cage" class="btn act trick-btn" type="button">${I.icon('hammer', 22)} Open the cage!</button>` : ''}
+    ${tag && b.fix && C.canFix(b, u) ? `<button id="b-fix" class="btn act trick-btn" type="button">${I.icon('hammer', 22)} Fix a gear <span class="trick-left">${Array.from({ length: b.fix.max }, (_, i) => I.icon('star', 14, i >= b.fix.value)).join('')}</span></button>` : ''}
+    ${tag && b.fix && !C.canFix(b, u) && b.fix.value < b.fix.max ? `<div class="fix-hint">${I.icon('hammer', 16)} Walk next to the beast to fix its gears (${b.fix.value} of ${b.fix.max} fixed)</div>` : ''}
+    ${tag && bagCount(u) ? `<button id="b-bag" class="btn act trick-btn" type="button">${I.icon('book', 22)} Use your bag</button>` : ''}
     <button id="b-done" class="btn big-btn act" type="button">Done</button>`);
   $('b-help').addEventListener('click', () => { if (!H.isLocked()) H.explain('turns'); });
   (u.tricks || []).forEach(t => { const el = $('b-trick-' + t.id); if (el) el.addEventListener('click', () => { if (!H.isLocked() && playerTurn) { C.useTrick(u, t.id); aimTrick(); } }); });
   if ($('b-talk')) $('b-talk').addEventListener('click', () => { if (!H.isLocked() && playerTurn) playerTalk(); });
   if ($('b-potion')) $('b-potion').addEventListener('click', () => { if (!H.isLocked() && playerTurn) playerPotion(); });
   if ($('b-cage')) $('b-cage').addEventListener('click', () => { if (!H.isLocked() && playerTurn) playerCage(); });
+  if ($('b-fix')) $('b-fix').addEventListener('click', () => { if (!H.isLocked() && playerTurn) playerFix(); });
+  if ($('b-bag')) $('b-bag').addEventListener('click', () => { if (!H.isLocked() && playerTurn) bagPanel(); });
   $('b-done').addEventListener('click', () => { if (!H.isLocked() && playerTurn) endPlayerTurn(); });
 }
 
@@ -391,6 +435,78 @@ async function playerCage() {
   await waitTap('OK');
   H.unlock();
   showPlayerOptions();
+}
+
+// ---------- things from the bag (Book Three) ----------
+const THROW_NAME = { oil: 'Throw the oil can', water: 'Throw water', net: 'Throw the net' };
+const THROW_ICON = { oil: 'hammer', water: 'bubble', net: 'shield' };
+const THROW_WORD = { oil: 'oil can', water: 'bucket of water', net: 'net' };
+let throwing = null;
+// Things to throw (Book Three). When there are any, the bag gets one button so the panel stays short.
+const bagCount = u => (u.char && u.char.items ? C.THROWABLE.reduce((a, k) => a + (u.char.items[k] > 0 ? 1 : 0), 0) : 0);
+function bagPanel() {
+  const u = C.current(b), it = u.char.items;
+  actPanel(`<div class="confirm-h">What do you want from your bag?</div>
+    ${it.potion > 0 && u.flags < u.maxFlags ? `<button id="b-potion" class="btn act trick-btn" type="button">${I.icon('heart', 22)} Drink a potion (${it.potion})</button>` : ''}
+    ${C.THROWABLE.filter(k => it[k] > 0).map(k => `<button id="b-throw-${k}" class="btn act trick-btn" type="button">${I.icon(THROW_ICON[k], 22)} ${THROW_NAME[k]} (${it[k]})</button>`).join('')}
+    <button id="b-cancel" class="btn act" type="button">Not yet</button>`);
+  if ($('b-potion')) $('b-potion').addEventListener('click', () => { if (!H.isLocked() && playerTurn) playerPotion(); });
+  C.THROWABLE.forEach(k => { const el = $('b-throw-' + k); if (el) el.addEventListener('click', () => { if (!H.isLocked() && playerTurn) aimThrow(k); }); });
+  $('b-cancel').addEventListener('click', () => { if (!H.isLocked()) showPlayerOptions(); });
+}
+function aimThrow(item) {
+  const u = C.current(b);
+  const list = C.throwTargets(b, u).filter(e => !b.scared[e.id]);
+  if (!list.length) { say('hero', `Nothing is close enough (or it's already stuck). You can throw the ${THROW_WORD[item]} ${C.THROW_RANGE} squares.`); return; }
+  throwing = item; aiming = false;
+  overlay.reach = []; overlay.targets = [];
+  overlay.aim = list.map(e => ({ x: e.x, y: e.y }));
+  draw();
+  say('hero', `Tap a monster to throw the ${THROW_WORD[item]} at it.`);
+  actPanel(`<button id="b-cancel" class="btn act" type="button">Not yet</button>`);
+  $('b-cancel').addEventListener('click', () => { if (!H.isLocked()) { throwing = null; overlay.aim = null; showPlayerOptions(); } });
+}
+async function doThrow(target) {
+  const u = C.current(b), item = throwing;
+  throwing = null; overlay.aim = null;
+  H.lock(); actPanel('');
+  const fx = C.throwItem(b, u, target, item);
+  sfx.tap();
+  if (fx && fx.turns) { flash(target); sfx.calm(); }
+  floater(target.x, target.y, fx ? fx.tag : 'Miss', '#ffd060', true);
+  strip(); draw();
+  if (fx) say(target.id, fx.say);
+  await wait(fast ? 10 : 1000);
+  if (fx && fx.turns && !b.taught.stuck) { b.taught.stuck = true; say('pim', T.STUCK_TEACH || `${target.name} is stuck! It will lose its next turn.`); await waitTap('Got it!'); }
+  H.unlock();
+  showPlayerOptions();
+}
+// Fixing the beast: roll Nimble fingers. Each good roll fixes one glowing gear.
+async function playerFix() {
+  const u = C.current(b);
+  H.lock(); actPanel('');
+  const roll = await rollPop(u, C.fixChance(b, u), 'You fix a glowing gear', true, { luck: true });
+  const res = C.fix(b, u, roll);
+  const beast = C.unitById(b, b.fix.target);
+  if (res.gain) { sfx.calm(); if (beast) { beast.spec = { ...beast.spec, fixed: b.fix.value }; flash(beast); floater(beast.x, beast.y, 'Fixed!', '#9be08a', true); } }
+  else if (beast) floater(beast.x, beast.y, 'Sproing!', '#f3e6cc');
+  strip(); draw();
+  const lines = T.FIX_LINES || [];
+  say(b.fix.target, res.gain ? (lines[Math.min(b.fix.value, lines.length) - 1] || 'Hey!') : (T.FIX_FAIL || 'Ha! Too tricky!'));
+  await waitTap('OK');
+  H.unlock();
+  if (b.result) { playerTurn = false; finishTurn(); return; }
+  showPlayerOptions();
+}
+// Moving floors: slide whoever ends a turn on one.
+async function slideBelt(u) {
+  const moved = C.slide(b, u);
+  if (!moved) return;
+  if (!b.taught.belt && T.BELT_TEACH) { b.taught.belt = true; say('juni', T.BELT_TEACH); }
+  await animateWalk(u, moved.from.x, moved.from.y, [moved.to]);
+  floater(u.x, u.y, 'Whee!', '#e0a92a');
+  draw();
+  await wait(fast ? 10 : 350);
 }
 
 // ---------- cards ----------
@@ -493,7 +609,7 @@ async function rollPop(actor, chanceValue, title, isPlayer, opts = {}) {
     }
     if (canLuck && !b.taught.luck) { b.taught.luck = true; say('hollis', T.LUCK_TEACH); }
     const again = await new Promise(res => {
-      const clovers = hero ? Array.from({ length: P.LUCK_MAX }, (_, i) => I.icon('clover', 18, i >= hero.luck)).join('') : '';
+      const clovers = hero ? Array.from({ length: P.luckMax(hero) }, (_, i) => I.icon('clover', 18, i >= hero.luck)).join('') : '';
       $('br-btn').innerHTML = canLuck
         ? `<div class="row two"><button id="b-ok" class="btn" type="button">Keep it</button><button id="b-luck" class="btn big-btn" type="button">${I.icon('clover', 22)} Roll again</button></div><div class="br-clovers">${clovers}</div>`
         : '<button id="b-ok" class="btn big-btn" type="button">OK</button>';
@@ -604,10 +720,13 @@ async function computerTurn(u) {
   const act = plan.action && plan.action.type;
   if (act === 'area' && plan.action.trick) C.useTrick(u, plan.action.trick);
   if (act === 'scared') {
-    say(u.id, T.SCARED || 'Fire! FIRE! Keep it away from me!');
-    floater(u.x, u.y, 'Scared!', '#ffd060');
+    // Home Team tricks (a trap, a sleepy monster) use the same "skip a turn" as fire.
+    const why = (b.skipWhy || {})[u.id];
+    say(u.id, why ? why.say : (T.SCARED || 'Fire! FIRE! Keep it away from me!'));
+    floater(u.x, u.y, why ? why.tag : 'Scared!', '#ffd060');
     await wait(fast ? 10 : 1200);
     C.afterTurn(b, u, plan);
+    await slideBelt(u);
     H.unlock();
     return;
   }
@@ -666,6 +785,7 @@ async function computerTurn(u) {
     await wait(fast ? 10 : 1000);
   }
   C.afterTurn(b, u, plan);
+  if (!b.result) await slideBelt(u);
   H.unlock();
 }
 
@@ -735,9 +855,11 @@ async function playerAttack(target) {
   showPlayerOptions();
 }
 
-function endPlayerTurn() {
+async function endPlayerTurn() {
   playerTurn = false; confirmTarget = null;
   overlay.reach = []; overlay.targets = [];
+  const u = C.current(b);
+  if (u && !b.result) { H.lock(); await slideBelt(u); H.unlock(); }
   finishTurn();
 }
 
@@ -787,7 +909,8 @@ async function simpleEvent(ev) {
 // Who goes first: the player rolls a d20 in the tray; everyone else's roll shows in the list.
 async function initiative() {
   H.lock();
-  say(def.surprise ? 'nell' : 'hollis', def.surprise ? (T.SURPRISE || 'We snuck up on them! Every one of us goes before the monsters.') : (T.INIT_TEACH || 'Everybody roll to see who goes first!'));
+  const sayer = id => (C.unitById(b, id) ? id : 'hero');
+  say(def.surprise ? sayer('nell') : sayer('hollis'), def.lookout ? 'Tobin spotted them from the lookout. Our team goes first!' : def.surprise ? (T.SURPRISE || 'We snuck up on them! Every one of us goes before the monsters.') : (T.INIT_TEACH || 'Everybody roll to see who goes first!'));
   await waitTap('Roll!', 'b-init');
   const me = C.unitById(b, 'hero');
   const list = C.rollInitiative(b, undefined, !!def.surprise);
@@ -797,7 +920,8 @@ async function initiative() {
   $('bresult').innerHTML = `<div class="br-title">Who goes first?</div><div class="br-body"><div class="br-side"><div class="br-tier" id="br-tier">Rolling...</div></div></div><div class="init-list" id="init-list"></div><div id="br-btn"></div>`;
   await new Promise(r => requestAnimationFrame(r));
   await dice.rollSet([{ sides: 20, value: mine.roll }]);
-  $('br-tier').innerHTML = `You rolled ${mine.roll}${mine.bonus ? `, plus ${mine.bonus} for quick feet` : ''}: <b>${mine.total}</b>`;
+  const look = b.initPlus || 0, quick = mine.bonus - look;
+  $('br-tier').innerHTML = `You rolled ${mine.roll}${quick ? `, plus ${quick} for being quick` : ''}${look ? `, plus ${look} from Tobin's lookout` : ''}: <b>${mine.total}</b>`;
   $('init-list').innerHTML = list.map((e, i) => `<div class="init-row ${e.side}${e.id === 'hero' ? ' me' : ''}"><span class="init-n">${i + 1}</span><canvas width="32" height="40" data-u="${e.id}"></canvas><span class="init-name">${esc(e.id === 'hero' ? 'You' : C.unitById(b, e.id).name)}</span><span class="init-tot">${e.total}</span></div>`).join('');
   $('init-list').querySelectorAll('canvas').forEach(cv => S.draw(cv.getContext('2d'), C.unitById(b, cv.dataset.u).spec, 0, 0, 1, 0));
   await new Promise(res => { $('br-btn').innerHTML = '<button id="b-ok" class="btn big-btn" type="button">Let\'s go!</button>'; $('b-ok').addEventListener('click', res, { once: true }); });
@@ -837,6 +961,10 @@ function onTap(ev) {
   if (!b || H.isLocked() || b.result) return;
   const t = tileAt(ev); if (!t) return;
   const who = C.unitAt(b, t.x, t.y);
+  if (playerTurn && throwing) {
+    if (who && overlay.aim && overlay.aim.some(p => p.x === t.x && p.y === t.y)) return doThrow(who);
+    return;
+  }
   if (playerTurn && aiming) {
     if (overlay.aim && overlay.aim.some(p => p.x === t.x && p.y === t.y)) return aimAt(t.x, t.y);
     return;
@@ -873,7 +1001,7 @@ export function start(fightDef, texts, hero) {
   def = fightDef; T = texts;
   b = C.createBattle(fightDef, hero);
   overlay = { reach: [], targets: [], area: [] };
-  heroFirstDone = !!fightDef.skipHeroFirst; heroOutSaid = false; playerTurn = false; anim = null; floaters = []; aiming = false; aimCenter = null;
+  heroFirstDone = !!fightDef.skipHeroFirst; heroOutSaid = false; playerTurn = false; anim = null; floaters = []; aiming = false; aimCenter = null; throwing = null;
   wire();
   return new Promise(res => {
     done = res;

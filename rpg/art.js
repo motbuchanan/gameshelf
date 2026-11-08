@@ -49,6 +49,14 @@ export const PAL = {
   vine: ['#2c4a1e', '#4a7a2c', '#74a84a'],
   thorn: ['#3a2a14', '#5a4020', '#7a5a30'],
   spot: '#4a3420',
+  copper: ['#6a3418', '#b0602c', '#e8925a'],
+  catbrass: ['#5a4a2a', '#9a8450', '#d0bc84'],
+  chain: ['#4e5662', '#8a94a2', '#c8d0da'],
+  dragon: ['#2a6a5a', '#3fa58a', '#7ad8b8'],
+  dbelly: ['#c8a050', '#f0d080', '#fff0b8'],
+  shell: ['#b8a890', '#e8dcc8', '#fffaf0'],
+  silver: ['#6a7480', '#b8c2cc', '#f4f8fc'],
+  bearbrass: ['#6a4a1a', '#a87a34', '#dcb060'],
   shine: '#ffffff',
 };
 
@@ -92,18 +100,26 @@ export const GEAR = {
   shortbow:    { slot: 'mainHand', name: 'Short bow', kind: 'bow', mat: 'wood', dice: '1d6' },
   spear:       { slot: 'mainHand', name: 'Spear', kind: 'spear', len: 22, mat: 'wood', dice: '1d6' },
   flail:       { slot: 'mainHand', name: 'Spiked flail', kind: 'flail', mat: 'iron', dice: '1d10' },
+  wrench:      { slot: 'mainHand', name: 'Big wrench', kind: 'wrench', len: 11, mat: 'iron', dice: '1d6' },
+  // Gearwick's smith: real grown-up gear (Book Three)
+  longsword:   { slot: 'mainHand', name: 'Knight sword', kind: 'blade', len: 15, bladeW: 2, mat: 'steel', tip: 'point', guard: 'gold', guardW: 9, grip: 'leather', pommel: 'gold', dice: '1d10' },
+  longbow:     { slot: 'mainHand', name: 'Long bow', kind: 'bow', mat: 'oldwood', dice: '1d8' },
   // off hand
   potlid:      { slot: 'offHand', name: 'Pot lid', kind: 'round', r: 4, mat: 'tin', rim: 'iron', boss: 'iron' },
   buckler:     { slot: 'offHand', name: 'Wooden buckler', kind: 'round', r: 4.6, mat: 'wood', rim: 'iron', boss: 'gold' },
   book:        { slot: 'offHand', name: "Gran's book of tricks", kind: 'book', mat: 'bookred' },
   net:         { slot: 'offHand', name: 'Snare net', kind: 'netbundle', mat: 'net' },
+  roundshield: { slot: 'offHand', name: 'Round shield', kind: 'round', r: 5.4, mat: 'wood', rim: 'steel', boss: 'steel' },
   // head
   bucket:      { slot: 'head', name: 'Bucket helmet', kind: 'bucket', mat: 'tin' },
   ironcap:     { slot: 'head', name: 'Iron cap', kind: 'ironcap', mat: 'iron' },
   hood:        { slot: 'head', name: 'Hood', kind: 'hood', mat: 'hood' },
+  helmet:      { slot: 'head', name: 'Knight helmet', kind: 'ironcap', mat: 'steel' },
+  weldmask:    { slot: 'head', name: 'Silver mask', kind: 'mask', mat: 'silver' },
   // body
   tunic:       { slot: 'body', name: 'Tunic', kind: 'tunic' },
   padded:      { slot: 'body', name: 'Padded jacket', kind: 'padded', mat: 'padded' },
+  chainshirt:  { slot: 'body', name: 'Chain shirt', kind: 'padded', mat: 'chain' },
   // back
   satchel:     { slot: 'back', name: 'Satchel', kind: 'satchel' },
   quiver:      { slot: 'back', name: 'Quiver', kind: 'quiver' },
@@ -171,6 +187,15 @@ function drawMain(g, item, hx, hy, ang) {
       for (let t = -9; t <= 9; t++) { const [x, y] = at(0, 0); g.set(x + 2, y + t, 'rope'); }
       break;
     }
+    case 'wrench': {
+      const [x0, y0] = at(-2), [x1, y1] = at(item.len - 2);
+      line(g, x0, y0, x1, y1, 2, item.mat);
+      // open jaws at the end
+      const [a1, b1] = at(item.len - 1, -2), [a2, b2] = at(item.len + 1, -2), [c1, d1] = at(item.len - 1, 2), [c2, d2] = at(item.len + 1, 2);
+      line(g, a1, b1, a2, b2, 1, item.mat); line(g, c1, d1, c2, d2, 1, item.mat);
+      const [m1, n1] = at(item.len - 1, -1), [m2, n2] = at(item.len - 1, 1); g.set(m1, n1, item.mat); g.set(m2, n2, item.mat);
+      break;
+    }
     case 'flail': {
       line(g, ...at(-2), ...at(6), 2, 'leather');
       // chain links then the spiked ball
@@ -218,6 +243,14 @@ function headgear(g, item, b, cx, top) {
     rect(g, cx - 8, top + 6 + b, 18, 2, 'iron');
     rect(g, cx, top + 8 + b, 2, 5, 'iron');
     for (const rx of [cx - 6, cx - 2, cx + 3, cx + 7]) g.set(rx, top + 6 + b, 'tin');
+  } else if (item.kind === 'mask') {
+    // A welding mask: a silver plate over the whole face with a dark window to see through.
+    ellipse(g, cx + 0.5, top + 8 + b, 7.6, 7.6, item.mat);
+    rect(g, cx - 5, top + 7 + b, 11, 3, 'eye');
+    g.set(cx - 4, top + 7 + b, 'glow'); g.set(cx + 4, top + 7 + b, 'glow');
+    rect(g, cx - 7, top + 3 + b, 16, 1, 'leather');
+    for (const [x, y] of [[cx - 3, top + 12], [cx, top + 13], [cx + 3, top + 12]]) g.set(x, y + b, 'iron');
+    g.set(cx - 5, top + 3 + b, 'white');
   } else if (item.kind === 'hood') {
     ellipse(g, cx + 0.5, top + 7 + b, 9, 8.5, item.mat, (x, y) => y <= top + 4 + b || x < cx - 6 || x > cx + 7);
     poly(g, [[cx - 3, top - 3 + b], [cx + 1, top - 1 + b], [cx - 1, top + 2 + b]], item.mat);
@@ -268,11 +301,11 @@ function drawKid(ctx) {
 
   // body
   const bodyItem = item(L.body) || GEAR.tunic;
-  const cloth = bodyItem.kind === 'padded' ? 'padded' : 'cloth';
+  const cloth = bodyItem.kind === 'padded' ? (bodyItem.mat || 'padded') : 'cloth';
   const wide = dwarf ? 1 : 0;
   poly(g, [[11 - wide, 22 + b], [21 + wide, 22 + b], [22 + wide, 32 + b], [10 - wide, 32 + b]], cloth);
   if (bodyItem.kind === 'padded') {
-    for (let y = 24; y <= 30; y += 3) for (let x = 11 - wide; x <= 20 + wide; x++) if (x % 2) g.set(x, y + b, 'leather');
+    for (let y = 24; y <= 30; y += 3) for (let x = 11 - wide; x <= 20 + wide; x++) if (x % 2) g.set(x, y + b, bodyItem.mat === 'chain' ? 'iron' : 'leather');
     rect(g, 14, 22 + b, 4, 1, 'leather');
   } else {
     rect(g, 13, 22 + b, 6, 1, 'leather');
@@ -487,6 +520,131 @@ function drawOwl(ctx) {
   g.set(16, 20 + b, 'beak'); g.set(16, 21 + b, 'beak');
 }
 
+// Book Three: clockwork critters with a wind-up key on their backs.
+function windKey(g, x, y) { rect(g, x, y, 1, 3, 'gold'); rect(g, x - 2, y - 2, 2, 2, 'gold'); rect(g, x + 1, y - 2, 2, 2, 'gold'); }
+function drawMouse(ctx) {
+  const { g, bob: b, pose } = ctx;
+  const atk = pose === 'attack';
+  line(g, 22, 33 + b, 29, 30 + b, 1, 'skin'); line(g, 29, 30 + b, 30, 26 + b, 1, 'skin');
+  ellipse(g, 17, 32 + b, 6, 4, 'skin');
+  ellipse(g, 17, 34 + b, 4, 1, 'belly');
+  const hx = atk ? 9 : 11;
+  ellipse(g, hx, 30 + b, 4, 3, 'skin');
+  ellipse(g, hx + 1, 26 + b, 2, 2, 'skin'); ellipse(g, hx - 2, 26 + b, 2, 2, 'skin');
+  g.set(hx + 1, 26 + b, 'blush'); g.set(hx - 2, 26 + b, 'blush');
+  g.set(hx - 4, 31 + b, 'nose'); g.set(hx - 1, 29 + b, 'glow');
+  for (const x of [13, 16, 19, 21]) rect(g, x, 35 + b, 1, 37 - 35 - b + 1, 'iron');
+  windKey(g, 18, 25 + b);
+}
+function drawCat(ctx) {
+  const { g, bob: b, pose } = ctx;
+  const atk = pose === 'attack';
+  line(g, 23, 27 + b, 27, 20 + b, 2, 'skin'); line(g, 27, 20 + b, 26, 16 + b, 2, 'skin');
+  ellipse(g, 17, 28 + b, 7, 4, 'skin');
+  for (const x of [12, 15, 19, 22]) { rect(g, x, 31, 2, 6, 'skin'); rect(g, x - 1, 37, 3, 1, 'iron'); }
+  const hy = atk ? 23 : 21;
+  ellipse(g, 10, hy + b, 5, 4, 'skin');
+  poly(g, [[6, hy - 2 + b], [7, hy - 7 + b], [9, hy - 3 + b]], 'skin');
+  poly(g, [[11, hy - 3 + b], [13, hy - 7 + b], [14, hy - 2 + b]], 'skin');
+  g.set(8, hy + b, 'glow'); g.set(12, hy + b, 'glow');
+  g.set(10, hy + 2 + b, 'nose');
+  if (atk) { rect(g, 8, hy + 3 + b, 4, 1, 'mouth'); g.set(9, hy + 3 + b, 'tooth'); }
+  windKey(g, 18, 22 + b);
+}
+function drawClockDog(ctx) { drawWolf(ctx); windKey(ctx.g, 18, 19 + ctx.bob); ctx.g.set(15, 25 + ctx.bob, 'iron'); ctx.g.set(19, 25 + ctx.bob, 'iron'); ctx.g.set(17, 27 + ctx.bob, 'iron'); }
+
+// Clockwork knight: a tall suit of armor that clanks. Slow, and very hard to hit.
+function drawKnight(ctx) {
+  drawKid(ctx);
+  const { g, bob: b } = ctx;
+  // a visor over the face with two glowing slits, and a wind-up key on the back
+  rect(g, 10, 14 + b, 12, 6, 'skin');
+  rect(g, 11, 16 + b, 3, 1, 'glow'); rect(g, 18, 16 + b, 3, 1, 'glow');
+  for (const x of [12, 15, 18]) g.set(x, 19 + b, 'iron');
+  windKey(g, 24, 20 + b);
+}
+// Brass bear: big, round and slow. Can be calmed.
+function drawBear(ctx) {
+  const { g, bob: b, pose } = ctx;
+  const atk = pose === 'attack';
+  // legs
+  rect(g, 9, 31, 5, 6, 'skin'); rect(g, 18, 31, 5, 6, 'skin');
+  rect(g, 8, 36, 7, 2, 'iron'); rect(g, 17, 36, 7, 2, 'iron');
+  // round body with rivets and a belly plate
+  ellipse(g, 16, 25 + b, 10, 8, 'skin');
+  ellipse(g, 16, 27 + b, 5, 5, 'belly');
+  for (const [x, y] of [[9, 22], [23, 22], [8, 28], [24, 28]]) g.set(x, y + b, 'iron');
+  // arms
+  if (atk) { line(g, 7, 22 + b, 3, 15 + b, 3, 'skin'); for (const x of [2, 4]) g.set(x, 13 + b, 'claw'); }
+  else rect(g, 4, 21 + b, 4, 8, 'skin');
+  rect(g, 24, 21 + b, 4, 8, 'skin');
+  // head: round ears, snout, glowing eyes
+  ellipse(g, 16, 13 + b, 7, 6, 'skin');
+  ellipse(g, 10, 8 + b, 2.5, 2.5, 'skin'); ellipse(g, 22, 8 + b, 2.5, 2.5, 'skin');
+  g.set(10, 8 + b, 'iron'); g.set(22, 8 + b, 'iron');
+  ellipse(g, 16, 16 + b, 3, 2, 'belly');
+  g.set(15, 15 + b, 'nose'); g.set(16, 15 + b, 'nose');
+  for (const ex of [12, 19]) { rect(g, ex, 11 + b, 2, 2, 'glow'); g.set(ex, 11 + b, 'eye'); }
+  windKey(g, 27, 18 + b);
+}
+// Clockwork bird: a little brass crow with a key.
+function drawClockBird(ctx) { drawCrow(ctx); windKey(ctx.g, 18, 22 + (ctx.frame === 1 ? -2 : 0)); }
+// The clockwork beast: a huge brass gorilla-bull with three glowing gears on its chest, and Wren riding on top.
+function drawBeast(ctx) {
+  const { g, bob: b, pose, spec } = ctx;
+  const atk = pose === 'attack';
+  // stumpy legs
+  rect(g, 7, 31, 6, 6, 'skin'); rect(g, 19, 31, 6, 6, 'skin');
+  rect(g, 6, 36, 8, 3, 'iron'); rect(g, 18, 36, 8, 3, 'iron');
+  // big chest plate
+  poly(g, [[4, 16 + b], [28, 16 + b], [26, 32 + b], [6, 32 + b]], 'skin');
+  for (const [x, y] of [[6, 18], [26, 18], [7, 30], [25, 30]]) g.set(x, y + b, 'iron');
+  // three glowing gears (the ones you can fix)
+  const fixed = spec.fixed || 0;
+  [[11, 22], [21, 22], [16, 28]].forEach(([x, y], i) => {
+    const m = i < fixed ? 'iron' : 'glow';
+    ellipse(g, x, y + b, 2.6, 2.6, m);
+    for (const [sx, sy] of [[0, -3], [3, 0], [0, 3], [-3, 0]]) g.set(x + sx, y + sy + b, m);
+    g.set(x, y + b, 'eye');
+  });
+  // arms: huge fists
+  if (atk) { line(g, 4, 18 + b, 1, 9 + b, 4, 'skin'); ellipse(g, 1.5, 8 + b, 2.5, 2.5, 'iron'); line(g, 28, 18 + b, 31, 9 + b, 4, 'skin'); ellipse(g, 30.5, 8 + b, 2.5, 2.5, 'iron'); }
+  else { rect(g, 0, 18 + b, 4, 12, 'skin'); rect(g, 28, 18 + b, 4, 12, 'skin'); ellipse(g, 2, 31 + b, 2.5, 2, 'iron'); ellipse(g, 30, 31 + b, 2.5, 2, 'iron'); }
+  // head with horns and a grille mouth
+  rect(g, 9, 9 + b, 14, 8, 'skin');
+  line(g, 9, 10 + b, 5, 6 + b, 2, 'iron'); line(g, 23, 10 + b, 27, 6 + b, 2, 'iron');
+  rect(g, 11, 11 + b, 3, 2, 'ember'); rect(g, 18, 11 + b, 3, 2, 'ember');
+  for (const x of [12, 14, 16, 18, 20]) rect(g, x, 14 + b, 1, 2, 'iron');
+  // Wren on top: a tiny kid with a silver mask
+  if (!spec.empty) {
+    rect(g, 14, 4 + b, 4, 5, 'cloth');
+    ellipse(g, 16, 2.5 + b, 2.6, 2.4, 'silver');
+    rect(g, 15, 2 + b, 3, 1, 'eye');
+  }
+}
+// The baby dragon: big eyes, little wings, half an eggshell.
+function drawDragon(ctx) {
+  const { g, bob: b, frame } = ctx;
+  // tail
+  line(g, 22, 30 + b, 28, 27 + b, 2, 'skin'); poly(g, [[28, 25 + b], [31, 27 + b], [28, 29 + b]], 'skin');
+  // wings flap
+  const w = frame === 1 ? -3 : 0;
+  poly(g, [[9, 20 + b], [2, 13 + b + w], [5, 22 + b]], 'skin'); poly(g, [[23, 20 + b], [30, 13 + b + w], [27, 22 + b]], 'skin');
+  // round body and belly
+  ellipse(g, 16, 26 + b, 7, 6, 'skin');
+  ellipse(g, 16, 28 + b, 4, 4, 'belly');
+  // big head with two little horns
+  ellipse(g, 16, 15 + b, 7, 6, 'skin');
+  line(g, 12, 10 + b, 11, 7 + b, 1, 'belly'); line(g, 20, 10 + b, 21, 7 + b, 1, 'belly');
+  for (const ex of [13, 19]) { ellipse(g, ex, 14 + b, 2, 2.2, 'white'); rect(g, ex, 14 + b, 1, 2, 'eye'); }
+  g.set(15, 18 + b, 'nose'); g.set(17, 18 + b, 'nose');
+  g.set(11, 17 + b, 'blush'); g.set(21, 17 + b, 'blush');
+  // the eggshell it hatched from
+  poly(g, [[7, 30], [25, 30], [23, 38], [9, 38]], 'shell');
+  for (const x of [8, 11, 14, 17, 20, 23]) g.set(x, 30 - (x % 2), 'shell');
+  g.set(12, 34, 'spot'); g.set(20, 35, 'spot');
+}
+
 export const BUILDS = {
   kid: {
     palette: s => ({ skin: SKINS[s.skin] || SKINS.peach, hair: HAIRS[s.hairColor] || HAIRS.brown, cloth: CLOTH[s.cloth] || CLOTH.green }),
@@ -498,6 +656,14 @@ export const BUILDS = {
   wolf: { palette: s => ({ skin: PAL[s.fur] || PAL.wolf, belly: PAL.wolfbelly }), draw: drawWolf },
   crow: { palette: () => ({ skin: PAL.crow }), draw: drawCrow },
   owl: { palette: () => ({ skin: PAL.brass }), draw: drawOwl },
+  mouse: { palette: () => ({ skin: PAL.tin, belly: PAL.brass }), draw: drawMouse },
+  cat: { palette: () => ({ skin: PAL.catbrass }), draw: drawCat },
+  clockdog: { palette: () => ({ skin: PAL.brass, belly: PAL.copper }), draw: drawClockDog },
+  knight: { palette: () => ({ skin: PAL.iron, hair: PAL.iron, cloth: PAL.chain }), draw: drawKnight },
+  bear: { palette: () => ({ skin: PAL.bearbrass, belly: PAL.copper }), draw: drawBear },
+  clockbird: { palette: () => ({ skin: PAL.brass }), draw: drawClockBird },
+  beast: { palette: () => ({ skin: PAL.brass, cloth: CLOTH.mustard || PAL.padded }), draw: drawBeast },
+  dragon: { palette: () => ({ skin: PAL.dragon, belly: PAL.dbelly }), draw: drawDragon },
 };
 
 // ---------- the first cast ----------
@@ -611,6 +777,38 @@ export const CAST = [
   { id: 'woodcutter', name: 'Old Alder', role: 'The old woodcutter', group: 'town',
     spec: { build: 'kid', people: 'human', skin: 'tan', hair: 'short', hairColor: 'white', cloth: 'brown', layers: { body: 'padded', mainHand: 'club' } },
     bio: 'Riverbend\'s oldest woodcutter. He remembers the grove, and he is sorry about it.' },
+  // Book Three
+  { id: 'bolt', name: 'Bolt', role: 'Clockwork dog friend', group: 'friends', spec: { build: 'clockdog' },
+    bio: 'A brass dog with a wind-up key on his back. He got stuck in his own spring until you helped him. Now he follows you everywhere, tick tick tick.' },
+  { id: 'mouse', name: 'Windup Mouse', role: 'Enemy', group: 'monsters', spec: { build: 'mouse' },
+    bio: 'A tiny brass mouse that zooms around on wheels. Fast, but one good bonk stops it. They come in swarms.' },
+  { id: 'windcat', name: 'Windup Cat', role: 'Enemy', group: 'monsters', spec: { build: 'cat' },
+    bio: 'A brass cat that guards back doors. It pounces fast. Find its wind-up key and it stops.' },
+  { id: 'toymaker', name: 'Old Tock', role: 'The toymaker of Gearwick', group: 'town',
+    spec: { build: 'kid', people: 'dwarf', skin: 'peach', hair: 'none', hairColor: 'white', cloth: 'teal', layers: { body: 'padded' } },
+    bio: 'Gearwick\'s oldest toymaker. His shop is full of ticking toys. He remembers a girl who used to bring him broken ones to fix.' },
+  { id: 'peddler', name: 'Fennick', role: 'A traveling peddler', group: 'town',
+    spec: { build: 'kid', people: 'elf', skin: 'tan', hair: 'long', hairColor: 'auburn', cloth: 'mustard', layers: { body: 'tunic', back: 'satchel', head: 'hood' } },
+    bio: 'Sells a bit of everything from a cart that squeaks. Always says "Good price!" even when it isn\'t.' },
+  { id: 'gearsmith', name: 'Mara Ironhand', role: 'The smith of Gearwick', group: 'town',
+    spec: { build: 'kid', people: 'dwarf', skin: 'brown', hair: 'braids', hairColor: 'black', cloth: 'red', layers: { body: 'chainshirt', mainHand: 'longsword', offHand: 'roundshield', head: 'helmet' } },
+    bio: 'Makes real knight gear: swords, shields and helmets that actually fit kids. Very proud of her work.' },
+  { id: 'knight', name: 'Clockwork Knight', role: 'Enemy', group: 'monsters', spec: { build: 'knight', people: 'human', hair: 'none', layers: { body: 'chainshirt', head: 'helmet', mainHand: 'longsword', offHand: 'roundshield' } },
+    bio: 'A tall suit of wind-up armor that guards the clock tower stairs. Super hard to hit, but very slow. Somewhere on its back is an off switch.' },
+  { id: 'bear', name: 'Brass Bear', role: 'Enemy', group: 'monsters', spec: { build: 'bear' },
+    bio: 'A big brass bear from Wren\'s workshop. It growls like an engine, but it really just wants someone to talk to it.' },
+  { id: 'bird', name: 'Clockwork Bird', role: 'Enemy', group: 'monsters', spec: { build: 'clockbird' },
+    bio: 'A little brass bird that flaps and pecks. It flies over things, so use something that reaches far.' },
+  { id: 'beast', name: 'The Clockwork Beast', role: 'Big boss', group: 'monsters', spec: { build: 'beast' },
+    bio: 'Wren\'s biggest machine, as tall as a house. It stomps, throws gears, and calls windup mice. Three gears glow on its chest. Fix them, and it sits down.' },
+  { id: 'silvermask', name: 'The Silver Mask', role: 'Who is it?', group: 'story',
+    spec: { build: 'kid', people: 'human', skin: 'peach', hair: 'ponytail', hairColor: 'auburn', cloth: 'mustard', layers: { body: 'padded', head: 'weldmask', mainHand: 'wrench' } },
+    bio: 'Someone in a silver mask who wants the things from the silver grove.' },
+  { id: 'wren', name: 'Wren Gearwright', role: 'The tinker of Gearwick', group: 'friends',
+    spec: { build: 'kid', people: 'human', skin: 'peach', hair: 'ponytail', hairColor: 'auburn', cloth: 'mustard', layers: { body: 'padded', mainHand: 'wrench' } },
+    bio: 'The best tinker in Gearwick, and only a little older than you. She builds clockwork animals. She wore a silver mask so nobody could see she was lonely. Now she fixes toys for Old Tock, and she fixes things in fights too.' },
+  { id: 'dragon', name: 'The Baby Dragon', role: 'A brand new friend', group: 'friends', spec: { build: 'dragon' },
+    bio: 'The Starstone was never a stone. It was an egg! This tiny dragon sneezes sparkles and has never seen the world before. What happens next is Book Four.' },
 ];
 
 // Hero gear choices shown in the gallery. null = nothing in that slot.

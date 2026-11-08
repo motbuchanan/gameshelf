@@ -9,6 +9,12 @@ export const TERRAIN = {
   'L': { id: 'log',    name: 'Log',    cost: 0, blocks: true,  cover: false, enter: false },
   't': { id: 'tree',   name: 'Tree',   cost: 0, blocks: true,  cover: false, enter: false },
   '~': { id: 'stream', name: 'Stream', cost: 0, blocks: false, cover: false, enter: false },
+  // Book Three: indoors in the clock tower and Wren's workshop.
+  '_': { id: 'floor',  name: 'Stone floor', cost: 1, blocks: false, cover: false, enter: true },
+  '#': { id: 'wall',   name: 'Gear wall',   cost: 0, blocks: true,  cover: false, enter: false },
+  'c': { id: 'crate',  name: 'Crates',      cost: 1, blocks: false, cover: true,  enter: true },
+  '>': { id: 'beltr',  name: 'Moving floor', cost: 1, blocks: false, cover: false, enter: true, belt: 1 },
+  '<': { id: 'beltl',  name: 'Moving floor', cost: 1, blocks: false, cover: false, enter: true, belt: -1 },
 };
 
 export function makeMap(rows) {
@@ -46,8 +52,8 @@ export function reachable(map, unit, units = [], budget = unit.move) {
     if (cur.cost > best.get(key(cur.x, cur.y)).cost) continue;
     for (const [dx, dy] of DIRS) {
       const nx = cur.x + dx, ny = cur.y + dy, k = key(nx, ny);
-      // Fliers (crows) go over logs and water, but not through trees.
-      if (unit.fly) { if (!inside(map, nx, ny) || terrainAt(map, nx, ny).id === 'tree') continue; }
+      // Fliers (crows) go over logs and water, but not through trees or walls.
+      if (unit.fly) { if (!inside(map, nx, ny) || terrainAt(map, nx, ny).id === 'tree' || terrainAt(map, nx, ny).id === 'wall') continue; }
       else if (!canStep(map, cur.x, cur.y, dx, dy)) continue;
       const o = occ.get(k);
       if (o && o.side !== unit.side) continue; // enemies block

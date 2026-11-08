@@ -3,6 +3,7 @@
 
 export const CH1_FIGHT = {
   id: 'ch1-pretend',
+  xp: 3, xpWhy: 'You won the pretend battle!',
   // . grass   b bush (cover)   m mud (2 steps)   L log (blocks)   t tree (blocks)   ~ stream (no wading)
   map: [
     'tt...~...tt',

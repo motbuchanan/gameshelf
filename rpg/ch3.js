@@ -24,6 +24,8 @@ export const TEXT = {
 export const FIGHTS = {
   patrol: {
     id: 'ch3-patrol',
+    xpKey: 'patrol',
+    xp: 5,
     mode: 'hp',
     map: [
       'tt..t...ttt',
@@ -183,6 +185,8 @@ export const SCENES = {
   },
   patrol_sneak: { check: { skill: 'sneak', help: 'nell', label: 'Sneak past the kobold patrol', great: 'sneak_great', ok: 'sneak_ok', miss: 'sneak_miss' } },
   sneak_great: {
+    xpKey: 'patrol',
+    xp: 5, xpWhy: 'You sneaked past the patrol! That counts as winning!',
     lines: [
       { who: 'narrator', text: 'Quiet as mice, the kids creep right behind the kobolds. Close enough to hear them talking.' },
       { who: 'narrator', text: '"Don\'t let the boss see the fire-pot," one kobold whispers. "He\'s SO scared of fire. He screams like a baby."' },
@@ -205,6 +209,8 @@ export const SCENES = {
     next: 'hill',
   },
   sneak_ok: {
+    xpKey: 'patrol',
+    xp: 5, xpWhy: 'You sneaked past the patrol! That counts as winning!',
     lines: [
       { who: 'narrator', text: 'The kids creep past. On the way, they hear one kobold say, "The boss hates fire. Keep the fire-pot away from him!"' },
       { who: 'pim', text: '(whispering) Grubjaw is scared of fire. Good to know.' },

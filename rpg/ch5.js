@@ -31,6 +31,7 @@ export const TEXT = {
 export const FIGHTS = {
   boss: {
     id: 'ch5-boss',
+    xp: 12, floor: 3, xpWhy: 'You beat Grubjaw!',
     mode: 'hp',
     map: [
       'ttt.....ttt',

@@ -27,7 +27,7 @@ function makeMonster(d) {
   const spec = clone(c.spec);
   const use = { ...weaponUse(m.weapon), ...(m.range ? { range: m.range } : {}) };
   if (m.range) use.skill = 'aim';
-  return {
+  const u = {
     id: d.id, name: d.name || m.name, side: d.side || 'monster', ai: d.ai || 'monster', spec, char: null, cast: c.id,
     x: d.x, y: d.y, move: m.move,
     flags: m.hp, maxFlags: m.hp, out: false,
@@ -35,8 +35,11 @@ function makeMonster(d) {
     trick: null, prefersBush: !!d.prefersBush, bystander: !!d.bystander,
     boss: !!m.boss, sweepDice: m.sweepDice || null,
     dice: m.dice || null, weaponName: m.dice ? m.weapon : null,
-    pack: !!m.pack, leader: !!m.leader, fly: !!m.fly, fireResist: !!m.fireResist, summoner: !!m.summoner,
+    pack: !!m.pack, leader: !!m.leader, fly: !!m.fly, fireResist: !!m.fireResist, summoner: !!m.summoner, clockwork: !!m.clockwork,
+    kind: d.monster, summonKind: m.summonKind || null, big: !!m.big, restTurns: m.restTurns || 1,
   };
+  // A monster-shaped friend with a trick of their own (Wren's wrench).
+  return d.tricks ? withTricks(u, d.tricks) : u;
 }
 
 export function makeUnit(d, hero, mode = 'flags') {
@@ -62,7 +65,7 @@ export function makeUnit(d, hero, mode = 'flags') {
   const maxHp = mode === 'hp' ? P.hpMax(char) : d.flags;
   return withTricks({
     id: d.id, name: char.name, side: d.side, ai: d.ai, spec, char, cast: d.id,
-    x: d.x, y: d.y, move: d.move || P.MOVE,
+    x: d.x, y: d.y, move: d.move || (d.id === 'hero' ? P.moveOf(char) : P.MOVE),
     flags: hp, maxFlags: maxHp, out: false,
     weapon, use, armor: mode === 'hp' ? armorOf(char.gear) : 0, finesse: char.stats.finesse, retreatAt: 0,
     trick: null, tricks: [],
@@ -80,11 +83,25 @@ export function createBattle(def, hero) {
     u.flags += def.boost.hp || 0; u.maxFlags += def.boost.hp || 0;
     u.skills = Object.fromEntries(Object.entries(u.skills).map(([k, v]) => [k, v + (def.boost.skill || 0)]));
   });
+  // Friends who leveled up: +2 hearts and +3 to every skill for each level after the first.
+  if (def.friendLv) units.filter(u => u.side === 'hero' && u.id !== 'hero' && def.friendLv[u.id] > 1).forEach(u => {
+    const up = def.friendLv[u.id] - 1;
+    u.lv = def.friendLv[u.id]; u.flags += 2 * up; u.maxFlags += 2 * up; u.lvBonus = 3 * up;
+  });
+  // Home Team: Hollis guarding camp gives every hero-side unit extra hearts.
+  if (def.teamHearts) units.filter(u => u.side === 'hero' && !u.bystander).forEach(u => { u.flags += def.teamHearts; u.maxFlags += def.teamHearts; });
+  // Home Team: Wren tunes up everyone's gear (a little more armor).
+  if (def.teamArmor) units.filter(u => u.side === 'hero' && !u.bystander).forEach(u => { u.armor = (u.armor || 0) + def.teamArmor; });
   const b = { map, units, mode, order: (def.order || units.filter(u => !u.bystander).map(u => u.id)).slice(), turn: 0, round: 1, result: null,
     taught: { ...(def.taught || {}) }, ts: { moved: false, acted: false }, roundCap: def.roundCap || ROUND_CAP, capResult: def.capResult || 'tie',
     scared: {}, danger: [], warn: !!def.warn, fireScares: !!def.fireScares, bossPhase: 0,
     calm: def.calm ? { value: def.calm.start || 0, max: def.calm.max || 3, bonus: def.calm.bonus || 0 } : null,
-    cage: def.cage ? { ...def.cage, open: false } : null };
+    cage: def.cage ? { ...def.cage, open: false } : null,
+    fix: def.fix ? { value: 0, max: def.fix.max || 3, bonus: def.fix.bonus || 0, target: def.fix.target } : null,
+    clockMinus: def.clockMinus || 0, initPlus: def.initPlus || 0, summonBoost: def.summonBoost || 0 };
+  // Home Team: Nell's trap (stuck) and Sniffle's sleepy monster: they skip their first turns.
+  b.skipWhy = {};
+  for (const [id, st] of Object.entries(def.stuck || {})) if (unitById(b, id)) { scare(b, id, st.turns || 1); b.skipWhy[id] = { tag: st.tag || 'Stuck!', say: st.say || 'Hey! I\'m stuck!' }; }
   return b;
 }
 
@@ -97,7 +114,8 @@ export function removeUnit(b, id) { const u = unitById(b, id); if (u) { u.out = 
 export function initBonus(u) { return Math.floor((u.finesse || 0) / 10); }
 // surprise: the heroes snuck up, so all of them go before any monster.
 export function rollInitiative(b, d20 = () => R.rollDice('1d20').total, surprise = false) {
-  const list = b.units.filter(u => !u.bystander && !u.out).map(u => { const roll = d20(u); return { id: u.id, roll, bonus: initBonus(u), total: roll + initBonus(u), side: u.side }; });
+  // Tobin's lookout at home: every hero rolls a little higher (b.initPlus).
+  const list = b.units.filter(u => !u.bystander && !u.out).map(u => { const roll = d20(u), bonus = initBonus(u) + (u.side === 'hero' ? (b.initPlus || 0) : 0); return { id: u.id, roll, bonus, total: roll + bonus, side: u.side }; });
   const sideRank = e => (e.side === 'hero' ? 0 : 1);
   list.sort((a, c) => (surprise ? sideRank(a) - sideRank(c) : 0) || (c.total - a.total) || (sideRank(a) - sideRank(c)));
   b.init = list; b.order = list.map(e => e.id); b.turn = 0;
@@ -110,7 +128,8 @@ export const enemiesOf = (b, u) => b.units.filter(e => e.side !== u.side && !e.o
 export const friendsOf = (b, u) => b.units.filter(e => e.side === u.side && !e.out && !e.bystander && e !== u);
 export const unitAt = (b, x, y) => b.units.find(u => !u.out && u.x === x && u.y === y);
 
-export function skillValue(u, id) { return u.skills ? (u.skills[id] ?? 20) : P.skill(u.char, id); }
+// lvBonus: a leveled-up friend is better at everything they do (+3 a level after the first).
+export function skillValue(u, id) { return (u.skills ? (u.skills[id] ?? 20) : P.skill(u.char, id)) + (u.lvBonus || 0); }
 
 // Where u can walk this turn (tiles it can stop on, not counting where it stands).
 export function moveTiles(b, u) {
@@ -131,8 +150,15 @@ export function chance(b, u, target, opts = {}) {
   const cover = !opts.ignoreCover && target && G.terrainAt(b.map, target.x, target.y).cover;
   const armor = b.mode === 'hp' && target && !opts.ignoreArmor ? (target.armor || 0) : 0;
   const pack = packBonus(b, u, target);
-  return { skill: skillId, base, cover: !!cover, armor, pack, value: Math.max(MIN_CHANCE, Math.min(R.SKILL_CAP || 95, base + pack - (cover ? COVER : 0) - armor)) };
+  // Bolt on patrol at home: clockwork monsters are a little worse at hitting.
+  const clock = u.clockwork && u.side === 'monster' ? (b.clockMinus || 0) : 0;
+  // Tinker's Eye talent: the hero sees the glowing weak spots on clockwork monsters.
+  const eye = target && target.clockwork && hasTalent(u, 'tinker') ? TINKER_EYE : 0;
+  return { skill: skillId, base, cover: !!cover, armor, pack, clock, eye, value: Math.max(MIN_CHANCE, Math.min(R.SKILL_CAP || 95, base + pack + eye - (cover ? COVER : 0) - armor - clock)) };
 }
+
+export const TINKER_EYE = 10;
+export const hasTalent = (u, t) => !!(u && u.char && (u.char.talents || []).includes(t));
 
 // Damage dice for a hit, by how well it went (real fights).
 //   It works: the weapon's dice. Exceptional: one extra die. Legendary: the weapon's dice at their highest, plus one extra die.
@@ -168,6 +194,11 @@ export function doMove(b, u, x, y) {
 function pull(target, n) {
   const lost = Math.min(target.flags, n);
   target.flags -= lost;
+  // Second Wind talent: once a fight, dropping to 3 hearts or less (even 0) gives 3 hearts back.
+  if (lost && !target.windUsed && target.flags <= 3 && target.char && (target.char.talents || []).includes('secondwind') && target.maxFlags > 3) {
+    target.windUsed = true; target.windNow = true;
+    target.flags = Math.min(target.maxFlags, target.flags + 3);
+  }
   if (target.flags <= 0) target.out = true;
   return lost;
 }
@@ -204,6 +235,8 @@ export function resolveArea(b, u, center, roll, dmg) {
   // Clockwork owls shrug off fire: half damage.
   const results = hit.map(e => ({ id: e.id, lost: pull(e, u.trick.fire && e.fireResist ? Math.max(1, Math.floor(amount / 2)) * (amount ? 1 : 0) : amount), out: e.out }));
   if (u.trick.fire && b.fireScares && amount) hit.filter(e => e.boss && !e.out).forEach(e => { b.scared[e.id] = 1; });
+  // Wren's wrench: a clockwork monster it hits jams for a turn.
+  if (u.trick.jam && amount) hit.filter(e => e.clockwork && !e.out).forEach(e => { scare(b, e.id, 1); b.skipWhy = b.skipWhy || {}; b.skipWhy[e.id] = { tag: 'Jammed!', say: 'Clunk. Squeak. Clunk.' }; });
   u.trick.left--; b.ts.acted = true;
   checkOver(b);
   return { tier, results, chance: ch, tiles };
@@ -275,14 +308,78 @@ export function drinkPotion(b, u, rollFn = R.rollDice) {
   b.ts.acted = true;
   return u.flags - before;
 }
-// Bramble calls two crows to her side.
+// ---------- things from the bag (Book Three) ----------
+// Throw an oil can, a bucket of water or a net at a monster up to 4 squares away. No roll: it always lands.
+//   oil: the monster slips and is stuck for a turn (fliers just fly over the slick).
+//   water: a clockwork monster jams for 2 turns; anything else is splashed and stuck for 1.
+//   net: stuck for 2 turns. Big bosses only ever lose 1 turn.
+export const THROW_RANGE = 4;
+export const THROWABLE = ['oil', 'water', 'net'];
+export function throwTargets(b, u) {
+  const tiles = G.inRange(b.map, u, THROW_RANGE);
+  return enemiesOf(b, u).filter(e => tiles.some(t => t.x === e.x && t.y === e.y));
+}
+export function throwEffect(item, target) {
+  let turns = 0, tag = '', say = '';
+  if (item === 'oil') { if (!target.fly) { turns = 1; tag = 'Slipped!'; say = 'Whoa! Whoa! SPLAT. Slippery!'; } else { tag = 'Flew over!'; say = 'Ha! I can fly, silly.'; } }
+  if (item === 'water') { if (target.clockwork) { turns = 2; tag = 'Jammed!'; say = 'Fzzzt... clunk. Clunk. Squeak.'; } else { turns = 1; tag = 'Splashed!'; say = 'Bleh! Cold water!'; } }
+  if (item === 'net') { turns = 2; tag = 'Netted!'; say = 'Hey! A net! Get it off!'; }
+  if (target.boss && turns) turns = 1;
+  return { turns, tag, say };
+}
+export function throwItem(b, u, target, item, rollFn) {
+  void rollFn;
+  const items = u.char && u.char.items; if (!items || !(items[item] > 0)) return null;
+  items[item]--;
+  const fx = throwEffect(item, target);
+  if (fx.turns) { scare(b, target.id, fx.turns); b.skipWhy = b.skipWhy || {}; b.skipWhy[target.id] = { tag: fx.tag, say: fx.say }; }
+  b.ts.acted = true;
+  return fx;
+}
+
+// ---------- fixing the clockwork beast (Book Three boss) ----------
+// Climb up next to it and roll Nimble fingers to fix one of its glowing gears. Fix them all and it sits down.
+export function canFix(b, u) {
+  if (!b.fix || b.result || u.side !== 'hero' || u.out) return false;
+  const t = unitById(b, b.fix.target);
+  return !!(t && !t.out && G.dist(u, t) <= 1);
+}
+export function fixChance(b, u) {
+  const base = skillValue(u, 'fingers') + (b.fix ? b.fix.bonus || 0 : 0) + (hasTalent(u, 'tinker') ? TINKER_EYE : 0);
+  return Math.max(MIN_CHANCE, Math.min(95, base));
+}
+export function fix(b, u, roll) {
+  const value = fixChance(b, u), tier = R.tierFor(value, roll.value);
+  const gain = tier === 'legendary' ? 2 : FLAGS_FOR[tier] ? 1 : 0;
+  b.fix.value = Math.min(b.fix.max, b.fix.value + gain);
+  b.ts.acted = true;
+  if (b.fix.value >= b.fix.max) b.result = 'fixed';
+  return { tier, value, gain };
+}
+
+// ---------- moving floors ----------
+// Anyone standing on a moving floor at the end of their turn slides one square along it (if that square is free).
+export function slide(b, u) {
+  if (!u || u.out || u.gone || u.fly || u.big) return null;
+  const t = G.terrainAt(b.map, u.x, u.y);
+  if (!t || !t.belt) return null;
+  const nx = u.x + t.belt, ny = u.y;
+  if (!G.inside(b.map, nx, ny) || !G.terrainAt(b.map, nx, ny).enter || unitAt(b, nx, ny)) return null;
+  const from = { x: u.x, y: u.y };
+  u.x = nx; u.y = ny;
+  return { from, to: { x: nx, y: ny } };
+}
+
+// Bramble calls two crows to her side. The clockwork beast calls two windup mice (u.summonKind).
 export function summon(b, u) {
-  const free = G.area(b.map, 'circle', { x: u.x, y: u.y }, { r: 2 }).filter(t => G.terrainAt(b.map, t.x, t.y).id !== 'tree' && !unitAt(b, t.x, t.y));
+  const kind = u.summonKind || 'crow';
+  const free = G.area(b.map, 'circle', { x: u.x, y: u.y }, { r: 2 }).filter(t => (MONSTERS[kind].fly ? !['tree', 'wall'].includes(G.terrainAt(b.map, t.x, t.y).id) : G.terrainAt(b.map, t.x, t.y).enter) && !unitAt(b, t.x, t.y));
   const made = [];
   b.summons = (b.summons || 0);
   for (const t of free.slice(0, 2)) {
     b.summons++;
-    const c = makeUnit({ id: 'sc' + b.summons, monster: 'crow', name: 'Crow', x: t.x, y: t.y }, null, b.mode);
+    const c = makeUnit({ id: 'sc' + b.summons, monster: kind, name: MONSTERS[kind].name, x: t.x, y: t.y }, null, b.mode);
+    if (b.summonBoost) { c.skills = Object.fromEntries(Object.entries(c.skills).map(([k, v]) => [k, v + b.summonBoost])); }
     b.units.push(c); b.order.push(c.id); made.push(c);
   }
   b.ts.acted = true;
@@ -403,8 +500,9 @@ export function planTurn(b, u) {
   // Summoner (Bramble): every fourth turn, call crows if fewer than two are flying.
   if (u.summoner) {
     b.summonTick = (b.summonTick || 0) + 1;
-    const crows = b.units.filter(e => e.fly && !e.out && e.side === u.side).length;
-    if (b.summonTick % 4 === 1 && crows < 2) { plan.action = { type: 'summon' }; return plan; }
+    const kind = u.summonKind || 'crow';
+    const helpers = b.units.filter(e => e.kind === kind && !e.out && e.side === u.side).length;
+    if (b.summonTick % 4 === 1 && helpers < 2) { plan.action = { type: 'summon' }; return plan; }
   }
   // Patch Up: heal a friend who is down to half hearts or less.
   const healT = (u.tricks || []).find(t => t.heal && t.left > 0);
@@ -481,8 +579,9 @@ export function nextPlan(b, u, def) { return scriptedPlan(b, u, def) || planTurn
 // Run a whole fight with every side computer-controlled (the hero plays like a friend). For balance sims and tests.
 // After a unit's turn: count down being scared, and move the boss to his next phase.
 export function afterTurn(b, u, plan) {
-  if (plan && plan.action && plan.action.type === 'scared') { b.scared[u.id]--; return; }
-  if (u.boss && b.bossPhase === 0) b.bossPhase = 1;
+  if (plan && plan.action && plan.action.type === 'scared') { b.scared[u.id]--; if (!b.scared[u.id] && b.skipWhy) delete b.skipWhy[u.id]; return; }
+  // restTurns: how many ordinary turns a boss takes between stomps (Grubjaw 1, the clockwork beast 3).
+  if (u.boss && b.bossPhase === 0) { u.bossRest = (u.bossRest || 0) + 1; if (u.bossRest >= (u.restTurns || 1)) { b.bossPhase = 1; u.bossRest = 0; } }
 }
 export function autoplay(b, rollFn, def) {
   let guard = 0;
@@ -500,9 +599,10 @@ export function autoplay(b, rollFn, def) {
     if (a === 'sweep') resolveSweep(b, u, rollFn());
     if (a === 'cage') openCage(b);
     afterTurn(b, u, plan);
+    slide(b, u);
     u = endTurn(b);
   }
   return b.result;
 }
 
-export default { FLAGS_FOR, COVER, ROUND_CAP, weaponName, packBonus, useTrick, talk, talkChance, drinkPotion, summon, makeUnit, createBattle, addUnit, removeUnit, initBonus, rollInitiative, weaponDice, rollDamage, flee, onEdge, wantsToFlee, bossWindup, resolveSweep, scare, canOpenCage, openCage, afterTurn, unitById, current, enemiesOf, friendsOf, unitAt, skillValue, moveTiles, targets, chance, doMove, resolveAttack, areaTiles, areaCenters, resolveArea, checkOver, endTurn, planTurn, scriptedPlan, nextPlan, autoplay };
+export default { THROW_RANGE, THROWABLE, throwTargets, throwEffect, throwItem, canFix, fixChance, fix, slide, hasTalent, TINKER_EYE, FLAGS_FOR, COVER, ROUND_CAP, weaponName, packBonus, useTrick, talk, talkChance, drinkPotion, summon, makeUnit, createBattle, addUnit, removeUnit, initBonus, rollInitiative, weaponDice, rollDamage, flee, onEdge, wantsToFlee, bossWindup, resolveSweep, scare, canOpenCage, openCage, afterTurn, unitById, current, enemiesOf, friendsOf, unitAt, skillValue, moveTiles, targets, chance, doMove, resolveAttack, areaTiles, areaCenters, resolveArea, checkOver, endTurn, planTurn, scriptedPlan, nextPlan, autoplay };

@@ -76,4 +76,9 @@ export function chanceGrid(skill, color) {
   return wrap;
 }
 
-export default { icon, meter, blocks, chanceGrid, tierAt, STAT_ICON, STAT_COLOR, STAT_WORD, TIER_COLOR, TIER_WORD };
+// The XP star: a gold star with XP written inside. Tapping it on the hero sheet explains XP.
+export function xpStar(size = 28) {
+  return `<svg class="xp-star" width="${size}" height="${size}" viewBox="0 0 32 32" aria-hidden="true"><polygon points="16,1.5 20.2,11 30.5,11.8 22.6,18.6 25,28.8 16,23.4 7,28.8 9.4,18.6 1.5,11.8 11.8,11" fill="#f0c44c" stroke="#5a3a10" stroke-width="2" stroke-linejoin="round"/><text x="16" y="20.2" text-anchor="middle" font-family="Avenir Next,system-ui,sans-serif" font-weight="900" font-size="8.6" fill="#5a3a10">XP</text></svg>`;
+}
+
+export default { icon, meter, blocks, chanceGrid, tierAt, xpStar, STAT_ICON, STAT_COLOR, STAT_WORD, TIER_COLOR, TIER_WORD };
