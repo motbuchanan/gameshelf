@@ -20,6 +20,7 @@ import I from './icons.js';
 import P from './party.js';
 import R from './rules.js';
 import dice from './dice.js';
+import sfx from './sfx.js';
 import save from './save.js';
 import board from './board.js';
 import { CAST, GEAR } from './art.js';
@@ -264,11 +265,15 @@ async function checkPop(chk, value, h) {
     <div class="br-side"><div class="br-tier" id="sr-tier">Rolling...</div><div class="br-need">Colored squares work: <b>${value}</b> of 100</div></div></div>
     <div id="sr-btn"></div>`;
   await new Promise(r => requestAnimationFrame(r));
-  await dice.roll(roll);
+  // Lock the tabs while the story dice roll, so a tap on the Dice tab can't start a second roll over this one.
+  H.lock();
+  try { await dice.roll(roll); } finally { H.unlock(); }
   const tier = R.tierFor(value, roll.value);
   const cell = $('sr-grid').querySelector(`[data-n="${roll.value}"]`); if (cell) cell.classList.add('hit');
   $('sr-tier').textContent = roll.value + '! ' + I.TIER_WORD[tier];
   $('sr-tier').style.color = tier === 'fail' ? '#c9b48e' : I.TIER_COLOR[tier];
+  $('sr-tier').className = 'br-tier pop-in t-' + tier;
+  sfx.tier(tier);
   const miss = tier === 'fail' || tier === 'disaster';
   const again = await new Promise(res => {
     const clovers = Array.from({ length: P.LUCK_MAX }, (_, i) => I.icon('clover', 18, i >= h.luck)).join('');
@@ -454,6 +459,7 @@ async function shop(opts) {
         if (buy) buy.addEventListener('click', () => {
           if ((s.coins || 0) < it.price) { H.toast('Not enough coins yet.'); return; }
           s.coins -= it.price;
+          sfx.coin();
           if (ITEMS[it.id]) { h.items[it.id] = (h.items[it.id] || 0) + 1; H.toast(ITEMS[it.id].name + ' goes in your bag!'); }
           else { giveGear(it.id); H.toast(GEAR[it.id].name + ' is yours!'); }
           save.write(); hero = h; render();
@@ -481,6 +487,7 @@ async function levelUpScreen(kind, talentLine) {
   if (kind === 'stat') {
     $('story-say').innerHTML = `<div class="lvl"><div class="end-title">${I.icon('star', 32)}<span>Level ${next}!</span>${I.icon('star', 32)}</div>
       <p>This time YOU choose what grows. Pick one:</p></div>`;
+    sfx.levelUp();
     act.innerHTML = '';
     stat = await new Promise(res => P.STATS.forEach((st, k) => {
       const b = button('lvl-stat-' + k, P.STAT_NAME[st] + ': ' + I.STAT_WORD[st], false, () => res(st));
@@ -497,6 +504,7 @@ async function levelUpScreen(kind, talentLine) {
     ${talentLine ? `<div class="lvl-row">${I.icon('die', 22)}<b>${esc(talentLine)}</b></div>` : ''}
     <div class="lvl-row">${I.icon('clover', 22)}<b>Luck and hearts refill</b></div>
     <p class="lvl-pick">Now pick one new skill to practice. It gets a gold PRACTICED ribbon.</p></div>`;
+  if (kind !== 'stat') sfx.levelUp();
   act.innerHTML = '';
   const pick = await new Promise(res => choices.forEach((id, k) => {
     const sk = P.SKILLS[id], b = button('lvl-skill-' + k, sk.name, false, () => res(id));
@@ -526,6 +534,7 @@ function chapterEnd(sc) {
   $('story-name').textContent = '';
   const portraits = sc.party ? `<div class="end-party" id="end-party">${['hero', ...party(), ...(sc.extraFaces || [])].map(id => `<canvas width="32" height="40" data-k="${id}"></canvas>`).join('')}</div>` : '';
   $('story-say').innerHTML = `<div class="end-title">${I.icon('star', 32)}<span>${esc(sc.title)}</span>${I.icon('star', 32)}</div>${portraits}<p>${esc(fill(sc.text))}</p>`;
+  sfx.fanfare();
   $('story-say').querySelectorAll('#end-party canvas').forEach(cv => S.draw(cv.getContext('2d'), specFor(cv.dataset.k), 0, 0, 1, 0));
   const act = $('story-act'); act.innerHTML = '';
   if (ch.next && CHAPTERS[ch.next]) act.appendChild(button('story-nextch', 'Play ' + CHAPTERS[ch.next].title, true, () => play(ch.next)));

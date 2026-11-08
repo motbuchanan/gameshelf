@@ -7,6 +7,7 @@ import S from './sprites.js';
 import I from './icons.js';
 import P from './party.js';
 import dice from './dice.js';
+import sfx from './sfx.js';
 import { CAST, GEAR } from './art.js';
 
 const $ = id => document.getElementById(id);
@@ -21,6 +22,7 @@ let view = { tile: 48, ox: 0, oy: 0 };
 let overlay = { reach: [], targets: [], area: [], areaColor: 'orange' };
 let anim = null;            // {id, x, y} while a unit walks
 let floaters = [];          // rising "-1" flags
+let juiceUntil = 0, juiceRaf = 0; // keeps redrawing while a flash or fade plays
 let playerTurn = false, confirmTarget = null, heroFirstDone = false, heroOutSaid = false;
 
 export function init(helpers) { H = { ...H, ...helpers }; }
@@ -91,6 +93,40 @@ function layout() {
   draw();
 }
 
+// ---------- juice: hit flash, knock-out fade, a little hit-stop ----------
+const WHITE = new WeakMap();
+function whiteOf(spr) {
+  let w = WHITE.get(spr);
+  if (!w) {
+    w = document.createElement('canvas'); w.width = spr.width; w.height = spr.height;
+    const x = w.getContext('2d'); x.drawImage(spr, 0, 0);
+    x.globalCompositeOperation = 'source-in'; x.fillStyle = '#fff'; x.fillRect(0, 0, w.width, w.height);
+    WHITE.set(spr, w);
+  }
+  return w;
+}
+function juice(ms) {
+  juiceUntil = Math.max(juiceUntil, performance.now() + ms);
+  if (juiceRaf) return;
+  const tick = now => { draw(); if (now < juiceUntil) juiceRaf = requestAnimationFrame(tick); else { juiceRaf = 0; draw(); } };
+  juiceRaf = requestAnimationFrame(tick);
+}
+function flash(u) { if (!u) return; u.flashUntil = performance.now() + 110; juice(140); }
+// A hit lands: white flash, a thump, a tiny freeze, and a shake only for the big ones.
+async function impact(target, lost, big) {
+  flash(target);
+  sfx.hit(big);
+  if (big) sfx.shake($('board'), false);
+  await wait(big ? 110 : 60);
+  floater(target.x, target.y, '-' + lost, '#ff6050', big);
+}
+// Anyone newly knocked out or run off fades and floats away instead of vanishing.
+function markOuts(before) {
+  let any = false;
+  for (const u of b.units) if (u.out && !u.gone && !before.has(u.id) && !u.outAt) { u.outAt = performance.now(); any = true; }
+  if (any) { sfx.knockOut(); juice(560); }
+}
+
 function unitScreen(u) {
   if (anim && anim.id === u.id) return { x: anim.x, y: anim.y };
   return { x: u.x, y: u.y };
@@ -122,12 +158,23 @@ export function draw() {
     c.beginPath(); c.ellipse((p.x + 0.5) * t, (p.y + 0.86) * t, t * 0.42, t * 0.15, 0, 0, Math.PI * 2); c.fill();
   }
   // units, back rows first so front kids overlap
+  const now = performance.now();
+  const fading = b.units.filter(u => u.out && !u.gone && u.outAt && now - u.outAt < 520);
+  for (const u of fading) {
+    const k = (now - u.outAt) / 520, e = 1 - (1 - k) * (1 - k);
+    const p = unitScreen(u), w = t * 0.92 * (1 - 0.35 * e), h = w * 1.25;
+    c.globalAlpha = 1 - e;
+    c.drawImage(S.sprite(u.spec, 0, 'idle'), (p.x + 0.5) * t - w / 2, (p.y + 0.95 - 0.4 * e) * t - h, w, h);
+    c.globalAlpha = 1;
+  }
   const live = b.units.filter(u => !u.out && !u.gone).sort((a, z) => unitScreen(a).y - unitScreen(z).y);
   for (const u of live) {
     const p = unitScreen(u);
     const w = t * 0.92, h = w * 1.25;
     const pose = u.pose || 'idle';
-    c.drawImage(S.sprite(u.spec, (frame + (u.x + u.y)) % 2, pose), (p.x + 0.04) * t, (p.y + 0.95) * t - h, w, h);
+    const spr = S.sprite(u.spec, (frame + (u.x + u.y)) % 2, pose);
+    c.drawImage(spr, (p.x + 0.04) * t, (p.y + 0.95) * t - h, w, h);
+    if (u.flashUntil && now < u.flashUntil) { c.globalAlpha = 0.85; c.drawImage(whiteOf(spr), (p.x + 0.04) * t, (p.y + 0.95) * t - h, w, h); c.globalAlpha = 1; }
     drawFlags(c, u, p, t);
   }
   // the cage (until someone opens it)
@@ -145,7 +192,9 @@ export function draw() {
   // rising "-1" flags
   floaters.forEach(f => {
     c.globalAlpha = Math.max(0, 1 - f.age / 1.2);
-    c.font = `800 ${Math.round(t * 0.38)}px "Avenir Next", system-ui, sans-serif`;
+    // pop in big, then settle (never appears at its final size)
+    const punch = f.age < 0.14 ? 1.5 - 0.5 * (f.age / 0.14) : 1;
+    c.font = `800 ${Math.round(t * (f.big ? 0.5 : 0.38) * punch)}px "Avenir Next", system-ui, sans-serif`;
     c.textAlign = 'center'; c.lineWidth = Math.max(3, t / 14); c.strokeStyle = '#000'; c.fillStyle = f.color;
     const y = (f.y - 0.1 - f.age * 0.6) * t;
     c.strokeText(f.text, (f.x + 0.5) * t, y); c.fillText(f.text, (f.x + 0.5) * t, y);
@@ -313,6 +362,7 @@ async function playerTalk() {
   H.lock(); actPanel('');
   const roll = await rollPop(u, C.talkChance(b, u), 'You talk to ' + (T.TALK_TARGET || 'them'), true, { luck: true });
   const res = C.talk(b, u, roll);
+  if (res.gain) sfx.calm();
   strip(); draw();
   const lines = T.CALM_LINES || [];
   say(T.TALK_WHO || null, res.gain ? (lines[Math.min(b.calm.value, lines.length) - 1] || 'Hmm...') : (T.TALK_FAIL || 'Hmph. I am not listening.'));
@@ -325,6 +375,7 @@ async function playerPotion() {
   const u = C.current(b);
   H.lock(); actPanel('');
   const amt = C.drinkPotion(b, u);
+  sfx.heal();
   floater(u.x, u.y, '+' + amt, '#7be08a'); strip(); draw();
   say('hero', `Glug glug. ${amt} hearts back!`);
   await wait(fast ? 10 : 900);
@@ -382,8 +433,8 @@ async function animateWalk(u, startX, startY, path) {
   anim = null; draw();
 }
 
-function floater(x, y, text, color) {
-  floaters.push({ x, y, text, color, age: 0 });
+function floater(x, y, text, color, big) {
+  floaters.push({ x, y, text, color, big, age: 0 });
   const t0 = performance.now();
   const tick = now => {
     floaters.forEach(f => { f.age = (now - t0) / 1000; });
@@ -415,6 +466,8 @@ async function rollPop(actor, chanceValue, title, isPlayer, opts = {}) {
   const tierEl = $('br-tier');
   tierEl.textContent = (roll.value) + '! ' + I.TIER_WORD[tier];
   tierEl.style.color = tier === 'fail' ? '#c9b48e' : I.TIER_COLOR[tier];
+  tierEl.className = 'br-tier pop-in t-' + tier;
+  sfx.tier(tier);
   if (isPlayer) {
     const hero = actor && actor.char;
     const canLuck = opts.luck && hero && hero.luck > 0 && (tier === 'fail' || tier === 'disaster');
@@ -431,6 +484,8 @@ async function rollPop(actor, chanceValue, title, isPlayer, opts = {}) {
         roll = flipped;
         $('br-tier').innerHTML = `Flipped! ${roll.value}! ${esc(I.TIER_WORD[flipTier])}`;
         $('br-tier').style.color = I.TIER_COLOR[flipTier];
+        $('br-tier').className = 'br-tier'; void $('br-tier').offsetWidth; $('br-tier').className = 'br-tier pop-in t-' + flipTier;
+        sfx.tier(flipTier);
         await new Promise(res => { $('br-btn').innerHTML = '<button id="b-ok" class="btn big-btn" type="button">OK</button>'; $('b-ok').addEventListener('click', res, { once: true }); });
         pop.classList.add('hidden');
         return roll;
@@ -469,6 +524,7 @@ async function damagePop(u, target, tier, note, isPlayer, titleWord) {
   if (!b.taught.damage && (u.side === 'hero')) { b.taught.damage = true; say('hollis', T.DAMAGE_TEACH); }
   await new Promise(r => requestAnimationFrame(r));
   await dice.rollSet(dmg.dice.map(d => ({ sides: d.sides, value: d.value })));
+  $('br-hearts').classList.add('pop-in');
   $('br-hearts').innerHTML = `<span>${Array.from({ length: Math.min(dmg.total, 16) }, () => I.icon('heart', 22)).join('')}</span><b>${titleWord ? '+' : ''}${dmg.total} ${dmg.total === 1 ? 'heart' : 'hearts'}${titleWord ? ' back' : ''}!</b>`;
   if (isPlayer) await new Promise(res => { $('br-btn').innerHTML = '<button id="b-ok" class="btn big-btn" type="button">OK</button>'; $('b-ok').addEventListener('click', res, { once: true }); });
   else await Promise.race([wait(1300), new Promise(res => pop.addEventListener('click', res, { once: true }))]);
@@ -496,8 +552,10 @@ async function doAttack(u, target) {
   const tier = R.tierFor(ch.value, roll.value);
   const dmg = hp && C.FLAGS_FOR[tier] ? await damagePop(u, target, tier, C.weaponDice(u), u.id === 'hero') : null;
   const res = C.resolveAttack(b, u, target, roll, dmg);
-  if (res.lost) floater(target.x, target.y, '-' + res.lost, hp ? '#ff6050' : (u.side === 'hero' ? '#ff8070' : '#80b8ff'));
-  else floater(target.x, target.y, res.tier === 'disaster' ? 'Oops!' : 'Miss', '#f3e6cc');
+  if (res.lost && hp) await impact(target, res.lost, res.tier === 'legendary' || res.tier === 'exceptional' || target.out);
+  else if (res.lost) { flash(target); sfx.hit(false); floater(target.x, target.y, '-' + res.lost, u.side === 'hero' ? '#ff8070' : '#80b8ff'); }
+  else { sfx.miss(); floater(target.x, target.y, res.tier === 'disaster' ? 'Oops!' : 'Miss', '#f3e6cc'); }
+  markOuts(before);
   say(u.id, fill(T.RESULT[res.tier], { target: target.id === 'hero' ? 'You' : target.name, actor: u.id === 'hero' ? 'You' : u.name }));
   strip(); draw();
   await wait(fast ? 10 : 1100);
@@ -520,13 +578,18 @@ async function doArea(u, center) {
   const res = C.resolveArea(b, u, center, roll, dmg);
   if (res.heal) {
     res.results.forEach(r => { const t = C.unitById(b, r.id); if (r.healed) floater(t.x, t.y, '+' + r.healed, '#7be08a'); });
+    if (res.results.some(r => r.healed)) sfx.heal(); else sfx.tier('fail');
     overlay.area = []; strip(); draw();
     say(u.id, res.results.some(r => r.healed) ? (T.HEAL_LINE || 'All better!') : (T.HEAL_MISS || 'Oops, the spell fizzled.'));
     await wait(fast ? 10 : 1000);
     return;
   }
   for (const id in b.scared) if (b.scared[id] && !scaredBefore[id]) { const g = C.unitById(b, id); floater(g.x, g.y, 'Eek! Fire!', '#ffd060'); }
+  const hits = res.results.filter(r => r.lost);
+  hits.forEach(r => flash(C.unitById(b, r.id)));
+  if (hits.length) { sfx.hit(hits.length > 1); if (hits.length > 1) sfx.shake($('board'), false); await wait(80); } else sfx.miss();
   res.results.forEach(r => { const t = C.unitById(b, r.id); floater(t.x, t.y, r.lost ? '-' + r.lost : 'Miss', '#ff8070'); });
+  markOuts(before);
   say(u.id, T.AREA_RESULT[res.tier]);
   overlay.area = []; strip(); draw();
   await wait(fast ? 10 : 1100);
@@ -620,7 +683,10 @@ async function doSweep(u) {
   const dmg = C.FLAGS_FOR[tier] && hitAny ? await damagePop(u, { name: 'everyone in the red squares', id: 'area' }, tier, u.sweepDice || '1d6', false) : null;
   const res = C.resolveSweep(b, u, roll, dmg || { total: 0 });
   overlay.area = [];
-  res.results.forEach(r => { const t = C.unitById(b, r.id); if (r.lost) floater(t.x, t.y, '-' + r.lost, '#ff6050'); });
+  const swept = res.results.filter(r => r.lost);
+  if (swept.length) { sfx.boom(); sfx.shake($('board'), true); swept.forEach(r => flash(C.unitById(b, r.id))); await wait(110); } else sfx.miss();
+  res.results.forEach(r => { const t = C.unitById(b, r.id); if (r.lost) floater(t.x, t.y, '-' + r.lost, '#ff6050', true); });
+  markOuts(before);
   strip(); draw();
   say(u.id, !hitAny ? (T.SWEEP_MISS || 'Hey! Where did everybody go?') : C.FLAGS_FOR[tier] ? (T.SWEEP_HIT || 'HA HA! Take that!') : (T.SWEEP_MISS || 'Whoops! Missed!'));
   const out = announceOuts(before);

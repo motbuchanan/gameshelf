@@ -9,6 +9,7 @@ import board from './board.js';
 import C from './combat.js';
 import story from './story.js';
 import book from './book.js';
+import sfx from './sfx.js';
 
 const $ = id => document.getElementById(id);
 
@@ -66,6 +67,9 @@ function pixSvg(rows, colors, size = 16) {
 const CLOVER = ['.gg.gg.', 'gGGgGGg', 'gGGgGGg', '.gggggg', 'gGGgGGg', 'gGGgGs.', '.gg..s.'];
 const FLIPICON = ['..y....', '.yyyyyy', '..y....', '.......', '....y..', 'yyyyyy.', '....y..'];
 const PIX_COL = { g: '#2c7340', G: '#74c47a', s: '#6b4226', y: '#f0c44c' };
+const SPEAKER_ON = ['....p.....', '...pp...w.', '..ppp..w..', 'pppppp...w', 'pppppp.w.w', 'pppppp...w', '..ppp..w..', '...pp...w.', '....p.....'];
+const SPEAKER_OFF = ['....p.....', '...pp.....', '..ppp.r..r', 'pppppp.rr.', 'pppppp.rr.', 'pppppp.r.r', '..ppp.....', '...pp.....', '....p.....'];
+function speaker(on) { return pixSvg(on ? SPEAKER_ON : SPEAKER_OFF, { p: '#f3e6cc', w: '#f0c44c', r: '#d0503a' }, 24); }
 
 // ---------- skill check state ----------
 const state = { skill: 50, luck: 3, luckMax: 3, flips: 2, flipsMax: 2, last: null, flipped: false };
@@ -121,6 +125,7 @@ function showCheck(roll, note) {
     <div><button class="tier linkish btn" data-explain="${t}" type="button" style="color:${tierColor(t)};padding:0;min-height:0;font:700 26px var(--head);text-decoration:none">${R.TIER_LABEL[t]}</button>
     <div class="say">${note ? note + ' ' : ''}${SAY[t]}</div></div>`;
   res.classList.remove('pop'); void res.offsetWidth; res.classList.add('pop');
+  sfx.tier(t);
   renderChart(roll.value);
 }
 
@@ -255,6 +260,26 @@ function wire() {
   });
 
   $('badge').addEventListener('click', () => toast(`${GAME_TITLE} v${VERSION}, built ${BUILD_DATE}`));
+
+  // Sounds: every button answers on press (not release). The first press also wakes audio on iPads.
+  document.addEventListener('pointerdown', e => {
+    sfx.unlock();
+    const btn = e.target.closest && e.target.closest('button');
+    if (btn && !btn.disabled && btn.id !== 'sound-btn') sfx.tap();
+  }, { capture: true, passive: true });
+  document.addEventListener('click', () => sfx.unlock(), { capture: true, passive: true });   // some iPads only allow audio on click
+  const soundUI = () => {
+    const on = sfx.isOn();
+    $('sound-btn').innerHTML = speaker(on);
+    $('sound-btn').setAttribute('aria-label', on ? 'Sound is on. Tap to turn it off.' : 'Sound is off. Tap to turn it on.');
+    $('sound-btn').classList.toggle('off', !on);
+    $('opt-sound').checked = on;
+  };
+  $('sound-btn').addEventListener('click', () => { sfx.setOn(!sfx.isOn()); soundUI(); toast(sfx.isOn() ? 'Sound on' : 'Sound off'); });
+  $('opt-sound').addEventListener('change', e => { sfx.setOn(e.target.checked); soundUI(); });
+  $('opt-shake').checked = getSettings().shake !== false;
+  $('opt-shake').addEventListener('change', e => setSettings({ shake: e.target.checked }));
+  soundUI();
   $('update-pill').addEventListener('click', () => location.reload());
 }
 

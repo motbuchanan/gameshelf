@@ -1,6 +1,6 @@
 // Kid RPG config. Change GAME_TITLE once the name is chosen; the folder stays rpg/.
 export const GAME_TITLE = 'Heroes of Millbrook';
-export const VERSION = '0.8.0';
+export const VERSION = '1.0.0';
 export const BUILD_DATE = 'Nov 7 2026';
 export const KEYS = {
   save: 'rpg_save_v1',
@@ -11,6 +11,7 @@ export const KEYS = {
 const mem = {};
 export const store = {
   get(key, fallback) {
+    if (key in mem) return mem[key];   // this session's latest value, even if a write to storage failed
     try {
       const raw = localStorage.getItem(key);
       return raw == null ? fallback : JSON.parse(raw);
@@ -24,7 +25,7 @@ export const store = {
   },
 };
 
-export const DEFAULT_SETTINGS = { diceMode: '3d', diceModeAuto: false, sound: true };
+export const DEFAULT_SETTINGS = { diceMode: '3d', diceModeAuto: false, sound: true, shake: true };
 export function getSettings() {
   return Object.assign({}, DEFAULT_SETTINGS, store.get(KEYS.settings, {}));
 }

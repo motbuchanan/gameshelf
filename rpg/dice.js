@@ -11,6 +11,7 @@
 import * as THREE from './three.module.min.js';
 import * as CANNON from './cannon-es.js';
 import { float } from './rng.js';
+import sfx from './sfx.js';
 
 // ---------- pixel digits (5x7) ----------
 const DIGITS = {
@@ -525,6 +526,7 @@ function makeDieObject(type) {
 
 let rolling = false;
 export function isRolling() { return rolling; }
+let settlePrev = null;          // finishes a roll that a newer roll interrupted
 // Test hook: play throws faster. 1 = real time.
 let timeScale = 1;
 export function setTimeScale(k) { timeScale = Math.max(1, k); }
@@ -534,8 +536,9 @@ export function rollSet(list) {
   const items = list.map(d => ({ type: d.type || TYPE_FOR_SIDES[d.sides], value: d.value }));
   items.forEach(d => { const def = getDef(d.type); if (!def.report.includes(d.value)) throw new Error(d.type + ' cannot show ' + d.value); });
   lastResult = items;
-  if (mode === '2d') return roll2D(items);
-  return roll3D(items);
+  if (settlePrev) settlePrev();   // a new roll never strands the one before it
+  const stop = sfx.tumble();
+  return (mode === '2d' ? roll2D(items) : roll3D(items)).then(r => { stop(); return r; }, e => { stop(); throw e; });
 }
 
 // Percentile pair for a d100 roll {tens, ones}.
@@ -562,6 +565,7 @@ function roll3D(items) {
   });
   const total = Math.max(...sim.frames.map(f => f.length));
   return new Promise(resolve => {
+    settlePrev = () => { settlePrev = null; resolve(items); };
     const t0 = performance.now();
     let frameCount = 0, slowFrames = 0, last = t0;
     const q = new THREE.Quaternion();
@@ -581,7 +585,7 @@ function roll3D(items) {
       });
       renderer.render(scene, camera);
       if (idx < total - 1) { raf = requestAnimationFrame(tick); return; }
-      rolling = false;
+      rolling = false; settlePrev = null;
       showTags(items);
       if (frameCount > 30 && slowFrames / frameCount > 0.5 && onSlow) onSlow();
       resolve(items);
@@ -667,8 +671,10 @@ function draw2D(state) {
 }
 
 function roll2D(items) {
+  cancelAnimationFrame(raf);
   rolling = true;
   return new Promise(resolve => {
+    settlePrev = () => { settlePrev = null; resolve(items); };
     const t0 = performance.now(), dur = 1100 / timeScale;
     const state = items.map(d => ({ type: d.type, show: d.value, rot: 0, dx: 0, dy: 0, spin: (float() - 0.5) * 20 }));
     const tick = now => {
@@ -682,7 +688,7 @@ function roll2D(items) {
       });
       lastFlat = state; draw2D(state);
       if (t < 1) { raf = requestAnimationFrame(tick); return; }
-      rolling = false; resolve(items);
+      rolling = false; settlePrev = null; resolve(items);
     };
     raf = requestAnimationFrame(tick);
   });

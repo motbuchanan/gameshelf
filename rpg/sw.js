@@ -1,6 +1,6 @@
 // Service worker for the rpg repo (flat, all files at the root). Network-first so updates land;
 // precache so the game works offline after the first load.
-const VERSION = '0.8.0';
+const VERSION = '1.0.0';
 const CACHE = 'rpg-v' + VERSION;
 const FILES = [
   './',
@@ -24,6 +24,7 @@ const FILES = [
   'items.js',
   'combat.js',
   'board.js',
+  'sfx.js',
   'story.js',
   'ch1.js',
   'book.js',
