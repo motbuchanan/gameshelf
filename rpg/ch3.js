@@ -156,8 +156,8 @@ export const SCENES = {
       { label: 'Climb over the rocks', go: 'stream_rocks' },
     ],
   },
-  stream_log: { check: { skill: 'brave', help: 'hollis', label: 'Walk the skinny log (don\'t look down!)', great: 'stream_ok', ok: 'stream_ok', miss: 'stream_splash' } },
-  stream_rocks: { check: { skill: 'climb', help: 'hollis', label: 'Climb over the slippery rocks', great: 'stream_ok', ok: 'stream_ok', miss: 'stream_splash' } },
+  stream_log: { check: { skill: 'brave', help: 'hollis', label: 'Walk the skinny log (don\'t look down!)', great: 'stream_ok', ok: 'stream_ok', miss: 'stream_splash', disaster: 'stream_oops' } },
+  stream_rocks: { check: { skill: 'climb', help: 'hollis', label: 'Climb over the slippery rocks', great: 'stream_ok', ok: 'stream_ok', miss: 'stream_splash', disaster: 'stream_oops' } },
   stream_ok: {
     lines: [{ who: 'narrator', text: 'One careful step at a time, {name} makes it across. Everybody follows, and nobody falls in.' }],
     next: 'patrol_spot',
@@ -168,6 +168,16 @@ export const SCENES = {
       { who: 'narrator', text: 'SPLOOSH! {name} slips right into the stream. It is very, very cold.' },
       { who: 'hollis', text: 'Grab my broom!' },
       { who: 'narrator', text: 'Hollis pulls {name} out, dripping like a wet puppy. Water pours out of the bucket helmet.' },
+    ],
+    next: 'patrol_spot',
+  },
+  // An Oops roll: a funny setback, never the end of the adventure.
+  stream_oops: {
+    hurt: 1,
+    lines: [
+      { who: 'narrator', text: 'OOPS! {name} slips, spins, and goes in with a giant SPLOOSH. The bucket helmet pops off and floats away downstream like a little boat.' },
+      { who: 'nell', text: 'I\'ve got it! I\'ve got it! ...There\'s a frog in it now.' },
+      { who: 'narrator', text: 'The frog looks at {name}. Ribbit. It hops out. The bucket goes back on, a little bit slimy.' },
     ],
     next: 'patrol_spot',
   },

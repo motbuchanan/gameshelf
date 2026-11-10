@@ -65,11 +65,14 @@ export const SCENES = {
   intro: {
     lines: [
       { who: 'narrator', text: 'Spring comes to Whisper Woods. At the edge of the trees, a hundred little trees are growing in neat rows. The new grove.' },
+      { who: 'narrator', text: 'And right in the middle, one tiny tree is different. Its three little leaves are silver. The seed from Old Alder\'s pocket is growing.', if: 'seedGiven' },
       { who: 'bramble', text: 'Dig carefully, children. Little roots are delicate.' },
       { who: 'narrator', text: 'Bramble pushes her shovel into the dirt. Clink. She pulls out something shiny.' },
       { who: 'bramble', text: 'A silver gear. This is from the one in the mask. They were digging here long before I came back.' },
       { who: 'juni', text: 'Digging for what?' },
       { who: 'bramble', text: 'I don\'t know. But Inkwing has seen gears like this before. Far to the east, in a town that ticks like a clock.' },
+      { who: 'inkwing', text: 'Caw! Tick-tock! Caw!' },
+      { who: 'mossback', text: 'A town that ticks? I do hope it has bridges.', if: 'party:mossback' },
     ],
     meet: ['bramble'],
     next: 'grow',
@@ -103,6 +106,7 @@ export const SCENES = {
     lines: [
       { who: 'narrator', text: 'The old mine road goes right through a tunnel. Inside, something goes tick, tick, tick.' },
       { who: 'narrator', text: 'Eight tiny brass mice zoom out of the dark, squeaking! There\'s an old mine cart on the track next to you.' },
+      { who: 'pim', text: 'Wait. I know that ticking. That\'s the little brass mouse from our very first game of Heroes and Monsters! Somebody has been watching the woods since the start.', if: 'tickMouse' },
     ],
     meet: ['mouse'],
     choices: [
@@ -134,6 +138,8 @@ export const SCENES = {
   note: {
     lines: [
       { who: 'pim', text: 'The note says: "Bring me anything shiny you find in the woods. W." And it has a silver gear stamped on it.' },
+      { who: 'pim', text: 'A gear instead of a name. Just like the cards in the Riverbend library! W borrowed all those books about stars.', if: 'libraryGear' },
+      { who: 'hero', text: 'And W left a note in Grubjaw\'s tent, too. "Bring me anything that glows."', if: 'wNote0' },
       { who: 'nell', text: 'W. Not B this time. Somebody new.' },
     ],
     set: { noteW: true },
@@ -162,6 +168,8 @@ export const SCENES = {
       { who: 'peddler', text: 'Silver gears? I trade them sometimes. A girl in Gearwick buys every one I find. Always wears a mask. Never says please.' },
       { who: 'peddler', text: 'Here, take this. One of her little mice left it in my cart.' },
       { who: 'pim', text: 'A note! "Bring me anything shiny you find in the woods. W." With a silver gear stamped on it.' },
+      { who: 'pim', text: 'A gear instead of a name. Just like the cards in the Riverbend library! W borrowed all those books about stars.', if: 'libraryGear' },
+      { who: 'hero', text: 'And W left a note in Grubjaw\'s tent, too. "Bring me anything that glows."', if: 'wNote0' },
     ],
     set: { noteW: true, fennick: true },
     next: 'map2w',

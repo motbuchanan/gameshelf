@@ -14,7 +14,10 @@
 //   levelUp: true                            a rest: if the XP star bar is full, the hero levels up here
 //   xp: n, xpWhy: 'text'                     XP for getting past something without a fight (sneaking, talking, a puzzle)
 //   xpFloor: level                           a milestone reached without a fight (talking the boss down)
+//   shop: { who, name, say, stock }          open a shop right here (Old Tock's toys), then go on
+//   check.disaster: 'scene'                  where a Disaster roll goes (a funny setback); without it a Disaster is a miss
 //   nextIf: [{ if, go }], next               where to go after
+// Clues: when a story flag that is also a clue (clues.js) gets set, the Clue Book gets a new page.
 // Fight scenes are 'fight' (the chapter's main fight) or 'fight:name'. A fight's def.then maps win/lose/tie to scenes.
 // A fight's def.xp is what winning (or talking it down) is worth; losing gives half. def.floor: a boss win brings the hero to at least that level.
 // Replaying a finished chapter never gives XP again, so levels always match how far the story has gone.
@@ -48,6 +51,8 @@ import CH12 from './ch12.js';
 import CH13 from './ch13.js';
 import CH14 from './ch14.js';
 import CH15 from './ch15.js';
+import { CLUES } from './clues.js';
+import { SNOOZE } from './roster.js';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -93,10 +98,18 @@ export function storyFlags() {
 function setFlags(obj) {
   if (!obj) return;
   const s = sv(); if (!s) return;
+  const before = { ...storyFlags() };
   Object.assign(storyFlags(), obj);
   if (ch) s.flags[ch.id + 'story'] = { ...(s.flags[ch.id + 'story'] || {}), ...obj };
   save.write();
+  // A flag that is also a clue: tell the player the Clue Book has a new page (once).
+  const fresh = CLUES.filter(c => obj[c.id] && !before[c.id]);
+  if (fresh.length) { if (heldClues) heldClues.push(...fresh); else clueToast(fresh); }
 }
+// Clues found by a scene are announced when its last line shows, so the toast never gets ahead of the story.
+let heldClues = null;
+function clueToast(list) { if (list && list.length) { sfx.coin(); H.toast('New clue in the Big Book: ' + list.map(c => c.name).join(', ') + '!', 3400); } }
+function flushClues() { const l = heldClues; heldClues = null; clueToast(l); }
 export function party() {
   const s = sv(); if (!s) return START_PARTY.slice();
   if (!Array.isArray(s.party)) s.party = START_PARTY.slice();
@@ -286,7 +299,7 @@ function applyEffects(sc) {
     const g = sc.give;
     if (g.gear) [].concat(g.gear).forEach(giveGear);
     if (g.gearBy) { const id = g.gearBy[s.hero.bestAt]; if (id) giveGear(id); }
-    if (g.coins) s.coins = (s.coins || 0) + g.coins;
+    if (g.coins) s.coins = Math.max(0, (s.coins || 0) + g.coins);
     if (g.spell) { s.hero.spells = s.hero.spells || []; if (!s.hero.spells.includes(g.spell)) s.hero.spells.push(g.spell); }
     if (g.talent) { s.hero.talents = s.hero.talents || []; if (!s.hero.talents.includes(g.talent)) s.hero.talents.push(g.talent); }
     if (g.items) { s.hero.items = s.hero.items || {}; for (const k in g.items) s.hero.items[k] = (s.hero.items[k] || 0) + g.items[k]; }
@@ -308,30 +321,35 @@ async function playScene(id) {
   // random: pick one of several scenes (riddles change each time you play)
   if (sc.random) return playScene(sc.random[rint(0, sc.random.length - 1)]);
   if (sc.end) return chapterEnd(sc);
+  heldClues = [];
   applyEffects(sc);
   if (sc.xp) earnXP(ch.id + ':' + (sc.xpKey || id), sc.xp, sc.xpWhy || 'You got past it!');
   if (sc.xpFloor) { const x0 = (hero.xp || 0) - (sc.xp || 0); if (xpFloor(sc.xpFloor)) xpPop((hero.xp || 0) - x0, (sc.xpWhy || 'Big win!') + ' You reached level ' + sc.xpFloor + '!'); }
   if (sc.hurt) H.toast(`Ouch! You lose ${sc.hurt === 1 ? 'a heart' : sc.hurt + ' hearts'}.`);
   const act = $('story-act');
   const lines = (sc.lines || []).filter(cond);
-  const waitsAfter = sc.choices || sc.check || sc.pickTeam || sc.hub || sc.trailmap;
+  // Choices whose conditions all fail are skipped (the scene just goes on to nextIf / next).
+  const shown = (sc.choices || []).filter(cond);
+  const waitsAfter = shown.length || sc.check || sc.pickTeam || sc.hub || sc.trailmap;
   for (let i = 0; i < lines.length; i++) {
     showLine(lines[i]);
     const last = i === lines.length - 1;
+    if (last) flushClues();
     if (last && waitsAfter) break;
     act.innerHTML = '';
     await new Promise(res => act.appendChild(button('story-next', 'Next', true, res)));
   }
+  flushClues();
   if (sc.check) return playScene(await runCheck(sc.check, id));
-  if (sc.choices) {
+  if (shown.length) {
     act.innerHTML = '';
-    const shown = sc.choices.filter(cond);
     const pick = await new Promise(res => shown.forEach((c, k) => act.appendChild(button('story-choice-' + k, fill(c.label), k === 0, () => res(c)))));
     setFlags(pick.set);
     if (pick.retry) ch.retry = true;
     return playScene(pick.go);
   }
   if (sc.pickTeam) await pickTeam(sc.pickTeam);
+  if (sc.shop) await shop(sc.shop);
   if (sc.hub) return playScene(await hub(sc.hub, id));
   if (sc.trailmap) return playScene(await trailMap(sc.trailmap));
   if (sc.levelUp) await restLevelUps();
@@ -366,6 +384,8 @@ async function runCheck(chk, sceneId) {
   let roll = await checkPop(chk, value, h);
   const tier = R.tierFor(value, roll.value);
   const band = tier === 'legendary' || tier === 'exceptional' ? 'great' : tier === 'success' ? 'ok' : 'miss';
+  // A Disaster (the red corner of the chart) can have its own funny setback.
+  if (tier === 'disaster' && chk.disaster) return chk.disaster;
   if (chk.set && chk.set[band]) setFlags(chk.set[band]);
   if (band !== 'miss' && chk.xp !== 0) earnXP(ch.id + ':chk:' + sceneId, chk.xp || P.XP.check, band === 'great' ? 'Great roll!' : 'Good roll!');
   return chk[band] || chk.ok || chk.miss;
@@ -416,7 +436,7 @@ function buildFight(name) {
     const ids = (d.team.from === 'picked' && Array.isArray(f.team) ? f.team : party()).filter(id => !(d.team.exclude || []).includes(id)).slice(0, d.team.spots.length);
     ids.forEach((id, i) => {
       const r = clone(ROSTER[id] || {}), spot = d.team.spots[i];
-      if (id === 'pim' && f.spark) { r.trick = null; r.tricks = f.patch ? [SPARK, PATCH] : [SPARK]; }
+      if (id === 'pim' && f.spark) { r.trick = null; r.tricks = [SPARK, ...(f.patch ? [PATCH] : []), ...(f.snooze ? [SNOOZE] : [])]; }
       const unit = { id, side: 'hero', ai: 'friend', ...r, x: spot.x, y: spot.y };
       if (r.monster) unit.id = id;
       d.units.push(unit);
@@ -447,6 +467,7 @@ async function fight(name) {
   else ch.snapshot = clone(hero);
   ch.retry = false;
   const def = buildFight(name);
+  const pop = $('xp-pop'); if (pop) pop.classList.remove('show');   // no leftover "+XP" over the board
   if (def.pudge != null) hero.luck = def.pudge >= 1 ? P.luckMax(hero) : Math.min(P.luckMax(hero), (hero.luck || 0) + 1);   // Pudge's pie
   const fresh = (def.meets || []).filter(id => book.meet(id));
   H.setAdvView('battle-screen');
@@ -586,7 +607,15 @@ export const SHOP = [
   { id: 'ironcap', price: 6 }, { id: 'padded', price: 5 }, { id: 'cape', price: 3 },
 ];
 // Bag items (not gear): bought by count, used in the story or in fights.
-export const ITEMS = { rope: { name: 'Rope', what: 'Climb and cross things' }, lantern: { name: 'Lantern', what: 'Light in the dark' }, potion: { name: 'Healing potion', what: 'Drink in a fight: hearts back' }, oil: { name: 'Oil can', what: 'Unsticks gears. Throw it in a fight: a monster slips' }, towerkey: { name: 'Tower key', what: 'Old Tock\'s spare key', noBuy: true }, water: { name: 'Bucket of water', what: 'Throw it in a fight: clockwork jams', noBuy: true }, net: { name: 'Snare net', what: 'Throw it in a fight: a monster is stuck' } };
+export const ITEMS = { rope: { name: 'Rope', what: 'Climb and cross things' }, lantern: { name: 'Lantern', what: 'Light in the dark' }, potion: { name: 'Healing potion', what: 'Drink in a fight: hearts back' }, oil: { name: 'Oil can', what: 'Unsticks gears. Throw it in a fight: a monster slips' }, towerkey: { name: 'Tower key', what: 'Old Tock\'s spare key', noBuy: true }, water: { name: 'Bucket of water', what: 'Throw it in a fight: clockwork jams', noBuy: true }, net: { name: 'Snare net', what: 'Throw it in a fight: a monster is stuck' },
+  // Keepsakes: special things you keep. They show on your hero page.
+  mousekey: { name: 'Mouse key', what: 'A little brass key shaped like a mouse', keep: true, noBuy: true },
+  seed: { name: 'Silver seed', what: 'The last seed from the silver grove', keep: true, noBuy: true },
+  brassgear: { name: 'Lucky gear', what: 'A little brass gear with a W on the back', keep: true, noBuy: true },
+  toybear: { name: 'Dancing bear', what: 'A wind-up toy from Old Tock', keep: true },
+  toyfrog: { name: 'Hopping frog', what: 'A wind-up toy from Old Tock', keep: true },
+  toytrain: { name: 'Tiny train', what: 'A wind-up toy from Old Tock', keep: true },
+};
 async function shop(opts) {
   const s = sv(); const h = s.hero; h.bag = h.bag || []; h.items = h.items || {};
   const stock = (opts && opts.stock) || SHOP;
@@ -595,8 +624,8 @@ async function shop(opts) {
   const act = $('story-act');
   await new Promise(res => {
     const render = () => {
-      const ITEM_ICON = { potion: 'heart', oil: 'hammer', rope: 'boot', lantern: 'bulb', towerkey: 'star', water: 'bubble', net: 'shield' };
-      const itemRows = stock.filter(it => ITEMS[it.id]).map(it => `<div class="shop-row"><span class="shop-ico">${I.icon(ITEM_ICON[it.id] || 'star', 28)}</span><b>${esc(ITEMS[it.id].name)}${h.items[it.id] ? ' (' + h.items[it.id] + ')' : ''}</b><span>${esc(ITEMS[it.id].what)}</span><button class="btn small${(s.coins || 0) >= it.price ? '' : ' off'}" id="shop-buy-${it.id}" type="button">${I.icon('coin', 14)} ${it.price}</button></div>`).join('');
+      const ITEM_ICON = { potion: 'heart', oil: 'hammer', rope: 'boot', lantern: 'bulb', towerkey: 'star', water: 'bubble', net: 'shield', toybear: 'star', toyfrog: 'star', toytrain: 'star' };
+      const itemRows = stock.filter(it => ITEMS[it.id]).map(it => `<div class="shop-row"><span class="shop-ico">${I.icon(ITEM_ICON[it.id] || 'star', 28)}</span><b>${esc(ITEMS[it.id].name)}${h.items[it.id] ? ' (' + h.items[it.id] + ')' : ''}</b><span>${esc(ITEMS[it.id].what)}</span>${ITEMS[it.id].keep && h.items[it.id] ? '<span class="shop-on">Yours!</span>' : `<button class="btn small${(s.coins || 0) >= it.price ? '' : ' off'}" id="shop-buy-${it.id}" type="button">${I.icon('coin', 14)} ${it.price}</button>`}</div>`).join('');
       const rows = stock.filter(it => GEAR[it.id]).map(it => {
         const g = GEAR[it.id], own = h.bag.includes(it.id) || Object.values(h.gear).includes(it.id), wearing = h.gear[g.slot] === it.id;
         const what = g.dice ? `${I.icon('die', 16)} ${g.dice}` : ({ buckler: 'Armor', ironcap: 'Armor', padded: 'Armor', helmet: 'Strong armor', roundshield: 'Strong armor', chainshirt: 'Armor', cape: 'Looks great' }[it.id] || '');
@@ -604,7 +633,7 @@ async function shop(opts) {
           : `<button class="btn small${(s.coins || 0) >= it.price ? '' : ' off'}" id="shop-buy-${it.id}" type="button">${I.icon('coin', 14)} ${it.price}</button>`;
         return `<div class="shop-row"><canvas width="32" height="40" data-g="${it.id}"></canvas><b>${esc(g.name)}</b><span>${what}</span>${btn}</div>`;
       }).join('');
-      const bagRows = h.bag.filter(id => !stock.some(it => it.id === id) && GEAR[id] && h.gear[GEAR[id].slot] !== id)
+      const bagRows = !stock.some(it => GEAR[it.id]) ? '' : h.bag.filter(id => !stock.some(it => it.id === id) && GEAR[id] && h.gear[GEAR[id].slot] !== id)
         .map(id => `<div class="shop-row"><canvas width="32" height="40" data-g="${id}"></canvas><b>${esc(GEAR[id].name)}</b><span>In your bag</span><button class="btn small" id="shop-wear-${id}" type="button">Wear</button></div>`).join('');
       $('story-say').innerHTML = `<div class="shop"><p>${esc((opts && opts.say) || '"Real gear for real heroes. Goblin junk pays for it!"')}</p><div class="hub-coins">${I.icon('coin', 22)} <b>${s.coins || 0}</b> coins</div>${itemRows}${rows}${bagRows}</div>`;
       $('story-say').querySelectorAll('canvas[data-g]').forEach(cv => {
@@ -626,7 +655,7 @@ async function shop(opts) {
         if (wear) wear.addEventListener('click', () => { giveGear(it.id); save.write(); hero = h; render(); });
       });
       act.innerHTML = '';
-      act.appendChild(button('shop-done', 'Back to town', true, res));
+      act.appendChild(button('shop-done', (opts && opts.doneLabel) || 'Back to town', true, res));
     };
     render();
   });
@@ -723,4 +752,4 @@ export function play(chId) {
   return playScene('intro');
 }
 
-export default { init, play, chapterTitle, hasChapter, setFast, cond, party, storyFlags, SHOP };
+export default { init, play, chapterTitle, hasChapter, setFast, cond, party, storyFlags, SHOP, ITEMS };

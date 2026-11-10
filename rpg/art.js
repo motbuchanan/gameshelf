@@ -492,6 +492,23 @@ function drawWolf(ctx) {
   if (atk) { rect(g, 3, hy + 3 + b, 5, 1, 'mouth'); g.set(4, hy + 3 + b, 'tooth'); g.set(6, hy + 3 + b, 'tooth'); }
   else rect(g, 4, hy + 2 + b, 4, 1, 'mouth');
 }
+// Turnip the goat: white and shaggy, two little horns, a beard, and always chewing.
+function drawGoat(ctx) {
+  const { g, bob: b, frame } = ctx;
+  // short tail, round body, four skinny legs with dark hooves
+  line(g, 24, 23 + b, 27, 20 + b, 2, 'skin');
+  ellipse(g, 17, 26 + b, 8, 5, 'skin');
+  for (const x of [11, 14, 19, 22]) { rect(g, x, 29, 2, 7, 'skin'); rect(g, x, 36, 2, 2, 'eye'); }
+  // head, ears, horns, beard
+  ellipse(g, 9, 19 + b, 4, 4, 'skin');
+  poly(g, [[3, 19 + b], [7, 18 + b], [7, 22 + b], [4, 22 + b]], 'skin');
+  line(g, 9, 15 + b, 8, 11 + b, 1, 'belly'); line(g, 11, 15 + b, 12, 11 + b, 1, 'belly');
+  rect(g, 12, 17 + b, 3, 2, 'skin');
+  g.set(7, 18 + b, 'eye'); g.set(3, 20 + b, 'nose');
+  rect(g, 5, 23 + b, 2, 3 + (frame ? 1 : 0), 'belly');
+  // chewing: the jaw wiggles
+  rect(g, 4, 22 + b + (frame ? 1 : 0), 3, 1, 'mouth');
+}
 function drawCrow(ctx) {
   const { g, frame, pose } = ctx;
   const up = frame === 1, atk = pose === 'attack', y0 = up ? -2 : 0;
@@ -654,6 +671,7 @@ export const BUILDS = {
   kobold: { palette: () => ({ skin: PAL.kobold }), draw: drawKobold },
   gnoll: { palette: s => ({ skin: PAL[s.fur] || PAL.fur, mane: PAL[s.mane] || PAL.mane }), draw: drawGnoll },
   wolf: { palette: s => ({ skin: PAL[s.fur] || PAL.wolf, belly: PAL.wolfbelly }), draw: drawWolf },
+  goat: { palette: () => ({ skin: PAL.shell, belly: PAL.dbelly }), draw: drawGoat },
   crow: { palette: () => ({ skin: PAL.crow }), draw: drawCrow },
   owl: { palette: () => ({ skin: PAL.brass }), draw: drawOwl },
   mouse: { palette: () => ({ skin: PAL.tin, belly: PAL.brass }), draw: drawMouse },
@@ -807,6 +825,8 @@ export const CAST = [
   { id: 'wren', name: 'Wren Gearwright', role: 'The tinker of Gearwick', group: 'friends',
     spec: { build: 'kid', people: 'human', skin: 'peach', hair: 'ponytail', hairColor: 'auburn', cloth: 'mustard', layers: { body: 'padded', mainHand: 'wrench' } },
     bio: 'The best tinker in Gearwick, and only a little older than you. She builds clockwork animals. She wore a silver mask so nobody could see she was lonely. Now she fixes toys for Old Tock, and she fixes things in fights too.' },
+  { id: 'turnip', name: 'Turnip the Goat', role: 'A very hungry adventurer', group: 'friends', spec: { build: 'goat' },
+    bio: 'A goat from Riverbend who ran away, ate a pie, and decided he was an adventurer. He followed the kids to Bramble\'s tower and then all the way to Gearwick. He has eaten two hats, one pie, a wall of thorns and part of a clock.' },
   { id: 'dragon', name: 'The Baby Dragon', role: 'A brand new friend', group: 'friends', spec: { build: 'dragon' },
     bio: 'The Starstone was never a stone. It was an egg! This tiny dragon sneezes sparkles and has never seen the world before. What happens next is Book Four.' },
 ];

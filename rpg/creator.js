@@ -6,6 +6,7 @@ import save from './save.js';
 import { CH0, NAMES } from './ch0.js';
 import { pick } from './rng.js';
 import I from './icons.js';
+import { GLOSSARY } from './glossary.js';
 
 const $ = id => document.getElementById(id);
 let explain = () => {}, toast = () => {}, playChapter = () => {}, chapterTitle = () => '';
@@ -161,8 +162,8 @@ function dieBadge(dice) { return dice ? `<span class="die-badge">${esc(dice.repl
 
 function gearList(hero) {
   const box = document.createElement('div'); box.className = 'chips';
-  for (const id of [hero.gear.mainHand, hero.gear.head, hero.gear.back]) {
-    if (!id) continue;
+  for (const id of [hero.gear.mainHand, hero.gear.offHand, hero.gear.head, hero.gear.body, hero.gear.back]) {
+    if (!id || !GEAR[id]) continue;
     const b = chip(GEAR[id].name, false, () => explain('gear_' + id));
     if (GEAR[id].dice) b.insertAdjacentHTML('beforeend', dieBadge(GEAR[id].dice));
     box.appendChild(b);
@@ -181,6 +182,14 @@ function sheet(hero, box) {
   box.appendChild(skillList(hero));
   box.insertAdjacentHTML('beforeend', '<h3 class="sub">Your stuff</h3>');
   box.appendChild(gearList(hero));
+  // The bag: potions, rope, things to throw, and keepsakes. Tap one to read about it.
+  const items = Object.entries(hero.items || {}).filter(([id, n]) => n > 0 && GLOSSARY['item_' + id]);
+  if (items.length) {
+    box.insertAdjacentHTML('beforeend', '<h3 class="sub">In your bag</h3>');
+    const bag = document.createElement('div'); bag.className = 'chips'; bag.id = 'bag-chips';
+    for (const [id, n] of items) bag.appendChild(chip(GLOSSARY['item_' + id].title + (n > 1 ? ' x' + n : ''), false, () => explain('item_' + id)));
+    box.appendChild(bag);
+  }
 }
 
 // ---------- step renderers ----------

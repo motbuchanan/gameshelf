@@ -17,6 +17,8 @@ export const SCENES = {
       { who: 'pudge', text: 'Pudge LOVES pie.', if: 'party:pudge' },
       { who: 'baker', text: 'Any friend of these kids gets pie!', if: 'party:sniffle' },
       { who: 'gran', text: 'Pim. You used page 9, didn\'t you? I can tell. Your eyebrows are a little bit singed.', if: 'spark' },
+      { who: 'baker', text: 'And I heard Juni picked the lock on her own cage! That girl could fix the moon.', if: 'escape' },
+      { who: 'captain', text: 'A skinny goblin walked up to the gate this morning and asked if we had any jobs. And any lunch. He said a kid was nice to him.', if: 'guardGone' },
     ],
     next: 'town',
   },
@@ -33,6 +35,7 @@ export const SCENES = {
         { id: 'tobin', label: 'Tobin' },
         { id: 'sniffle', label: 'Sniffle', if: 'party:sniffle' },
         { id: 'pudge', label: 'Pudge', if: 'party:pudge' },
+        { id: 'pudge2', who: 'pudge', label: 'A hungry goblin', ifNot: 'party:pudge' },
       ].map(p => ({ go: p.id, ...p })),
       shop: true,
       doneLabel: 'Done in town',
@@ -47,11 +50,24 @@ export const SCENES = {
       { who: 'gran', text: 'Now, I hate to ask, but my cat Biscuit ran into the woods when all the fuss started. Would you look for her?', ifNot: 'cat_done' },
       { who: 'gran', text: 'Biscuit is asleep on my pillow, right where she belongs. Thank you again.', if: 'cat_done' },
     ],
-    nextIf: [{ if: 'cat_done', go: back }],
+    nextIf: [{ if: ['cat_done', 'granStar'], go: back }, { if: 'cat_done', go: 'gran_page' }],
     choices: [
-      { label: 'Look for Biscuit', go: 'cat' },
-      { label: 'Maybe later', go: back },
+      { label: 'Look for Biscuit', go: 'cat', ifNot: 'cat_done' },
+      { label: 'Maybe later', go: back, ifNot: 'cat_done' },
     ],
+    next: back,
+  },
+  // A side quest that runs through Book Two: Gran's missing page. And a story for much later.
+  gran_page: {
+    lines: [
+      { who: 'gran', text: 'One more thing, little hero. My book of tricks is missing a page. Page 15. The wind took it the night the guards rode away, and I saw a crow fly off with it, toward Silver Creek.' },
+      { who: 'gran', text: 'It\'s a sleepy song. Very handy. If you ever find it out there in the wide world, give it to Pim.' },
+      { who: 'pim', text: 'A spell I haven\'t read? We HAVE to find it.' },
+      { who: 'gran', text: 'And did I ever tell you about the night a star fell? I was just a girl. It dropped right out of the sky, into the silver grove at the far edge of Whisper Woods. The trees glowed for a whole week.' },
+      { who: 'gran', text: 'Nobody ever found that star. I used to think it was still out there somewhere, sleeping.' },
+    ],
+    set: { pageQuest: true, granStar: true },
+    next: back,
   },
   cat: { check: { skill: 'track', help: 'nell', label: 'Follow the little paw prints', great: 'cat_found', ok: 'cat_found', miss: 'cat_tree' } },
   cat_found: {
@@ -60,7 +76,7 @@ export const SCENES = {
       { who: 'gran', text: 'Biscuit! Here, take these coins. And a cookie. Mostly the coins.' },
     ],
     give: { coins: 4 }, set: { cat_done: true },
-    next: back,
+    next: 'gran_page',
   },
   cat_tree: {
     lines: [
@@ -69,7 +85,7 @@ export const SCENES = {
       { who: 'gran', text: 'Biscuit! And Hollis, eventually. Here, a few coins for your trouble.' },
     ],
     give: { coins: 3 }, set: { cat_done: true },
-    next: back,
+    next: 'gran_page',
   },
 
   baker: {
@@ -122,9 +138,10 @@ export const SCENES = {
     ],
     nextIf: [{ if: 'geese_done', go: back }],
     choices: [
-      { label: 'Chase the geese out', go: 'geese' },
-      { label: 'Maybe later', go: back },
+      { label: 'Chase the geese out', go: 'geese', ifNot: 'geese_done' },
+      { label: 'Maybe later', go: back, ifNot: 'geese_done' },
     ],
+    next: back,
   },
   geese: { check: { skill: 'brave', help: 'hollis', label: 'Be brave and chase the geese away', great: 'geese_win', ok: 'geese_win', miss: 'geese_chase' } },
   geese_win: {
@@ -154,9 +171,10 @@ export const SCENES = {
     ],
     nextIf: [{ if: 'mill_done', go: back }],
     choices: [
-      { label: 'Help fix the mill', go: 'mill' },
-      { label: 'Maybe later', go: back },
+      { label: 'Help fix the mill', go: 'mill', ifNot: 'mill_done' },
+      { label: 'Maybe later', go: back, ifNot: 'mill_done' },
     ],
+    next: back,
   },
   mill: { check: { skill: 'shove', help: 'juni', label: 'Lift the heavy mill wheel', great: 'mill_win', ok: 'mill_win', miss: 'mill_splash' } },
   mill_win: {
@@ -198,6 +216,45 @@ export const SCENES = {
       { who: 'pudge', text: 'Psst. Grubjaw said the woods would belong to someone new soon. Someone with a black feather. Pudge doesn\'t like the sound of that.' },
     ],
     set: { heardB: true },
+    next: back,
+  },
+
+  // A second chance: if Pudge never joined, he followed the smell of pie all the way to Millbrook.
+  pudge2: {
+    lines: [
+      { who: 'narrator', text: 'A round goblin is sitting outside the bakery with his nose in the air. Sniff. Sniff. He looks hungry. And a little bit sorry.' },
+      { who: 'pudge', text: 'Pudge is not guarding anything anymore. Grubjaw ran away. Pudge followed the pie smell. Pudge has never had pie.' },
+      { who: 'hollis', text: 'My dad has a whole wagon wheel of it. Should we... share?' },
+    ],
+    meet: ['goblin'],
+    choices: [
+      { label: 'Share some pie with him', go: 'pudge2_pie' },
+      { label: 'Maybe later', go: back },
+    ],
+  },
+  pudge2_pie: { check: { skill: 'cheer', help: 'hollis', label: 'Cheer up a hungry goblin with pie', great: 'pudge2_join', ok: 'pudge2_join', miss: 'pudge2_shy', disaster: 'pudge2_geese' } },
+  pudge2_join: {
+    lines: [
+      { who: 'hero', text: 'Here. This slice is for you. There\'s plenty.' },
+      { who: 'pudge', text: 'For PUDGE? Nobody shares with Pudge. Grubjaw ate all the good stuff.' },
+      { who: 'narrator', text: 'Pudge eats the pie in one bite. Then he cries a little. Then he asks for another slice.' },
+      { who: 'pudge', text: 'Pudge is never going back to the warren. Can Pudge stay with you? Pudge is very lucky to have around. Everybody says so. Well, Pudge says so.' },
+      { who: 'narrator', text: 'Pudge joins your team!' },
+    ],
+    join: 'pudge',
+    set: { pudge: true },
+    next: back,
+  },
+  pudge2_shy: {
+    lines: [{ who: 'narrator', text: 'Pudge looks at the pie. He looks at {name}. Then he hides behind a barrel. He isn\'t sure it\'s not a trick. Maybe try again in a little bit.' }],
+    next: back,
+  },
+  pudge2_geese: {
+    lines: [
+      { who: 'narrator', text: 'OOPS! {name} trips on the bakery step. The pie flies through the air... and lands right in front of the geese. HONK. Gone in three seconds.' },
+      { who: 'pudge', text: 'Those birds are SCARY. Pudge respects them.' },
+      { who: 'narrator', text: 'Maybe try again with another slice.' },
+    ],
     next: back,
   },
 

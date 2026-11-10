@@ -186,7 +186,7 @@ export const CH2_SCENES = {
   end: {
     end: true,
     title: 'End of Chapter 2',
-    text: 'Chapter 3, The Trail, comes in the next update.',
+    text: 'Next: Chapter 3, The Trail.',
   },
 };
 

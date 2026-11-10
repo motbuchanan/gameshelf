@@ -55,7 +55,7 @@ export const FIGHTS = {
     ],
     team: { from: 'picked', exclude: ['juni'], spots: [{ x: 2, y: 2 }, { x: 2, y: 4 }, { x: 1, y: 5 }] },
     cage: { x: 9, y: 1, kid: 'juni', opener: 'nell' },
-    surpriseIf: ['backdoor', 'escape'],
+    surpriseIf: ['snuckIn', 'escape'],
     warnIf: 'laugh',
     fireIf: 'fire',
     roundCap: 14, capResult: 'win', boost: { hp: 3, skill: 12 },
@@ -66,6 +66,8 @@ export const FIGHTS = {
         lines: [{ who: 'narrator', text: 'From the far side of the camp, the friends who stayed outside bang pots and yell. One goblin runs off to see what all the noise is.' }] },
       { round: 0, type: 'remove', ids: ['g3'], if: 'buttons',
         lines: [{ who: 'nell', text: 'Hey, goblins! SHINY BUTTONS!' }, { who: 'narrator', text: 'Nell throws a handful of buttons into the bushes. A goblin squeals and dives after them.' }] },
+      { round: 0, type: 'remove', ids: ['g2'], if: 'guardGone',
+        lines: [{ who: 'narrator', text: 'Twitch, the goblin with the bow, is nowhere to be seen. He went to find lunch, just like he said.' }] },
       { round: 0, type: 'remove', ids: ['k1', 'k2'], if: 'party:sniffle',
         lines: [{ who: 'sniffle', text: 'Kobolds! It\'s me, Sniffle! These kids are NICE! Go home, have a snack!' }, { who: 'narrator', text: 'The kobolds look at each other, shrug, and wander off. They never liked Grubjaw much anyway.' }] },
       { round: 1, type: 'scare', id: 'grubjaw', turns: 1, if: ['torch', 'fire'],
@@ -97,7 +99,59 @@ export const SCENES = {
       { who: 'nell', text: 'Remember: when he laughs, get out of the way.', if: 'laugh' },
       { who: 'pim', text: 'And he\'s scared of fire. Spark will make him jump!', if: ['fire', 'spark'] },
     ],
-    nextIf: [{ if: 'backdoor', go: 'sneak_in' }],
+    next: 'ways',
+  },
+  // Three ways to start: the plan, a peek in Grubjaw's tent (a clue), or talking the cage guard out of the fight.
+  ways: {
+    lines: [{ who: 'hollis', text: 'Last chance to change the plan. What do we do, {name}?' }],
+    set: { guardGone: false, snuckIn: false },
+    choices: [
+      { label: 'Stick to the plan: pots and pans!', go: 'go_in' },
+      { label: 'Sneak into Grubjaw\'s tent first', go: 'tent_sneak' },
+      { label: 'Talk to the goblin guarding the cage', go: 'guard_talk' },
+    ],
+  },
+  go_in: { nextIf: [{ if: 'backdoor', go: 'sneak_in' }], next: 'front_in' },
+  tent_sneak: { check: { skill: 'sneak', help: 'nell', label: 'Sneak into the big tent', great: 'tent', ok: 'tent', miss: 'tent_caught', disaster: 'tent_pots' } },
+  tent: {
+    xp: 2, xpWhy: 'You found a clue!',
+    lines: [
+      { who: 'narrator', text: 'Inside the big tent: a pile of old soup bones, a very stinky blanket, and a little table covered in papers.' },
+      { who: 'narrator', text: 'Most of the papers have black feathers on them. But one note is in tidy little letters, nothing like the others.' },
+      { who: 'narrator', text: '"Bring me anything that glows. I pay in gears. W." Next to it sits a neat little stack of shiny brass gears.' },
+      { who: 'hero', text: 'W? Who is W? And why would a gnoll want gears?' },
+      { who: 'narrator', text: 'There\'s a bottle of strawberry potion on the table, too. {name} takes it. Then the team slips back out, quiet as mice.' },
+    ],
+    give: { items: { potion: 1 } },
+    set: { wNote0: true },
+    next: 'go_in',
+  },
+  tent_caught: {
+    lines: [{ who: 'narrator', text: 'A goblin sees {name}\'s feet sticking out under the tent flap. "INTRUDERS! BOSS! INTRUDERS!" No time for the plan now!' }],
+    next: 'front_in',
+  },
+  tent_pots: {
+    lines: [
+      { who: 'narrator', text: 'OOPS! {name} trips right over the pots and pans the others were saving for the distraction. CRASH! BANG! CLANG-A-LANG!' },
+      { who: 'narrator', text: 'Every monster in the camp turns around. Well. That is ONE way to make a distraction.' },
+    ],
+    next: 'front_in',
+  },
+  guard_talk: { check: { skill: 'cheer', help: 'pudge', label: 'Cheer up the grumpy cage guard', great: 'guard_gone', ok: 'guard_gone', miss: 'guard_no' } },
+  guard_gone: {
+    xp: 2, xpWhy: 'You talked a goblin out of the fight!',
+    lines: [
+      { who: 'narrator', text: 'A skinny goblin with a bow is guarding the cage. He looks tired. And hungry. And bored.' },
+      { who: 'hero', text: 'Hey. You look like you\'ve been standing there all day. Does Grubjaw ever say thank you?' },
+      { who: 'narrator', text: '"...No," says the goblin. "Never. Not once. And he eats all the good snacks."' },
+      { who: 'pudge', text: 'Twitch! It\'s me, Pudge! These kids SHARE. Come on, there\'s pie in their town!', if: 'party:pudge' },
+      { who: 'narrator', text: 'The goblin thinks about it. Then he hangs his bow on the cage, yawns, and wanders off to find lunch.' },
+    ],
+    set: { guardGone: true },
+    next: 'go_in',
+  },
+  guard_no: {
+    lines: [{ who: 'narrator', text: 'The goblin squints at {name}. "Nice try, soap-smeller. BOSS! BOSS! They\'re HERE!"' }],
     next: 'front_in',
   },
   sneak_in: {
@@ -105,6 +159,7 @@ export const SCENES = {
       { who: 'narrator', text: '{name} tries the key from the goblin warren on the camp\'s back gate. Click! It opens without a sound.' },
       { who: 'narrator', text: 'The team creeps right up behind Grubjaw before he knows they\'re there.' },
     ],
+    set: { snuckIn: true },
     next: 'fight:boss',
   },
   front_in: {

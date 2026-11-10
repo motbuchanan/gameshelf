@@ -70,6 +70,8 @@ export const SCENES = {
         { id: 'chicken', who: 'tobin', label: 'Runaway chicken', go: 'chicken' },
         { id: 'fountain', who: 'juni', label: 'The broken fountain', go: 'fountain' },
         { id: 'bakery', who: 'pudge', label: 'The bakery', go: 'bakery', if: 'party:pudge' },
+        { id: 'gearask', who: 'gearsmith', label: 'Show Mara the lucky gear', go: 'gear_ask', if: 'item:brassgear', ifNot: 'gearKnown' },
+        { id: 'turnip', label: 'Is that... Turnip?', go: 'turnip_found', if: 'turnip', ifNot: 'turnipDone' },
       ],
       shop: { who: 'gearsmith', name: 'Mara Ironhand, the smith', say: '"Real knight gear, made to fit. Try it on!"', stock: SMITH_STOCK },
       shopLabel: 'Visit the smith',
@@ -78,15 +80,50 @@ export const SCENES = {
     },
   },
   toys: { nextIf: [{ if: 'toymaker', go: 'toys_again' }], next: 'toys_first' },
-  toys_again: { lines: [{ who: 'toymaker', text: 'Good luck up in that tower. And tell Wren that Old Tock misses her.' }], next: 'town' },
+  toys_again: {
+    lines: [
+      { who: 'toymaker', text: 'Good luck up in that tower. And tell Wren that Old Tock misses her.' },
+      { who: 'toymaker', text: 'While you\'re here, would you like a toy? Every one is wound up and ready to go.' },
+    ],
+    shop: { who: 'toymaker', name: 'Old Tock\'s toy shop', say: '"Keepsakes for brave adventurers. They don\'t do anything. They\'re just nice."', doneLabel: 'Back to Gearwick',
+      stock: [{ id: 'toybear', price: 4 }, { id: 'toyfrog', price: 4 }, { id: 'toytrain', price: 6 }] },
+    next: 'town',
+  },
+  // The lucky gear from Bramble's tower: Mara knows whose work it is.
+  gear_ask: {
+    lines: [
+      { who: 'gearsmith', text: 'Let me see that. Hm. Tiny teeth, every one the same. Look how smooth it turns.' },
+      { who: 'gearsmith', text: 'Only one tinker in Gearwick cuts gears this fine. A girl. She hasn\'t sold me one in two years. She lives up in the clock tower now, and she never comes down.' },
+      { who: 'juni', text: 'The W on the back. That\'s her.' },
+    ],
+    set: { gearKnown: true },
+    next: 'town',
+  },
+  // The end of a running joke that started in Riverbend.
+  turnip_found: {
+    lines: [
+      { who: 'narrator', text: 'In the middle of the square stands a goat, eating a clockwork hat. The hat keeps ticking inside him. Tick. Tick. Burp.' },
+      { who: 'tobin', text: 'TURNIP! How did you even get here?' },
+      { who: 'turnip', text: 'Baaa.' },
+      { who: 'narrator', text: 'A boy runs up, all out of breath. "That\'s my sister\'s goat! We came all the way from Riverbend to find him. Thank you for looking after him!"' },
+      { who: 'narrator', text: 'He gives you 6 coins, and a hat. Turnip looks at the new hat. Everybody holds on to it tightly.' },
+    ],
+    meet: ['turnip'],
+    give: { coins: 6 },
+    set: { turnipDone: true },
+    next: 'town',
+  },
   toys_first: {
     lines: [
       { who: 'narrator', text: 'The toy shop is full of ticking things: a dancing bear, a frog that hops, a tiny train that goes round and round.' },
       { who: 'toymaker', text: 'Welcome, welcome. I\'m Old Tock. Oh! Is that Bolt? I haven\'t seen him in years.' },
       { who: 'toymaker', text: 'A girl made him. Wren. She used to bring me broken toys to fix. She was the best tinker I ever saw, and only six years old.' },
       { who: 'toymaker', text: 'But the other kids never played with her. They said she talked too much about gears. One day she stopped coming. Now she lives in the clock tower, all alone.' },
+      { who: 'hero', text: 'We found a brass owl with a stamp inside. "W. Gearwright."', if: 'owlStamp' },
+      { who: 'toymaker', text: '...Gearwright. That\'s her family name. Oh, Wren. What have you been building?', if: 'owlStamp' },
       { who: 'juni', text: 'She makes friends out of gears because nobody would be her friend.' },
       { who: 'toymaker', text: 'Here. My spare key to the tower. If you find her... tell her Old Tock misses her.' },
+      { who: 'toymaker', text: 'And come back any time if you\'d like a toy of your own.' },
     ],
     give: { items: { towerkey: 1 } },
     set: { toymaker: true, wrenName: true },
@@ -273,7 +310,7 @@ export const SCENES = {
     levelUp: true,
     next: 'end',
   },
-  end: { end: true, title: 'End of Chapter 12', text: 'Next: Chapter 13, The Clock Tower, comes in the next update.' },
+  end: { end: true, title: 'End of Chapter 12', text: 'Next: Chapter 13, The Clock Tower.' },
 };
 
 export default { SCENES, FIGHTS, TEXT };

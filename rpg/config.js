@@ -1,7 +1,7 @@
 // Kid RPG config. Change GAME_TITLE once the name is chosen; the folder stays rpg/.
 export const GAME_TITLE = 'Heroes of Millbrook';
-export const VERSION = '1.3.0';
-export const BUILD_DATE = 'Nov 8 2026';
+export const VERSION = '1.4.0';
+export const BUILD_DATE = 'Nov 10 2026';
 export const KEYS = {
   save: 'rpg_save_v1',
   settings: 'rpg_settings_v1',

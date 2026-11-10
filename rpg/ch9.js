@@ -108,10 +108,12 @@ export const SCENES = {
   },
   lantern: {
     lines: [{ who: 'narrator', text: '{name} lights the lantern from the Riverbend market. The vines curl away from the light!' }],
+    nextIf: [{ if: 'item:seed', go: 'seed_crow' }],
     next: 'ravine',
   },
   spark_light: {
     lines: [{ who: 'pim', text: 'Spark! ...Look, the vines don\'t like light. They\'re backing away!' }],
+    nextIf: [{ if: 'item:seed', go: 'seed_crow' }],
     next: 'ravine',
   },
   dark_path: {
@@ -119,12 +121,58 @@ export const SCENES = {
     lines: [{ who: 'narrator', text: 'It is very dark. Vines scratch everybody\'s arms. Ouch, ouch, ouch.' }],
     next: 'ravine',
   },
+  // The silver seed side quest: a crow wants it.
+  seed_crow: {
+    lines: [
+      { who: 'narrator', text: 'Something black drops out of the vines. A crow! It dives straight at {name}\'s pocket, where the silver seed is.' },
+    ],
+    check: { skill: 'notice', help: 'nell', label: 'Keep the silver seed safe', great: 'seed_safe', ok: 'seed_safe', miss: 'seed_grab' },
+  },
+  seed_safe: {
+    lines: [{ who: 'narrator', text: '{name} sees it coming and claps a hand over the pocket. The crow flaps off, cawing something rude. The seed is safe.' }],
+    next: 'ravine',
+  },
+  seed_grab: {
+    lines: [
+      { who: 'narrator', text: 'The crow snatches the little bag right out of {name}\'s pocket and flaps away!' },
+      { who: 'tobin', text: 'HEY! GIVE THAT BACK, YOU FEATHERY THIEF!' },
+      { who: 'narrator', text: 'Tobin is so loud that the crow jumps in the air and drops the bag. Nell catches it before it hits the ground. Phew.' },
+    ],
+    next: 'ravine',
+  },
   ravine: {
-    lines: [{ who: 'narrator', text: 'Halfway through, the path stops at a deep, rocky ravine. The tower is on the other side.' }],
-    nextIf: [{ if: 'item:rope', go: 'rope' }],
-    next: 'no_rope',
+    lines: [
+      { who: 'narrator', text: 'Halfway through, the path stops at a deep, rocky ravine. The tower is on the other side.' },
+      { who: 'juni', text: 'How do we get across?' },
+    ],
+    choices: [
+      { label: 'Swing across on the rope', go: 'rope', if: 'item:rope' },
+      { label: 'Ask Mossback to carry everyone', go: 'moss_carry', if: 'party:mossback' },
+      { label: 'Follow Turnip the goat', go: 'turnip_path', if: 'turnip' },
+      { label: 'Go the long way around', go: 'no_rope' },
+    ],
+  },
+  moss_carry: {
+    xpKey: 'fight:thorns', xp: 5, xpWhy: 'You got across the ravine! No fight needed.',
+    lines: [
+      { who: 'mossback', text: 'A ravine? Oh, that is just a small step for a troll. Everybody hold on to my moss, please.' },
+      { who: 'narrator', text: 'Mossback tucks two kids under each arm, steps down into the ravine, and steps up the other side. Then he goes back for the rest.' },
+      { who: 'tobin', text: 'That was the BEST ride. Mossback, can you do that all the way home?' },
+    ],
+    next: 'tower_door',
+  },
+  turnip_path: {
+    xpKey: 'fight:thorns', xp: 5, xpWhy: 'You got around the ravine! No fight needed.',
+    lines: [
+      { who: 'narrator', text: 'Turnip the goat trots up to a wall of thorny vines and starts eating. Munch. Munch. MUNCH. He doesn\'t mind the thorns one bit.' },
+      { who: 'narrator', text: 'Behind the vines is an old stone footbridge, hidden for years. Turnip eats a goat-sized tunnel right to it.' },
+      { who: 'nell', text: 'Good goat. BEST goat.' },
+      { who: 'narrator', text: 'Turnip burps, and trots across like he planned the whole thing.' },
+    ],
+    next: 'tower_door',
   },
   rope: {
+    xpKey: 'fight:thorns', xp: 5, xpWhy: 'You got across the ravine! No fight needed.',
     lines: [
       { who: 'narrator', text: '{name} ties the rope from the market to a big tree, and everyone swings across one at a time. WHEEE!' },
       { who: 'tobin', text: 'Again! Can we do that again?' },
@@ -134,7 +182,10 @@ export const SCENES = {
   },
   no_rope: {
     lines: [
-      { who: 'juni', text: 'No rope. We\'ll have to go the long way around.' },
+      { who: 'juni', text: 'No rope. We\'ll have to go the long way around.', ifNot: ['item:rope', 'party:mossback', 'turnip'] },
+      { who: 'juni', text: 'The long way it is.', if: 'item:rope' },
+      { who: 'juni', text: 'The long way it is.', ifNot: 'item:rope', if: 'party:mossback' },
+      { who: 'juni', text: 'The long way it is.', ifNot: ['item:rope', 'party:mossback'], if: 'turnip' },
       { who: 'narrator', text: 'The long way goes right past a nest of crows, and a very grumpy wolf.' },
     ],
     next: 'fight:thorns',
@@ -153,6 +204,7 @@ export const SCENES = {
   tower_door: {
     lines: [
       { who: 'narrator', text: 'The tower door is tiny. Only a few kids can squeeze through at once.' },
+      { who: 'mossback', text: 'If I don\'t fit, I shall guard the door. I am very good at standing in front of things.', if: 'party:mossback' },
       { who: 'hollis', text: 'The rest of us will guard the way back. Pick who goes in with you.' },
     ],
     pickTeam: { size: 3, exclude: ['inkwing'] },
@@ -273,7 +325,8 @@ export const SCENES = {
     xpKey: 'owls',
     xp: 7, xpWhy: 'You sneaked past the owls! That counts as winning!',
     lines: [{ who: 'narrator', text: 'The owls tick and tock and stare at the wall. The kids slip right past them, up the last stairs.' }],
-    next: 'diary',
+    set: { owlsSnuck: true, owlsFought: false },
+    next: 'owl_open',
   },
   owls_noticed: {
     lines: [{ who: 'narrator', text: 'Oops. One owl turns its head all the way around. HOO. HOO. INTRUDERS.' }],
@@ -281,7 +334,8 @@ export const SCENES = {
   },
   owls_win: {
     lines: [{ who: 'narrator', text: 'The last owl winds down. Tick... tock... tick... clunk. The way up is open.' }],
-    next: 'diary',
+    set: { owlsFought: true, owlsSnuck: false },
+    next: 'owl_open',
   },
   owls_lose: {
     lines: [{ who: 'narrator', text: 'The owls flap their brass wings and herd the kids back down the stairs.' }],
@@ -296,6 +350,19 @@ export const SCENES = {
       { who: 'juni', text: 'Watch. Their keys are in their backs. Just wait.' },
       { who: 'narrator', text: 'Tick... tock... tick... clunk. One by one, the owls wind down and stop. The kids walk right past.' },
     ],
+    set: { owlsFought: false, owlsSnuck: false },
+    next: 'owl_open',
+  },
+  // A clue for Book Three: who built Bramble's owls?
+  owl_open: {
+    lines: [
+      { who: 'narrator', text: 'On the way past, Juni stops at the last owl. There\'s a tiny brass door in its back, right next to the key.', if: 'owlsSnuck' },
+      { who: 'narrator', text: 'Juni can\'t help it. She kneels down by a stopped owl and opens the tiny brass door in its back.', ifNot: 'owlsSnuck' },
+      { who: 'juni', text: 'Look at these gears. They\'re PERFECT. And there\'s a stamp inside: "W. Gearwright."' },
+      { who: 'pim', text: 'So Bramble didn\'t build her own guards. Somebody built them for her.' },
+      { who: 'juni', text: 'Somebody really, really good.' },
+    ],
+    set: { owlStamp: true },
     next: 'diary',
   },
   diary: {

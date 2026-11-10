@@ -109,13 +109,26 @@ export const SCENES = {
   door: {
     lines: [
       { who: 'narrator', text: 'The big tower door is locked tight. A sign says "KEEP OUT. I MEAN IT." Vines climb all the way up the wall to an open window.' },
-      { who: 'nell', text: 'Three ways in. Pick one!' },
+      { who: 'narrator', text: 'And down by the bottom step, there\'s a door no bigger than a book, with a tiny mouse-shaped keyhole.', if: 'item:mousekey' },
+      { who: 'nell', text: 'There\'s more than one way in. Pick one!' },
     ],
     choices: [
+      { label: 'Try the little mouse key', go: 'door_mouse', if: 'item:mousekey' },
       { label: 'Use Old Tock\'s key', go: 'door_key', if: 'item:towerkey' },
       { label: 'Pick the lock', go: 'door_lock' },
       { label: 'Climb the vines to the window', go: 'door_climb' },
     ],
+  },
+  // The mouse key from the goblin treasure pile (Chapter 4) opens a very small door.
+  door_mouse: {
+    lines: [
+      { who: 'narrator', text: 'The little brass mouse key fits the tiny keyhole. Click! The book-sized door swings open.' },
+      { who: 'narrator', text: 'Inside is a tiny room. A tiny bed, just the right size for a clockwork mouse. A tiny blanket. And a tiny sign: "Pip\'s house."' },
+      { who: 'nell', text: 'She built a little house for her mouse. And the goblins stole the key to it.' },
+      { who: 'narrator', text: 'Behind the little bed is a lever. {name} reaches in and pulls it. CLUNK. The big tower door swings open.' },
+    ],
+    set: { mouseDoor: true },
+    next: 'knights',
   },
   door_key: {
     use: 'towerkey',

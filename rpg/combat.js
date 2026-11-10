@@ -11,7 +11,7 @@ import { CAST } from './art.js';
 import { weaponUse } from './items.js';
 import { GEAR } from './art.js';
 import { MONSTERS, armorOf } from './monsters.js';
-import { SPARK, PATCH } from './roster.js';
+import { SPARK, PATCH, SNOOZE } from './roster.js';
 
 export const FLAGS_FOR = { legendary: 3, exceptional: 2, success: 1, fail: 0, disaster: 0 };
 export const COVER = 20;      // a target in a bush is this much harder to hit
@@ -33,7 +33,7 @@ function makeMonster(d) {
     flags: m.hp, maxFlags: m.hp, out: false,
     weapon: m.weapon, use, skills: m.skills, armor: m.armor, finesse: m.finesse, retreatAt: m.retreatAt || 0,
     trick: null, prefersBush: !!d.prefersBush, bystander: !!d.bystander,
-    boss: !!m.boss, sweepDice: m.sweepDice || null,
+    boss: !!m.boss, heavy: !!m.heavy, sweepDice: m.sweepDice || null,
     dice: m.dice || null, weaponName: m.dice ? m.weapon : null,
     pack: !!m.pack, leader: !!m.leader, fly: !!m.fly, fireResist: !!m.fireResist, summoner: !!m.summoner, clockwork: !!m.clockwork,
     kind: d.monster, summonKind: m.summonKind || null, big: !!m.big, restTurns: m.restTurns || 1,
@@ -59,6 +59,7 @@ export function makeUnit(d, hero, mode = 'flags') {
   const spells = char.spells || [];
   if (spells.includes('spark') && !tricks.some(t => t.id === 'spark')) tricks.push(SPARK);
   if (spells.includes('patch') && !tricks.some(t => t.id === 'patch')) tricks.push(PATCH);
+  if (spells.includes('snooze') && !tricks.some(t => t.id === 'snooze')) tricks.push(SNOOZE);
   const weapon = char.gear.mainHand;
   const use = weaponUse(weapon);
   const hp = mode === 'hp' ? (d.id === 'hero' ? Math.max(1, char.hp) : P.hpMax(char)) : d.flags;
@@ -232,6 +233,13 @@ export function resolveArea(b, u, center, roll, dmg) {
     return { tier, results, chance: ch, tiles, heal: true };
   }
   const hit = enemiesOf(b, u).filter(e => tiles.some(t => t.x === e.x && t.y === e.y));
+  // Snooze: no damage. On a good roll the monster nods off and loses its next turn (2 turns on a Legendary; a boss only ever 1).
+  if (u.trick.sleep) {
+    const turns = FLAGS_FOR[tier] ? (tier === 'legendary' ? 2 : 1) : 0;
+    const results = hit.map(e => { const n = turns ? (e.boss || e.heavy ? 1 : turns) : 0; if (n) { scare(b, e.id, n); b.skipWhy = b.skipWhy || {}; b.skipWhy[e.id] = { tag: 'Zzz...', say: 'Zzzzz... snore...' }; } return { id: e.id, lost: 0, slept: n }; });
+    u.trick.left--; b.ts.acted = true;
+    return { tier, results, chance: ch, tiles, sleep: true };
+  }
   // Clockwork owls shrug off fire: half damage.
   const results = hit.map(e => ({ id: e.id, lost: pull(e, u.trick.fire && e.fireResist ? Math.max(1, Math.floor(amount / 2)) * (amount ? 1 : 0) : amount), out: e.out }));
   if (u.trick.fire && b.fireScares && amount) hit.filter(e => e.boss && !e.out).forEach(e => { b.scared[e.id] = 1; });
@@ -511,14 +519,14 @@ export function planTurn(b, u) {
       .sort((a, c) => a.flags / a.maxFlags - c.flags / c.maxFlags)[0];
     if (hurt) { u.trick = healT; plan.action = { type: 'area', center: { x: hurt.x, y: hurt.y }, trick: healT.id }; plan.teach = once('heal'); return plan; }
   }
-  const dmgT = (u.tricks || []).find(t => !t.heal && t.left > 0);
+  const dmgT = (u.tricks || []).find(t => !t.heal && !t.sleep && t.left > 0) || (u.tricks || []).find(t => t.sleep && t.left > 0);
   if (dmgT) u.trick = dmgT;
   // Area trick: use it when it can catch at least one enemy (and the kid still has uses).
   if (u.trick && !u.trick.heal && u.trick.left > 0) {
     let best = null;
     for (const c of areaCenters(b, u)) {
       const tilesHit = areaTiles(b, u, c);
-      const n = foes.filter(e => tilesHit.some(t => t.x === e.x && t.y === e.y)).length;
+      const n = foes.filter(e => tilesHit.some(t => t.x === e.x && t.y === e.y) && !(u.trick.sleep && b.scared[e.id])).length;
       if (n && (!best || n > best.n)) best = { c, n };
     }
     if (best) { plan.action = { type: 'area', center: best.c, trick: u.trick.id }; plan.teach = once('area'); return plan; }

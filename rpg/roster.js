@@ -19,7 +19,10 @@ export const SPARK = { id: 'spark', name: 'Spark', skill: 'lore', shape: 'circle
 // Patch Up: page 12 of Gran's book. Gives a friend in one square some hearts back.
 export const PATCH = { id: 'patch', name: 'Patch Up', skill: 'lore', shape: 'circle', r: 0, range: 4, uses: 2, dice: '1d6', heal: true };
 
+// Snooze: the missing page from Gran's book. A sleepy song: one monster nods off and loses its next turn. No damage.
+export const SNOOZE = { id: 'snooze', name: 'Snooze', skill: 'lore', shape: 'circle', r: 0, range: 5, uses: 2, sleep: true };
+
 // Who starts in the party, in order. Story adds more with join.
 export const START_PARTY = ['hollis', 'nell', 'pim'];
 
-export default { ROSTER, SPARK, PATCH, START_PARTY };
+export default { ROSTER, SPARK, PATCH, SNOOZE, START_PARTY };

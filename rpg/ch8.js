@@ -151,6 +151,7 @@ export const SCENES = {
         { id: 'goat', who: 'nell', label: 'Lost goat', go: 'goat' },
         { id: 'wheel', who: 'juni', label: 'Water wheel', go: 'wheel' },
         { id: 'mossback', label: 'Mossback', go: 'moss_talk', if: 'party:mossback' },
+        { id: 'moss2', who: 'mossback', label: 'A sad troll', go: 'moss_sad', ifNot: 'party:mossback' },
       ],
       shop: { who: 'smith', name: 'Riverbend market', say: '"Ropes, lanterns, potions and shields! Everything an adventurer needs!"',
         stock: [{ id: 'rope', price: 4 }, { id: 'lantern', price: 4 }, { id: 'potion', price: 5 }, { id: 'buckler', price: 6 }, { id: 'ironcap', price: 6 }, { id: 'steelsword', price: 10 }, { id: 'shortbow', price: 10 }] },
@@ -167,11 +168,55 @@ export const SCENES = {
     ],
     set: { patch: true },
     nextIf: [{ if: 'bestAt:clever', go: 'library_learn' }],
-    next: 'town',
+    next: 'library2',
   },
   library_learn: {
     lines: [{ who: 'narrator', text: 'Pim teaches {name} the words too. You learned Patch Up! In a fight, tap Patch Up, then tap a hurt friend, or yourself.' }],
     give: { spell: 'patch' },
+    next: 'library2',
+  },
+  // Gran's missing page (if the fish didn't have it), and a clue on the library cards.
+  library2: { nextIf: [{ ifNot: 'snooze', go: 'library_page' }], next: 'library_cards' },
+  library_page: {
+    lines: [
+      { who: 'pim', text: 'If this library has a book about Gran\'s book, maybe somebody copied the missing page. Page 15. Help me look!', if: 'pageQuest' },
+      { who: 'pim', text: 'The book says there are more pages. Page 15 is a sleepy song. Maybe somebody copied it down. Help me look!', ifNot: 'pageQuest' },
+    ],
+    check: { skill: 'lore', help: 'pim', label: 'Search the library for page 15', great: 'page_found', ok: 'page_found', miss: 'page_lost', disaster: 'page_oops' },
+  },
+  page_found: {
+    lines: [
+      { who: 'narrator', text: 'Third shelf, behind a big book about soup: a dusty copy of page 15!' },
+      { who: 'pim', text: 'Sleepy head, cozy bed, close your eyes and rest your head: SNOOZE! ...Oh no. The librarian fell asleep.' },
+      { who: 'narrator', text: 'Pim learned Snooze! In fights, Pim can sing a monster to sleep so it loses its next turn.' },
+    ],
+    set: { snooze: true },
+    nextIf: [{ if: 'bestAt:clever', go: 'page_learn' }],
+    next: 'library_cards',
+  },
+  page_learn: {
+    lines: [{ who: 'narrator', text: 'Pim teaches {name} the song too. You learned Snooze! In a fight, tap Snooze, then tap a monster. On a good roll, it nods off.' }],
+    give: { spell: 'snooze' },
+    next: 'library_cards',
+  },
+  page_lost: {
+    lines: [{ who: 'narrator', text: 'So many books! {name} looks until the letters go wiggly. No page 15 yet. You can come back and look again.' }],
+    next: 'library_cards',
+  },
+  page_oops: {
+    lines: [
+      { who: 'narrator', text: 'OOPS! {name} pulls out one book, and the whole shelf goes over like dominoes. FWUMP. FWUMP. FWUMP. FWUMP.' },
+      { who: 'narrator', text: '"SHHHHH!" says the librarian. It takes a while to put them all back. You can look again later.' },
+    ],
+    next: 'library_cards',
+  },
+  library_cards: {
+    lines: [
+      { who: 'narrator', text: 'On the way out, Pim stops at the shelf of books about stars and clockwork. Almost all of them are gone.' },
+      { who: 'pim', text: 'Look at the cards. The same person borrowed every single one. They didn\'t write a name. They just drew a little gear.' },
+      { who: 'nell', text: 'Who draws a gear instead of a name?' },
+    ],
+    set: { libraryGear: true },
     next: 'town',
   },
   woodcutter: {
@@ -179,8 +224,63 @@ export const SCENES = {
       { who: 'woodcutter', text: 'Black feathers? Hmm. When I was young, there was a grove of silver trees near here. The prettiest trees you ever saw.' },
       { who: 'woodcutter', text: 'We cut them all down for lumber. I helped. A woman lived in the grove. She cried and cried. Then she went away.' },
       { who: 'woodcutter', text: 'I\'ve been sorry about it for fifty years.' },
+      { who: 'woodcutter', text: 'Oof. This firewood gets heavier every winter.', ifNot: 'seedGot' },
     ],
     set: { woodcutter: true },
+    choices: [
+      { label: 'Help Old Alder carry his firewood', go: 'wood_carry', ifNot: 'seedGot' },
+      { label: 'Say goodbye', go: 'town', ifNot: 'seedGot' },
+    ],
+    next: 'town',
+  },
+  // A side quest that ends at Bramble's tower: the last silver seed.
+  wood_carry: { check: { skill: 'tough', help: 'hollis', label: 'Carry the big pile of firewood', great: 'wood_ok', ok: 'wood_ok', miss: 'wood_toe', disaster: 'wood_roll' } },
+  wood_ok: {
+    lines: [{ who: 'narrator', text: '{name} carries the whole pile, all the way to Old Alder\'s door, without dropping one stick.' }],
+    next: 'seed_get',
+  },
+  wood_toe: {
+    hurt: 1,
+    lines: [{ who: 'narrator', text: 'Halfway there, a log slips and lands right on {name}\'s toe. OW. But the firewood gets there in the end.' }],
+    next: 'seed_get',
+  },
+  wood_roll: {
+    lines: [
+      { who: 'narrator', text: 'OOPS! The pile tips over, and every log rolls down the hill, straight into the market. Bonk. Bonk. CRASH. That was the apple cart.' },
+      { who: 'narrator', text: 'It takes a while to pick up all the apples. {name} pays for the squished ones. Old Alder laughs until he has to sit down.' },
+    ],
+    give: { coins: -2 },
+    next: 'seed_get',
+  },
+  seed_get: {
+    lines: [
+      { who: 'woodcutter', text: 'You\'re a good kid. Here. I want you to have something.' },
+      { who: 'narrator', text: 'He takes a tiny cloth bag out of his pocket. Inside is one seed. It is silver, and it shines a little, even in the daytime.' },
+      { who: 'woodcutter', text: 'The last seed from the silver grove. I picked it up the day we cut the trees down. I\'ve carried it for fifty years, and I never knew who to give it to.' },
+      { who: 'woodcutter', text: 'Maybe you\'ll meet someone who should have it.' },
+    ],
+    give: { items: { seed: 1 } },
+    set: { seedGot: true },
+    next: 'town',
+  },
+  // A second chance: if Mossback didn't join at the bridge, he came to look at Riverbend's bridges.
+  moss_sad: {
+    lines: [
+      { who: 'narrator', text: 'A very large troll is sitting by the Riverbend bridge with his chin in his hands.' },
+      { who: 'mossback', text: 'Oh. It is you. I came to see the bridges of Riverbend. They are lovely bridges. But nobody here says please, either.' },
+    ],
+    choices: [
+      { label: 'Say sorry, and ask him to come along', go: 'moss_sorry' },
+      { label: 'Wave and walk on', go: 'town' },
+    ],
+  },
+  moss_sorry: {
+    lines: [
+      { who: 'hero', text: 'Mossback, I\'m sorry we were rude at your bridge. Would you please come with us? We could really use a big friend.' },
+      { who: 'mossback', text: 'You said sorry AND please. In one go! Splendid. I shall bring my moss.' },
+      { who: 'narrator', text: 'Mossback joins your team!' },
+    ],
+    join: 'mossback', set: { mossback: true, polite: true },
     next: 'town',
   },
   goat: { nextIf: [{ if: 'goat_done', go: 'goat_again' }], next: 'goat_ask' },
@@ -257,6 +357,17 @@ export const SCENES = {
     set: { knowBramble: true },
     heal: true,
     levelUp: true,
+    nextIf: [{ if: 'goat_done', go: 'turnip_follow' }],
+    next: 'end',
+  },
+  // A running joke that ends in Gearwick: the goat thinks he's an adventurer now.
+  turnip_follow: {
+    lines: [
+      { who: 'narrator', text: 'As the kids walk out of Riverbend, something behind them goes "Baaa."' },
+      { who: 'narrator', text: 'It\'s Turnip the goat. He is following them. He has a little piece of pie on his nose, and a look on his face that says he is an adventurer now.' },
+      { who: 'tobin', text: 'Can we keep him? He already ate my hat, so we\'re basically friends.' },
+    ],
+    set: { turnip: true },
     next: 'end',
   },
   end: { end: true, title: 'End of Chapter 8', text: 'Next: Chapter 9, The Old Tower. Puzzles, clockwork owls, and Bramble\'s secret.' },

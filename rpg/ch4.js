@@ -197,7 +197,7 @@ export const SCENES = {
       { who: 'narrator', text: 'Click, click, snip. Inside is a spring with a boxing glove on it. {name} takes the spring out. Now it\'s just a box.' },
       { who: 'nell', text: 'Goblins are SO sneaky. And SO bad at spelling.' },
     ],
-    next: 'dark',
+    next: 'sniffle2_gate',
   },
   trap2_oops: {
     hurt: 1,
@@ -205,6 +205,33 @@ export const SCENES = {
       { who: 'narrator', text: 'BOING! A boxing glove on a spring pops out and bops {name} right on the bucket.' },
       { who: 'pim', text: 'In fairness, the sign did say it was not a trap.' },
     ],
+    next: 'sniffle2_gate',
+  },
+  // A second chance: if Sniffle didn't join on the trail, he's stuck in a goblin trap down here.
+  sniffle2_gate: { nextIf: [{ ifNot: 'party:sniffle', go: 'sniffle2' }], next: 'dark' },
+  sniffle2: {
+    lines: [
+      { who: 'narrator', text: 'Around the next corner, something is sniffling. Achoo! A little kobold is stuck inside a big wooden box. The sign on it says "ALSO NOT A TRAP."' },
+      { who: 'sniffle', text: 'Oh no. It\'s you again. Sniffle got down from the snare, and came to tell the boss, and walked right into a GOBLIN trap. Sniffle is having a very bad week.' },
+      { who: 'hollis', text: 'He was going to tell on us!' },
+      { who: 'nell', text: 'He\'s stuck in a box, Hollis. Look at him.' },
+    ],
+    meet: ['kobold'],
+    choices: [
+      { label: 'Let him out', go: 'sniffle2_help' },
+      { label: 'Leave him in the box', go: 'dark' },
+    ],
+  },
+  sniffle2_help: {
+    lines: [
+      { who: 'narrator', text: '{name} lifts the lid. Sniffle climbs out and stares.' },
+      { who: 'sniffle', text: 'You... helped Sniffle? Even after Sniffle was going to tell? Nobody ever helps Sniffle. The boss just yells.' },
+      { who: 'sniffle', text: 'Okay. Sniffle is on YOUR side now. Here\'s a secret: when Grubjaw LAUGHS, he\'s about to swing his big flail. Get out of the way!' },
+      { who: 'hero', text: 'Do you want to come with us, Sniffle?' },
+      { who: 'sniffle', text: 'Really? Achoo! Yes! Sniffle helps!' },
+    ],
+    join: 'sniffle',
+    set: { sniffle: true, laugh: true },
     next: 'dark',
   },
   dark: {
@@ -246,6 +273,25 @@ export const SCENES = {
       { who: 'narrator', text: 'Then, from behind a little door, someone yells.' },
       { who: 'tobin', text: 'HELLO? IS SOMEBODY OUT THERE? I CAN HEAR NELL YELLING ABOUT BUTTONS!' },
     ],
+    next: 'pile',
+  },
+  // A clue for much later: something in the treasure pile that didn't come from Millbrook.
+  pile: {
+    lines: [{ who: 'narrator', text: 'Something small glints at the bottom of the pile, under the mayor\'s spoons.' }],
+    choices: [
+      { label: 'Dig through the pile', go: 'pile_key', ifNot: 'mouseKey' },
+      { label: 'Hurry on and find Tobin', go: 'tobin', ifNot: 'mouseKey' },
+    ],
+    next: 'tobin',
+  },
+  pile_key: {
+    lines: [
+      { who: 'narrator', text: 'It\'s a little brass key. The top of it is shaped like a mouse, with tiny ears and a curly tail.' },
+      { who: 'hollis', text: 'That\'s not from Millbrook. Nobody in Millbrook makes anything that fancy.' },
+      { who: 'pim', text: 'So where did the goblins get it? Keep it, {name}. A key always opens something.' },
+    ],
+    give: { items: { mousekey: 1 } },
+    set: { mouseKey: true },
     next: 'tobin',
   },
   tobin: {

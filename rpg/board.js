@@ -323,7 +323,7 @@ function playerPanel() {
       <span class="todo-i${tag ? '' : ' done'}">${I.icon('target', 22)}<span>${b.mode === 'hp' ? 'Attack' : 'Tag'}</span></span>
       <button class="q act" id="b-help" type="button" aria-label="How turns work">?</button>
     </div>
-    ${tag ? (u.tricks || []).filter(t => t.left > 0).map(t => `<button id="b-trick-${t.id}" class="btn act trick-btn" type="button">${I.icon(t.heal ? 'heart' : 'burst', 22)} ${esc(t.name)} <span class="trick-left">${Array.from({ length: t.left }, () => I.icon('star', 14)).join('')}</span></button>`).join('') : ''}
+    ${tag ? (u.tricks || []).filter(t => t.left > 0).map(t => `<button id="b-trick-${t.id}" class="btn act trick-btn" type="button">${I.icon(t.heal ? 'heart' : t.sleep ? 'bubble' : 'burst', 22)} ${esc(t.name)} <span class="trick-left">${Array.from({ length: t.left }, () => I.icon('star', 14)).join('')}</span></button>`).join('') : ''}
     ${tag && b.calm ? `<button id="b-talk" class="btn act trick-btn" type="button">${I.icon('bubble', 22)} Talk <span class="trick-left">${Array.from({ length: b.calm.max }, (_, i) => I.icon('bubble', 14, i >= b.calm.value)).join('')}</span></button>` : ''}
     ${tag && !bagCount(u) && u.char && u.char.items && u.char.items.potion > 0 && u.flags < u.maxFlags ? `<button id="b-potion" class="btn act trick-btn" type="button">${I.icon('heart', 22)} Drink a potion (${u.char.items.potion})</button>` : ''}
     ${tag && C.canOpenCage(b, u) ? `<button id="b-cage" class="btn act trick-btn" type="button">${I.icon('hammer', 22)} Open the cage!</button>` : ''}
@@ -368,9 +368,10 @@ function aimTrick() {
   overlay.reach = []; overlay.targets = [];
   overlay.aim = u.trick.heal
     ? b.units.filter(e => e.side === u.side && !e.out && !e.bystander && G.dist(u, e) <= u.trick.range).map(e => ({ x: e.x, y: e.y }))
+    : u.trick.sleep ? C.enemiesOf(b, u).filter(e => !e.out && !b.scared[e.id] && G.dist(u, e) <= u.trick.range).map(e => ({ x: e.x, y: e.y }))
     : C.areaCenters(b, u).filter(t => !(t.x === u.x && t.y === u.y));
   draw();
-  say('hero', u.trick.heal ? `Tap a friend (or yourself) to ${u.trick.name}.` : `Tap a square to aim your ${u.trick.name}.`);
+  say('hero', u.trick.heal ? `Tap a friend (or yourself) to ${u.trick.name}.` : u.trick.sleep ? (overlay.aim.length ? `Tap a monster to sing it to sleep.` : `No monster is close enough to hear the song. Walk closer first.`) : `Tap a square to aim your ${u.trick.name}.`);
   actPanel(`<button id="b-cancel" class="btn act" type="button">Not yet</button>`);
   $('b-cancel').addEventListener('click', () => { if (!H.isLocked()) cancelAim(); });
 }
@@ -689,7 +690,7 @@ async function doArea(u, center) {
   const roll = await rollPop(u, chv, `${mine ? 'You cast' : u.name + ':'} ${u.trick.name}`, mine, { luck: b.mode === 'hp' });
   u.pose = 'idle';
   const tier = R.tierFor(chv, roll.value);
-  const dmg = b.mode === 'hp' && C.FLAGS_FOR[tier] ? await damagePop(u, { name: u.trick.heal ? 'friend' : u.trick.r ? 'everyone in the orange squares' : 'that square', id: 'area' }, tier, u.trick.dice || '1d4', mine, u.trick.heal ? 'Healing' : null) : null;
+  const dmg = b.mode === 'hp' && C.FLAGS_FOR[tier] && !u.trick.sleep ? await damagePop(u, { name: u.trick.heal ? 'friend' : u.trick.r ? 'everyone in the orange squares' : 'that square', id: 'area' }, tier, u.trick.dice || '1d4', mine, u.trick.heal ? 'Healing' : null) : null;
   const scaredBefore = { ...b.scared };
   const res = C.resolveArea(b, u, center, roll, dmg);
   if (res.heal) {
@@ -698,6 +699,16 @@ async function doArea(u, center) {
     overlay.area = []; strip(); draw();
     say(u.id, res.results.some(r => r.healed) ? (T.HEAL_LINE || 'All better!') : (T.HEAL_MISS || 'Oops, the spell fizzled.'));
     await wait(fast ? 10 : 1000);
+    return;
+  }
+  if (res.sleep) {
+    const slept = res.results.filter(r => r.slept);
+    slept.forEach(r => { const t = C.unitById(b, r.id); flash(t); floater(t.x, t.y, 'Zzz...', '#b9c8ff', true); });
+    if (slept.length) sfx.calm(); else sfx.miss();
+    overlay.area = []; strip(); draw();
+    say(u.id, slept.length ? (T.SNOOZE_LINE || 'Sleepy head, cozy bed... it worked! It nodded off.') : (T.SNOOZE_MISS || 'Oops. It yawned, but it\'s still awake.'));
+    await wait(fast ? 10 : 1100);
+    if (slept.length && !b.taught.stuck) { b.taught.stuck = true; say('pim', 'It\'s asleep! A sleeping monster loses its next turn.'); await waitTap('Got it!'); }
     return;
   }
   for (const id in b.scared) if (b.scared[id] && !scaredBefore[id]) { const g = C.unitById(b, id); floater(g.x, g.y, 'Eek! Fire!', '#ffd060'); }

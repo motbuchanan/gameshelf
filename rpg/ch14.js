@@ -283,8 +283,10 @@ export const SCENES = {
   stone: {
     lines: [
       { who: 'narrator', text: 'In the glass case sits a smooth, round stone as big as a pumpkin. It glows gold, and it\'s warm, like a cup of cocoa.' },
-      { who: 'pim', text: 'The Starstone. Wren dug it up from under the silver grove, long before Bramble came back to the woods.' },
-      { who: 'nell', text: 'So that\'s why she wanted Whisper Woods empty. So nobody would see her digging.' },
+      { who: 'pim', text: 'The Starstone. Wren dug it up from where the old silver grove used to stand, at the far edge of Whisper Woods. Long before we planted the new trees there.' },
+      { who: 'nell', text: 'So that\'s why she wanted the woods empty. So nobody would see her digging.' },
+      { who: 'pim', text: 'Gran\'s falling star! It landed in the silver grove when she was a girl, and nobody ever found it. Wren did.', if: 'granStar' },
+      { who: 'nell', text: 'Grandpa said a fallen star would be warm, and round, and glowing. He was right!', if: 'starOwls' },
       { who: 'juni', text: 'Is it... humming?' },
       { who: 'narrator', text: 'It is. Very softly. Hmmmm. Hmmmm. Like something sleeping.' },
     ],

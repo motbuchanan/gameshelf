@@ -8,6 +8,7 @@ import { CAST, GEAR } from './art.js';
 import { GLOSSARY } from './glossary.js';
 import { tileArt } from './board.js';
 import F from './friends.js';
+import { CLUES, BOOK_NAME } from './clues.js';
 
 const $ = id => document.getElementById(id);
 let H = { explain() {}, showCard() {} };
@@ -33,6 +34,7 @@ const SHELVES = [
   { id: 'places', name: 'Places', icon: 'boot' },
   { id: 'powers', name: 'Powers', icon: 'bulb' },
   { id: 'play', name: 'How to play', icon: 'die' },
+  { id: 'clues', name: 'Clues', icon: 'target' },
 ];
 let shelf = 'kids';
 
@@ -40,6 +42,8 @@ const GEAR_IDS = ['woodsword', 'stick', 'slingshot', 'broomstick', 'dagger', 'cl
 // Gearwick's real gear joins the shelf once you've seen the smith (Chapter 12).
 const GEAR_IDS_B3 = ['longsword', 'longbow', 'roundshield', 'helmet', 'chainshirt'];
 const GEAR_IDS_WREN = ['wrench', 'weldmask'];
+// Brenna's shop gear joins once you're home from Grubjaw's camp (Chapter 6).
+const GEAR_IDS_SHOP = ['steelsword', 'shortbow', 'buckler', 'ironcap', 'padded', 'cape'];
 const PLACE_IDS = ['grass', 'bush', 'mud', 'log', 'tree', 'stream'];
 // The clock tower's floors join the shelf once you've met a clockwork knight (Chapter 13).
 const PLACE_IDS_B3 = ['floor', 'wall', 'crate', 'beltr'];
@@ -87,6 +91,10 @@ const PLAY = [
   { id: 'stuck', name: 'Stuck and jammed', icon: 'shield' },
   { id: 'throwing', name: 'Throwing things', icon: 'hammer' },
   { id: 'fixing', name: 'Fixing', icon: 'hammer' },
+  { id: 'snooze', name: 'Snooze', icon: 'bubble' },
+  { id: 'cluebook', name: 'Clues', icon: 'target' },
+  { id: 'keepsake', name: 'Keepsakes', icon: 'star' },
+  { id: 'oops', name: 'Oops rolls', tier: 'disaster' },
 ];
 
 // ---------- who you have met ----------
@@ -121,7 +129,7 @@ function kidEntries() {
     id: c.id, name: c.name, role: ROLE[c.id] + lvl(c.id), spec: c.spec, bio: BIO[c.id] || c.bio,
   })),
   // Monster friends show up once they join. Town grown-ups show up once you're back in Millbrook.
-  ...CAST.filter(c => c.group === 'friends' && (joined.includes(c.id) || (['wren', 'dragon'].includes(c.id) && isMet(c.id)))).map(c => ({ id: c.id, name: c.name, role: c.role + lvl(c.id), spec: c.spec, bio: c.bio })),
+  ...CAST.filter(c => c.group === 'friends' && (joined.includes(c.id) || (['wren', 'dragon', 'turnip'].includes(c.id) && isMet(c.id)))).map(c => ({ id: c.id, name: c.name, role: c.role + lvl(c.id), spec: c.spec, bio: c.bio })),
   ...CAST.filter(c => c.group === 'town' && s && s.flags && (s.flags.ch5 || s.flags.ch2story) && (!['toymaker', 'peddler', 'gearsmith'].includes(c.id) || isMet(c.id))).map(c => ({ id: c.id, name: c.name, role: c.role, spec: c.spec, bio: c.bio }))];
 }
 function monsterEntries() {
@@ -169,6 +177,43 @@ function gearPic(id) {
   const c = spriteCanvas(spec); drawSprite(c, 0); c._still = true; return c;
 }
 
+// ---------- clues ----------
+export function clueFound(id) { const s = save.get(); return !!(s && s.flags && s.flags.story && s.flags.story[id]); }
+// Little 16x16 pixel pictures for the clue tiles.
+const CLUE_ART = {
+  mouse: [['#7a5a1a', 3, 8, 9, 5], ['#c49a3a', 4, 7, 7, 5], ['#c49a3a', 10, 9, 3, 3], ['#1a120c', 11, 10, 1, 1], ['#e8c860', 5, 5, 2, 2], ['#7a5a1a', 1, 11, 2, 1], ['#e0e0e0', 6, 4, 1, 3], ['#e0e0e0', 5, 3, 3, 1], ['#1a120c', 4, 13, 2, 1], ['#1a120c', 9, 13, 2, 1]],
+  feather: [['#1a120c', 9, 2, 3, 3], ['#1a120c', 7, 4, 4, 3], ['#1a120c', 5, 6, 4, 3], ['#1a120c', 4, 8, 3, 3], ['#3a3a4a', 10, 3, 1, 1], ['#3a3a4a', 8, 5, 1, 1], ['#3a3a4a', 6, 7, 1, 1], ['#c8c8c8', 3, 11, 1, 1], ['#c8c8c8', 2, 12, 1, 2]],
+  key: [['#c49a3a', 2, 5, 5, 5], ['#1a120c', 4, 7, 1, 1], ['#e8c860', 3, 4, 1, 1], ['#e8c860', 5, 4, 1, 1], ['#c49a3a', 7, 7, 7, 1], ['#c49a3a', 11, 8, 1, 2], ['#c49a3a', 13, 8, 1, 2]],
+  note: [['#f3e6cc', 3, 2, 10, 12], ['#b8a070', 3, 13, 10, 1], ['#6b4a2a', 5, 4, 6, 1], ['#6b4a2a', 5, 6, 5, 1], ['#6b4a2a', 5, 8, 6, 1], ['#b8c2cc', 9, 10, 3, 3], ['#6a7480', 10, 11, 1, 1]],
+  letter: [['#f3e6cc', 2, 4, 12, 9], ['#b8a070', 2, 4, 12, 1], ['#b8a070', 3, 5, 2, 1], ['#b8a070', 5, 6, 2, 1], ['#b8a070', 7, 7, 2, 1], ['#b8a070', 9, 6, 2, 1], ['#b8a070', 11, 5, 2, 1], ['#1a120c', 7, 9, 2, 3]],
+  star: [['#ffd060', 7, 2, 2, 3], ['#ffd060', 3, 5, 10, 3], ['#ffd060', 5, 8, 6, 2], ['#ffd060', 4, 10, 3, 3], ['#ffd060', 9, 10, 3, 3], ['#fff4c0', 7, 5, 2, 3]],
+  coin: [['#7a5a1a', 4, 3, 8, 10], ['#7a5a1a', 3, 5, 10, 6], ['#e8c860', 5, 4, 6, 8], ['#e8c860', 4, 6, 8, 4], ['#7a5a1a', 7, 6, 2, 4]],
+  tower: [['#6a6058', 5, 4, 6, 11], ['#4e463e', 4, 3, 2, 2], ['#4e463e', 7, 3, 2, 2], ['#4e463e', 10, 3, 2, 2], ['#1a120c', 7, 11, 2, 4], ['#ffd060', 7, 6, 2, 2], ['#1a120c', 2, 2, 2, 1], ['#1a120c', 12, 1, 2, 1]],
+  tree: [['#b8c2cc', 4, 2, 8, 8], ['#f4f8fc', 5, 3, 3, 2], ['#6a7480', 3, 5, 10, 3], ['#b8c2cc', 4, 5, 8, 4], ['#6b4226', 7, 10, 2, 5]],
+  book: [['#6e2a2a', 3, 3, 10, 11], ['#f3e6cc', 4, 4, 8, 9], ['#6e2a2a', 7, 3, 1, 11], ['#6b4a2a', 5, 6, 2, 1], ['#6b4a2a', 9, 6, 2, 1], ['#6b4a2a', 5, 8, 2, 1], ['#6b4a2a', 9, 8, 2, 1]],
+  ribbon: [['#3fa55a', 2, 6, 12, 3], ['#2a7a3e', 2, 9, 3, 3], ['#2a7a3e', 11, 9, 3, 3], ['#c8f0d0', 5, 7, 1, 1], ['#c8f0d0', 7, 7, 1, 1], ['#c8f0d0', 9, 7, 1, 1]],
+  gear: [['#7a5a1a', 5, 3, 6, 10], ['#7a5a1a', 3, 5, 10, 6], ['#c49a3a', 5, 5, 6, 6], ['#c49a3a', 7, 2, 2, 12], ['#c49a3a', 2, 7, 12, 2], ['#1a120c', 7, 7, 2, 2]],
+  door: [['#6b4226', 4, 3, 8, 12], ['#a8703a', 5, 4, 6, 10], ['#6b4226', 5, 2, 6, 1], ['#e8c860', 9, 9, 1, 1], ['#f3e6cc', 6, 6, 2, 2]],
+  egg: [['#c8a050', 5, 3, 6, 11], ['#c8a050', 4, 5, 8, 7], ['#f0d080', 6, 4, 4, 9], ['#fff0b8', 6, 5, 2, 3]],
+};
+function cluePic(kind, found) {
+  const c = document.createElement('canvas'); c.width = 16; c.height = 16; c.className = 'bk-clue' + (found ? '' : ' unfound');
+  const x = c.getContext('2d');
+  for (const [col, px, py, w, h] of CLUE_ART[kind] || CLUE_ART.note) { x.fillStyle = found ? col : '#0c0806'; x.fillRect(px, py, w, h); }
+  return c;
+}
+function fillClues(box) {
+  for (const book of [1, 2, 3]) {
+    const list = CLUES.filter(c => c.book === book), got = list.filter(c => clueFound(c.id)).length;
+    const head = document.createElement('div'); head.className = 'bk-clue-head';
+    head.innerHTML = `<b>${BOOK_NAME[book]}</b><span>${got} of ${list.length} clues</span>`;
+    box.appendChild(head);
+    list.forEach(c => { const f = clueFound(c.id); box.appendChild(f
+      ? tile({ pic: cluePic(c.pic, true), name: c.name, cls: 'clue', onTap: () => H.showCard({ title: c.name, body: c.text, extra: cluePic(c.pic, true) }) })
+      : tile({ pic: cluePic(c.pic, false), name: '???', role: 'Not found yet', cls: 'clue locked', onTap: () => H.showCard({ title: '???', body: 'You have not found this clue yet. Try other paths and talk to everyone. You can play a chapter again to look for it.' }) })); });
+  }
+}
+
 function glossTitle(id, fallback) { return (GLOSSARY[id] && GLOSSARY[id].title) || fallback; }
 
 function fillShelf() {
@@ -183,7 +228,14 @@ function fillShelf() {
       onTap: () => H.showCard({ title: '???', body: 'You have not met this monster yet. Keep adventuring, and when you meet it, its picture shows up here.', extra: silhouette(m.spec) }) })
     : tile({ pic: spriteCanvas(m.spec), name: m.name, role: m.role, cls: 'monster',
       onTap: () => H.showCard({ title: m.name, body: m.bio, prereq: m.role, spec: m.spec }) })));
-  if (shelf === 'gear') [...GEAR_IDS, ...(isMet('gearsmith') ? GEAR_IDS_B3 : []), ...(isMet('wren') ? GEAR_IDS_WREN : [])].forEach(id => add(tile({ pic: gearPic(id), name: GEAR[id].name, onTap: () => H.explain('gear_' + id) })));
+  if (shelf === 'gear') {
+    // The starter gear, the shop gear once you've seen that shop, and anything you have ever owned.
+    const sv = save.get(), h = sv && sv.hero, fl = (sv && sv.flags) || {};
+    const owned = h ? [...(h.bag || []), ...Object.values(h.gear || {})].filter(id => id && GEAR[id]) : [];
+    const ids = [...new Set([...GEAR_IDS, ...(fl.ch5 ? GEAR_IDS_SHOP : []), ...(isMet('gearsmith') ? GEAR_IDS_B3 : []), ...(isMet('wren') ? GEAR_IDS_WREN : []), ...owned])];
+    ids.forEach(id => add(tile({ pic: gearPic(id), name: GEAR[id].name, onTap: () => H.explain('gear_' + id) })));
+  }
+  if (shelf === 'clues') fillClues(box);
   if (shelf === 'places') [...PLACE_IDS, ...(isMet('knight') ? PLACE_IDS_B3 : [])].forEach(id => add(tile({ pic: placePic(id), name: glossTitle('terrain_' + id, id), onTap: () => H.explain('terrain_' + id) })));
   if (shelf === 'powers') {
     P.STATS.forEach(st => add(tile({ pic: I.icon(I.STAT_ICON[st], 56), name: P.STAT_NAME[st], role: I.STAT_WORD[st], cls: 'stat',
@@ -215,4 +267,4 @@ export function draw(frame) {
 }
 export function setShelf(id) { shelf = id; render(); }
 
-export default { init, render, draw, meet, met, isMet, setShelf };
+export default { init, render, draw, meet, met, isMet, setShelf, clueFound };

@@ -114,10 +114,14 @@ export const CH1_SCENES = {
   },
   after: {
     lines: [
+      { who: 'narrator', text: 'While everyone catches their breath, something tiny goes tick-tick-tick across the clearing. A little brass mouse! It stops, looks at the kids with shiny glass eyes, and zips off into the ferns.' },
+      { who: 'tobin', text: 'Whose toy is that? I didn\'t wind it up!' },
+      { who: 'pim', text: 'Was that toy... walking by itself?' },
       { who: 'pim', text: 'Shh. Did anybody else hear that?' },
       { who: 'narrator', text: 'Deep in the woods, a branch snaps. Then a crow takes off, cawing. Then everything goes very quiet.' },
       { who: 'nell', text: 'It\'s probably just a deer...' },
     ],
+    set: { tickMouse: true },
     next: 'end',
   },
   end: {

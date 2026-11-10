@@ -167,10 +167,37 @@ export const SCENES = {
       { label: 'Keep walking', go: 'stones' },
     ],
   },
-  fish: { check: { skill: 'fingers', help: 'tobin', label: 'Catch the big fish', great: 'fish_win', ok: 'fish_win', miss: 'fish_splash' } },
+  fish: { check: { skill: 'fingers', help: 'tobin', label: 'Catch the big fish', great: 'fish_win', ok: 'fish_win', miss: 'fish_splash', disaster: 'fish_boot' } },
   fish_win: {
     lines: [{ who: 'narrator', text: 'Splash! {name} pulls out a fish as big as Tobin. The fisherman cheers and pays you.' }],
     give: { coins: 5 },
+    nextIf: [{ ifNot: 'snooze', go: 'fish_page' }],
+    next: 'stones',
+  },
+  // Gran's missing page turns up in a very strange place.
+  fish_page: {
+    lines: [
+      { who: 'narrator', text: 'Wait. There\'s something in the fish\'s mouth. A soggy piece of paper, with a crow feather stuck to it.' },
+      { who: 'pim', text: 'It says "15" at the top. It\'s Gran\'s missing page! A crow must have dropped it in the creek, and the fish thought it was a snack.', if: 'pageQuest' },
+      { who: 'pim', text: 'It says "15" at the top. It\'s a page from a spell book, just like Gran\'s! A crow must have dropped it in the creek, and the fish thought it was a snack.', ifNot: 'pageQuest' },
+      { who: 'pim', text: 'Sleepy head, cozy bed, close your eyes and rest your head: SNOOZE! ...Oh no. The fish fell asleep.' },
+      { who: 'narrator', text: 'Pim learned Snooze! In fights, Pim can sing a monster to sleep so it loses its next turn.' },
+    ],
+    set: { snooze: true },
+    nextIf: [{ if: 'bestAt:clever', go: 'fish_page_learn' }],
+    next: 'stones',
+  },
+  fish_page_learn: {
+    lines: [{ who: 'narrator', text: 'Pim teaches {name} the song too. You learned Snooze! In a fight, tap Snooze, then tap a monster. On a good roll, it nods off.' }],
+    give: { spell: 'snooze' },
+    next: 'stones',
+  },
+  fish_boot: {
+    lines: [
+      { who: 'narrator', text: 'OOPS! The big fish grabs {name}\'s boot, pulls it right off, and swims away with it. Bloop.' },
+      { who: 'narrator', text: 'The fisherman laughs so hard he almost falls in. He lends you an old boot of his. It squelches when you walk. Squelch. Squelch.' },
+    ],
+    give: { coins: 1 },
     next: 'stones',
   },
   fish_splash: {
@@ -202,8 +229,18 @@ export const SCENES = {
     next: 'fight:scouts',
   },
   den_long: {
+    lines: [{ who: 'narrator', text: 'The long way goes right through a wall of prickly brambles.' }],
+    check: { skill: 'tough', help: 'juni', label: 'Tough it out through the prickles', great: 'den_long_ok', ok: 'den_long_ok', miss: 'den_long_ouch' },
+  },
+  den_long_ok: {
+    xpKey: 'den', xp: 3, xpWhy: 'You found a way around the wolves!',
+    lines: [{ who: 'narrator', text: '{name} goes first and holds the prickly branches back for everybody. A few scratches, no big deal. And nobody wakes the wolves.' }],
+    next: 'map2',
+  },
+  den_long_ouch: {
     hurt: 1,
-    lines: [{ who: 'narrator', text: 'The long way is full of prickly brambles. Ouch, ouch, OUCH. But nobody wakes the wolves.' }],
+    xpKey: 'den', xp: 3, xpWhy: 'You found a way around the wolves!',
+    lines: [{ who: 'narrator', text: 'Ouch, ouch, OUCH. The brambles win this one. But nobody wakes the wolves.' }],
     next: 'map2',
   },
   den_win: {
@@ -268,6 +305,7 @@ export const SCENES = {
       { who: 'juni', text: 'Camping rule: when you rest, you get your hearts and your Luck back. Everybody sleep well.' },
       { who: 'nell', text: 'Can somebody tell a story first?' },
     ],
+    set: { campH: false, campN: false, campP: false },
     choices: [
       { label: 'Ask Hollis for a story', go: 'story_hollis' },
       { label: 'Ask Nell for a story', go: 'story_nell' },
@@ -276,15 +314,25 @@ export const SCENES = {
   },
   story_hollis: {
     lines: [{ who: 'hollis', text: 'Okay. One time, a goose chased me all the way home. Then I grew up big and brave, and now I fight goblins. But I still don\'t like geese.' }],
-    heal: true, next: 'howl',
+    heal: true, set: { campH: true }, next: 'camp_more',
   },
   story_nell: {
-    lines: [{ who: 'nell', text: 'My grandpa says the stars are lanterns, held up by giant owls. When an owl gets tired, a star falls. That\'s why you make a wish: to help the owl.' }],
-    heal: true, next: 'howl',
+    lines: [{ who: 'nell', text: 'My grandpa says the stars are lanterns, held up by giant owls. When an owl gets tired, a star falls. That\'s why you make a wish: to help the owl. He says a fallen star would be warm, and round, and glowing.' }],
+    heal: true, set: { campN: true, starOwls: true }, next: 'camp_more',
+  },
+  // You can ask for more than one story before bed.
+  camp_more: {
+    lines: [{ who: 'tobin', text: 'Another one! Another one! ...Or we could go to sleep, I guess.' }],
+    choices: [
+      { label: 'Ask Hollis for a story', go: 'story_hollis', ifNot: 'campH' },
+      { label: 'Ask Nell for a story', go: 'story_nell', ifNot: 'campN' },
+      { label: 'Ask Pim for a story', go: 'story_pim', ifNot: 'campP' },
+      { label: 'Time to sleep', go: 'howl' },
+    ],
   },
   story_pim: {
     lines: [{ who: 'pim', text: 'Gran says a long time ago, there was a grove of silver trees near Riverbend. People cut them all down. And someone cried for a whole year.' }],
-    heal: true, set: { heardGrove: true }, next: 'howl',
+    heal: true, set: { campP: true, heardGrove: true }, next: 'camp_more',
   },
   howl: {
     lines: [
