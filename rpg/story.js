@@ -299,10 +299,16 @@ function applyEffects(sc) {
     const g = sc.give;
     if (g.gear) [].concat(g.gear).forEach(giveGear);
     if (g.gearBy) { const id = g.gearBy[s.hero.bestAt]; if (id) giveGear(id); }
-    if (g.coins) s.coins = Math.max(0, (s.coins || 0) + g.coins);
+    // Coin rewards and free potions pay once per save for each scene, so replaying a chapter can't farm them.
+    const free = g.coins > 0 || (g.items && g.items.potion > 0);
+    const paid = (s.flags.paid = s.flags.paid || {}), pk = ch ? ch.id + ':' + (sc._id || '') : '';
+    const again = free && pk && paid[pk];
+    if (free && pk) paid[pk] = 1;
+    if (again) H.toast('You already got this reward the first time.', 2600);
+    if (g.coins && !(again && g.coins > 0)) s.coins = Math.max(0, (s.coins || 0) + g.coins);
     if (g.spell) { s.hero.spells = s.hero.spells || []; if (!s.hero.spells.includes(g.spell)) s.hero.spells.push(g.spell); }
     if (g.talent) { s.hero.talents = s.hero.talents || []; if (!s.hero.talents.includes(g.talent)) s.hero.talents.push(g.talent); }
-    if (g.items) { s.hero.items = s.hero.items || {}; for (const k in g.items) s.hero.items[k] = (s.hero.items[k] || 0) + g.items[k]; }
+    if (g.items) { s.hero.items = s.hero.items || {}; for (const k in g.items) { if (again && k === 'potion') continue; s.hero.items[k] = (s.hero.items[k] || 0) + g.items[k]; } }
   }
   if (sc.use) { s.hero.items = s.hero.items || {}; [].concat(sc.use).forEach(k => { s.hero.items[k] = Math.max(0, (s.hero.items[k] || 0) - 1); }); }
   if (sc.hurt) s.hero.hp = Math.max(1, (s.hero.hp || P.hpMax(s.hero)) - sc.hurt);
@@ -322,6 +328,7 @@ async function playScene(id) {
   if (sc.random) return playScene(sc.random[rint(0, sc.random.length - 1)]);
   if (sc.end) return chapterEnd(sc);
   heldClues = [];
+  sc._id = id;
   applyEffects(sc);
   if (sc.xp) earnXP(ch.id + ':' + (sc.xpKey || id), sc.xp, sc.xpWhy || 'You got past it!');
   if (sc.xpFloor) { const x0 = (hero.xp || 0) - (sc.xp || 0); if (xpFloor(sc.xpFloor)) xpPop((hero.xp || 0) - x0, (sc.xpWhy || 'Big win!') + ' You reached level ' + sc.xpFloor + '!'); }

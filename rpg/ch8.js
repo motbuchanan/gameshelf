@@ -91,6 +91,7 @@ export const SCENES = {
       { who: 'mossback', text: 'Good morning! I am Mossback, keeper of this bridge. To cross, you must answer three riddles. Nicely, please.' },
       { who: 'tobin', text: 'What if we just run past him?' },
     ],
+    set: { libSeen: false },
     choices: [
       { label: 'Answer his riddles', go: 'riddle1', set: { polite: true } },
       { label: 'Try to run past', go: 'run_past' },
@@ -146,7 +147,7 @@ export const SCENES = {
       place: 'Riverbend',
       text: 'Riverbend! Tap someone to talk, or visit the shop. Tap Done when you are ready to go on.',
       people: [
-        { id: 'library', who: 'pim', label: 'The library', go: 'library' },
+        { id: 'library', who: 'pim', label: 'The library', go: 'library_gate' },
         { id: 'woodcutter', label: 'Old Alder', go: 'woodcutter' },
         { id: 'goat', who: 'nell', label: 'Lost goat', go: 'goat' },
         { id: 'wheel', who: 'juni', label: 'Water wheel', go: 'wheel' },
@@ -160,13 +161,15 @@ export const SCENES = {
       done: 'night',
     },
   },
+  // A second visit (to look for Gran's page again) skips the Patch Up opening.
+  library_gate: { nextIf: [{ if: 'libSeen', go: 'library2' }], next: 'library' },
   library: {
     lines: [
       { who: 'pim', text: 'Look! A book about Gran\'s book! It says page 12 is a healing spell. Patch Up!' },
       { who: 'pim', text: 'Little ache, little scrape, find your way back into shape: PATCH UP! ...My scraped knee! It\'s all better!' },
       { who: 'narrator', text: 'Pim learned Patch Up! In fights, Pim can heal a friend who is hurt.', ifNot: 'bestAt:clever' },
     ],
-    set: { patch: true },
+    set: { patch: true, libSeen: true },
     nextIf: [{ if: 'bestAt:clever', go: 'library_learn' }],
     next: 'library2',
   },

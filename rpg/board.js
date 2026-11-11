@@ -566,6 +566,7 @@ function floater(x, y, text, color, big) {
 async function rollPop(actor, chanceValue, title, isPlayer, opts = {}) {
   let roll = R.rollD100();
   const pop = $('bdice-pop');
+  $('battle-screen').scrollTop = 0;
   pop.classList.remove('hidden');
   dice.mount($('bdice'));
   const z = R.zones(chanceValue);
@@ -633,6 +634,7 @@ async function rollPop(actor, chanceValue, title, isPlayer, opts = {}) {
 async function damagePop(u, target, tier, note, isPlayer, titleWord) {
   const dmg = C.rollDamage(note, tier);
   const pop = $('bdice-pop');
+  $('battle-screen').scrollTop = 0;
   pop.classList.remove('hidden');
   dice.mount($('bdice'));
   const extra = tier === 'legendary' ? 'Legendary: the first die counts as its highest number, plus one more die!' : tier === 'exceptional' ? 'Exceptional: you get one extra die!' : '';
@@ -927,6 +929,7 @@ async function initiative() {
   const list = C.rollInitiative(b, undefined, !!def.surprise);
   const mine = list.find(e => e.id === 'hero');
   const pop = $('bdice-pop');
+  $('battle-screen').scrollTop = 0;
   pop.classList.remove('hidden'); dice.mount($('bdice'));
   $('bresult').innerHTML = `<div class="br-title">Who goes first?</div><div class="br-body"><div class="br-side"><div class="br-tier" id="br-tier">Rolling...</div></div></div><div class="init-list" id="init-list"></div><div id="br-btn"></div>`;
   await new Promise(r => requestAnimationFrame(r));
