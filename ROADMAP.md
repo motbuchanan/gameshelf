@@ -1,7 +1,7 @@
 # Game Shelf: Roadmap
 
 Repo: `motbuchanan/gameshelf` · Live: https://motbuchanan.github.io/gameshelf/
-Last updated: 2026-10-25
+Last updated: 2026-11-12
 
 This file is the single organizing record for the shelf: what each app is,
 what state it's in, what's shipped, and what's next. Update it when a version
@@ -81,16 +81,47 @@ ships or a decision changes. Keep entries short. Status tags:
 ## Apps
 
 ### Bloodstream: body-exploring trail game  **LIVE**
-Path: `bloodstream.html` · Current: **v0.6** (2026-10-25) · shelf **v73**
-Oregon Trail / FTL-style single-file game (Old Video Games box, ARCADE_H) built for Garrett from his own Body Trail
-Builder answers (ride: Bubble Pod; crew: Oxinator, Fighty, Patchlet; boss: Sugar Monster;
-Blood Red palette). Heart hub + node map (Stomach, Bones, Cell Lab open; Lungs unlock on
-boss win; Brain locked). Event cards, snack-heal (feeds the boss), math-gated shop that
-scales addition → division, 3 missions (Pizza Night math, Running Race catch, Scraped Knee
-tap), Sugar Monster tap fight, Journal (cells, organs, germs, routes, mysteries). Nobody dies.
-Writes plays to `bloodstream_games` (shelf Most Played); progress in `bloodstream_v1`.
-`bloodstream_games` added to gamenight GAME_KEYS / achievements NAMES in the Oct 25 repair round.
-- [ ] Phase 2: Fighty germ-swat minigame, Brain missions, more organs/bosses, crew bios in Journal **IDEA**
+Path: `bloodstream.html` · Current: **v0.9** (2026-11-12) · shelf **v78** (Old Video Games box, ARCADE_H)
+Oregon Trail / FTL-style single-file game built for Garrett from his own Body Trail Builder answers
+(ride: Bubble Pod; crew: Oxinator, Fighty, Patchlet; Blood Red palette). Nobody dies.
+What is in it: 12 organs on a node map (Heart hub; Stomach, Bones, Cell Lab open at start; the rest
+unlock by boss), 11 missions (Pizza Night and Apple Snack math, Running Race, Scraped Knee, Sneeze
+Attack, Swimming, Brush Teeth, Bedtime, Stretch Out, Dizzy Spin, Eye Spy), 13 event cards, 5 bosses
+in order each with its own fight (Sugar Monster falling blobs @Heart, Cold Virus splitting copies
+@Lungs, Belly Bug darting target @Stomach, Cavity Crew tooth drillers @Teeth, Fever Dragon drag-and-
+cool thermostat @Brain), Journal (3 crew bios, 12 organ facts, 8 germs, 12 vessels, 11 mysteries),
+5-card story intro, travel tutorial (GO badges, arrow, Where-next buttons), math shop that scales
+addition to division. Progress in `bloodstream_v1`; plays to `bloodstream_games` via GN.recordGame
+(GAME_KEYS + achievements NAMES since the Oct 25 repair round).
+- v0.6 (Oct 25): title fits 320px; plays recorded through gamenight.js.
+- v0.5 (Oct 18): unique boss fights. v0.4: 12 organs, 5 bosses, 4 missions. v0.3: intro + tutorial +
+  Fighty swat + Brain board + crew bios. v0.2: shelf wiring. v0.1: core loop.
+- Nov 12 2026 full audit (BLOODSTREAM-AUDIT.md in Mot's files): 0 crashes, 0 overflow, 1 soft-lock
+  (empty tank + 0 stars at the Heart has no exit), tired crew have no effect, Maps journal tab is
+  filler, sneeze-speed fact is a myth, game ends after ~90 min with nothing to come back for.
+- v0.9 (Nov 12): Night Shift. After 7pm (iPad clock) or when the title toggle says always: purple
+  night palette, slower vein pulse, spooky germ skins (spiky, glowing eyes) in every swat and boss,
+  5 night-only event cards (Bad Dream, Growing Pains, Night Sweats, Tooth Fairy Patrol, owl), 2
+  night mysteries, bosses +2 HP, Bedtime +1 star. Title toggle: Night auto / always / off.
+- v0.8 (Nov 12): audit Part B. Daily Body Report at the Heart: date-seeded scenario (19 stories,
+  boss rematches included once beaten), one modifier (fast / long / double stars), bonus 3 stars,
+  streak counter; title shows ready/done. High scores: every minigame keeps a best (shown on its
+  mission row and in the briefing), bosses keep a best time (boss board), "NEW BEST" on the finish
+  card, missions replayable with an Again button. Three crew from Garrett's questionnaire join on
+  boss wins: Zap the Nerve Messenger (Sugar Monster) with Reflex Test at the Brain (tap numbered
+  stations in order), Lock the Antibody (Belly Bug) with Wanted Poster at the Cell Lab (swat only
+  the posted color), Snip the Enzyme (Cavity Crew) with Chop Shop at the Stomach (cut food chains
+  to single bites). Crew cards in the Journal with bios. Old saves get their crew via syncUnlocks.
+- v0.7 (Nov 12): audit Part A. Heart pumps +1 oxygen +1 water on every arrival (soft-lock gone);
+  Go buttons disable when a trip is unaffordable and a Drift Home button appears away from the
+  Heart; Journal locked during a minigame (reviewer Break: the loop kept running blind); Back on
+  every math screen; subtraction never 0, empty answer ignored, third miss shows the answer;
+  old-save field backfill; Scraped Knee forced after Pizza + Race; Convert off under 4 water;
+  a 0-heart crew member gets a 60% timer in its game and the briefing says so; New Trip on the
+  hub; 23 route cards replaced by 12 Vessel cards with facts (old saves migrate, visited organs
+  grant their vessel); sneeze fact rewritten; Journal button 48px.
+- [ ] Part C: second body on the same engine (Dog Body first) as a separate data block **IDEA**
+- [ ] Part D: "From Dad" fact cards typed in by Mot **IDEA**
 
 ### Oops Lab: mistakes-are-fun contraption game  **LIVE**
 Path: `oopslab.html` · Current: **v0.62** (2026-11-12) · shelf **v78**

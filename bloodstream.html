@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="build" content="v0.6 · Oct 25, 2026">
+<meta name="build" content="v0.9 · Nov 12, 2026">
 <title>Bloodstream</title>
 <style>
 :root{
@@ -15,7 +15,15 @@
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:"Trebuchet MS","Segoe UI",system-ui,sans-serif;overflow:hidden}
 body{background:radial-gradient(ellipse at 30% 20%,#6a1826 0%,var(--bg) 60%,#2a080e 100%)}
-#veins{position:fixed;inset:0;pointer-events:none;opacity:.35}
+#veins{position:fixed;inset:0;pointer-events:none;opacity:.35;transition:opacity 1s}
+body.night{background:radial-gradient(ellipse at 30% 20%,#2a1030 0%,#160a1c 60%,#0a0410 100%)}
+body.night #veins{opacity:.18;animation:nightpulse 4s ease-in-out infinite}
+@keyframes nightpulse{0%,100%{opacity:.14}50%{opacity:.26}}
+body.night .card{background:linear-gradient(180deg,#3a1a44,#2a1232);border-color:#6a3a7a}
+body.night .btn.ghost,body.night .meter,body.night .cell,body.night .mission,body.night .jcard,body.night .tab{border-color:#6a3a7a}
+body.night #badge{border-color:#6a3a7a}
+body.night .node circle.base{fill:#2a1232}
+.nightpill{display:inline-block;background:#1a0a24;border:2px solid #b48bff;color:#e4ccff;border-radius:999px;padding:4px 12px;font-size:14px;font-weight:700;margin-top:6px}
 #app{position:relative;height:100%;display:flex;flex-direction:column}
 header{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;gap:10px;flex:0 0 auto;flex-wrap:wrap}
 header h1{font-size:20px;margin:0;letter-spacing:1px}
@@ -147,9 +155,9 @@ p{line-height:1.4;font-size:18px;margin:6px 0}
       <div class="meter" id="m-glu" title="Glucose">🍪<div class="bar"><i></i></div><span>0</span></div>
       <div class="meter" id="m-h2o" title="Water">💧<div class="bar"><i></i></div><span>0</span></div>
       <div class="meter coin">⭐ <span id="m-coin">0</span></div>
-      <button class="btn ghost" id="btnJournal" style="min-height:40px;padding:4px 12px;font-size:15px">📖 Journal</button>
+      <button class="btn ghost" id="btnJournal" style="min-height:48px;padding:4px 12px;font-size:15px">📖 Journal</button>
     </div>
-    <div id="badge">v0.6 · Oct 25, 2026</div>
+    <div id="badge">v0.9 · Nov 12, 2026</div>
   </header>
   <main>
     <div class="scr" id="s-title"></div>
@@ -167,7 +175,7 @@ p{line-height:1.4;font-size:18px;margin:6px 0}
 <div id="toast"></div>
 <script src="gamenight.js?v=14"></script>
 <script>
-/* BLOODSTREAM - v0.6 - Oct 25 2026 - Phase 3b (unique bosses) - built for Garrett */
+/* BLOODSTREAM - v0.9 - Nov 12 2026 - Night Shift - built for Garrett */
 var VERSION=document.querySelector('meta[name=build]').getAttribute('content');
 var KEY='bloodstream_v1';
 
@@ -179,9 +187,10 @@ function save(){try{localStorage.setItem(KEY,JSON.stringify(P));}catch(e){mem[KE
 /* ---------- persistent profile (across runs) ---------- */
 var P=load()||{runs:0,wins:0,bestStars:0,unlocked:['heart','stomach','bones','lab'],journal:{},mathLevel:0,sound:true,shake:true,seenIntro:false,bosses:{}};
 if(!P.journal)P.journal={};if(!P.bosses)P.bosses={};if(P.seenIntro==null)P.seenIntro=false;
+if(P.sound==null)P.sound=true;if(P.shake==null)P.shake=true;if(P.mathLevel==null||isNaN(P.mathLevel))P.mathLevel=0;if(!Array.isArray(P.unlocked)||P.unlocked.indexOf('heart')<0)P.unlocked=['heart','stomach','bones','lab'];if(!P.best)P.best={};if(!P.crew2)P.crew2={};if(!P.night)P.night='auto';if(!P.daily)P.daily={date:'',streak:0};if(P.runs==null)P.runs=0;if(P.wins==null)P.wins=0;if(P.bestStars==null)P.bestStars=0;
 /* v0.2 -> v0.3 migration: an old win already unlocked lungs; give the brain too */
 if(P.unlocked.indexOf('lungs')>=0&&P.unlocked.indexOf('brain')<0){P.unlocked.push('brain');P.bosses.sugar=true;}
-function syncUnlocks(){Object.keys(P.bosses).forEach(function(b){if(BOSSES[b])BOSSES[b].unlocks.forEach(function(u){if(P.unlocked.indexOf(u)<0)P.unlocked.push(u);});});save();}
+function syncUnlocks(){Object.keys(P.bosses).forEach(function(b){if(BOSSES[b]){BOSSES[b].unlocks.forEach(function(u){if(P.unlocked.indexOf(u)<0)P.unlocked.push(u);});Object.keys(CREW).forEach(function(c){if(CREW[c].unlock===b)P.crew2[c]=true;});}});save();}
 
 /* ---------- run state ---------- */
 var R=null;
@@ -192,9 +201,11 @@ function recordPlay(){var t0=R.started||Date.now(),t1=Date.now();
 function newRun(){
   R={started:Date.now(),o2:6,glu:6,h2o:6,coin:4,stars:0,at:'heart',sugar:0,steps:0,
      crew:{patchlet:3,oxinator:3,fighty:3},
-     done:{pizza:false,race:false,knee:false,sneeze:false,teeth:false,swim:false,bedtime:false,apple:false,flex:false,balance:false,eyespy:false},
+     done:{pizza:false,race:false,knee:false,sneeze:false,teeth:false,swim:false,bedtime:false,apple:false,flex:false,balance:false,eyespy:false,relay:false,wanted:false,chop:false},
      boss:null,visited:{heart:true},routes:[],eventsSeen:[],coach:true,combo:0};
+  Object.keys(P.crew2).forEach(function(k){if(P.crew2[k]&&CREW[k])R.crew[k]=3;});
 }
+function crewList(){return ['oxinator','fighty','patchlet'].concat(['nerve','antibody','enzyme'].filter(function(k){return P.crew2[k];}));}
 
 /* ---------- content ---------- */
 var CREW={
@@ -215,7 +226,25 @@ var CREW={
     fact:'Platelets are not whole cells. They are little chips broken off a giant cell in the bone marrow.',
     bio:'The smallest crew member and the first one to reach any emergency. Sticky on purpose. Hums while patching.',
     secret:'Only lives about 10 days, so Patchlet treats every day like a big one.',
-    fav:'Favorite sound: a scab forming. Says it sounds like tiny velcro.'}
+    fav:'Favorite sound: a scab forming. Says it sounds like tiny velcro.'},
+  nerve:{nm:'Zap',kind:'Nerve Messenger',color:'#ffe066',ic:'⚡',unlock:'sugar',
+    job:'Carries messages from the Brain to the muscles and back, in order, at over 200 miles an hour.',
+    fact:'A nerve signal from your toe reaches your brain in about one hundredth of a second.',
+    bio:'Lives in the spine, the body\'s main highway. Never walks anywhere, only sprints. Talks in short bursts.',
+    secret:'Cannot carry two messages at once. Every message has to wait its turn, which is why you cannot pat your head and rub your belly on the first try.',
+    fav:'Favorite game: tag. Favorite word: GO.'},
+  antibody:{nm:'Lock',kind:'Antibody',color:'#b48bff',ic:'🛡️',unlock:'bellybug',
+    job:'Remembers every germ the body has ever met and locks onto the ones that come back.',
+    fact:'Antibodies are shaped like the letter Y. Each one fits exactly one kind of germ, like a key fits one lock.',
+    bio:'Made in the Cell Lab after the body meets a new germ. Keeps a wanted poster for every germ ever caught. A little bit of a show-off about it.',
+    secret:'A shot at the doctor is really a training day for Lock: a safe copy of a germ to practice on.',
+    fav:'Favorite thing: a germ that thinks it can sneak back in.'},
+  enzyme:{nm:'Snip',kind:'Enzyme',color:'#8ee86a',ic:'🧪',unlock:'cavity',
+    job:'Cuts big food pieces into tiny ones so the body can use them. Starts working in your mouth before you even swallow.',
+    fact:'Your spit has an enzyme in it. Hold a plain cracker on your tongue for a minute and it starts to taste sweet.',
+    bio:'Works in the Stomach but came from the Cell Lab. Thinks of every meal as a puzzle to take apart. Never eats, only chops.',
+    secret:'Each enzyme can cut only one kind of food. Snip is the chief and bosses a whole crew of them.',
+    fav:'Favorite meal to chop: spaghetti. Long, so lots of cuts.'}
 };
 var ORGANS={
   heart:{nm:'Heart',ic:'❤️',x:500,y:300,fact:'The heart is a muscle pump. It beats about 100,000 times a day and never takes a day off.',desc:'Home base. Shop, rest, and pick a path.'},
@@ -232,6 +261,20 @@ var ORGANS={
   ears:{nm:'Ears',ic:'👂',x:920,y:500,fact:'Deep in your ear are three tiny loops full of liquid. When you spin, the liquid keeps swirling. That is why you feel dizzy.',desc:'Hearing and balance live here.'}
 };
 var LINKS=[['heart','stomach'],['heart','bones'],['heart','lab'],['stomach','bones'],['lab','bones'],['lab','stomach'],['lab','lungs'],['stomach','lungs'],['lab','brain'],['bones','brain'],['lungs','skin'],['stomach','skin'],['brain','kidneys'],['bones','kidneys'],['stomach','muscles'],['bones','muscles'],['heart','muscles'],['lungs','teeth'],['skin','teeth'],['brain','eyes'],['lab','eyes'],['brain','ears'],['kidneys','ears']];
+var VESSELS={
+  heart:{nm:'Aorta',ic:'🧵',fact:'The aorta is the biggest tube in the body, as wide as a garden hose. Every drop of blood leaves the heart through it.'},
+  stomach:{nm:'Gastric Artery',ic:'🧵',fact:'After a meal, extra blood rushes to the stomach to carry fuel away. That is why you feel sleepy after a big dinner.'},
+  bones:{nm:'Nutrient Artery',ic:'🧵',fact:'Each big bone has a tiny hole where its own artery sneaks in to feed the marrow factory.'},
+  lab:{nm:'Capillary',ic:'🧵',fact:'Capillaries are so thin that red cells squeeze through in single file. Oxygen hops across their walls into the cells.'},
+  lungs:{nm:'Pulmonary Artery',ic:'🧵',fact:'The only artery that carries blood with low oxygen. It takes tired blood to the lungs for a refill.'},
+  brain:{nm:'Carotid Artery',ic:'🧵',fact:'Press gently on the side of your neck and you can feel the carotid pumping blood up to the brain.'},
+  skin:{nm:'Skin Capillaries',ic:'🧵',fact:'When you blush or get hot, tiny vessels in the skin open wide to let heat out. That is the red in your cheeks.'},
+  kidneys:{nm:'Renal Artery',ic:'🧵',fact:'About a quarter of all the blood the heart pumps goes straight to the kidneys to be cleaned.'},
+  muscles:{nm:'Muscle Capillaries',ic:'🧵',fact:'Working muscles open up extra capillaries to grab more oxygen. Training grows new ones.'},
+  teeth:{nm:'Tooth Pulp',ic:'🧵',fact:'Inside every tooth is a soft center with its own tiny blood vessel and nerve. That is what a toothache feels.'},
+  eyes:{nm:'Retinal Vessels',ic:'🧵',fact:'The eye is the one place a doctor can see your blood vessels without cutting anything, by looking in through the pupil.'},
+  ears:{nm:'Inner Ear Fluid',ic:'🧵',fact:'The inner ear is filled with fluid, not blood. Sound waves ripple through it like a stone dropped in a pond.'}
+};
 var UNLOCK_BY={lungs:'sugar',brain:'sugar',skin:'cold',muscles:'cold',kidneys:'bellybug',teeth:'bellybug',eyes:'cavity',ears:'cavity'};
 
 var GERMS={
@@ -240,7 +283,7 @@ var GERMS={
   bellybug:{nm:'Belly Bug',ic:'🤢',boss:true,fact:'Most belly bugs come in on hands. Washing hands for 20 seconds knocks most of them off.'},
   splinter:{nm:'Splinter',ic:'🌵',fact:'A splinter brings germs in past the skin wall. White cells rush to the spot, which is why it gets red and puffy.'},
   cavity:{nm:'Cavity Crew',ic:'🦷',boss:true,fact:'Cavity germs eat sugar stuck on teeth and leave acid behind. The acid drills holes. Brushing sweeps them out.'},
-  dust:{nm:'Dust Mite',ic:'🌫️',fact:'Dust in the nose tickles nerves. The nose fires a sneeze to blast it out at over 100 miles an hour.'},
+  dust:{nm:'Dust Mite',ic:'🌫️',fact:'Dust in the nose tickles nerves. The nose fires a sneeze, fast enough to fling droplets across a room.'},
   pollen:{nm:'Pollen Grain',ic:'🌼',fact:'Pollen is harmless plant dust, but some bodies treat it like an invader. That overreaction is an allergy: itchy eyes and sneezes.'},
   fever:{nm:'Fever Dragon',ic:'🐉',boss:true,fact:'A fever is the body turning up the heat on purpose. Most germs hate it hot. The Brain is the thermostat.'}
 };
@@ -267,7 +310,10 @@ var MISSIONS={
   apple:{nm:'Apple Snack',ic:'🍎',who:'stomach',sub:'Turn apple slices into fuel'},
   flex:{nm:'Stretch Out',ic:'💪',who:'muscles',sub:'Tap the cramps before they knot up'},
   balance:{nm:'Dizzy Spin',ic:'👂',who:'ears',sub:'Catch the steady drops, dodge the wobbles'},
-  eyespy:{nm:'Eye Spy',ic:'👁️',who:'eyes',sub:'Spot the pollen hiding among the cells'}
+  eyespy:{nm:'Eye Spy',ic:'👁️',who:'eyes',sub:'Spot the pollen hiding among the cells'},
+  relay:{nm:'Reflex Test',ic:'⚡',who:'brain',sub:'Tap the relay stations in order, fast',crew:'nerve'},
+  wanted:{nm:'Wanted Poster',ic:'🛡️',who:'lab',sub:'Swat only the germ on the poster',crew:'antibody'},
+  chop:{nm:'Chop Shop',ic:'🧪',who:'stomach',sub:'Cut the food chains down to single bites',crew:'enzyme'}
 };
 var MYSTERIES=[
   {id:'fat',nm:'Armor Fat',ic:'🛡️',text:'Most of the fat in your body is stored outside your organs to protect them, like padding.',by:'Garrett'},
@@ -367,7 +413,7 @@ function show(id){
   cur=id;
 }
 function leaveJournal(){if(!R)title();else if(R.ended)show('end');else hub();}
-document.getElementById('btnJournal').onclick=function(){if(cur==='journal')leaveJournal();else journal();};
+document.getElementById('btnJournal').onclick=function(){if(cur==='game'&&G&&!G.over&&G.t>0){toast('Finish the game first');SFX.bad();return;}if(cur==='journal')leaveJournal();else journal();};
 
 /* ---------- SVG art ---------- */
 function podSvg(size){
@@ -375,28 +421,33 @@ function podSvg(size){
 }
 function cellSvg(k){
   var c=CREW[k];var eye='<circle cx="42" cy="46" r="5" fill="#2a080e"/><circle cx="58" cy="46" r="5" fill="#2a080e"/><circle cx="44" cy="44" r="2" fill="#fff"/><circle cx="60" cy="44" r="2" fill="#fff"/><path d="M40 60 Q50 68 60 60" stroke="#2a080e" stroke-width="3" fill="none" stroke-linecap="round"/>';
-  var body=k==='patchlet'?'<path d="M50 10 L80 30 L85 65 L55 92 L20 70 L15 35 Z" fill="'+c.color+'" stroke="#2a080e" stroke-width="3" stroke-linejoin="round"/>':
+  var body=k==='nerve'?'<path d="M55 6 L30 54 L50 54 L42 94 L72 42 L52 42 Z" fill="'+c.color+'" stroke="#2a080e" stroke-width="3" stroke-linejoin="round"/>':
+    k==='antibody'?'<path d="M50 8 L85 22 L82 60 Q70 86 50 94 Q30 86 18 60 L15 22 Z" fill="'+c.color+'" stroke="#2a080e" stroke-width="3" stroke-linejoin="round"/>':
+    k==='enzyme'?'<path d="M30 12 L70 12 L70 40 L85 80 Q88 92 76 92 L24 92 Q12 92 15 80 L30 40 Z" fill="'+c.color+'" stroke="#2a080e" stroke-width="3" stroke-linejoin="round"/>':
+    k==='patchlet'?'<path d="M50 10 L80 30 L85 65 L55 92 L20 70 L15 35 Z" fill="'+c.color+'" stroke="#2a080e" stroke-width="3" stroke-linejoin="round"/>':
     k==='fighty'?'<circle cx="50" cy="50" r="40" fill="'+c.color+'" stroke="#2a080e" stroke-width="3"/><circle cx="30" cy="30" r="6" fill="#b48bff"/><circle cx="70" cy="35" r="5" fill="#b48bff"/><circle cx="65" cy="72" r="6" fill="#b48bff"/>':
     '<circle cx="50" cy="50" r="40" fill="'+c.color+'" stroke="#2a080e" stroke-width="3"/><circle cx="50" cy="50" r="18" fill="#c8303a" opacity=".6"/>';
   return '<svg viewBox="0 0 100 100">'+body+eye+'</svg>';
 }
 function hearts(n){var s='';for(var i=0;i<3;i++)s+=i<n?'❤️':'🖤';return s;}
 function crewHtml(){
-  return '<div class="crew">'+['oxinator','fighty','patchlet'].map(function(k){var c=CREW[k];return '<div class="cell'+(R.crew[k]===0?' tired':'')+'" data-k="'+k+'">'+cellSvg(k)+'<div><b>'+c.nm+'</b><span class="hp">'+hearts(R.crew[k])+'</span></div></div>';}).join('')+'</div>';
+  return '<div class="crew">'+crewList().map(function(k){var c=CREW[k];return '<div class="cell'+(R.crew[k]===0?' tired':'')+'" data-k="'+k+'">'+cellSvg(k)+'<div><b>'+c.nm+'</b><span class="hp">'+hearts(R.crew[k])+'</span></div></div>';}).join('')+'</div>';
 }
 
 /* ---------- TITLE ---------- */
 function title(){
-  var el=document.getElementById('s-title');
-  el.innerHTML='<div class="wrap title">'+podSvg(150)+'<h2>BLOODSTREAM</h2><p class="sub">Garrett\'s crew. Inside a body. Nobody dies, but things get sticky.</p>'+
+  var el=document.getElementById('s-title');var isN=applyNight();
+  el.innerHTML='<div class="wrap title">'+podSvg(150)+'<h2>BLOODSTREAM</h2><p class="sub">Garrett\'s crew. Inside a body. Nobody dies, but things get sticky.</p>'+(isN?'<div class="nightpill">🌙 NIGHT SHIFT is on. The germs got spooky.</div>':'')+''+
     '<div class="row" style="max-width:520px;margin:14px auto 0"><button class="btn big" id="start" style="font-size:26px">🚀 Launch the Bubble Pod</button></div>'+
     '<div class="row" style="max-width:520px;margin:8px auto 0"><button class="btn ghost" id="how">❓ How to play</button></div>'+
     '<p class="sub" style="margin-top:14px">Trips: '+P.runs+' · Bosses beaten: '+Object.keys(P.bosses).filter(function(b){return BOSSES[b];}).length+'/'+Object.keys(BOSSES).length+' · Best stars: '+P.bestStars+' · Journal: '+journalPct()+'%</p>'+
-    '<div class="row" style="max-width:520px;margin:6px auto 0"><button class="btn ghost" id="tSound">'+(P.sound?'🔊 Sound on':'🔇 Sound off')+'</button><button class="btn ghost" id="tShake">'+(P.shake?'📳 Shake on':'📴 Shake off')+'</button><a class="btn ghost" href="index.html" style="text-decoration:none">📚 Shelf</a></div></div>';
+    '<p class="sub">📋 Body Report: '+(dailyDone()?'done today ✔':'ready at the Heart')+' · streak '+(P.daily.streak||0)+' · Crew: '+crewList().length+'/6</p>'+
+    '<div class="row" style="max-width:520px;margin:6px auto 0"><button class="btn ghost" id="tSound">'+(P.sound?'🔊 Sound on':'🔇 Sound off')+'</button><button class="btn ghost" id="tShake">'+(P.shake?'📳 Shake on':'📴 Shake off')+'</button><button class="btn ghost" id="tNight">'+({auto:'🌙 Night: auto',on:'🌙 Night: always',off:'☀️ Night: off'})[P.night]+'</button><a class="btn ghost" href="index.html" style="text-decoration:none">📚 Shelf</a></div></div>';
   el.querySelector('#start').onclick=function(){if(!P.seenIntro)intro(true);else launch();};
   el.querySelector('#how').onclick=function(){intro(false);};
   el.querySelector('#tSound').onclick=function(){P.sound=!P.sound;save();title();};
   el.querySelector('#tShake').onclick=function(){P.shake=!P.shake;save();title();};
+  el.querySelector('#tNight').onclick=function(){P.night=P.night==='auto'?'on':P.night==='on'?'off':'auto';save();toast(P.night==='auto'?'Night Shift comes on after 7pm':P.night==='on'?'Night Shift always on':'Night Shift off');title();};
   show('title');
 }
 function launch(){
@@ -428,8 +479,75 @@ function intro(thenLaunch){
   draw();show('intro');
 }
 
+/* ---------- DAILY BODY REPORT ---------- */
+var DAILY=[
+  {kind:'race',mod:'fast',story:'Field day! The kid is running relay races all afternoon. The legs need oxygen, fast.'},
+  {kind:'knee',mod:'long',story:'Bike crash on the driveway. Lots of little scrapes, all at once.'},
+  {kind:'sneeze',mod:'double',story:'Grandma is dusting the attic and the kid is helping. Ah... ah...'},
+  {kind:'teeth',mod:'fast',story:'Candy was last night. Every tooth has sugar stuck on it this morning.'},
+  {kind:'swat',arg:'cold',mod:'long',story:'A kid at school had a cold. Germs got in on a shared pencil.'},
+  {kind:'swim',mod:'double',story:'Pool day, and that water is COLD. Keep the warm blood moving.'},
+  {kind:'eyespy',mod:'long',story:'Pollen season. The eyes are itchy and the pollen is hiding in plain sight.'},
+  {kind:'balance',mod:'fast',story:'The kid spun in the office chair twenty times. The ears are still swirling.'},
+  {kind:'flex',mod:'double',story:'Soccer practice ran long. Leg cramps are knotting up tonight.'},
+  {kind:'swat',arg:'splinter',mod:'fast',story:'Building a fort out of old boards. Splinters everywhere.'},
+  {kind:'swat',arg:'bellybug',mod:'double',story:'Somebody forgot to wash hands before lunch. Belly bugs are moving in.'},
+  {kind:'relay',mod:'fast',story:'Tag at recess. The Brain needs every reflex it has.',crew:'nerve'},
+  {kind:'wanted',mod:'double',story:'The nurse gave a shot today. Lock is learning a brand new germ.',crew:'antibody'},
+  {kind:'chop',mod:'long',story:'Thanksgiving-sized dinner. Snip, get chopping.',crew:'enzyme'},
+  {kind:'boss',arg:'sugar',mod:'double',story:'The Sugar Monster is back for a rematch at the Heart.',boss:'sugar'},
+  {kind:'boss',arg:'cold',mod:'double',story:'The Cold Virus snuck back in. Rematch.',boss:'cold'},
+  {kind:'boss',arg:'bellybug',mod:'double',story:'The Belly Bug is churning again. Rematch.',boss:'bellybug'},
+  {kind:'boss',arg:'cavity',mod:'double',story:'The Cavity Crew found a sticky molar. Rematch.',boss:'cavity'},
+  {kind:'boss',arg:'fever',mod:'double',story:'The Fever Dragon is warming up. Rematch.',boss:'fever'}
+];
+var MODS={fast:'Everything comes 35% faster today.',long:'Extra 10 seconds on the clock today.',double:'Double stars today.'};
+function todayKey(){var d=new Date();return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();}
+function seedFrom(s){var x=2166136261;for(var i=0;i<s.length;i++){x^=s.charCodeAt(i);x=Math.imul(x,16777619);}return function(){x^=x<<13;x^=x>>>17;x^=x<<5;return ((x>>>0)%100000)/100000;};}
+function dailyPick(){
+  var pool=DAILY.filter(function(d){if(d.crew&&!P.crew2[d.crew])return false;if(d.boss&&!P.bosses[d.boss])return false;return true;});
+  var r=seedFrom(todayKey()+'bloodstream');var d=pool[Math.floor(r()*pool.length)];return d;
+}
+function dailyDone(){return P.daily.date===todayKey();}
+function dailyCard(){
+  var d=dailyPick();var done=dailyDone();
+  return '<div class="card" style="border-color:#ffcc4d"><b style="font-size:18px">📋 Today\'s Body Report</b><p class="sub" style="margin:2px 0 0">'+todayKey()+' · streak '+(P.daily.streak||0)+' day'+(P.daily.streak===1?'':'s')+'</p><p style="margin:8px 0 4px">'+esc(d.story)+'</p><p class="sub">'+MODS[d.mod]+' Bonus ⭐3 for finishing.</p>'+
+    (done?'<div class="row"><button class="btn ghost" disabled>✔ Done today. New report tomorrow.</button></div>':'<div class="row"><button class="btn" id="dailyGo">📋 Start today\'s report</button></div>')+'</div>';
+}
+function startDaily(){var d=dailyPick();startGame(d.kind,d.arg,{daily:true,mod:d.mod});}
+function markDaily(){
+  var y=new Date();y.setDate(y.getDate()-1);var yk=y.getFullYear()+'-'+(y.getMonth()+1)+'-'+y.getDate();
+  P.daily.streak=(P.daily.date===yk)?(P.daily.streak||0)+1:1;P.daily.date=todayKey();save();
+}
+
+/* ---------- NIGHT SHIFT ---------- */
+function night(){if(P.night==='off')return false;if(P.night==='on')return true;var hr=new Date().getHours();return hr>=19||hr<6;}
+function applyNight(){var n=night();document.body.classList.toggle('night',n);return n;}
+var NIGHT_EVENTS=[
+  {id:'dream',night:true,t:'Bad Dream',txt:'The kid is dreaming about a giant spider. The heart is racing even though nothing is really there.',ic:'🌙',
+   c:[{l:'Oxinator, feed the racing heart',fx:{o2:-2,coin:3},r:'Extra oxygen for a fast heart. The dream passes. ⭐3.'},
+      {l:'Wait it out',fx:{coin:1},r:'The heart slows down on its own. Dreams cannot hurt the body. 1 star.'}]},
+  {id:'growpain',night:true,t:'Growing Pains',txt:'The leg bones are stretching tonight. It aches a little. The Cell Lab is working overtime.',ic:'🦴',
+   c:[{l:'Deliver building fuel',fx:{glu:-2,coin:3,mystery:'growsleep'},r:'The bones take the fuel and grow a tiny bit longer. ⭐3.'},
+      {l:'Send a warm rub',fx:{h2o:-1,coin:1,mystery:'growsleep'},r:'Warm blood to the legs eases the ache. 1 star.'}]},
+  {id:'sweat',night:true,t:'Night Sweats',txt:'Too many blankets. The body is dumping heat through the skin and losing water fast.',ic:'💦',
+   c:[{l:'Open the skin vessels wide',fx:{h2o:-2,coin:2},r:'Heat pours out and the body cools. Cost 2 water. ⭐2.'},
+      {l:'Kick off a blanket',fx:{coin:1},r:'The kid rolls over and kicks off a blanket in their sleep. Problem solved. 1 star.'}]},
+  {id:'toothpatrol',night:true,t:'Tooth Fairy Patrol',txt:'Nobody is brushing at 2 a.m. The Cavity Crew comes out to drill when the mouth is dry and quiet.',ic:'🦷',
+   c:[{l:'Fighty, night patrol!',game:['swat','cavity']},
+      {l:'Flood the mouth with spit',fx:{h2o:-1,coin:1,germ:'cavity'},r:'Spit washes the sugar off. The crew gives up for tonight. 1 star.'}]},
+  {id:'owl',night:true,t:'Something Hoots Outside',txt:'An owl. The ears wake the brain for half a second, then let it sleep again.',ic:'🦉',
+   c:[{l:'Let the brain check it',fx:{o2:-1,coin:2},r:'The brain listens, decides it is only an owl, and drifts off. ⭐2.'},
+      {l:'Stay in deep sleep',fx:{rest:1},r:'The body stays in repair mode. Every cell gets 1 energy back.'}]}
+];
+var NIGHT_MYSTERIES=[
+  {id:'growsleep',nm:'Night Growth',ic:'🌙',text:'You grow mostly while you sleep. The brain sends out growth hormone in the first deep sleep of the night.',by:''},
+  {id:'dreameyes',nm:'Dream Eyes',ic:'👀',text:'During dreams your eyes dart around under your eyelids, but the rest of your body is switched off so you do not act the dream out.',by:''}
+];
+
 /* ---------- MAP HELPERS ---------- */
 function reachable(k){return P.unlocked.indexOf(k)>=0&&k!==R.at&&LINKS.some(function(l){return (l[0]===R.at&&l[1]===k)||(l[1]===R.at&&l[0]===k);});}
+function bossBonus(){return night()?2:0;}
 function bossHere(){
   var k=Object.keys(BOSSES).filter(function(b){var B=BOSSES[b];if(B.at!==R.at)return false;if(R.boss)return false;
     var ready=B.needs.every(function(m){return R.done[m];});if(!ready)return false;
@@ -439,9 +557,17 @@ function bossHere(){
 }
 
 /* ---------- HUB / MAP ---------- */
+function heartPump(){
+  if(R.at!=='heart')return '';
+  var o=R.o2<10?1:0,w=R.h2o<10?1:0;
+  if(!o&&!w)return '';
+  R.o2=clamp(R.o2+1);R.h2o=clamp(R.h2o+1);SFX.coin();
+  return ' The Heart pumps: +1 oxygen, +1 water.';
+}
 function hub(msg){
-  var el=document.getElementById('s-hub');
+  var el=document.getElementById('s-hub');var isN=applyNight();
   var here=ORGANS[R.at];
+  if(R.pumpDue){R.pumpDue=false;var pm=heartPump();if(pm)msg=(msg||here.desc)+pm;}
   var svg='<svg id="map" viewBox="0 0 1000 590">';
   LINKS.forEach(function(l){var a=ORGANS[l[0]],b=ORGANS[l[1]];var open=P.unlocked.indexOf(l[0])>=0&&P.unlocked.indexOf(l[1])>=0;var adj=(l[0]===R.at||l[1]===R.at)&&open;
     svg+='<path d="M'+a.x+' '+a.y+' Q '+((a.x+b.x)/2+(a.y-b.y)*.25)+' '+((a.y+b.y)/2+(b.x-a.x)*.25)+' '+b.x+' '+b.y+'" fill="none" stroke="'+(adj?'#ffcc4d':open?'#b13a4b':'#5a1420')+'" stroke-width="'+(adj?11:7)+'" stroke-linecap="round" stroke-dasharray="'+(adj?'0':'14 10')+'" opacity="'+(adj?'1':open?'.75':'.4')+'"/>';});
@@ -461,10 +587,16 @@ function hub(msg){
   actions+='<div class="row"><button class="btn ghost" id="snack" '+(snackable&&R.glu>=2?'':'disabled')+'>🍪 Snack: heal 1 cell (2 glucose)</button></div>';
   var bk=bossHere();
   if(bk)actions+='<div class="row"><button class="btn red" id="boss">'+GERMS[bk].ic+' '+BOSSES[bk].intro+' Fight!</button></div>';
-  var goBtns=reachList.length?'<div class="card"><b style="font-size:17px">Where next?</b><p class="sub" style="margin:2px 0 4px">1 oxygen + 1 water per trip</p><div class="row">'+reachList.map(function(k){return '<button class="btn go" data-go="'+k+'">'+ORGANS[k].ic+' Go to '+ORGANS[k].nm+'</button>';}).join('')+'</div></div>':'';
+  var canGo=R.o2>=1&&R.h2o>=1;
+  var goBtns=reachList.length?'<div class="card"><b style="font-size:17px">Where next?</b><p class="sub" style="margin:2px 0 4px">'+(canGo?'1 oxygen + 1 water per trip':'Out of '+(R.o2<1?'oxygen':'water')+'. '+(R.at==='heart'?'Pump at the Heart or shop first.':'The crew will drift home to the Heart.'))+'</p><div class="row">'+reachList.map(function(k){return '<button class="btn go" data-go="'+k+'" '+(canGo?'':'disabled')+'>'+ORGANS[k].ic+' Go to '+ORGANS[k].nm+'</button>';}).join('')+'</div></div>':'';
+  if(!canGo&&R.at!=='heart')goBtns+='<div class="row"><button class="btn red" id="drift">💓 Drift home to the Heart</button></div>';
+  var tired=Object.keys(R.crew).filter(function(k){return R.crew[k]===0;}).map(function(k){return CREW[k].nm;});
+  var tiredNote=tired.length?'<p class="sub" style="margin-top:4px;color:#ffcc4d">'+tired.join(' and ')+(tired.length>1?' are':' is')+' out of energy: a shorter timer in their game until they get a snack or rest.</p>':'';
+  var menu='<div class="row"><button class="btn ghost" id="newtrip" style="font-size:16px;min-height:48px">🔁 New trip</button></div>';
+  var daily=R.at==='heart'?dailyCard():'';
   el.innerHTML='<div class="wrap split"><div class="mapwrap">'+svg+(R.coach&&reachList.length?'<div class="coach">👆 Tap a glowing organ to travel</div>':'')+
     '<div class="legend"><span><i style="background:#ffcc4d"></i>can go now</span><span><i style="background:#b13a4b;opacity:.75"></i>too far for now</span><span>🔒 beat a boss to open</span></div></div>'+
-    '<div><div class="card"><h2>'+here.ic+' '+here.nm+'</h2><p>'+esc(msg||here.desc)+'</p>'+actions+'</div>'+goBtns+'<div class="card">'+crewHtml()+'<p class="sub" style="margin-top:8px">Sugar meter: '+'🍭'.repeat(R.sugar)+(R.sugar?'':'none')+' · Snacks feed the monsters.</p></div></div></div>';
+    '<div><div class="card"><h2>'+here.ic+' '+here.nm+'</h2>'+(isN?'<div class="nightpill">🌙 NIGHT SHIFT: spooky germs, night cards, bosses +2</div>':'')+'<p>'+esc(msg||here.desc)+'</p>'+actions+'</div>'+daily+goBtns+'<div class="card">'+crewHtml()+tiredNote+'<p class="sub" style="margin-top:8px">Sugar meter: '+'🍭'.repeat(R.sugar)+(R.sugar?'':'none')+' · Snacks feed the monsters.</p></div>'+menu+'</div></div>';
   Array.prototype.forEach.call(el.querySelectorAll('.node'),function(n){n.onclick=function(){var k=n.getAttribute('data-k');
     if(n.getAttribute('data-reach')==='1')travel(k);
     else if(n.classList.contains('locked')){var by=UNLOCK_BY[k];toast('Locked. Beat the '+(by?GERMS[by].nm:'boss')+' to open the '+ORGANS[k].nm+'.');}
@@ -477,29 +609,34 @@ function hub(msg){
   if(b=el.querySelector('#organ'))b.onclick=organ;
   if(b=el.querySelector('#snack'))b.onclick=snack;
   if(b=el.querySelector('#boss'))b.onclick=function(){startGame('boss',bk);};
+  if(b=el.querySelector('#dailyGo'))b.onclick=startDaily;
+  if(b=el.querySelector('#drift'))b.onclick=function(){R.at='heart';R.pumpDue=true;hub('The crew drifts back to the Heart on empty.');};
+  if(b=el.querySelector('#newtrip'))b.onclick=function(){if(confirm('Start a new trip? This trip\'s stars stay in the Journal, but the map resets.')){title();}};
   hud();show('hub');
   punch(el.querySelector('.node.here'));
 }
 function snack(){
-  var k=['oxinator','fighty','patchlet'].sort(function(a,b){return R.crew[a]-R.crew[b];})[0];
+  var k=crewList().sort(function(a,b){return R.crew[a]-R.crew[b];})[0];
   if(R.crew[k]>=3){toast('Everyone is full of energy');return;}
   if(R.glu<2){toast('Need 2 glucose');SFX.bad();return;}
   R.glu-=2;R.crew[k]+=1;R.sugar+=1;SFX.good();hud();
   hub(CREW[k].nm+' eats a snack and feels better. The monsters grow a little stronger.');
 }
 function travel(k){
-  if(R.o2<1||R.h2o<1){toast('Out of oxygen or water. Back to the Heart shop.');SFX.bad();if(R.at!=='heart'){R.at='heart';hub('The crew drifts back to the Heart on empty. Buy supplies before the next trip.');}return;}
+  if(R.o2<1||R.h2o<1){toast('Out of oxygen or water.');SFX.bad();if(R.at!=='heart'){R.at='heart';R.pumpDue=true;hub('The crew drifts back to the Heart on empty.');}else{R.pumpDue=true;hub();}return;}
   R.o2-=1;R.h2o-=1;R.steps+=1;R.coach=false;SFX.whoosh();
-  var route=[R.at,k].sort().join('-');if(R.routes.indexOf(route)<0){R.routes.push(route);unlockJ('map',route);}
-  R.at=k;R.visited[k]=true;unlockJ('organ',k);hud();
+  if(!R.vessels)R.vessels=[];if(R.vessels.indexOf(k)<0){R.vessels.push(k);unlockJ('vessel',k);}
+  R.at=k;R.visited[k]=true;unlockJ('organ',k);if(k==='heart')R.pumpDue=true;hud();
   if(R.steps===1){hub('You made it! Tap "Enter the '+ORGANS[k].nm+'" to see what is inside.');return;}
   if(R.steps%2===1||Math.random()<.5)event();else hub();
 }
 
 /* ---------- EVENT CARDS ---------- */
 function event(){
-  var pool=EVENTS.filter(function(e){return R.eventsSeen.indexOf(e.id)<0&&!(e.mission&&R.done[e.mission]);});
-  if(!pool.length){pool=EVENTS.filter(function(e){return !e.mission;});R.eventsSeen=[];}
+  if(R.done.pizza&&R.done.race&&!R.done.knee){startGame('knee');return;}
+  var isN=night();var pool=EVENTS.filter(function(e){return R.eventsSeen.indexOf(e.id)<0&&!(e.mission&&R.done[e.mission])&&(!e.night||isN);});
+  if(isN&&pool.some(function(e){return e.night;})&&Math.random()<.5)pool=pool.filter(function(e){return e.night;});
+  if(!pool.length){pool=EVENTS.filter(function(e){return !e.mission&&(!e.night||isN);});R.eventsSeen=[];}
   var e=pool[Math.floor(Math.random()*pool.length)];R.eventsSeen.push(e.id);
   if(e.mission){startGame(e.mission);return;}
   var el=document.getElementById('s-event');
@@ -512,7 +649,7 @@ function event(){
     if(fx.coin){R.coin+=fx.coin;SFX.coin();}
     if(fx.crew){R.crew[fx.crew[0]]=Math.max(0,R.crew[fx.crew[0]]+fx.crew[1]);SFX.hit();shake();}
     if(fx.rest)Object.keys(R.crew).forEach(function(k){R.crew[k]=Math.min(3,R.crew[k]+1);});
-    if(fx.germ)unlockJ('germ',fx.germ);
+    if(fx.germ)unlockJ('germ',fx.germ);if(fx.mystery)unlockJ('mystery',fx.mystery);
     hud();
     var fact=fx.germ?GERMS[fx.germ].fact:'';
     el.innerHTML='<div class="wrap"><div class="card"><h2>'+esc(e.t)+'</h2><p>'+esc(c.r)+'</p>'+(fact?'<div class="fact">💡 '+esc(fact)+'</div>':'')+'<div class="row"><button class="btn" id="go">Onward ▶</button></div></div></div>';
@@ -522,20 +659,21 @@ function event(){
 }
 function checkTired(){
   var allTired=Object.keys(R.crew).every(function(k){return R.crew[k]===0;});
-  if(allTired){R.at='heart';Object.keys(R.crew).forEach(function(k){R.crew[k]=1;});hub('Everyone was too tired to go on. The Bubble Pod floated back to the Heart. Each cell has 1 energy. Snack up.');return;}
+  if(allTired){R.at='heart';R.pumpDue=true;Object.keys(R.crew).forEach(function(k){R.crew[k]=1;});hub('Everyone was too tired to go on. The Bubble Pod floated back to the Heart. Each cell has 1 energy. Snack up.');return;}
   hub();
 }
 
 /* ---------- ORGAN SCREENS ---------- */
-function missionRow(m,btnId){var M=MISSIONS[m];var d=R.done[m];return '<div class="mission'+(d?' done':'')+'"><div class="ic">'+M.ic+'</div><div><b>'+M.nm+'</b><span class="sub">'+M.sub+'</span></div>'+(d?'<span style="margin-left:auto;font-size:26px">✔</span>':'<button class="btn" data-m="'+m+'">Start</button>')+'</div>';}
+function bestKey(kind,arg){return kind+(kind==='swat'?':'+arg:'');}
+function missionRow(m,btnId){var M=MISSIONS[m];if(M.crew&&!P.crew2[M.crew])return '';var d=R.done[m];var best=P.best[m];return '<div class="mission'+(d?' done':'')+'"><div class="ic">'+M.ic+'</div><div><b>'+M.nm+'</b><span class="sub">'+M.sub+(best?' · Best '+best:'')+'</span></div>'+(d?'<button class="btn ghost" data-m="'+m+'" style="margin-left:auto;min-height:48px;padding:6px 14px;font-size:17px">↻ Again</button>':'<button class="btn" data-m="'+m+'">Start</button>')+'</div>';}
 function organ(){
   var k=R.at,o=ORGANS[k];var el=document.getElementById('s-organ');var body='';
-  if(k==='stomach'){body='<p>The stomach is churning. Food becomes fuel here.</p>'+missionRow('pizza')+missionRow('apple');}
+  if(k==='stomach'){body='<p>The stomach is churning. Food becomes fuel here.</p>'+missionRow('pizza')+missionRow('apple')+missionRow('chop');}
   else if(k==='bones'){body='<p>Inside the bone is the marrow factory, humming away.</p>'+missionRow('race');}
-  else if(k==='lab'){body='<p>🧬 The Cell Lab builds new cells. Spend 3 water to make 1 glucose from stored energy.</p><div class="row"><button class="btn teal" id="convert">💧💧💧 → 🍪 Convert</button></div>'+(R.done.knee?'':'<p class="sub">Patchlet is restless. A scraped knee could happen any time out on the trail.</p>');}
+  else if(k==='lab'){body='<p>🧬 The Cell Lab builds new cells. Spend 3 water to make 1 glucose from stored energy.</p>'+missionRow('wanted')+'<div class="row"><button class="btn teal" id="convert" '+(R.h2o<4?'disabled':'')+'>💧💧💧 → 🍪 Convert'+(R.h2o<4?' (keep 1 water for the trip)':'')+'</button></div>'+(R.done.knee?'':'<p class="sub">Patchlet is restless. A scraped knee could happen any time out on the trail.</p>');}
   else if(k==='lungs'){body='<p>💨 Fresh air! The lungs fill the pod with oxygen.</p><div class="row"><button class="btn teal" id="breathe">Breathe in (+4 oxygen)</button></div>';}
-  else if(k==='brain'){body='<p>🧠 Mission Control. The Brain has jobs for the crew. Finish them to call out the next boss.</p>'+['sneeze','swim','teeth','bedtime'].map(function(m){return missionRow(m);}).join('')+
-    '<p class="sub" style="margin-top:10px"><b>Boss board</b></p>'+Object.keys(BOSSES).map(function(b){var B=BOSSES[b];var beaten=P.bosses[b];return '<div class="mission'+(beaten?' done':'')+'"><div class="ic">'+GERMS[b].ic+'</div><div><b>'+GERMS[b].nm+(beaten?' ✔':'')+'</b><span class="sub">At the '+ORGANS[B.at].nm+' after: '+B.needs.map(function(m){return MISSIONS[m].nm+(R.done[m]?' ✔':'');}).join(', ')+'</span></div></div>';}).join('');}
+  else if(k==='brain'){body='<p>🧠 Mission Control. The Brain has jobs for the crew. Finish them to call out the next boss.</p>'+['sneeze','swim','teeth','bedtime','relay'].map(function(m){return missionRow(m);}).join('')+
+    '<p class="sub" style="margin-top:10px"><b>Boss board</b></p>'+Object.keys(BOSSES).map(function(b){var B=BOSSES[b];var beaten=P.bosses[b];return '<div class="mission'+(beaten?' done':'')+'"><div class="ic">'+GERMS[b].ic+'</div><div><b>'+GERMS[b].nm+(beaten?' ✔':'')+(P.best['boss:'+b]?' · Best '+P.best['boss:'+b]+'s':'')+'</b><span class="sub">At the '+ORGANS[B.at].nm+' after: '+B.needs.map(function(m){return MISSIONS[m].nm+(R.done[m]?' ✔':'');}).join(', ')+'</span></div></div>';}).join('');}
   else if(k==='skin'){body='<p>✋ Sunshine on the skin makes vitamin D, which helps the whole crew.</p><div class="row"><button class="btn teal" id="sun" '+(R.sunned?'disabled':'')+'>☀️ Sunbathe: heal 1 heart for everyone (once per trip)</button></div>';}
   else if(k==='kidneys'){body='<p>💧 The kidneys clean the blood and keep the water right.</p><div class="row"><button class="btn teal" id="filter">Filter (+4 water)</button></div>';}
   else if(k==='muscles'){body='<p>💪 Muscles burn fuel and make heat. A good stretch keeps them from knotting up.</p>'+missionRow('flex');}
@@ -545,6 +683,7 @@ function organ(){
   else {body='<p>Nothing to do here yet.</p>';}
   el.innerHTML='<div class="wrap"><div class="card"><h2>'+o.ic+' '+o.nm+'</h2>'+body+'<div class="fact">💡 '+esc(o.fact)+'</div><div class="row"><button class="btn ghost" id="back">◀ Back to map</button></div></div></div>';
   Array.prototype.forEach.call(el.querySelectorAll('[data-m]'),function(b){b.onclick=function(){var m=b.getAttribute('data-m');
+    if(R.done[m]&&(m==='pizza'||m==='apple'||m==='bedtime')){toast('Already done this trip');return;}
     if(m==='pizza')pizzaNight();else if(m==='apple')appleSnack();else if(m==='bedtime')bedtime();else startGame(m);};});
   var b;
   if(b=el.querySelector('#convert'))b.onclick=function(){if(R.h2o<3){toast('Need 3 water');SFX.bad();return;}R.h2o-=3;R.glu=clamp(R.glu+1);SFX.good();hud();organ();};
@@ -555,9 +694,9 @@ function organ(){
   show('organ');
 }
 function bedtime(){
-  R.done.bedtime=true;Object.keys(R.crew).forEach(function(k){R.crew[k]=3;});R.coin+=2;SFX.win();flash();unlockJ('mystery','tall');hud();
+  R.done.bedtime=true;Object.keys(R.crew).forEach(function(k){R.crew[k]=3;});R.coin+=2+(night()?1:0);if(night())unlockJ('mystery','dreameyes');SFX.win();flash();unlockJ('mystery','tall');hud();
   var el=document.getElementById('s-organ');
-  el.innerHTML='<div class="wrap"><div class="card"><div class="big" style="text-align:center">😴</div><h2>Bedtime</h2><p>The kid is asleep. The whole body goes into repair mode. Every crew cell is back to full energy and the Brain pays ⭐2 for a good night.</p><div class="fact">💡 While you sleep, your brain washes itself with fluid and files away what you learned today. That is why sleep helps you remember.</div><div class="row"><button class="btn" id="go">Back to map ▶</button></div></div></div>';
+  el.innerHTML='<div class="wrap"><div class="card"><div class="big" style="text-align:center">😴</div><h2>Bedtime</h2><p>The kid is asleep. The whole body goes into repair mode. Every crew cell is back to full energy and the Brain pays ⭐2 for a good night.'+(night()?' Night Shift bonus: ⭐1 more.':'')+'</p><div class="fact">💡 While you sleep, your brain washes itself with fluid and files away what you learned today. That is why sleep helps you remember.</div><div class="row"><button class="btn" id="go">Back to map ▶</button></div></div></div>';
   el.querySelector('#go').onclick=function(){hub();};
 }
 
@@ -573,24 +712,26 @@ function mathLevel(){return Math.min(3,P.mathLevel);}
 function makeProblem(){
   var L=Math.floor(mathLevel()),a,b,q,ans;
   if(L===0){a=2+rnd(8);b=2+rnd(8);q=a+' + '+b;ans=a+b;}
-  else if(L===1){a=10+rnd(10);b=2+rnd(9);q=a+' - '+b;ans=a-b;}
+  else if(L===1){a=10+rnd(10);b=2+rnd(8);q=a+' - '+b;ans=a-b;}
   else if(L===2){a=2+rnd(5);b=2+rnd(5);q=a+' x '+b;ans=a*b;}
   else{b=2+rnd(4);ans=2+rnd(6);a=b*ans;q=a+' ÷ '+b;}
   return {q:q,ans:ans};
 }
 function rnd(n){return Math.floor(Math.random()*n);}
-function askMath(prompt,onRight){
+function askMath(prompt,onRight,onBack){
   var pr=makeProblem();var typed='';var tries=0;
   var el=document.getElementById('s-shop');
   function draw(){
-    el.innerHTML='<div class="wrap"><div class="card"><h2>🧮 '+esc(prompt)+'</h2><div class="prob">'+pr.q+' = ?</div><div class="ans" id="ans">'+(typed||'_')+'</div><div class="pad">'+[1,2,3,4,5,6,7,8,9,'⌫',0,'✔'].map(function(k){return '<button class="btn" data-k="'+k+'">'+k+'</button>';}).join('')+'</div></div></div>';
+    el.innerHTML='<div class="wrap"><div class="card"><h2>🧮 '+esc(prompt)+'</h2><div class="prob">'+pr.q+' = ?</div><div class="ans" id="ans">'+(typed||'_')+'</div><div class="pad">'+[1,2,3,4,5,6,7,8,9,'⌫',0,'✔'].map(function(k){return '<button class="btn" data-k="'+k+'">'+k+'</button>';}).join('')+'</div><div class="row"><button class="btn ghost" id="mback">◀ Back, no buy</button></div></div></div>';
+    el.querySelector('#mback').onclick=function(){if(onBack)onBack();else hub();};
     Array.prototype.forEach.call(el.querySelectorAll('.pad .btn'),function(b){b.onclick=function(){var k=b.getAttribute('data-k');
       if(k==='⌫')typed=typed.slice(0,-1);else if(k==='✔'){check();return;}else if(typed.length<3)typed+=k;
       el.querySelector('#ans').textContent=typed||'_';};});
   }
   function check(){
+    if(typed===''){toast('Type a number first');return;}
     if(+typed===pr.ans){SFX.good();flash();P.mathLevel=Math.min(3,P.mathLevel+(tries===0?0.34:0));save();onRight();}
-    else{tries++;SFX.bad();shake();typed='';toast(tries>=2?'Hint: the answer is close to '+(pr.ans+(rnd(2)?2:-2)):'Not yet. Try again.');draw();}
+    else{tries++;SFX.bad();shake();typed='';toast(tries>=3?'It is '+pr.ans+'. Type it in.':tries===2?'Hint: between '+(pr.ans-3)+' and '+(pr.ans+3):'Not yet. Try again.');draw();}
   }
   draw();show('shop');
 }
@@ -601,7 +742,7 @@ function shop(){
   var items=[['o2','💨 Oxygen','+3',1],['glu','🍪 Glucose','+3',1],['h2o','💧 Water','+3',1]];
   el.innerHTML='<div class="wrap"><div class="card"><h2>🛒 Supply Shop at the Heart</h2><p class="sub">You have ⭐ '+R.coin+'. Each pack costs 1 star. Solve the count to buy.</p><div class="shop">'+items.map(function(it){return '<button class="btn teal" data-k="'+it[0]+'" '+(R.coin<it[3]?'disabled':'')+'>'+it[1]+'<small>'+it[2]+' for ⭐1</small></button>';}).join('')+'</div>'+(R.coin<1?'<p class="sub">No stars? Missions and event cards pay stars. The Brain gives ⭐2 for Bedtime.</p>':'')+'<div class="row"><button class="btn ghost" id="back">◀ Back</button></div></div></div>';
   Array.prototype.forEach.call(el.querySelectorAll('.shop .btn'),function(b){b.onclick=function(){var k=b.getAttribute('data-k');
-    askMath('Count it out to buy',function(){R.coin-=1;R[k]=clamp(R[k]+3);SFX.coin();hud();shop();});};});
+    askMath('Count it out to buy',function(){R.coin-=1;R[k]=clamp(R[k]+3);SFX.coin();hud();shop();},shop);};});
   el.querySelector('#back').onclick=function(){hub();};
   show('shop');
 }
@@ -610,12 +751,13 @@ function pizzaNight(){
   var el=document.getElementById('s-shop');
   var typed='',tries=0,ans=slices*2;
   function draw(){
-    el.innerHTML='<div class="wrap"><div class="card"><h2>🍕 Pizza Night</h2><p>'+slices+' slices landed in the stomach. Each slice melts into 2 fuel. How much fuel is that?</p><div class="prob">'+slices+' x 2 = ?</div><div class="ans" id="ans">'+(typed||'_')+'</div><div class="pad">'+[1,2,3,4,5,6,7,8,9,'⌫',0,'✔'].map(function(k){return '<button class="btn" data-k="'+k+'">'+k+'</button>';}).join('')+'</div></div></div>';
+    el.innerHTML='<div class="wrap"><div class="card"><h2>🍕 Pizza Night</h2><p>'+slices+' slices landed in the stomach. Each slice melts into 2 fuel. How much fuel is that?</p><div class="prob">'+slices+' x 2 = ?</div><div class="ans" id="ans">'+(typed||'_')+'</div><div class="pad">'+[1,2,3,4,5,6,7,8,9,'⌫',0,'✔'].map(function(k){return '<button class="btn" data-k="'+k+'">'+k+'</button>';}).join('')+'</div><div class="row"><button class="btn ghost" id="mback">◀ Back to map</button></div></div></div>';
+    el.querySelector('#mback').onclick=function(){hub();};
     Array.prototype.forEach.call(el.querySelectorAll('.pad .btn'),function(b){b.onclick=function(){var k=b.getAttribute('data-k');
-      if(k==='⌫')typed=typed.slice(0,-1);else if(k==='✔'){if(+typed===ans){SFX.win();flash();R.done.pizza=true;R.glu=clamp(R.glu+4);R.coin+=3;R.sugar+=1;unlockJ('mystery','hiccup');unlockJ('mystery','newstomach');hud();
+      if(k==='⌫')typed=typed.slice(0,-1);else if(k==='✔'){if(typed===''){toast('Type a number first');return;}if(+typed===ans){SFX.win();flash();R.done.pizza=true;R.glu=clamp(R.glu+4);R.coin+=3;R.sugar+=1;unlockJ('mystery','hiccup');unlockJ('mystery','newstomach');hud();
           el.innerHTML='<div class="wrap"><div class="card"><h2>🍕 Pizza melted!</h2><p>'+ans+' fuel. The crew scoops up 4 glucose and the Brain pays ⭐3. Big meals also feed the monsters a little.</p><div class="fact">💡 Pizza has fat, so it melts slowly. That is why you feel full for a long time.</div><div class="row"><button class="btn" id="go">Back to map ▶</button></div></div></div>';
           el.querySelector('#go').onclick=function(){hub();};}
-        else{tries++;SFX.bad();shake();typed='';toast(tries>=2?'Count by 2s: 2, 4, 6...':'Not yet. Try again.');draw();}return;}
+        else{tries++;SFX.bad();shake();typed='';toast(tries>=3?'It is '+ans+'. Type it in.':tries===2?'Count by 2s: 2, 4, 6...':'Not yet. Try again.');draw();}return;}
       else if(typed.length<3)typed+=k;
       el.querySelector('#ans').textContent=typed||'_';};});
   }
@@ -626,7 +768,8 @@ function pizzaNight(){
    kinds: race (drag + catch), knee (tap growing leaks), swat (tap crawling germs, spare the red cells),
           boss (tap falling blobs, drain the boss bar). Missions reskin a kind. */
 var G=null;
-function startGame(kind,arg){
+function startGame(kind,arg,opts){
+  opts=opts||{};
   var el=document.getElementById('s-game');
   var INFO={
     race:{t:'🏃 Running Race',who:'oxinator',how:'Drag the pod left and right. Catch blue O2 bubbles. Dodge grey CO2 clouds.',sec:20,good:'#6fb6ff',bad:'#777',gl:'O2',bl:'CO2',mission:'race'},
@@ -638,6 +781,9 @@ function startGame(kind,arg){
     eyespy:{t:'👁️ Eye Spy',who:'fighty',how:'Pollen is sneaking in among the red cells. Tap only the yellow pollen. Leave the red cells alone!',sec:18,germ:'pollen',mission:'eyespy',kind:'swat'},
     swat:{t:'⚪ Fighty vs '+(GERMS[arg]?GERMS[arg].nm:'Germ'),who:'fighty',how:'Germs are crawling in! Tap the green germs. Do NOT tap the red cells, they are friends.',sec:18,germ:arg},
     sneeze:{t:'🤧 Sneeze Attack',who:'fighty',how:'Dust is drifting toward the nose! Tap every dust puff. Leave the red cells alone.',sec:18,germ:'dust',mission:'sneeze',kind:'swat'},
+    relay:{t:'⚡ Reflex Test',who:'nerve',how:'Relay stations light up with numbers. Tap them IN ORDER, 1 then 2 then 3. Each finished chain is a message delivered, and the chains get longer.',sec:20,mission:'relay'},
+    wanted:{t:'🛡️ Wanted Poster',who:'antibody',how:'Look at the WANTED color at the top. Tap only germs of that color. Other germs and red cells are not yours today.',sec:20,mission:'wanted',kind:'swat'},
+    chop:{t:'🧪 Chop Shop',who:'enzyme',how:'Food chains are floating in. Tap a chain to cut it in half. Keep cutting until every piece is a single bite. Single bites get absorbed and count.',sec:20,mission:'chop'},
     boss:{t:(GERMS[arg]?GERMS[arg].ic+' '+GERMS[arg].nm:'Boss'),who:'fighty',how:({
       sugar:'Sugar blobs are raining down! Tap each one before it lands. The monster gets FASTER as it gets weaker. 8 land and Fighty is out.',
       cold:'The virus makes COPIES. Leave one alone too long and it splits in two. Tap them fast and keep the count down. 14 on screen and the Lungs are overrun.',
@@ -646,23 +792,31 @@ function startGame(kind,arg){
       fever:'The Fever Dragon is turning up the heat! DRAG the pod. Catch blue water drops to cool down and hurt the dragon. Dodge the fire. If the thermometer fills, Fighty overheats.'
     })[arg]||'Tap the blobs before they land.',sec:0}
   };
-  var info=INFO[kind];var base=info.kind||kind;if(base==='swim')base='race';if(base==='teeth')base='knee';if(base==='sneeze')base='swat';var friendRate=kind==='eyespy'?.55:.25;
+  var info=Object.assign({},INFO[kind]);var base=info.kind||kind;
+  var tiredCrew=info.sec>0&&R.crew[info.who]===0;if(tiredCrew){info.sec=Math.round(info.sec*.6);info.how=CREW[info.who].nm+' is out of energy, so there is only '+info.sec+' seconds this time. '+info.how;}
+  var spd=1,starMul=1;if(opts.daily){if(opts.mod==='fast')spd=1.35;if(opts.mod==='long'&&info.sec>0)info.sec+=10;if(opts.mod==='double')starMul=2;info.t='📋 '+info.t;info.how='TODAY\'S BODY REPORT. '+MODS[opts.mod]+' '+info.how;}
+  var bestK=kind==='boss'?'boss:'+arg:bestKey(kind,arg);if(P.best[bestK]&&!opts.daily)info.how+=' Your best: '+P.best[bestK]+(kind==='boss'?' seconds.':'.');if(base==='swim')base='race';if(base==='teeth')base='knee';if(base==='sneeze')base='swat';var friendRate=kind==='eyespy'?.55:.25;
   el.innerHTML='<div class="wrap"><h2>'+info.t+'</h2><div id="gameWrap"><canvas id="game" width="900" height="500"></canvas><div id="gameHud"><span id="gScore">0</span><span id="gTime"></span></div><div id="gameMsg"><div style="font-size:48px">'+CREW[info.who].ic+'</div><h3>'+CREW[info.who].nm+' is up!</h3><p>'+info.how+'</p><button class="btn" id="gStart">Go!</button></div></div></div>';
   show('game');
   var cv=el.querySelector('#game'),ctx=cv.getContext('2d'),W=cv.width,H=cv.height;
   var wrap=el.querySelector('#gameWrap');
   if(G&&G.raf){cancelAnimationFrame(G.raf);G.over=true;}
-  G={kind:kind,base:base,t:0,score:0,miss:0,items:[],px:W/2,hp:0,maxhp:0,over:false,last:0,raf:0,hit:0,combo:0};
+  G={kind:kind,base:base,t:0,score:0,miss:0,items:[],px:W/2,hp:0,maxhp:0,over:false,last:0,raf:0,hit:0,combo:0,spd:spd,daily:!!opts.daily,starMul:starMul,wanted:null,chain:[],next:0,chainN:3};
+  var WCOL=['#8ee86a','#b48bff','#ff8a3a'],WNAME=['green','purple','orange'];
+  if(kind==='wanted'){G.wanted=Math.floor(Math.random()*3);}
   var B=kind==='boss'?BOSSES[arg]:null;
   function pos(e){var r=cv.getBoundingClientRect();return {x:(e.clientX-r.left)/r.width*W,y:(e.clientY-r.top)/r.height*H};}
   var BK=B?arg:null;
   function hitBoss(x,y){G.score++;G.combo++;G.hit=3;G.hp-=1;spark(x,y,B.blob);SFX.combo(G.combo);shake();}
   wrap.onpointerdown=function(e){if(G.over||G.t===0)return;var p=pos(e);
     if(base==='race'||BK==='fever'){G.px=p.x;return;}
+    if(base==='relay'){for(var ri=0;ri<G.chain.length;ri++){var nd=G.chain[ri];if(Math.hypot(nd.x-p.x,nd.y-p.y)<nd.r+20){if(ri===G.next){nd.on=true;G.next++;G.combo++;SFX.combo(G.combo);spark(nd.x,nd.y,'#ffe066');if(G.next>=G.chain.length){G.score+=G.chain.length;G.hit=3;flash();G.chainN=Math.min(7,G.chainN+1);newChain();}}else if(!nd.on){G.miss++;G.combo=0;SFX.bad();shake();G.next=0;G.chain.forEach(function(n){n.on=false;});toast('Out of order! Start the chain again.');}return;}}return;}
+    if(base==='chop'){for(var ci=G.items.length-1;ci>=0;ci--){var ch=G.items[ci];if(Math.hypot(ch.x-p.x,ch.y-p.y)<ch.n*14+22){if(ch.n<=1){G.items.splice(ci,1);G.score++;G.combo++;SFX.combo(G.combo);spark(ch.x,ch.y,'#8ee86a');}else{var a=Math.ceil(ch.n/2),b2=ch.n-a;ch.n=a;ch.vx=-60-Math.random()*40;G.items.push({x:ch.x+30,y:ch.y,n:b2,vx:60+Math.random()*40,vy:(Math.random()-.5)*60,wob:Math.random()*6.28});G.hit=2;SFX.good();spark(ch.x,ch.y,'#8ee86a');}return;}}G.combo=0;return;}
     if(BK==='bellybug'){var bg=G.bug;if(bg&&Math.hypot(bg.x-p.x,bg.y-p.y)<bg.r+28){hitBoss(bg.x,bg.y);bg.tx=80+Math.random()*(W-160);bg.ty=110+Math.random()*(H-220);bg.speed=Math.min(520,bg.speed+30);bg.sq=1.5;}else G.combo=0;return;}
     var hitSomething=false;
     for(var i=G.items.length-1;i>=0;i--){var it=G.items[i];var d=Math.hypot(it.x-p.x,it.y-p.y);if(d<it.r+22){
       if(it.friend){G.items.splice(i,1);G.miss++;G.combo=0;SFX.bad();shake();spark(it.x,it.y,'#ff5a5a');toast('Oops, that was a red cell!');}
+      else if(kind==='wanted'&&it.col!==G.wanted){G.items.splice(i,1);G.miss++;G.combo=0;SFX.bad();shake();spark(it.x,it.y,WCOL[it.col]);toast('Not the wanted germ. Check the poster!');}
       else{G.items.splice(i,1);if(BK==='cavity'&&it.tooth!=null)G.teeth[it.tooth].busy=false;if(B){hitBoss(it.x,it.y);}else{G.score++;G.combo++;G.hit=3;spark(it.x,it.y,'#ffcc4d');SFX.combo(G.combo);}}
       hitSomething=true;break;}}
     if(!hitSomething)G.combo=0;
@@ -670,10 +824,13 @@ function startGame(kind,arg){
   wrap.onpointermove=function(e){if((base==='race'||BK==='fever')&&e.buttons)G.px=pos(e).x;};
   var parts=[];
   function spark(x,y,c){for(var i=0;i<12;i++)parts.push({x:x,y:y,vx:(Math.random()-.5)*9,vy:(Math.random()-.5)*9,l:1,c:c});}
+  function newChain(){G.chain=[];G.next=0;var tries=0;while(G.chain.length<G.chainN&&tries<200){tries++;var x=70+Math.random()*(W-140),y=90+Math.random()*(H-170);var ok=G.chain.every(function(n){return Math.hypot(n.x-x,n.y-y)>110;});if(ok)G.chain.push({x:x,y:y,r:30,on:false});}}
   function spawn(dt){
-    if(base==='race'){if(Math.random()<dt*2.2){var bad=Math.random()<.3;G.items.push({x:40+Math.random()*(W-80),y:-20,r:bad?26:20,vy:120+Math.random()*120+G.t*4,bad:bad});}}
+    if(base==='relay'){if(!G.chain.length)newChain();}
+    else if(base==='chop'){if(G.items.length<(G.t<1?2:5)&&(G.t<1||Math.random()<dt*1.2)){G.items.push({x:120+Math.random()*(W-240),y:90+Math.random()*(H-180),n:4+Math.floor(Math.random()*3),vx:(Math.random()<.5?-1:1)*(50+Math.random()*40),vy:(Math.random()-.5)*40,wob:Math.random()*6.28});}}
+    else if(base==='race'){if(Math.random()<dt*2.2){var bad=Math.random()<.3;G.items.push({x:40+Math.random()*(W-80),y:-20,r:bad?26:20,vy:120+Math.random()*120+G.t*4,bad:bad});}}
     else if(base==='knee'){if(Math.random()<dt*1.5){G.items.push({x:60+Math.random()*(W-120),y:80+Math.random()*(H-160),r:14,grow:18+Math.random()*10});}}
-    else if(base==='swat'){if(Math.random()<dt*(1.8+G.t*.04)){var fr=Math.random()<friendRate;var side=Math.random()<.5?-1:1;G.items.push({x:side<0?-30:W+30,y:70+Math.random()*(H-140),r:fr?22:24,vx:-side*(60+Math.random()*80+G.t*3),wob:Math.random()*6.28,friend:fr});}}
+    else if(base==='swat'){if(Math.random()<dt*(1.8+G.t*.04)){var fr=Math.random()<friendRate;var side=Math.random()<.5?-1:1;G.items.push({x:side<0?-30:W+30,y:70+Math.random()*(H-140),r:fr?22:24,vx:-side*(60+Math.random()*80+G.t*3),wob:Math.random()*6.28,friend:fr,col:kind==='wanted'?Math.floor(Math.random()*3):0});}}
     else if(BK==='sugar'){var rage=1-G.hp/G.maxhp;if(Math.random()<dt*(1.5+rage*2.2)){G.items.push({x:200+Math.random()*(W-400),y:150,r:24,vy:90+Math.random()*90+rage*180,vx:(Math.random()-.5)*(120+rage*160)});}}
     else if(BK==='cold'){if(G.items.length<3||Math.random()<dt*.7){var sd=Math.random()<.5?-1:1;G.items.push({x:sd<0?-20:W+20,y:90+Math.random()*(H-180),r:22,vx:-sd*(50+Math.random()*50),vy:(Math.random()-.5)*60,age:0,wob:Math.random()*6.28});}}
     else if(BK==='bellybug'){if(!G.bug)G.bug={x:W/2,y:H/2,tx:W/2,ty:H/2,r:40,speed:220,spit:0,sq:1};var bg=G.bug;bg.spit+=dt;var every=Math.max(.55,1.3-(1-G.hp/G.maxhp)*.6);if(bg.spit>every){bg.spit=0;G.items.push({x:bg.x,y:bg.y+20,r:16,vy:160+Math.random()*120,vx:(Math.random()-.5)*160});}}
@@ -682,7 +839,13 @@ function startGame(kind,arg){
   }
   function drawTeeth(){if(!G.teeth)return;ctx.fillStyle='#e9b7c2';ctx.fillRect(0,H-40,W,40);G.teeth.forEach(function(t){ctx.fillStyle=t.cav?'#b9a98f':'#fffdf6';ctx.strokeStyle='#2a080e';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(t.x-30,H-40);ctx.lineTo(t.x-30,H-125);ctx.quadraticCurveTo(t.x,H-150,t.x+30,H-125);ctx.lineTo(t.x+30,H-40);ctx.closePath();ctx.fill();ctx.stroke();if(t.cav){ctx.fillStyle='#3a2210';ctx.beginPath();ctx.arc(t.x,H-95,16,0,7);ctx.fill();}});}
   function drawThermo(){var x=W-60,top=80,hgt=H-160;ctx.fillStyle='#2a080e';ctx.fillRect(x-14,top,28,hgt);ctx.beginPath();ctx.arc(x,top+hgt+10,26,0,7);ctx.fill();var f=Math.max(0,Math.min(1,(G.temp||35)/100));var g=ctx.createLinearGradient(0,top+hgt,0,top);g.addColorStop(0,'#6fb6ff');g.addColorStop(.6,'#ffcc4d');g.addColorStop(1,'#ff5a5a');ctx.fillStyle=g;ctx.fillRect(x-8,top+hgt*(1-f),16,hgt*f);ctx.beginPath();ctx.arc(x,top+hgt+10,20,0,7);ctx.fill();ctx.fillStyle='#fff';ctx.font='bold 14px sans-serif';ctx.textAlign='center';ctx.fillText('HEAT',x,top-10);}
-  function germFace(it,color){ctx.beginPath();ctx.arc(it.x,it.y,it.r,0,7);ctx.fillStyle=color;ctx.fill();ctx.strokeStyle='#2a080e';ctx.lineWidth=3;ctx.stroke();
+  var NIGHT=night();
+  function darken(c){var n=parseInt(c.slice(1),16);var r=(n>>16)&255,g=(n>>8)&255,b=n&255;return 'rgb('+Math.round(r*.45)+','+Math.round(g*.45)+','+Math.round(b*.55)+')';}
+  function germFace(it,color){
+    if(NIGHT){ctx.beginPath();for(var a=0;a<10;a++){var ang=a*.628+it.wob+G.t*1.5;var rr=a%2?it.r+9:it.r-2;ctx.lineTo(it.x+Math.cos(ang)*rr,it.y+Math.sin(ang)*rr);}ctx.closePath();ctx.fillStyle=darken(color);ctx.fill();ctx.strokeStyle='#0a0410';ctx.lineWidth=3;ctx.stroke();
+      var glow=.6+Math.sin(G.t*6+it.wob)*.4;ctx.fillStyle='rgba(255,230,80,'+glow+')';ctx.beginPath();ctx.arc(it.x-7,it.y-4,4.5,0,7);ctx.arc(it.x+7,it.y-4,4.5,0,7);ctx.fill();ctx.fillStyle='#0a0410';ctx.fillRect(it.x-8,it.y-5,2,3);ctx.fillRect(it.x+6,it.y-5,2,3);
+      ctx.strokeStyle='#ffe066';ctx.lineWidth=2;ctx.beginPath();for(var z=0;z<5;z++){ctx.lineTo(it.x-10+z*5,it.y+6+(z%2?4:0));}ctx.stroke();return;}
+    ctx.beginPath();ctx.arc(it.x,it.y,it.r,0,7);ctx.fillStyle=color;ctx.fill();ctx.strokeStyle='#2a080e';ctx.lineWidth=3;ctx.stroke();
     for(var a=0;a<6;a++){var ang=a*1.047+it.wob+G.t*2;ctx.beginPath();ctx.arc(it.x+Math.cos(ang)*(it.r+6),it.y+Math.sin(ang)*(it.r+6),4,0,7);ctx.fillStyle=color;ctx.fill();}
     ctx.fillStyle='#2a080e';ctx.beginPath();ctx.arc(it.x-7,it.y-4,3.5,0,7);ctx.arc(it.x+7,it.y-4,3.5,0,7);ctx.fill();ctx.beginPath();ctx.arc(it.x,it.y+6,6,0.2,2.9);ctx.strokeStyle='#2a080e';ctx.lineWidth=2.5;ctx.stroke();}
   function redCell(it){ctx.beginPath();ctx.arc(it.x,it.y,it.r,0,7);ctx.fillStyle='#ff5a5a';ctx.fill();ctx.strokeStyle='#2a080e';ctx.lineWidth=3;ctx.stroke();ctx.beginPath();ctx.arc(it.x,it.y,it.r*.45,0,7);ctx.fillStyle='#c8303a';ctx.fill();
@@ -691,10 +854,10 @@ function startGame(kind,arg){
     if(!G||G.over)return;
     var dt=Math.min(.05,(ts-(G.last||ts))/1000);G.last=ts;
     if(G.hit>0){G.hit--;ctx.fillStyle='rgba(255,255,255,.18)';ctx.fillRect(0,0,W,H);G.raf=requestAnimationFrame(step);return;}
-    G.t+=dt;spawn(dt);
+    G.t+=dt;spawn(dt*G.spd);
     ctx.clearRect(0,0,W,H);
-    ctx.fillStyle=kind==='swim'?'#2a2f55':kind==='teeth'?'#f0e8d8':kind==='balance'?'#1f2a3a':kind==='eyespy'?'#3a2a55':kind==='flex'?'#5a1a1a':'#4a0f1a';ctx.fillRect(0,0,W,H);
-    ctx.strokeStyle=kind==='swim'?'#3b4a7a':kind==='teeth'?'#d8ccb4':kind==='balance'?'#2d3e55':kind==='eyespy'?'#55407a':kind==='flex'?'#8a2a2a':'#7a1f2b';ctx.lineWidth=40;ctx.lineCap='round';
+    ctx.fillStyle=NIGHT&&kind!=='teeth'?'#120818':kind==='swim'?'#2a2f55':kind==='teeth'?'#f0e8d8':kind==='balance'?'#1f2a3a':kind==='eyespy'?'#3a2a55':kind==='flex'?'#5a1a1a':kind==='relay'?'#1a1a3a':kind==='chop'?'#3a2a10':kind==='wanted'?'#2a1a3a':'#4a0f1a';ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle=NIGHT&&kind!=='teeth'?'#241030':kind==='swim'?'#3b4a7a':kind==='teeth'?'#d8ccb4':kind==='balance'?'#2d3e55':kind==='eyespy'?'#55407a':kind==='flex'?'#8a2a2a':kind==='relay'?'#2a2a5a':kind==='chop'?'#5a4520':kind==='wanted'?'#4a2a5a':'#7a1f2b';ctx.lineWidth=40;ctx.lineCap='round';
     for(var i=0;i<4;i++){ctx.beginPath();ctx.moveTo(-50,80+i*120+Math.sin(G.t+i)*10);ctx.bezierCurveTo(W*.3,40+i*120,W*.7,120+i*120,W+50,80+i*120);ctx.stroke();}
     if(B){
       if(BK==='bellybug'){var bg=G.bug;if(bg){var dx=bg.tx-bg.x,dy=bg.ty-bg.y,dd=Math.hypot(dx,dy);if(dd<8){bg.tx=80+Math.random()*(W-160);bg.ty=110+Math.random()*(H-220);}else{bg.x+=dx/dd*bg.speed*dt;bg.y+=dy/dd*bg.speed*dt;}bg.sq+=(1-bg.sq)*dt*8;ctx.save();ctx.translate(bg.x,bg.y);ctx.scale(bg.sq,2-bg.sq);ctx.font='80px serif';ctx.textAlign='center';ctx.fillText(GERMS.bellybug.ic,0,28);ctx.restore();}}
@@ -706,6 +869,10 @@ function startGame(kind,arg){
       ctx.fillStyle='#fff';ctx.font='bold 16px sans-serif';ctx.fillText(GERMS[G.bossKey].nm+' '+G.hp+'/'+G.maxhp,W/2,58);
     }
     if(kind==='sneeze'){ctx.font='70px serif';ctx.textAlign='center';ctx.fillText('👃',W/2,H-30);}
+    if(kind==='wanted'){ctx.fillStyle='#fffdf0';ctx.fillRect(W/2-120,8,240,48);ctx.strokeStyle='#2a080e';ctx.lineWidth=3;ctx.strokeRect(W/2-120,8,240,48);ctx.fillStyle='#2a080e';ctx.font='bold 18px sans-serif';ctx.textAlign='left';ctx.fillText('WANTED:',W/2-108,40);germFace({x:W/2+60,y:32,r:16,wob:0},WCOL[G.wanted]);ctx.fillStyle='#2a080e';ctx.font='bold 14px sans-serif';ctx.fillText(WNAME[G.wanted],W/2-10,40);}
+    if(base==='relay'){ctx.strokeStyle='#ffe066';ctx.lineWidth=6;ctx.lineCap='round';for(var ci=1;ci<G.chain.length;ci++){var a=G.chain[ci-1],b=G.chain[ci];if(a.on&&b.on){ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();}else if(a.on){ctx.setLineDash([8,10]);ctx.strokeStyle='rgba(255,224,102,.4)';ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();ctx.setLineDash([]);ctx.strokeStyle='#ffe066';}}
+      G.chain.forEach(function(n,ix){var nx=ix===G.next;ctx.beginPath();ctx.arc(n.x,n.y,n.r+(nx?Math.sin(G.t*8)*3:0),0,7);ctx.fillStyle=n.on?'#ffe066':nx?'#8e2736':'#5a1420';ctx.fill();ctx.strokeStyle=nx?'#ffe066':'#2a080e';ctx.lineWidth=nx?5:3;ctx.stroke();ctx.fillStyle=n.on?'#2a080e':'#fff';ctx.font='bold 26px sans-serif';ctx.textAlign='center';ctx.fillText(ix+1,n.x,n.y+9);});
+      ctx.fillStyle='#fff';ctx.font='bold 16px sans-serif';ctx.textAlign='center';ctx.fillText('Message '+(Math.floor(G.score/3)+1)+' · chain of '+G.chain.length,W/2,H-16);}
     if(kind==='balance'){ctx.save();ctx.translate(W/2,H/2);ctx.rotate(G.t*.6);ctx.strokeStyle='rgba(255,255,255,.08)';ctx.lineWidth=30;for(var rr=60;rr<500;rr+=90){ctx.beginPath();ctx.arc(0,0,rr,0,4);ctx.stroke();}ctx.restore();}
     for(i=G.items.length-1;i>=0;i--){var it=G.items[i];
       if(base==='race'){it.y+=it.vy*dt;
@@ -716,9 +883,13 @@ function startGame(kind,arg){
         if(it.r>60){G.items.splice(i,1);G.miss++;G.combo=0;SFX.hit();shake();continue;}
         ctx.beginPath();ctx.arc(it.x,it.y,it.r,0,7);ctx.fillStyle=info.color;ctx.fill();ctx.strokeStyle='#ffcc4d';ctx.lineWidth=4;ctx.stroke();
         ctx.fillStyle='#fff';ctx.font='bold 14px sans-serif';ctx.textAlign='center';ctx.fillText(info.lbl,it.x,it.y+5);
+      } else if(base==='chop'){it.x+=it.vx*dt;it.y+=it.vy*dt+Math.sin(G.t*3+it.wob)*20*dt;
+        if(it.x<40||it.x>W-40)it.vx*=-1;if(it.y<80||it.y>H-60)it.vy*=-1;it.x=Math.max(40,Math.min(W-40,it.x));it.y=Math.max(80,Math.min(H-60,it.y));
+        for(var s=0;s<it.n;s++){var sx=it.x+(s-(it.n-1)/2)*26;ctx.beginPath();ctx.arc(sx,it.y,13,0,7);ctx.fillStyle=it.n===1?'#8ee86a':['#ffcc4d','#ff8a3a'][s%2];ctx.fill();ctx.strokeStyle='#2a080e';ctx.lineWidth=3;ctx.stroke();if(s<it.n-1){ctx.beginPath();ctx.moveTo(sx+13,it.y);ctx.lineTo(sx+13,it.y);ctx.stroke();}}
+        if(it.n===1){ctx.fillStyle='#2a080e';ctx.font='bold 12px sans-serif';ctx.textAlign='center';ctx.fillText('bite',it.x,it.y+4);}
       } else if(base==='swat'){it.x+=it.vx*dt;it.y+=Math.sin(G.t*4+it.wob)*40*dt;
-        if(it.x<-40||it.x>W+40){G.items.splice(i,1);if(!it.friend){G.miss++;G.combo=0;SFX.hit();}continue;}
-        if(it.friend)redCell(it);else germFace(it,kind==='sneeze'?'#cfcfcf':kind==='eyespy'?'#ffe08a':'#8ee86a');
+        if(it.x<-40||it.x>W+40){G.items.splice(i,1);if(!it.friend&&(kind!=='wanted'||it.col===G.wanted)){G.miss++;G.combo=0;SFX.hit();}continue;}
+        if(it.friend)redCell(it);else germFace(it,kind==='wanted'?WCOL[it.col]:kind==='sneeze'?'#cfcfcf':kind==='eyespy'?'#ffe08a':'#8ee86a');
       } else if(BK==='cold'){it.x+=it.vx*dt;it.y+=it.vy*dt;it.age+=dt;
         if(it.x<30||it.x>W-30)it.vx*=-1;if(it.y<70||it.y>H-40)it.vy*=-1;it.x=Math.max(30,Math.min(W-30,it.x));it.y=Math.max(70,Math.min(H-40,it.y));
         if(it.age>3.2&&it.r>=15){it.age=0;it.r*=.82;G.items.push({x:it.x+20,y:it.y-10,r:it.r,vx:-it.vx+(Math.random()-.5)*40,vy:it.vy+(Math.random()-.5)*60,age:0,wob:Math.random()*6.28});SFX.bad();spark(it.x,it.y,'#8ee86a');}
@@ -735,12 +906,12 @@ function startGame(kind,arg){
         if(it.fire){ctx.font='34px serif';ctx.textAlign='center';ctx.fillText('🔥',it.x,it.y+12);}else{ctx.beginPath();ctx.moveTo(it.x,it.y-it.r-6);ctx.quadraticCurveTo(it.x+it.r,it.y+2,it.x,it.y+it.r);ctx.quadraticCurveTo(it.x-it.r,it.y+2,it.x,it.y-it.r-6);ctx.fillStyle='#6fb6ff';ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();}
       } else {it.y+=it.vy*dt;it.x+=it.vx*dt;
         if(it.y>H+20){G.items.splice(i,1);G.miss++;G.combo=0;SFX.hit();shake();continue;}
-        ctx.beginPath();ctx.arc(it.x,it.y,it.r,0,7);ctx.fillStyle=B.blob;ctx.fill();ctx.fillStyle='#2a080e';ctx.beginPath();ctx.arc(it.x-8,it.y-4,3,0,7);ctx.arc(it.x+8,it.y-4,3,0,7);ctx.fill();
+        if(NIGHT){germFace(it,B.blob);}else{ctx.beginPath();ctx.arc(it.x,it.y,it.r,0,7);ctx.fillStyle=B.blob;ctx.fill();ctx.fillStyle='#2a080e';ctx.beginPath();ctx.arc(it.x-8,it.y-4,3,0,7);ctx.arc(it.x+8,it.y-4,3,0,7);ctx.fill();}
       }
     }
     if(base==='race'||BK==='fever'){var sq=1+Math.min(.25,Math.abs(G.px-(G.lastpx||G.px))*.01);G.lastpx=G.px;ctx.save();ctx.translate(G.px,H-60);ctx.scale(sq,1/sq);ctx.beginPath();ctx.arc(0,0,34,0,7);ctx.fillStyle='rgba(79,227,210,.7)';ctx.fill();ctx.strokeStyle='#bffaf3';ctx.lineWidth=3;ctx.stroke();ctx.beginPath();ctx.arc(0,0,12,0,7);ctx.fillStyle='#ff5a5a';ctx.fill();ctx.restore();}
     for(i=parts.length-1;i>=0;i--){var p=parts[i];p.x+=p.vx;p.y+=p.vy;p.l-=dt*2.5;if(p.l<=0){parts.splice(i,1);continue;}ctx.globalAlpha=p.l;ctx.fillStyle=p.c;ctx.fillRect(p.x-3,p.y-3,6,6);}ctx.globalAlpha=1;
-    el.querySelector('#gScore').textContent=(BK==='cavity'?'Brushed off: ':BK==='fever'?'Cooled: ':B?'Swats: ':base==='swat'?'Swatted: ':base==='knee'?'Plugged: ':'Caught: ')+G.score+'  Missed: '+G.miss+(G.combo>=3?'  🔥x'+G.combo:'');
+    el.querySelector('#gScore').textContent=(BK==='cavity'?'Brushed off: ':BK==='fever'?'Cooled: ':B?'Swats: ':base==='relay'?'Delivered: ':base==='chop'?'Bites: ':base==='swat'?'Swatted: ':base==='knee'?'Plugged: ':'Caught: ')+G.score+(base==='chop'?'':'  Missed: '+G.miss)+(G.combo>=3?'  🔥x'+G.combo:'');
     el.querySelector('#gTime').textContent=B?'':Math.ceil(info.sec-G.t)+'s';
     var lost=B&&(BK==='cold'?G.items.length>=14:BK==='cavity'?G.teeth&&G.teeth.filter(function(t){return t.cav;}).length>=4:BK==='fever'?(G.temp||0)>=100:G.miss>=8);
     var end=B?(G.hp<=0||lost):G.t>=info.sec;
@@ -757,14 +928,20 @@ function startGame(kind,arg){
       if(kind==='knee'){R.h2o=clamp(R.h2o-Math.min(3,G.miss));txt='Patchlet plugged '+G.score+' leaks. A scab is forming. ⭐'+stars+(G.miss?' Some blood leaked out ('+Math.min(3,G.miss)+' water).':'');fact='A scab is a dried plug of platelets and sticky threads called fibrin. Picking it reopens the leak.';unlockJ('mystery','yawn');}
       else if(kind==='teeth'){unlockJ('germ','cavity');txt='Patchlet swept out '+G.score+' cavity germs. Teeth are clean. ⭐'+stars;fact=GERMS.cavity.fact;}
       else{unlockJ('mystery','heat');txt='Patchlet smoothed out '+G.score+' knots. The muscles are loose and warm. ⭐'+stars;fact='A cramp is a muscle squeezing and forgetting to let go. Water, salt, and stretching help it relax.';}}
+    else if(base==='relay'){stars=Math.min(5,Math.floor(G.score/4));R.crew[who]=Math.max(0,R.crew[who]-Math.floor(G.miss/3));txt='Zap delivered '+Math.floor(G.score/3)+' messages, '+G.score+' stations in a row. ⭐'+stars;fact='Nerves pass a message like a line of people whispering. Each one hands it to the next, in order, so fast it feels instant.';}
+    else if(base==='chop'){stars=Math.min(5,Math.floor(G.score/5));txt='Snip chopped the food into '+G.score+' bites the body can use. ⭐'+stars;fact='Digestion is cutting. Teeth cut big, the stomach churns, and enzymes cut the pieces too small to see. Only tiny pieces can pass into the blood.';R.glu=clamp(R.glu+Math.min(3,Math.floor(G.score/6)));}
     else if(base==='swat'){stars=Math.min(5,Math.floor(G.score/4));var d3=Math.floor(G.miss/3);R.crew[who]=Math.max(0,R.crew[who]-d3);var gk=info.germ;if(gk)unlockJ('germ',gk);
-      if(kind==='sneeze'){unlockJ('mystery','sneezeeyes');txt='Fighty swatted '+G.score+' dust puffs. AH-CHOO! The rest blasted out the nose. ⭐'+stars;}
+      if(kind==='wanted'){txt='Lock caught '+G.score+' of the wanted germs and left the rest alone. ⭐'+stars+(G.miss?' A few wrong ones got tapped.':'');fact=CREW.antibody.fact;}
+      else if(kind==='sneeze'){unlockJ('mystery','sneezeeyes');txt='Fighty swatted '+G.score+' dust puffs. AH-CHOO! The rest blasted out the nose. ⭐'+stars;}
       else if(kind==='eyespy'){unlockJ('mystery','tickle');txt='Fighty spotted '+G.score+' pollen grains hiding in the crowd. Sharp eyes! ⭐'+stars+(G.miss?' A few red cells got bonked by mistake.':'');}
       else txt='Fighty swatted '+G.score+' '+(GERMS[gk]?GERMS[gk].nm:'germ')+' germs. ⭐'+stars+(G.miss?' A few got by, or a red cell got bonked.':'');
       fact=gk&&GERMS[gk]?GERMS[gk].fact:'';}
     else{won=G.hp<=0;var bk=G.bossKey;
-      if(won){stars=5;R.boss=bk;P.wins++;P.bosses[bk]=true;B.unlocks.forEach(function(u){if(P.unlocked.indexOf(u)<0)P.unlocked.push(u);});unlockJ('germ',bk);if(bk==='sugar')unlockJ('mystery','fat');SFX.win();flash();txt=B.win+' ⭐5';fact=GERMS[bk].fact;
-        if(B.unlocks.length)txt+='<div class="row" style="justify-content:center">'+B.unlocks.map(function(u){return '<span class="punch" style="font-size:44px">'+ORGANS[u].ic+'</span>';}).join('')+'</div><b style="color:#ffcc4d">NEW AREAS UNLOCKED</b>';}
+      if(won){stars=5;if(!G.daily)R.boss=bk;P.wins++;var firstWin=!P.bosses[bk];P.bosses[bk]=true;B.unlocks.forEach(function(u){if(P.unlocked.indexOf(u)<0)P.unlocked.push(u);});unlockJ('germ',bk);if(bk==='sugar')unlockJ('mystery','fat');SFX.win();flash();txt=(G.daily?'Rematch won! '+GERMS[bk].nm+' is down again.':B.win)+' ⭐5';fact=GERMS[bk].fact;
+        var secs=Math.round(G.t);if(!P.best['boss:'+bk]||secs<P.best['boss:'+bk]){P.best['boss:'+bk]=secs;txt+=' <b style="color:#ffcc4d">Best time: '+secs+'s!</b>';}
+        if(firstWin&&B.unlocks.length)txt+='<div class="row" style="justify-content:center">'+B.unlocks.map(function(u){return '<span class="punch" style="font-size:44px">'+ORGANS[u].ic+'</span>';}).join('')+'</div><b style="color:#ffcc4d">NEW AREAS UNLOCKED</b>';
+        var nc=Object.keys(CREW).filter(function(c){return CREW[c].unlock===bk&&!P.crew2[c];})[0];
+        if(nc){P.crew2[nc]=true;R.crew[nc]=3;unlockJ('cell',nc);txt+='<div class="crew" style="justify-content:center;margin-top:10px"><div class="cell punch" style="flex:0 1 260px">'+cellSvg(nc)+'<div><b>'+CREW[nc].nm+' joins the crew!</b><span class="sub">'+CREW[nc].kind+' · '+CREW[nc].job.split('.')[0]+'.</span></div></div></div><b style="color:#ffcc4d">NEW CREW MEMBER</b>';}}
       else{R.crew.fighty=0;R.sugar=Math.max(0,R.sugar-2);
         txt=({sugar:'Too many sugar blobs got through. Fighty needs a snack and a rest. The monster shrank a little. Come back and try again.',
           cold:'The virus made too many copies and filled the Lungs. Fighty needs a rest. Next time, pop them before they split.',
@@ -777,11 +954,16 @@ function startGame(kind,arg){
           cavity:'A cavity is a hole that acid drilled in the enamel. Once it is through, a dentist has to fill it.',
           fever:'A fever is helpful up to a point. Water and rest help the body cool back down when the fight is over.'})[bk];}}
     if(info.mission)R.done[info.mission]=true;
+    var bk2=B?'boss:'+G.bossKey:bestKey(kind,arg);
+    if(!B&&G.score>(P.best[bk2]||0)){var had=!!P.best[bk2];P.best[bk2]=G.score;if(had)txt+=' <b style="color:#ffcc4d">NEW BEST: '+G.score+'!</b>';else txt+=' <span class="sub">First score saved: '+G.score+'.</span>';}
+    stars=stars*G.starMul;
+    if(G.daily&&(!B||won)){stars+=3;markDaily();txt+='<div class="fact" style="border-left-color:#ffcc4d">📋 Body Report done. Bonus ⭐3'+(G.starMul>1?' and stars doubled':'')+'. Streak: '+P.daily.streak+' day'+(P.daily.streak===1?'':'s')+'.</div>';}
     R.coin+=stars;R.stars+=stars;save();hud();
-    msg.innerHTML='<h3>'+(B&&!won?'Not this time':'Done!')+'</h3><p>'+txt+'</p>'+(fact?'<div class="fact" style="text-align:left">💡 '+fact+'</div>':'')+'<button class="btn" id="gDone">'+(B&&won?'Finish the trip ▶':'Back to map ▶')+'</button>';
-    msg.querySelector('#gDone').onclick=function(){if(B&&won)endRun();else checkTired();};
+    var finishRun=B&&won&&!G.daily;
+    msg.innerHTML='<h3>'+(B&&!won?'Not this time':'Done!')+'</h3><p>'+txt+'</p>'+(fact?'<div class="fact" style="text-align:left">💡 '+fact+'</div>':'')+'<button class="btn" id="gDone">'+(finishRun?'Finish the trip ▶':'Back to map ▶')+'</button>';
+    msg.querySelector('#gDone').onclick=function(){if(finishRun)endRun();else checkTired();};
   }
-  el.querySelector('#gStart').onclick=function(){el.querySelector('#gameMsg').classList.add('hide');G.t=0.0001;G.last=0;if(B){G.bossKey=arg;G.maxhp=B.hp();G.hp=G.maxhp;}G.raf=requestAnimationFrame(step);};
+  el.querySelector('#gStart').onclick=function(){el.querySelector('#gameMsg').classList.add('hide');G.t=0.0001;G.last=0;if(B){G.bossKey=arg;G.maxhp=B.hp()+bossBonus();G.hp=G.maxhp;}G.raf=requestAnimationFrame(step);};
 }
 
 /* ---------- END OF RUN ---------- */
@@ -800,21 +982,23 @@ function endRun(){
 
 /* ---------- JOURNAL ---------- */
 function unlockJ(type,id){var k=type+':'+id;if(!P.journal[k]){P.journal[k]=1;save();toast('📖 New journal card: '+jName(type,id));}}
-function jName(t,id){if(t==='cell')return CREW[id].nm;if(t==='organ')return ORGANS[id].nm;if(t==='germ')return GERMS[id].nm;if(t==='map'){var p=id.split('-');return ORGANS[p[0]].nm+' to '+ORGANS[p[1]].nm;}if(t==='mystery'){var m=MYSTERIES.filter(function(x){return x.id===id;})[0];return m?m.nm:id;}return id;}
+function jName(t,id){if(t==='cell')return CREW[id].nm;if(t==='organ')return ORGANS[id].nm;if(t==='germ')return GERMS[id].nm;if(t==='vessel')return VESSELS[id]?VESSELS[id].nm:id;if(t==='mystery'){var m=MYSTERIES.filter(function(x){return x.id===id;})[0];return m?m.nm:id;}return id;}
 function allCards(){
   var L=[];
   Object.keys(CREW).forEach(function(k){var c=CREW[k];L.push({t:'cell',id:k,ic:c.ic,nm:c.nm,sub:c.kind,html:'<p>'+esc(c.job)+'</p><p><em>Bio:</em> '+esc(c.bio)+'</p><p><em>Secret:</em> '+esc(c.secret)+'</p><p><em>'+esc(c.fav)+'</em></p><p>'+esc(c.fact)+'</p>'});});
   Object.keys(ORGANS).forEach(function(k){L.push({t:'organ',id:k,ic:ORGANS[k].ic,nm:ORGANS[k].nm,sub:'Organ',txt:ORGANS[k].fact});});
   Object.keys(GERMS).forEach(function(k){L.push({t:'germ',id:k,ic:GERMS[k].ic,nm:GERMS[k].nm,sub:GERMS[k].boss?'BOSS germ':'Germ',txt:GERMS[k].fact});});
-  LINKS.forEach(function(l){var id=l.slice().sort().join('-');L.push({t:'map',id:id,ic:'🗺️',nm:jName('map',id),sub:'Route',txt:'A path you traveled.'});});
+  Object.keys(VESSELS).forEach(function(k){L.push({t:'vessel',id:k,ic:VESSELS[k].ic,nm:VESSELS[k].nm,sub:'Vessel to the '+ORGANS[k].nm,txt:VESSELS[k].fact});});
   MYSTERIES.forEach(function(m){L.push({t:'mystery',id:m.id,ic:m.ic,nm:m.nm,sub:'Mystery'+(m.by?' · found by '+m.by:''),txt:m.text});});
   return L;
 }
 function journalPct(){var all=allCards();var n=all.filter(function(c){return P.journal[c.t+':'+c.id];}).length;return Math.round(n/all.length*100);}
 var jtab='cell';
+/* v0.7 migration: old route cards become nothing; grant vessel cards for organs already visited */
+(function(){Object.keys(P.journal).forEach(function(k){if(k.indexOf('map:')===0)delete P.journal[k];if(k.indexOf('organ:')===0&&k!=='organ:heart'){var o=k.slice(6);if(VESSELS[o])P.journal['vessel:'+o]=1;}});save();})();
 function journal(){
   var el=document.getElementById('s-journal');var all=allCards();
-  var tabs=[['cell','🔴 Cells'],['organ','❤️ Organs'],['germ','🦠 Germs'],['map','🗺️ Maps'],['mystery','❓ Mysteries']];
+  var tabs=[['cell','🔴 Cells'],['organ','❤️ Organs'],['germ','🦠 Germs'],['vessel','🧵 Vessels'],['mystery','❓ Mysteries']];
   el.innerHTML='<div class="wrap"><h2>📖 Journal · '+journalPct()+'% filled</h2><div class="tabs">'+tabs.map(function(t){var n=all.filter(function(c){return c.t===t[0]&&P.journal[c.t+':'+c.id];}).length,tot=all.filter(function(c){return c.t===t[0];}).length;return '<div class="tab'+(t[0]===jtab?' on':'')+'" data-t="'+t[0]+'">'+t[1]+' '+n+'/'+tot+'</div>';}).join('')+'</div><div class="jgrid">'+
     all.filter(function(c){return c.t===jtab;}).map(function(c){var on=P.journal[c.t+':'+c.id];return '<div class="jcard'+(on?'':' locked')+'"><div class="ic">'+(on?c.ic:'❔')+'</div><b>'+(on?esc(c.nm):'???')+'</b>'+(on?'<p>'+esc(c.sub)+'</p>'+(c.html||'<p>'+esc(c.txt)+'</p>'):'<p>Not found yet</p>')+'</div>';}).join('')+
     '</div><div class="row"><button class="btn ghost" id="back">◀ Back</button></div></div>';
@@ -824,6 +1008,7 @@ function journal(){
 }
 
 /* ---------- boot ---------- */
+NIGHT_MYSTERIES.forEach(function(m){MYSTERIES.push(m);});NIGHT_EVENTS.forEach(function(e){EVENTS.push(e);});
 syncUnlocks();title();
 </script>
 </body>
