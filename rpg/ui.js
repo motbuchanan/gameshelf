@@ -124,7 +124,7 @@ function showCheck(roll, note) {
   res.innerHTML = `<div class="num" style="color:${tierColor(t)}">${roll.value}</div>
     <div><button class="tier linkish btn" data-explain="${t}" type="button" style="color:${tierColor(t)};padding:0;min-height:0;font:700 26px var(--head);text-decoration:none">${R.TIER_LABEL[t]}</button>
     <div class="say">${note ? note + ' ' : ''}${SAY[t]}</div></div>`;
-  res.classList.remove('pop'); void res.offsetWidth; res.classList.add('pop');
+  res.dataset.tier = t; res.classList.remove('pop'); void res.offsetWidth; res.classList.add('pop');
   sfx.tier(t);
   renderChart(roll.value);
 }
@@ -191,7 +191,7 @@ function showBag(r) {
   res.innerHTML = `<div class="num" style="color:var(--gold)">${r.total}</div>
     <div><div class="tier" style="font:700 22px var(--head)">Total</div>
     <div class="chips">${r.dice.map(d => `<span class="chip">d${d.sides}: ${d.value}</span>`).join('')}</div></div>`;
-  res.classList.remove('pop'); void res.offsetWidth; res.classList.add('pop');
+  res.dataset.tier = 'bag'; res.classList.remove('pop'); void res.offsetWidth; res.classList.add('pop');
 }
 
 // ---------- wiring ----------
@@ -303,6 +303,7 @@ function showScreen(id) {
   if (id === 'gallery-screen') { book.render(); startAnim(); } else stopAnim();
   if (id === 'adventure-screen') creator.startAnim(); else creator.stopAnim();
   if (id === 'battle-screen') board.draw();
+  if (story.setShowing) story.setShowing(id === 'story-screen');
 }
 
 // ---------- The Big Book (gallery of everything) ----------

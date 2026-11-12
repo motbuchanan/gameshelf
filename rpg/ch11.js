@@ -247,7 +247,7 @@ export const SCENES = {
       { who: 'pim', text: 'Gearwick. That\'s where W is. I just know it.' },
     ],
     heal: true,
-    levelUp: true,
+    levelUp: true, banter: true,
     next: 'end',
   },
   end: { end: true, title: 'End of Chapter 11', text: 'Next: Chapter 12, Gearwick. A town full of clocks, and a girl in a silver mask.' },

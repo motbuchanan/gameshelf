@@ -24,19 +24,19 @@ function makeMonster(d) {
   const m = MONSTERS[d.monster];
   if (!m) throw new Error('unknown monster ' + d.monster);
   const c = CAST.find(k => k.id === d.id) || CAST.find(k => k.id === m.cast);   // named friends (Sniffle, Pudge) have their own look
-  const spec = clone(c.spec);
+  const spec = Object.assign(clone(c.spec), d.spec || {});
   const use = { ...weaponUse(m.weapon), ...(m.range ? { range: m.range } : {}) };
   if (m.range) use.skill = 'aim';
   const u = {
     id: d.id, name: d.name || m.name, side: d.side || 'monster', ai: d.ai || 'monster', spec, char: null, cast: c.id,
     x: d.x, y: d.y, move: m.move,
-    flags: m.hp, maxFlags: m.hp, out: false,
-    weapon: m.weapon, use, skills: m.skills, armor: m.armor, finesse: m.finesse, retreatAt: m.retreatAt || 0,
+    flags: m.hp + (d.hpPlus || 0), maxFlags: m.hp + (d.hpPlus || 0), out: false,
+    weapon: m.weapon, use, skills: d.skillPlus ? Object.fromEntries(Object.entries(m.skills).map(([k, v]) => [k, v + d.skillPlus])) : m.skills, armor: m.armor, finesse: m.finesse, retreatAt: m.retreatAt || 0,
     trick: null, prefersBush: !!d.prefersBush, bystander: !!d.bystander,
     boss: !!m.boss, heavy: !!m.heavy, sweepDice: m.sweepDice || null,
     dice: m.dice || null, weaponName: m.dice ? m.weapon : null,
-    pack: !!m.pack, leader: !!m.leader, fly: !!m.fly, fireResist: !!m.fireResist, summoner: !!m.summoner, clockwork: !!m.clockwork,
-    kind: d.monster, summonKind: m.summonKind || null, big: !!m.big, restTurns: m.restTurns || 1,
+    pack: !!m.pack, leader: !!m.leader, fly: !!(m.fly || d.fly), fireResist: !!m.fireResist, summoner: !!m.summoner, clockwork: !!m.clockwork,
+    kind: d.monster, summonKind: m.summonKind || null, big: !!m.big, restTurns: m.restTurns || 1, regen: m.regen || 0,
   };
   // A monster-shaped friend with a trick of their own (Wren's wrench).
   return d.tricks ? withTricks(u, d.tricks) : u;
@@ -98,7 +98,8 @@ export function createBattle(def, hero) {
     scared: {}, danger: [], warn: !!def.warn, fireScares: !!def.fireScares, bossPhase: 0,
     calm: def.calm ? { value: def.calm.start || 0, max: def.calm.max || 3, bonus: def.calm.bonus || 0 } : null,
     cage: def.cage ? { ...def.cage, open: false } : null,
-    fix: def.fix ? { value: 0, max: def.fix.max || 3, bonus: def.fix.bonus || 0, target: def.fix.target } : null,
+    bossEnds: !!def.bossEnds,
+    fix: def.fix ? { value: 0, max: def.fix.max || 3, bonus: def.fix.bonus || 0, target: def.fix.target, label: def.fix.label, hint: def.fix.hint, done: def.fix.done, roll: def.fix.roll, yay: def.fix.yay, icon: def.fix.icon } : null,
     clockMinus: def.clockMinus || 0, initPlus: def.initPlus || 0, summonBoost: def.summonBoost || 0 };
   // Home Team: Nell's trap (stuck) and Sniffle's sleepy monster: they skip their first turns.
   b.skipWhy = {};
@@ -155,10 +156,24 @@ export function chance(b, u, target, opts = {}) {
   const clock = u.clockwork && u.side === 'monster' ? (b.clockMinus || 0) : 0;
   // Tinker's Eye talent: the hero sees the glowing weak spots on clockwork monsters.
   const eye = target && target.clockwork && hasTalent(u, 'tinker') ? TINKER_EYE : 0;
-  return { skill: skillId, base, cover: !!cover, armor, pack, clock, eye, value: Math.max(MIN_CHANCE, Math.min(R.SKILL_CAP || 95, base + pack + eye - (cover ? COVER : 0) - armor - clock)) };
+  // Book Four: shooting down from a ledge is easier. A dazzled monster (the dragon's sparkles) has trouble seeing.
+  const high = target && u.use && u.use.range > 1 && onHigh(b, u) && !onHigh(b, target) ? HIGH_GROUND : 0;
+  const dazed = b.dazzle && b.dazzle[u.id] ? DAZZLE : 0;
+  return { skill: skillId, base, cover: !!cover, armor, pack, clock, eye, high, dazed, value: Math.max(MIN_CHANCE, Math.min(R.SKILL_CAP || 95, base + pack + eye + high - (cover ? COVER : 0) - armor - clock) - dazed) };
 }
 
 export const TINKER_EYE = 10;
+export const HIGH_GROUND = 10, DAZZLE = 15, TROLL_HEAL = 2;
+export function onHigh(b, u) { const t = G.terrainAt(b.map, u.x, u.y); return !!(t && t.high); }
+// Trolls heal a little at the end of every turn, unless they stand in a sunbeam or got warmed by fire this round.
+export function regen(b, u) {
+  if (!u || u.out || u.gone || !u.regen || u.flags >= u.maxFlags) return 0;
+  const t = G.terrainAt(b.map, u.x, u.y);
+  if (b.burned && b.burned[u.id]) { delete b.burned[u.id]; return 0; }   // warmed by fire: no healing on its next turn
+  if (t && t.sun) return 0;
+  const before = u.flags; u.flags = Math.min(u.maxFlags, u.flags + u.regen);
+  return u.flags - before;
+}
 export const hasTalent = (u, t) => !!(u && u.char && (u.char.talents || []).includes(t));
 
 // Damage dice for a hit, by how well it went (real fights).
@@ -188,6 +203,8 @@ export function doMove(b, u, x, y) {
   const t = reach.get(G.key(x, y));
   if (!t || t.passOnly) throw new Error(`${u.id} cannot move to ${x},${y}`);
   const path = G.pathTo(reach, x, y);
+  const last = path.length ? path[path.length - 1] : null, prev = path.length > 1 ? path[path.length - 2] : { x: u.x, y: u.y };
+  if (last) u.lastDir = { dx: Math.sign(last.x - prev.x), dy: Math.sign(last.y - prev.y) };
   u.x = x; u.y = y; b.ts.moved = true;
   return path;
 }
@@ -240,6 +257,15 @@ export function resolveArea(b, u, center, roll, dmg) {
     u.trick.left--; b.ts.acted = true;
     return { tier, results, chance: ch, tiles, sleep: true };
   }
+  // Sparkle sneeze and Glow: no damage. On a good roll the monster is dazzled: 15 fewer squares on its next turn.
+  if (u.trick.dazzle) {
+    const ok = !!FLAGS_FOR[tier];
+    b.dazzle = b.dazzle || {};
+    const results = hit.map(e => { if (ok) b.dazzle[e.id] = 1; return { id: e.id, lost: 0, dazzled: ok }; });
+    u.trick.left--; b.ts.acted = true;
+    return { tier, results, chance: ch, tiles, dazzle: true };
+  }
+  if (u.trick.fire) { b.burned = b.burned || {}; hit.forEach(e => { b.burned[e.id] = true; }); }
   // Clockwork owls shrug off fire: half damage.
   const results = hit.map(e => ({ id: e.id, lost: pull(e, u.trick.fire && e.fireResist ? Math.max(1, Math.floor(amount / 2)) * (amount ? 1 : 0) : amount), out: e.out }));
   if (u.trick.fire && b.fireScares && amount) hit.filter(e => e.boss && !e.out).forEach(e => { b.scared[e.id] = 1; });
@@ -293,6 +319,8 @@ export const wantsToFlee = (b, u) => b.mode === 'hp' && u.side === 'monster' && 
 // When the pack leader is out, every wolf runs.
 function routCheck(b) {
   if (b.units.some(u => u.leader && u.out)) b.units.filter(u => u.pack && !u.out).forEach(u => { u.retreatAt = 999; });
+  // def.bossEnds: when the big boss goes down, its helpers wind down and stop too (the beast's mice, the Catcher's hounds).
+  if (b.bossEnds && b.units.some(u => u.boss && u.out)) b.units.filter(u => u.side === 'monster' && !u.out).forEach(u => { u.out = true; u.gone = true; });
 }
 // Talking a boss down (def.calm): each good Talk roll adds calm; full calm ends the fight peacefully.
 export function talkChance(b, u) {
@@ -369,7 +397,21 @@ export function fix(b, u, roll) {
 // Anyone standing on a moving floor at the end of their turn slides one square along it (if that square is free).
 export function slide(b, u) {
   if (!u || u.out || u.gone || u.fly || u.big) return null;
+  if (hasTalent(u, 'sure')) return null;   // Sure Feet: ice, wind and moving floors never slide you
   const t = G.terrainAt(b.map, u.x, u.y);
+  // Ice: keep sliding the way you were going until you bump into something or reach the snow.
+  if (t && t.ice && u.lastDir && (u.lastDir.dx || u.lastDir.dy)) {
+    const from = { x: u.x, y: u.y };
+    let n = 0;
+    while (n++ < 12) {
+      const nx = u.x + u.lastDir.dx, ny = u.y + u.lastDir.dy;
+      if (!G.inside(b.map, nx, ny) || !G.terrainAt(b.map, nx, ny).enter || unitAt(b, nx, ny)) break;
+      u.x = nx; u.y = ny;
+      if (!G.terrainAt(b.map, nx, ny).ice) break;
+    }
+    u.lastDir = null;
+    return u.x === from.x && u.y === from.y ? null : { from, to: { x: u.x, y: u.y }, ice: true };
+  }
   if (!t || !t.belt) return null;
   const nx = u.x + t.belt, ny = u.y;
   if (!G.inside(b.map, nx, ny) || !G.terrainAt(b.map, nx, ny).enter || unitAt(b, nx, ny)) return null;
@@ -526,7 +568,7 @@ export function planTurn(b, u) {
     let best = null;
     for (const c of areaCenters(b, u)) {
       const tilesHit = areaTiles(b, u, c);
-      const n = foes.filter(e => tilesHit.some(t => t.x === e.x && t.y === e.y) && !(u.trick.sleep && b.scared[e.id])).length;
+      const n = foes.filter(e => tilesHit.some(t => t.x === e.x && t.y === e.y) && !(u.trick.sleep && b.scared[e.id]) && !(u.trick.dazzle && b.dazzle && b.dazzle[e.id])).length;
       if (n && (!best || n > best.n)) best = { c, n };
     }
     if (best) { plan.action = { type: 'area', center: best.c, trick: u.trick.id }; plan.teach = once('area'); return plan; }
@@ -587,6 +629,7 @@ export function nextPlan(b, u, def) { return scriptedPlan(b, u, def) || planTurn
 // Run a whole fight with every side computer-controlled (the hero plays like a friend). For balance sims and tests.
 // After a unit's turn: count down being scared, and move the boss to his next phase.
 export function afterTurn(b, u, plan) {
+  if (b.dazzle && b.dazzle[u.id]) delete b.dazzle[u.id];   // the sparkles wear off after one turn
   if (plan && plan.action && plan.action.type === 'scared') { b.scared[u.id]--; if (!b.scared[u.id] && b.skipWhy) delete b.skipWhy[u.id]; return; }
   // restTurns: how many ordinary turns a boss takes between stomps (Grubjaw 1, the clockwork beast 3).
   if (u.boss && b.bossPhase === 0) { u.bossRest = (u.bossRest || 0) + 1; if (u.bossRest >= (u.restTurns || 1)) { b.bossPhase = 1; u.bossRest = 0; } }
@@ -608,9 +651,10 @@ export function autoplay(b, rollFn, def) {
     if (a === 'cage') openCage(b);
     afterTurn(b, u, plan);
     slide(b, u);
+    regen(b, u);
     u = endTurn(b);
   }
   return b.result;
 }
 
-export default { THROW_RANGE, THROWABLE, throwTargets, throwEffect, throwItem, canFix, fixChance, fix, slide, hasTalent, TINKER_EYE, FLAGS_FOR, COVER, ROUND_CAP, weaponName, packBonus, useTrick, talk, talkChance, drinkPotion, summon, makeUnit, createBattle, addUnit, removeUnit, initBonus, rollInitiative, weaponDice, rollDamage, flee, onEdge, wantsToFlee, bossWindup, resolveSweep, scare, canOpenCage, openCage, afterTurn, unitById, current, enemiesOf, friendsOf, unitAt, skillValue, moveTiles, targets, chance, doMove, resolveAttack, areaTiles, areaCenters, resolveArea, checkOver, endTurn, planTurn, scriptedPlan, nextPlan, autoplay };
+export default { HIGH_GROUND, DAZZLE, onHigh, regen, THROW_RANGE, THROWABLE, throwTargets, throwEffect, throwItem, canFix, fixChance, fix, slide, hasTalent, TINKER_EYE, FLAGS_FOR, COVER, ROUND_CAP, weaponName, packBonus, useTrick, talk, talkChance, drinkPotion, summon, makeUnit, createBattle, addUnit, removeUnit, initBonus, rollInitiative, weaponDice, rollDamage, flee, onEdge, wantsToFlee, bossWindup, resolveSweep, scare, canOpenCage, openCage, afterTurn, unitById, current, enemiesOf, friendsOf, unitAt, skillValue, moveTiles, targets, chance, doMove, resolveAttack, areaTiles, areaCenters, resolveArea, checkOver, endTurn, planTurn, scriptedPlan, nextPlan, autoplay };

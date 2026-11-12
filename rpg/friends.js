@@ -73,8 +73,8 @@ export const JOBS = {
 // fromCh: a job that only starts helping in a later chapter (Juni's keys and Sniffle's nose need locks and traps, Chapter 13).
 export function jobLine(s, id, chNum = 99) { const j = JOBS[id]; return j ? { name: j.name, what: (j.fromCh && chNum < j.fromCh) ? `Starts helping in Chapter ${j.fromCh}.` : j.what[tier(level(s, id))] } : null; }
 
-const BOSSES = ['gnoll', 'bramble', 'beast'];
-const CLOCKWORK = ['mouse', 'windcat', 'owl', 'knight', 'bear', 'bird', 'beast'];
+const BOSSES = ['gnoll', 'bramble', 'beast', 'granite', 'catcher'];
+const CLOCKWORK = ['mouse', 'windcat', 'owl', 'knight', 'bear', 'bird', 'beast', 'hound', 'catcher'];
 // Change a fight to match who stayed home. d is the built fight; home is the list of friends at home.
 export function applyHomeJobs(s, d, home, names) {
   const lines = [];
@@ -91,7 +91,7 @@ export function applyHomeJobs(s, d, home, names) {
     if (id === 'pudge') { d.pudge = t; if (t === 2) d.teamHearts = (d.teamHearts || 0) + 1; lines.push(`${who} sent a pie along. Yum! Luck back!`); }
     if (id === 'bolt') { d.clockMinus = [5, 10, 15][t]; if (monsters.some(u => CLOCKWORK.includes(u.monster))) lines.push(`${who} has been patrolling. The clockwork monsters are nervous!`); }
     if (id === 'wren') { d.teamArmor = (d.teamArmor || 0) + [5, 8, 10][t]; lines.push(`${who} tuned up everyone's gear. Clank, clank, done!`); }
-    if (id === 'mossback' && notBoss.length > 2) {
+    if (id === 'mossback' && notBoss.length > 2 && !notBoss.some(u => u.monster === 'mtroll')) {   // he won't chase off his own cousins
       const pool = t === 0 ? notBoss.filter(u => ['mouse', 'kobold', 'crow', 'bird'].includes(u.monster)) : notBoss;
       const go = pool.slice(-(t === 2 ? 2 : 1)).map(u => u.id);
       if (go.length) { d.events = [{ round: 0, type: 'remove', ids: go, lines: [{ who: null, text: `${who} stomps out from the trees. "SHOO!" Some of the monsters run away!` }] }, ...(d.events || [])]; }

@@ -7,6 +7,8 @@ import { CH0, NAMES } from './ch0.js';
 import { pick } from './rng.js';
 import I from './icons.js';
 import { GLOSSARY } from './glossary.js';
+import { placeURL } from './backdrops.js';
+import J from './juice.js';
 
 const $ = id => document.getElementById(id);
 let explain = () => {}, toast = () => {}, playChapter = () => {}, chapterTitle = () => '';
@@ -36,6 +38,7 @@ function currentSpec() {
 
 function drawStage() {
   const c = $('adv-sprite'); if (!c) return;
+  const st = c.parentElement; if (st && !st.dataset.bg) { const u = placeURL('millbrook'); if (u) { st.style.backgroundImage = `url(${u})`; st.classList.add('placed'); } st.dataset.bg = 1; }
   const x = c.getContext('2d'); x.clearRect(0, 0, 32, 40);
   if (step === -1 && !save.get()) return void S.draw(x, { build: 'kid', people: 'human', skin: 'peach', hair: 'short', hairColor: 'brown', cloth: 'green', layers: { head: 'bucket', body: 'tunic', mainHand: 'woodsword', back: 'satchel' } }, 0, 0, 1, frame);
   S.draw(x, currentSpec(), 0, 0, 1, frame);
@@ -130,6 +133,7 @@ function skillList(hero) {
 }
 
 // Hearts, clovers, boots and a level star instead of number tiles.
+let lastXP = null;
 function numberTiles(hero) {
   const box = document.createElement('div'); box.className = 'vitals';
   const row = (id, label, html, cls) => {
@@ -147,7 +151,13 @@ function numberTiles(hero) {
   const xp = P.xpProgress(hero);
   const xb = document.createElement('button'); xb.type = 'button'; xb.className = 'vital v-xp'; xb.dataset.vital = 'xp'; xb.id = 'xp-bar';
   xb.setAttribute('aria-label', `XP: ${xp.have} of ${xp.need} to level ${(hero.level || 1) + 1}. Tap to learn about XP.`);
-  xb.innerHTML = `<span class="vital-name">XP</span><span class="vital-icons xp-line">${I.xpStar(28)}<span class="xp-track"><span class="xp-fill" style="width:${Math.round(xp.frac * 100)}%"></span></span><span class="xp-num">${xp.need ? xp.have + ' / ' + xp.need : 'Max'}</span></span>`;
+  // v1.7: the bar fills from where it was last time you looked, instead of jumping.
+  const pct = Math.round(xp.frac * 100), lvl = hero.level || 1;
+  const same = lastXP && lastXP.name === hero.name && !J.still();
+  const fromPct = same && lastXP.level === lvl && lastXP.pct <= pct ? lastXP.pct : same && lastXP.level < lvl ? 0 : pct;
+  xb.innerHTML = `<span class="vital-name">XP</span><span class="vital-icons xp-line">${I.xpStar(28)}<span class="xp-track"><span class="xp-fill" style="width:${fromPct}%"></span></span><span class="xp-num">${xp.need ? xp.have + ' / ' + xp.need : 'Max'}</span></span>`;
+  if (fromPct !== pct) setTimeout(() => { const f = xb.querySelector('.xp-fill'); if (f) { f.classList.add('grow'); f.style.width = pct + '%'; } }, 250);
+  lastXP = { name: hero.name, level: lvl, pct };
   xb.addEventListener('click', () => explain('xp'));
   box.appendChild(xb);
   if ((hero.talents || []).length) {

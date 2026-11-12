@@ -59,7 +59,22 @@ export const CLUES = [
     text: '"Nobody came to my birthday again." "If the star wakes up my friends, I\'ll never be alone again." Wren isn\'t mean. She is lonely.' },
   { id: 'sawStone', book: 3, pic: 'egg', name: 'The warm stone',
     text: 'The Starstone glows gold, it is warm like cocoa, and it hums, like something sleeping. That is a funny thing for a stone to do.' },
+  // ----- Book Four: where did the dragon come from? -----
+  { id: 'starBook', book: 4, pic: 'book', name: 'Gran\'s star book',
+    text: 'Gran\'s oldest book says star dragons live on Starpeak, the tallest mountain in the world. They lay their eggs where the night sky is closest. Gran\'s falling star was an egg all along.' },
+  { id: 'shellMap', book: 4, pic: 'star', name: 'The eggshell map',
+    text: 'Inside the broken eggshell, tiny glowing dots make a picture of the stars. Wren says it\'s a map, and the brightest dot points to Starpeak. The egg knew the way home.' },
+  { id: 'houndStamp', book: 4, pic: 'gear', name: 'Wren\'s old design',
+    text: 'The knight\'s clockwork hounds have a tiny stamp on their collars: a gear. Wren built hounds like these years ago, before she ever met you. Who did she sell them to?' },
+  { id: 'answerWhistle', book: 4, pic: 'feather', name: 'The whistle back',
+    text: 'When the baby dragon cried for its mother, something far away in the mountains whistled back. Someone is still looking for it.' },
+  { id: 'trollTree', book: 4, pic: 'tree', name: 'Mossback\'s family tree',
+    text: 'Mossback has a whole family under the mountain: cousins, uncles, and a great-aunt who is a queen. Trolls love riddles, manners, and anything shiny.' },
+  { id: 'dotRibbons', book: 4, pic: 'ribbon', name: 'Dot\'s ribbon trail',
+    text: 'Red ribbons tied to rocks, each with a little drawing of your dragon. Dot left them so you could follow. She is on the dragon\'s side.' },
+  { id: 'cageMark', book: 4, pic: 'key', name: 'The cage\'s three locks',
+    text: 'The knight\'s dragon cage has three locks and Wren\'s gear stamp on the door. Wren built it a long time ago. Whoever knows how it works can open it.' },
 ];
-export const BOOK_NAME = { 1: 'Book One: Who sent the goblins?', 2: 'Book Two: Who is B?', 3: 'Book Three: Who is the Silver Mask?' };
+export const BOOK_NAME = { 1: 'Book One: Who sent the goblins?', 2: 'Book Two: Who is B?', 3: 'Book Three: Who is the Silver Mask?', 4: 'Book Four: Where did the dragon come from?' };
 
 export default { CLUES, BOOK_NAME };

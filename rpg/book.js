@@ -20,6 +20,7 @@ const ROLE = {
   tobin: 'The loud one', juni: 'The fixer',
   goblin: 'Monster', goblinarcher: 'Monster', kobold: 'Monster', koboldtrapper: 'Monster', gnoll: 'Big boss',
   knight: 'Monster', bear: 'Monster', bird: 'Monster', beast: 'Big boss',
+  hound: 'Monster', fox: 'Monster', snowgob: 'Monster', snowgobarcher: 'Monster', mtroll: 'Monster', granite: 'The troll queen', catcher: 'Big boss',
 };
 const BIO = {
   tobin: 'The youngest kid in the game, and the loudest. Always "it" when nobody else wants to be.',
@@ -41,12 +42,14 @@ let shelf = 'kids';
 const GEAR_IDS = ['woodsword', 'stick', 'slingshot', 'broomstick', 'dagger', 'club', 'bucket', 'satchel'];
 // Gearwick's real gear joins the shelf once you've seen the smith (Chapter 12).
 const GEAR_IDS_B3 = ['longsword', 'longbow', 'roundshield', 'helmet', 'chainshirt'];
+const GEAR_IDS_B4 = ['furcloak'];
 const GEAR_IDS_WREN = ['wrench', 'weldmask'];
 // Brenna's shop gear joins once you're home from Grubjaw's camp (Chapter 6).
 const GEAR_IDS_SHOP = ['steelsword', 'shortbow', 'buckler', 'ironcap', 'padded', 'cape'];
 const PLACE_IDS = ['grass', 'bush', 'mud', 'log', 'tree', 'stream'];
 // The clock tower's floors join the shelf once you've met a clockwork knight (Chapter 13).
 const PLACE_IDS_B3 = ['floor', 'wall', 'crate', 'beltr'];
+const PLACE_IDS_B4 = ['snow', 'drift', 'ice', 'ledge', 'sun', 'windr'];
 const PLAY = [
   { id: 'percentile', name: 'The 100 dice', icon: 'die' },
   { id: 'skill', name: 'Chance squares', icon: 'target', grid: true },
@@ -95,6 +98,13 @@ const PLAY = [
   { id: 'cluebook', name: 'Clues', icon: 'target' },
   { id: 'keepsake', name: 'Keepsakes', icon: 'star' },
   { id: 'oops', name: 'Oops rolls', tier: 'disaster' },
+  { id: 'dragon', name: 'Your dragon', icon: 'star' },
+  { id: 'dragoncare', name: 'Dragon care', icon: 'heart' },
+  { id: 'dazzle', name: 'Dazzled', icon: 'star' },
+  { id: 'terrain_ice', name: 'Ice', icon: 'boot' },
+  { id: 'highground', name: 'High ground', icon: 'target' },
+  { id: 'trollheal', name: 'Trolls heal', icon: 'heart' },
+  { id: 'freecage', name: 'Opening the locks', icon: 'hammer' },
 ];
 
 // ---------- who you have met ----------
@@ -129,7 +139,14 @@ function kidEntries() {
     id: c.id, name: c.name, role: ROLE[c.id] + lvl(c.id), spec: c.spec, bio: BIO[c.id] || c.bio,
   })),
   // Monster friends show up once they join. Town grown-ups show up once you're back in Millbrook.
-  ...CAST.filter(c => c.group === 'friends' && (joined.includes(c.id) || (['wren', 'dragon', 'turnip'].includes(c.id) && isMet(c.id)))).map(c => ({ id: c.id, name: c.name, role: c.role + lvl(c.id), spec: c.spec, bio: c.bio })),
+  ...CAST.filter(c => c.group === 'friends' && (joined.includes(c.id) || (['wren', 'dragon', 'turnip'].includes(c.id) && isMet(c.id)))).map(c => {
+    // Your dragon shows the name you gave it, and grows up in Book Four.
+    const st = (s && s.flags && s.flags.story) || {};
+    if (c.id === 'dragon' && st.dragonName) return { id: c.id, name: st.dragonName, role: 'Your star dragon', spec: st.dragonGrown ? { build: 'dragon', grown: true, size: st.dragonBig ? 2 : 1 } : c.spec, bio: c.bio };
+    return { id: c.id, name: c.name, role: c.role + lvl(c.id), spec: c.spec, bio: c.bio };
+  }),
+  // Book Four: the knight, his horse and the Starmother show up once you've met them.
+  ...CAST.filter(c => c.group === 'story' && ['sirbart', 'shinyhorse', 'starmother'].includes(c.id) && isMet(c.id)).map(c => ({ id: c.id, name: c.name, role: c.role, spec: c.spec, bio: c.bio })),
   ...CAST.filter(c => c.group === 'town' && s && s.flags && (s.flags.ch5 || s.flags.ch2story) && (!['toymaker', 'peddler', 'gearsmith'].includes(c.id) || isMet(c.id))).map(c => ({ id: c.id, name: c.name, role: c.role, spec: c.spec, bio: c.bio }))];
 }
 function monsterEntries() {
@@ -203,7 +220,7 @@ function cluePic(kind, found) {
   return c;
 }
 function fillClues(box) {
-  for (const book of [1, 2, 3]) {
+  for (const book of [1, 2, 3, 4]) {
     const list = CLUES.filter(c => c.book === book), got = list.filter(c => clueFound(c.id)).length;
     const head = document.createElement('div'); head.className = 'bk-clue-head';
     head.innerHTML = `<b>${BOOK_NAME[book]}</b><span>${got} of ${list.length} clues</span>`;
@@ -232,11 +249,11 @@ function fillShelf() {
     // The starter gear, the shop gear once you've seen that shop, and anything you have ever owned.
     const sv = save.get(), h = sv && sv.hero, fl = (sv && sv.flags) || {};
     const owned = h ? [...(h.bag || []), ...Object.values(h.gear || {})].filter(id => id && GEAR[id]) : [];
-    const ids = [...new Set([...GEAR_IDS, ...(fl.ch5 ? GEAR_IDS_SHOP : []), ...(isMet('gearsmith') ? GEAR_IDS_B3 : []), ...(isMet('wren') ? GEAR_IDS_WREN : []), ...owned])];
+    const ids = [...new Set([...GEAR_IDS, ...(fl.ch5 ? GEAR_IDS_SHOP : []), ...(isMet('gearsmith') ? GEAR_IDS_B3 : []), ...(isMet('wren') ? GEAR_IDS_WREN : []), ...(isMet('sirbart') ? GEAR_IDS_B4 : []), ...owned])];
     ids.forEach(id => add(tile({ pic: gearPic(id), name: GEAR[id].name, onTap: () => H.explain('gear_' + id) })));
   }
   if (shelf === 'clues') fillClues(box);
-  if (shelf === 'places') [...PLACE_IDS, ...(isMet('knight') ? PLACE_IDS_B3 : [])].forEach(id => add(tile({ pic: placePic(id), name: glossTitle('terrain_' + id, id), onTap: () => H.explain('terrain_' + id) })));
+  if (shelf === 'places') [...PLACE_IDS, ...(isMet('knight') ? PLACE_IDS_B3 : []), ...(isMet('fox') ? PLACE_IDS_B4 : [])].forEach(id => add(tile({ pic: placePic(id), name: glossTitle('terrain_' + id, id), onTap: () => H.explain('terrain_' + id) })));
   if (shelf === 'powers') {
     P.STATS.forEach(st => add(tile({ pic: I.icon(I.STAT_ICON[st], 56), name: P.STAT_NAME[st], role: I.STAT_WORD[st], cls: 'stat',
       onTap: () => H.explain('stat_' + st) })));

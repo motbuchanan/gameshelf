@@ -124,6 +124,7 @@ export { MAP };
 
 export const SCENES = {
   intro: {
+    place: 'millbrook',
     lines: [
       { who: 'narrator', text: 'A week after the big party, Captain Ward runs into the town square holding a piece of paper.' },
       { who: 'captain', text: 'Another note! Nailed to the gate last night. It says: "Leave the woods, or else. B." And it has a black feather.' },
@@ -141,6 +142,7 @@ export const SCENES = {
     trailmap: { ...MAP('millbrook', { hills: { go: 'hills' }, creek: { go: 'creek' } }), text: 'Where should we go first? Tap a place on the map.' },
   },
   hills: {
+    place: 'woods',
     lines: [{ who: 'narrator', text: 'The Tall Hills are steep and rocky. At the top, you can see for miles.' }],
     check: { skill: 'climb', help: 'hollis', label: 'Climb the steepest hill', great: 'hills_top', ok: 'hills_top', miss: 'hills_slide' },
   },
@@ -158,6 +160,7 @@ export const SCENES = {
     next: 'den',
   },
   creek: {
+    place: 'creek',
     lines: [
       { who: 'narrator', text: 'Silver Creek is calm and sparkly. An old fisherman sits on a rock, looking sad.' },
       { who: 'narrator', text: '"The big fish keeps stealing my bait," he sighs. "Want to try? I\'ll pay you."' },
@@ -207,6 +210,7 @@ export const SCENES = {
   },
   // Puzzle or fight: two young wolves asleep on the path.
   den: {
+    place: 'woods',
     lines: [
       { who: 'narrator', text: 'Halfway down the far side of the hill, two young wolves are curled up asleep, right in the middle of the path.' },
       { who: 'nell', text: '(whispering) We could tiptoe past. Or go the long way through the brambles. Or... wake them up.' },
@@ -253,6 +257,7 @@ export const SCENES = {
   },
   // Puzzle or fight: stepping stones across the creek.
   stones: {
+    place: 'creek',
     lines: [
       { who: 'narrator', text: 'The path crosses Silver Creek on stepping stones. Some of the stones wobble. Crows watch from a dead tree. They look hungry for snacks.' },
       { who: 'juni', text: 'Wobbly stones are clean. Stones that never move get covered in green moss. Step on the mossy ones!' },
@@ -300,6 +305,7 @@ export const SCENES = {
     trailmap: { ...MAP('creek', { camp: { go: 'camp' } }), text: 'Tap Pine Camp to make camp for the night.' },
   },
   camp: {
+    place: 'woodsnight',
     lines: [
       { who: 'narrator', text: 'The kids make camp under tall pine trees. Juni builds the fire. Tobin eats most of the snacks.' },
       { who: 'juni', text: 'Camping rule: when you rest, you get your hearts and your Luck back. Everybody sleep well.' },

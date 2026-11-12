@@ -1,6 +1,7 @@
 // The battle screen: draws the grid, runs turns, and talks the player through them.
 // Rules live in combat.js. This file only shows them and takes taps.
 import C from './combat.js';
+import { groundURL } from './backdrops.js';
 import G from './grid.js';
 import R from './rules.js';
 import S from './sprites.js';
@@ -96,6 +97,35 @@ function makeTile(id, v) {
     px(c, 7, 7, 2, 2, '#3a3430');
     px(c, 7, 2, 2, 1, '#c49a3a'); px(c, 7, 13, 2, 1, '#c49a3a'); px(c, 2, 7, 1, 2, '#c49a3a'); px(c, 13, 7, 1, 2, '#c49a3a');
   }
+  // Book Four: snow, ice, caves, ledges and wind
+  if (id === 'snow' || id === 'drift' || id === 'pine' || id === 'rock' || id === 'windr' || id === 'windl' || id === 'ledge') {
+    px(c, 0, 0, 16, 16, '#dfe8f2');
+    for (let i = 0; i < 7; i++) { const h = hash(v * 17 + i, i * 5 + v); px(c, h % 16, (h >>> 8) % 16, 1, 1, i % 2 ? '#c4d2e2' : '#ffffff'); }
+  }
+  if (id === 'drift') { px(c, 1, 6, 14, 7, '#ffffff'); px(c, 3, 4, 9, 3, '#ffffff'); px(c, 1, 12, 14, 2, '#b8c8dc'); px(c, 4, 5, 4, 1, '#eef4fa'); }
+  if (id === 'ice') {
+    px(c, 0, 0, 16, 16, '#9fd0ea');
+    px(c, 2 + v, 3, 6, 1, '#e4f6ff'); px(c, 9 - v, 9, 5, 1, '#e4f6ff'); px(c, 4, 12, 3, 1, '#78b4d8'); px(c, 11, 4, 1, 3, '#78b4d8');
+  }
+  if (id === 'pine') {
+    px(c, 7, 12, 2, 4, '#5a3a20');
+    px(c, 7, 1, 2, 2, K); px(c, 5, 3, 6, 3, K); px(c, 3, 6, 10, 3, K); px(c, 2, 9, 12, 3, K);
+    px(c, 7, 2, 2, 1, '#2a5a3a'); px(c, 6, 4, 4, 1, '#2a5a3a'); px(c, 4, 7, 8, 1, '#2a5a3a'); px(c, 3, 10, 10, 1, '#2a5a3a');
+    px(c, 6, 3, 3, 1, '#ffffff'); px(c, 4, 6, 4, 1, '#ffffff'); px(c, 3, 9, 5, 1, '#ffffff');
+  }
+  if (id === 'rock') { px(c, 2, 4, 12, 10, K); px(c, 3, 5, 10, 8, '#7a7e88'); px(c, 4, 5, 6, 2, '#a4a8b2'); px(c, 3, 4, 8, 1, '#ffffff'); px(c, 9, 10, 3, 2, '#5a5e68'); }
+  if (id === 'cave' || id === 'cavefloor' || id === 'sun') {
+    px(c, 0, 0, 16, 16, '#4a4248');
+    for (let i = 0; i < 5; i++) { const h = hash(v * 13 + i, i * 3); px(c, h % 15, (h >>> 8) % 15, 2, 1, '#5a525a'); }
+  }
+  if (id === 'cave') { px(c, 0, 0, 16, 16, '#2a2428'); px(c, 1, 1, 6, 5, '#3a3238'); px(c, 8, 7, 7, 6, '#3a3238'); px(c, 2, 1, 3, 1, '#524a50'); px(c, 9, 7, 3, 1, '#524a50'); }
+  if (id === 'sun') { px(c, 0, 0, 16, 16, '#d8b85a'); px(c, 2, 2, 12, 12, '#f0d878'); px(c, 4, 4, 8, 8, '#fff0b0'); }
+  if (id === 'ledge') { px(c, 0, 10, 16, 6, '#7a7e88'); px(c, 0, 10, 16, 1, K); px(c, 0, 14, 16, 2, '#5a5e68'); px(c, 3, 12, 3, 1, '#a4a8b2'); px(c, 10, 11, 2, 1, '#a4a8b2'); }
+  if (id === 'gap') { px(c, 0, 0, 16, 16, '#1a1e2a'); px(c, 0, 0, 16, 2, '#dfe8f2'); px(c, 0, 14, 16, 2, '#7a7e88'); px(c, 3 + v, 7, 1, 1, '#3a4258'); }
+  if (id === 'windr' || id === 'windl') {
+    const dir = id === 'windr' ? 1 : -1;
+    for (let k = 0; k < 3; k++) { const x0 = ((k * 6 + (frame % 2) * 3 * dir) % 18 + 18) % 18 - 2; px(c, x0, 3 + k * 4, 5, 1, '#9ab4d0'); px(c, dir > 0 ? x0 + 5 : x0 - 1, 2 + k * 4, 1, 1, '#9ab4d0'); }
+  }
   if (id === 'stream') {
     px(c, 0, 0, 16, 16, '#3a7ac0');
     const o = v % 2 ? 4 : 0;
@@ -104,7 +134,7 @@ function makeTile(id, v) {
   return cv;
 }
 export function tileArt(id, x, y) {
-  const v = id === 'stream' ? (hash(x, y) + frame) % 2 + (y % 2) * 2 : (id === 'beltr' || id === 'beltl') ? frame % 2 : hash(x, y) % 4;
+  const v = id === 'stream' ? (hash(x, y) + frame) % 2 + (y % 2) * 2 : (id === 'beltr' || id === 'beltl' || id === 'windr' || id === 'windl') ? frame % 2 : hash(x, y) % 4;
   const k = id + v;
   return TILE_ART[k] || (TILE_ART[k] = makeTile(id, v));
 }
@@ -134,16 +164,149 @@ function whiteOf(spr) {
   }
   return w;
 }
+// One animation loop for everything that moves for a moment: flashes, floaters, particles, squash and hops.
+let lastTick = 0;
 function juice(ms) {
   juiceUntil = Math.max(juiceUntil, performance.now() + ms);
   if (juiceRaf) return;
-  const tick = now => { draw(); if (now < juiceUntil) juiceRaf = requestAnimationFrame(tick); else { juiceRaf = 0; draw(); } };
+  lastTick = performance.now();
+  const tick = now => {
+    const dt = Math.min(0.05, Math.max(0, (now - lastTick) / 1000)); lastTick = now;
+    floaters.forEach(f => { f.age = (now - f.t0) / 1000; });
+    floaters = floaters.filter(f => f.age < 1.2);
+    stepParts(dt); if (parts.length > partsPeak) partsPeak = parts.length;
+    draw();
+    if (now < juiceUntil || floaters.length || parts.length) juiceRaf = requestAnimationFrame(tick);
+    else { juiceRaf = 0; draw(); }
+  };
   juiceRaf = requestAnimationFrame(tick);
+}
+
+// ---------- v1.7 juice: squash, lean, wind-up, hops and little particles ----------
+// "Reduce motion" turns off the moving parts; flashes, numbers and sounds stay.
+const stillFx = () => { try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } };
+let parts = [];
+const MAX_PARTS = 90;   // a hard cap so a busy fight never stutters on the iPad
+// u.fx = {kind, t0, ms, dx, dy}: a short body move drawn on top of where the unit stands.
+function move(u, kind, ms, dir) {
+  if (!u || stillFx()) return;
+  u.fx = { kind, t0: performance.now(), ms, dx: dir ? dir.x : 0, dy: dir ? dir.y : 0 };
+  juice(ms + 20);
+}
+function dirTo(a, z) { const dx = z.x - a.x, dy = z.y - a.y, d = Math.hypot(dx, dy) || 1; return { x: dx / d, y: dy / d }; }
+// Where and how big to draw a unit this frame: {dx, dy, sx, sy} in tiles and scale.
+function fxOf(u, now) {
+  const f = u.fx; if (!f) return null;
+  const k = (now - f.t0) / f.ms;
+  if (k >= 1 || k < 0) { if (k >= 1) u.fx = null; return null; }
+  const s = Math.sin(Math.PI * k);
+  if (f.kind === 'squash') { const w = Math.cos(k * Math.PI * 3) * (1 - k); return { dx: f.dx * 0.06 * s, dy: 0, sx: 1 + 0.22 * w, sy: 1 - 0.2 * w }; }
+  if (f.kind === 'lean') return { dx: f.dx * 0.28 * s + f.dy * 0.1 * s, dy: -0.06 * s, sx: 1, sy: 1 };
+  if (f.kind === 'windup') { const back = k < 0.55 ? Math.sin(Math.PI * k / 0.55 / 2) : 1 - (k - 0.55) / 0.45; return { dx: -f.dx * 0.14 * back, dy: -f.dy * 0.1 * back, sx: 1 - 0.06 * back, sy: 1 + 0.06 * back }; }
+  if (f.kind === 'lunge') return { dx: f.dx * 0.3 * s, dy: f.dy * 0.22 * s, sx: 1 + 0.05 * s, sy: 1 - 0.05 * s };
+  if (f.kind === 'hop') { const sq = k < 0.15 ? (k / 0.15) : k > 0.85 ? (1 - k) / 0.15 : 0; return { dx: 0, dy: -0.42 * Math.sin(Math.PI * Math.min(1, Math.max(0, (k - 0.1) / 0.8))), sx: 1 + 0.12 * sq, sy: 1 - 0.12 * sq }; }
+  if (f.kind === 'talk') return { dx: 0, dy: -0.12 * s, sx: 1, sy: 1 };
+  return null;
+}
+// The colors a sprite is made of, so a hit bursts in the monster's own colors.
+const COLORS = new WeakMap();
+function colorsOf(spr) {
+  let list = COLORS.get(spr);
+  if (list) return list;
+  list = [];
+  try {
+    const d = spr.getContext('2d').getImageData(0, 0, spr.width, spr.height).data, seen = {};
+    for (let i = 0; i < d.length; i += 4 * 7) {
+      if (d[i + 3] < 200) continue;
+      const r = d[i], g = d[i + 1], bl = d[i + 2];
+      if (r + g + bl < 220) continue;           // skip the outline and dark hair: bursts should be bright
+      const key = (r >> 5) + ',' + (g >> 5) + ',' + (bl >> 5);
+      seen[key] = (seen[key] || 0) + 1;
+      if (seen[key] === 2) list.push(`rgb(${r},${g},${bl})`);
+    }
+  } catch (e) { /* no pixels to read */ }
+  if (!list.length) list = ['#ffd060', '#ff8070'];
+  COLORS.set(spr, list);
+  return list;
+}
+// kind: 'bit' (a hit), 'star' (knocked out, level up), 'heart' (healing), 'zzz' (sleep), 'spark' (fire), 'glitter' (sparkles)
+function burst(kind, x, y, n, colors) {
+  if (stillFx() || !b) return;
+  const room = MAX_PARTS - parts.length; n = Math.min(n, room); if (n <= 0) return;
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2, sp = 1.2 + Math.random() * 1.6;
+    const col = colors ? colors[i % colors.length] : '#fff';
+    const p = { kind, x: x + 0.5, y: y + 0.45, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 1.2, g: 6, life: 0.45 + Math.random() * 0.25, age: 0, col, size: 1.8 };
+    if (kind === 'star') { p.vx = Math.cos(a) * 1.6; p.vy = Math.sin(a) * 1.2 - 0.6; p.g = 0; p.life = 0.7; p.size = 2; }
+    if (kind === 'heart') { p.x = x + 0.2 + Math.random() * 0.6; p.y = y + 0.7; p.vx = (Math.random() - 0.5) * 0.4; p.vy = -0.9 - Math.random() * 0.5; p.g = 0; p.life = 0.9 + Math.random() * 0.3; p.delay = i * 0.08; p.size = 1.3; p.col = i % 2 ? '#ff8a9a' : '#ff5a6a'; }
+    if (kind === 'zzz') { p.x = x + 0.55; p.y = y + 0.15; p.vx = 0.35 + Math.random() * 0.2; p.vy = -0.6; p.g = 0; p.life = 1.1; p.delay = i * 0.22; p.size = 1 + i * 0.25; }
+    if (kind === 'spark') { p.x = x + Math.random(); p.y = y + 0.4 + Math.random() * 0.5; p.vx = (Math.random() - 0.5) * 1.2; p.vy = -1.5 - Math.random() * 1.5; p.g = 2.5; p.life = 0.5 + Math.random() * 0.3; p.size = 1.6; }
+    if (kind === 'glitter') { p.x = x + Math.random(); p.y = y + Math.random() * 0.8; p.vx = 0; p.vy = -0.25; p.g = 0; p.life = 0.6 + Math.random() * 0.4; p.delay = Math.random() * 0.3; p.size = 1.6; }
+    parts.push(p);
+  }
+  juice(60);
+}
+function stepParts(dt) {
+  if (!parts.length) return;
+  for (const p of parts) {
+    if (p.delay > 0) { p.delay -= dt; continue; }
+    p.age += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += p.g * dt;
+  }
+  parts = parts.filter(p => p.age < p.life);
+}
+function drawParts(c, t) {
+  const u = t / 16;                    // one art pixel on the board
+  for (const p of parts) {
+    if (p.delay > 0) continue;
+    const k = p.age / p.life, x = p.x * t, y = p.y * t;
+    c.globalAlpha = k > 0.7 ? (1 - k) / 0.3 : 1;
+    const s = Math.max(2, Math.round(u * p.size));
+    if (p.kind === 'bit' || p.kind === 'spark') {
+      c.fillStyle = p.kind === 'spark' ? (k < 0.4 ? '#fff0a0' : k < 0.7 ? '#ffb040' : '#e05a20') : p.col;
+      c.fillRect(Math.round(x - s / 2), Math.round(y - s / 2), s, s);
+    } else if (p.kind === 'star' || p.kind === 'glitter') {
+      const twinkle = p.kind === 'glitter' ? (Math.floor(p.age * 12) % 2 ? 1 : 0.5) : 1;
+      const r = Math.max(1, Math.round(s * twinkle));
+      c.fillStyle = p.kind === 'glitter' ? p.col : '#ffe27a';
+      c.fillRect(Math.round(x - r / 2), Math.round(y - r * 1.5), r, r * 3);
+      c.fillRect(Math.round(x - r * 1.5), Math.round(y - r / 2), r * 3, r);
+      c.fillStyle = '#ffffff'; c.fillRect(Math.round(x - r / 2), Math.round(y - r / 2), r, r);
+    } else if (p.kind === 'heart') {
+      const q = Math.max(1, Math.round(u * 0.8 * p.size));
+      c.fillStyle = '#1a120c';
+      c.fillRect(x - q * 2.5, y - q * 1.5, q * 5, q * 2); c.fillRect(x - q * 1.5, y + q * 0.5, q * 3, q); c.fillRect(x - q * 0.5, y + q * 1.5, q, q);
+      c.fillStyle = p.col || '#7be08a';
+      c.fillRect(x - q * 2, y - q, q * 1.5, q * 1.5); c.fillRect(x + q * 0.5, y - q, q * 1.5, q * 1.5);
+      c.fillRect(x - q * 1.5, y, q * 3, q); c.fillRect(x - q * 0.5, y + q, q, q * 0.8);
+    } else if (p.kind === 'zzz') {
+      c.font = `800 ${Math.round(t * 0.26 * p.size)}px "Avenir Next", system-ui, sans-serif`;
+      c.textAlign = 'center'; c.lineWidth = Math.max(2, t / 20); c.strokeStyle = '#1a2040'; c.fillStyle = '#d8e0ff';
+      c.strokeText('Z', x, y); c.fillText('Z', x, y);
+    }
+  }
+  c.globalAlpha = 1;
+}
+// Random blinks: every so often a kid closes their eyes for a moment.
+function blinkTick() {
+  if (!b) return;
+  const now = performance.now();
+  for (const u of b.units) if (!u.out && !u.gone && (u.spec.build || 'kid') === 'kid' && Math.random() < 0.06) { u.blinkAt = now; juice(160); }
+}
+// The whole team hops when a fight is won.
+async function victoryHop() {
+  if (stillFx()) return;
+  const team = b.units.filter(u => u.side === 'hero' && !u.out && !u.gone && !u.bystander);
+  team.forEach((u, i) => setTimeout(() => { move(u, 'hop', 420); burst('star', u.x, u.y - 0.3, 3); }, fast ? 0 : i * 90));
+  await wait(fast ? 10 : 520 + team.length * 90);
+  team.forEach((u, i) => setTimeout(() => move(u, 'hop', 380), fast ? 0 : i * 70));
+  await wait(fast ? 10 : 480);
 }
 function flash(u) { if (!u) return; u.flashUntil = performance.now() + 110; juice(140); }
 // A hit lands: white flash, a thump, a tiny freeze, and a shake only for the big ones.
-async function impact(target, lost, big) {
+async function impact(target, lost, big, from) {
   flash(target);
+  move(target, 'squash', big ? 320 : 260, from ? dirTo(from, target) : null);
+  burst('bit', target.x, target.y, big ? 12 : 7, colorsOf(S.sprite(target.spec, 0, 'idle')));
   sfx.hit(big);
   if (big) sfx.shake($('board'), false);
   await wait(big ? 110 : 60);
@@ -155,6 +318,7 @@ function windCheck() {
   for (const u of b.units) if (u.windNow) {
     u.windNow = false;
     floater(u.x, u.y, 'Second wind! +3', '#7be08a', true);
+    burst('heart', u.x, u.y, 3);
     sfx.heal();
     say(u.id, 'Not yet! Second wind!');
   }
@@ -162,7 +326,7 @@ function windCheck() {
 function markOuts(before) {
   windCheck();
   let any = false;
-  for (const u of b.units) if (u.out && !u.gone && !before.has(u.id) && !u.outAt) { u.outAt = performance.now(); any = true; }
+  for (const u of b.units) if (u.out && !u.gone && !before.has(u.id) && !u.outAt) { u.outAt = performance.now(); any = true; if (!u.fled) burst('star', u.x, u.y - 0.2, 6); }
   if (any) { sfx.knockOut(); juice(560); }
 }
 
@@ -209,11 +373,14 @@ export function draw() {
   const live = b.units.filter(u => !u.out && !u.gone).sort((a, z) => unitScreen(a).y - unitScreen(z).y);
   for (const u of live) {
     const p = unitScreen(u);
-    const w = t * 0.92, h = w * 1.25;
-    const pose = u.pose || 'idle';
+    const f = fxOf(u, now) || { dx: 0, dy: 0, sx: 1, sy: 1 };
+    const w = t * 0.92 * f.sx, h = t * 0.92 * 1.25 * f.sy;
+    let pose = u.pose || 'idle';
+    if (pose === 'idle' && u.blinkAt && now - u.blinkAt < 140) pose = 'blink';
     const spr = S.sprite(u.spec, (frame + (u.x + u.y)) % 2, pose);
-    c.drawImage(spr, (p.x + 0.04) * t, (p.y + 0.95) * t - h, w, h);
-    if (u.flashUntil && now < u.flashUntil) { c.globalAlpha = 0.85; c.drawImage(whiteOf(spr), (p.x + 0.04) * t, (p.y + 0.95) * t - h, w, h); c.globalAlpha = 1; }
+    const x0 = (p.x + 0.5 + f.dx) * t - w / 2, y0 = (p.y + 0.95 + f.dy) * t - h;
+    c.drawImage(spr, x0, y0, w, h);
+    if (u.flashUntil && now < u.flashUntil) { c.globalAlpha = 0.85; c.drawImage(whiteOf(spr), x0, y0, w, h); c.globalAlpha = 1; }
     drawFlags(c, u, p, t);
   }
   // the cage (until someone opens it)
@@ -228,6 +395,7 @@ export function draw() {
     c.strokeStyle = frame % 2 ? '#ff5040' : '#ffd0c0'; c.lineWidth = Math.max(3, t / 14);
     c.strokeRect(p.x * t + 2, p.y * t - t * 0.2, t - 4, t * 1.16);
   });
+  drawParts(c, t);
   // rising "-1" flags
   floaters.forEach(f => {
     c.globalAlpha = Math.max(0, 1 - f.age / 1.2);
@@ -283,7 +451,7 @@ function say(who, text) {
 }
 function fill(text, extra = {}) {
   const hero = C.unitById(b, 'hero');
-  return String(text).replace(/\{name\}/g, hero ? hero.name : 'Hero').replace(/\{(\w+)\}/g, (m, k) => extra[k] ?? m);
+  return String(text).replace(/\{name\}/g, hero ? hero.name : 'Hero').replace(/\{dragon\}/g, (def && def.dragonName) || 'your dragon').replace(/\{(\w+)\}/g, (m, k) => extra[k] ?? m);
 }
 
 function strip() {
@@ -323,12 +491,12 @@ function playerPanel() {
       <span class="todo-i${tag ? '' : ' done'}">${I.icon('target', 22)}<span>${b.mode === 'hp' ? 'Attack' : 'Tag'}</span></span>
       <button class="q act" id="b-help" type="button" aria-label="How turns work">?</button>
     </div>
-    ${tag ? (u.tricks || []).filter(t => t.left > 0).map(t => `<button id="b-trick-${t.id}" class="btn act trick-btn" type="button">${I.icon(t.heal ? 'heart' : t.sleep ? 'bubble' : 'burst', 22)} ${esc(t.name)} <span class="trick-left">${Array.from({ length: t.left }, () => I.icon('star', 14)).join('')}</span></button>`).join('') : ''}
+    ${tag ? (u.tricks || []).filter(t => t.left > 0).map(t => `<button id="b-trick-${t.id}" class="btn act trick-btn" type="button">${I.icon(t.heal ? 'heart' : t.sleep ? 'bubble' : t.dazzle ? 'star' : 'burst', 22)} ${esc(t.name)} <span class="trick-left">${Array.from({ length: t.left }, () => I.icon('star', 14)).join('')}</span></button>`).join('') : ''}
     ${tag && b.calm ? `<button id="b-talk" class="btn act trick-btn" type="button">${I.icon('bubble', 22)} Talk <span class="trick-left">${Array.from({ length: b.calm.max }, (_, i) => I.icon('bubble', 14, i >= b.calm.value)).join('')}</span></button>` : ''}
     ${tag && !bagCount(u) && u.char && u.char.items && u.char.items.potion > 0 && u.flags < u.maxFlags ? `<button id="b-potion" class="btn act trick-btn" type="button">${I.icon('heart', 22)} Drink a potion (${u.char.items.potion})</button>` : ''}
     ${tag && C.canOpenCage(b, u) ? `<button id="b-cage" class="btn act trick-btn" type="button">${I.icon('hammer', 22)} Open the cage!</button>` : ''}
-    ${tag && b.fix && C.canFix(b, u) ? `<button id="b-fix" class="btn act trick-btn" type="button">${I.icon('hammer', 22)} Fix a gear <span class="trick-left">${Array.from({ length: b.fix.max }, (_, i) => I.icon('star', 14, i >= b.fix.value)).join('')}</span></button>` : ''}
-    ${tag && b.fix && !C.canFix(b, u) && b.fix.value < b.fix.max ? `<div class="fix-hint">${I.icon('hammer', 16)} Walk next to the beast to fix its gears (${b.fix.value} of ${b.fix.max} fixed)</div>` : ''}
+    ${tag && b.fix && C.canFix(b, u) ? `<button id="b-fix" class="btn act trick-btn" type="button">${I.icon(b.fix.icon || 'hammer', 22)} ${esc(b.fix.label || 'Fix a gear')} <span class="trick-left">${Array.from({ length: b.fix.max }, (_, i) => I.icon('star', 14, i >= b.fix.value)).join('')}</span></button>` : ''}
+    ${tag && b.fix && !C.canFix(b, u) && b.fix.value < b.fix.max ? `<div class="fix-hint">${I.icon('hammer', 16)} ${esc(b.fix.hint || 'Walk next to the beast to fix its gears')} (${b.fix.value} of ${b.fix.max} ${esc(b.fix.done || 'fixed')})</div>` : ''}
     ${tag && bagCount(u) ? `<button id="b-bag" class="btn act trick-btn" type="button">${I.icon('book', 22)} Use your bag</button>` : ''}
     <button id="b-done" class="btn big-btn act" type="button">Done</button>`);
   $('b-help').addEventListener('click', () => { if (!H.isLocked()) H.explain('turns'); });
@@ -421,7 +589,7 @@ async function playerPotion() {
   H.lock(); actPanel('');
   const amt = C.drinkPotion(b, u);
   sfx.heal();
-  floater(u.x, u.y, '+' + amt, '#7be08a'); strip(); draw();
+  floater(u.x, u.y, '+' + amt, '#7be08a'); burst('heart', u.x, u.y, 4); strip(); draw();
   say('hero', `Glug glug. ${amt} hearts back!`);
   await wait(fast ? 10 : 900);
   H.unlock();
@@ -486,10 +654,10 @@ async function doThrow(target) {
 async function playerFix() {
   const u = C.current(b);
   H.lock(); actPanel('');
-  const roll = await rollPop(u, C.fixChance(b, u), 'You fix a glowing gear', true, { luck: true });
+  const roll = await rollPop(u, C.fixChance(b, u), b.fix.roll || 'You fix a glowing gear', true, { luck: true });
   const res = C.fix(b, u, roll);
   const beast = C.unitById(b, b.fix.target);
-  if (res.gain) { sfx.calm(); if (beast) { beast.spec = { ...beast.spec, fixed: b.fix.value }; flash(beast); floater(beast.x, beast.y, 'Fixed!', '#9be08a', true); } }
+  if (res.gain) { sfx.calm(); if (beast) { beast.spec = { ...beast.spec, fixed: b.fix.value }; flash(beast); floater(beast.x, beast.y, b.fix.yay || 'Fixed!', '#9be08a', true); } }
   else if (beast) floater(beast.x, beast.y, 'Sproing!', '#f3e6cc');
   strip(); draw();
   const lines = T.FIX_LINES || [];
@@ -502,12 +670,23 @@ async function playerFix() {
 // Moving floors: slide whoever ends a turn on one.
 async function slideBelt(u) {
   const moved = C.slide(b, u);
-  if (!moved) return;
-  if (!b.taught.belt && T.BELT_TEACH) { b.taught.belt = true; say('juni', T.BELT_TEACH); }
-  await animateWalk(u, moved.from.x, moved.from.y, [moved.to]);
-  floater(u.x, u.y, 'Whee!', '#e0a92a');
-  draw();
-  await wait(fast ? 10 : 350);
+  if (moved) {
+    const wind = G.terrainAt(b.map, moved.from.x, moved.from.y).wind;
+    if (moved.ice && !b.taught.ice && T.ICE_TEACH) { b.taught.ice = true; say('pim', T.ICE_TEACH); }
+    else if (wind && !b.taught.wind && T.WIND_TEACH) { b.taught.wind = true; say('juni', T.WIND_TEACH); }
+    else if (!moved.ice && !wind && !b.taught.belt && T.BELT_TEACH) { b.taught.belt = true; say('juni', T.BELT_TEACH); }
+    await animateWalk(u, moved.from.x, moved.from.y, [moved.to]);
+    floater(u.x, u.y, moved.ice ? 'Wheee!' : wind ? 'Whoosh!' : 'Whee!', moved.ice ? '#bfe6ff' : '#e0a92a');
+    draw();
+    await wait(fast ? 10 : 350);
+  }
+  // Trolls heal a little after every turn, unless the sun (or fire) got them.
+  const healed = C.regen(b, u);
+  if (healed) {
+    floater(u.x, u.y, '+' + healed, '#7be08a'); burst('heart', u.x, u.y, 2);
+    if (!b.taught.regen && T.REGEN_TEACH) { b.taught.regen = true; say('mossback', T.REGEN_TEACH); await wait(fast ? 10 : 1400); }
+    draw(); await wait(fast ? 10 : 300);
+  }
 }
 
 // ---------- cards ----------
@@ -551,15 +730,8 @@ async function animateWalk(u, startX, startY, path) {
 }
 
 function floater(x, y, text, color, big) {
-  floaters.push({ x, y, text, color, big, age: 0 });
-  const t0 = performance.now();
-  const tick = now => {
-    floaters.forEach(f => { f.age = (now - t0) / 1000; });
-    floaters = floaters.filter(f => f.age < 1.2);
-    draw();
-    if (floaters.length) requestAnimationFrame(tick);
-  };
-  requestAnimationFrame(tick);
+  floaters.push({ x, y, text, color, big, age: 0, t0: performance.now() });
+  juice(1250);
 }
 
 // The dice pop-up: shows the chance squares, rolls the real dice, marks the square that came up.
@@ -663,7 +835,9 @@ function announceOuts(before) {
 async function doAttack(u, target) {
   const ch = C.chance(b, u, target);
   const before = new Set(b.units.filter(k => k.out).map(k => k.id));
-  u.pose = 'attack'; draw();
+  const aim = dirTo(u, target);
+  u.pose = 'attack'; move(u, 'windup', 300, aim); draw();
+  await wait(fast ? 0 : 200);
   const hp = b.mode === 'hp', verb = hp ? (u.id === 'hero' ? 'You attack' : u.name + ' attacks') : (u.id === 'hero' ? 'You tag' : u.name + ' tags');
   if (hp && ch.armor && !b.taught.armor && u.side === 'hero') { b.taught.armor = true; say('pim', T.ARMOR_TEACH); await waitTap('Got it!'); }
   const roll = await rollPop(u, ch.value, `${verb} ${target.id === 'hero' ? 'you' : target.name}`, u.id === 'hero', { luck: hp });
@@ -671,9 +845,10 @@ async function doAttack(u, target) {
   const tier = R.tierFor(ch.value, roll.value);
   const dmg = hp && C.FLAGS_FOR[tier] ? await damagePop(u, target, tier, C.weaponDice(u), u.id === 'hero') : null;
   const res = C.resolveAttack(b, u, target, roll, dmg);
-  if (res.lost && hp) await impact(target, res.lost, res.tier === 'legendary' || res.tier === 'exceptional' || target.out);
-  else if (res.lost) { flash(target); sfx.hit(false); floater(target.x, target.y, '-' + res.lost, u.side === 'hero' ? '#ff8070' : '#80b8ff'); }
-  else { sfx.miss(); floater(target.x, target.y, res.tier === 'disaster' ? 'Oops!' : 'Miss', '#f3e6cc'); }
+  move(u, 'lunge', 220, aim);
+  if (res.lost && hp) await impact(target, res.lost, res.tier === 'legendary' || res.tier === 'exceptional' || target.out, u);
+  else if (res.lost) { flash(target); move(target, 'squash', 260, aim); burst('bit', target.x, target.y, 6, colorsOf(S.sprite(target.spec, 0, 'idle'))); sfx.hit(false); floater(target.x, target.y, '-' + res.lost, u.side === 'hero' ? '#ff8070' : '#80b8ff'); }
+  else { sfx.miss(); if (res.tier !== 'disaster') move(target, 'lean', 320, aim); floater(target.x, target.y, res.tier === 'disaster' ? 'Oops!' : 'Miss', '#f3e6cc'); }
   markOuts(before);
   say(u.id, fill(T.RESULT[res.tier], { target: target.id === 'hero' ? 'You' : target.name, actor: u.id === 'hero' ? 'You' : u.name }));
   strip(); draw();
@@ -686,17 +861,17 @@ async function doAttack(u, target) {
 async function doArea(u, center) {
   overlay.area = C.areaTiles(b, u, center); draw();
   const before = new Set(b.units.filter(k => k.out).map(k => k.id));
-  u.pose = 'attack';
+  u.pose = 'attack'; move(u, 'windup', 300, dirTo(u, center));
   const chv = C.chance(b, u, null, { skill: u.trick.skill, ignoreCover: true }).value;
   const mine = u.ai === 'player';
   const roll = await rollPop(u, chv, `${mine ? 'You cast' : u.name + ':'} ${u.trick.name}`, mine, { luck: b.mode === 'hp' });
   u.pose = 'idle';
   const tier = R.tierFor(chv, roll.value);
-  const dmg = b.mode === 'hp' && C.FLAGS_FOR[tier] && !u.trick.sleep ? await damagePop(u, { name: u.trick.heal ? 'friend' : u.trick.r ? 'everyone in the orange squares' : 'that square', id: 'area' }, tier, u.trick.dice || '1d4', mine, u.trick.heal ? 'Healing' : null) : null;
+  const dmg = b.mode === 'hp' && C.FLAGS_FOR[tier] && !u.trick.sleep && !u.trick.dazzle ? await damagePop(u, { name: u.trick.heal ? 'friend' : u.trick.r ? 'everyone in the orange squares' : 'that square', id: 'area' }, tier, u.trick.dice || '1d4', mine, u.trick.heal ? 'Healing' : null) : null;
   const scaredBefore = { ...b.scared };
   const res = C.resolveArea(b, u, center, roll, dmg);
   if (res.heal) {
-    res.results.forEach(r => { const t = C.unitById(b, r.id); if (r.healed) floater(t.x, t.y, '+' + r.healed, '#7be08a'); });
+    res.results.forEach(r => { const t = C.unitById(b, r.id); if (r.healed) { floater(t.x, t.y, '+' + r.healed, '#7be08a'); burst('heart', t.x, t.y, 4); } });
     if (res.results.some(r => r.healed)) sfx.heal(); else sfx.tier('fail');
     overlay.area = []; strip(); draw();
     say(u.id, res.results.some(r => r.healed) ? (T.HEAL_LINE || 'All better!') : (T.HEAL_MISS || 'Oops, the spell fizzled.'));
@@ -705,7 +880,7 @@ async function doArea(u, center) {
   }
   if (res.sleep) {
     const slept = res.results.filter(r => r.slept);
-    slept.forEach(r => { const t = C.unitById(b, r.id); flash(t); floater(t.x, t.y, 'Zzz...', '#b9c8ff', true); });
+    slept.forEach(r => { const t = C.unitById(b, r.id); flash(t); burst('zzz', t.x, t.y, 3); floater(t.x, t.y, 'Zzz...', '#b9c8ff', true); });
     if (slept.length) sfx.calm(); else sfx.miss();
     overlay.area = []; strip(); draw();
     say(u.id, slept.length ? (T.SNOOZE_LINE || 'Sleepy head, cozy bed... it worked! It nodded off.') : (T.SNOOZE_MISS || 'Oops. It yawned, but it\'s still awake.'));
@@ -713,9 +888,21 @@ async function doArea(u, center) {
     if (slept.length && !b.taught.stuck) { b.taught.stuck = true; say('pim', 'It\'s asleep! A sleeping monster loses its next turn.'); await waitTap('Got it!'); }
     return;
   }
+  if (res.dazzle) {
+    const hitd = res.results.filter(r => r.dazzled);
+    hitd.forEach(r => { const t = C.unitById(b, r.id); flash(t); floater(t.x, t.y, 'Sparkles!', '#ffe27a', true); });
+    if (hitd.length) C.areaTiles(b, u, center).forEach(p => burst('glitter', p.x, p.y, 3, ['#ffe27a', '#ffffff', '#ffb0e0', '#a0e0ff']));
+    if (hitd.length) sfx.calm(); else sfx.miss();
+    overlay.area = []; strip(); draw();
+    say(u.id, hitd.length ? (T.DAZZLE_LINE || 'Sparkle sparkle! They can\'t see a thing!') : (T.DAZZLE_MISS || 'Pfft. The sparkles fizzled.'));
+    await wait(fast ? 10 : 1000);
+    if (hitd.length && !b.taught.dazzle) { b.taught.dazzle = true; say('pim', 'Dazzled! A dazzled monster has a much harder time hitting anyone on its next turn.'); await waitTap('Got it!'); }
+    return;
+  }
   for (const id in b.scared) if (b.scared[id] && !scaredBefore[id]) { const g = C.unitById(b, id); floater(g.x, g.y, 'Eek! Fire!', '#ffd060'); }
   const hits = res.results.filter(r => r.lost);
-  hits.forEach(r => flash(C.unitById(b, r.id)));
+  // fire tricks (Spark, the dragon's flame) throw sparks where they hit; pinecones and wrenches burst in the target's colors
+  hits.forEach(r => { const t = C.unitById(b, r.id); flash(t); move(t, 'squash', 280); if (u.trick.fire) burst('spark', t.x, t.y, 6); else burst('bit', t.x, t.y, 6, colorsOf(S.sprite(t.spec, 0, 'idle'))); });
   if (hits.length) { sfx.hit(hits.length > 1); if (hits.length > 1) sfx.shake($('board'), false); await wait(80); } else sfx.miss();
   res.results.forEach(r => { const t = C.unitById(b, r.id); floater(t.x, t.y, r.lost ? '-' + r.lost : 'Miss', '#ff8070'); });
   markOuts(before);
@@ -808,7 +995,7 @@ async function doSweep(u) {
   const area = b.danger.slice();
   overlay.area = area; draw();
   const chv = C.chance(b, u, null, { skill: 'swing', ignoreCover: true, ignoreArmor: true }).value;
-  u.pose = 'attack'; draw();
+  u.pose = 'attack'; move(u, 'windup', 320, { x: 0, y: 1 }); draw();
   const roll = await rollPop(u, chv, `${u.name}: flail sweep!`, false);
   u.pose = 'idle';
   const tier = R.tierFor(chv, roll.value);
@@ -817,7 +1004,7 @@ async function doSweep(u) {
   const res = C.resolveSweep(b, u, roll, dmg || { total: 0 });
   overlay.area = [];
   const swept = res.results.filter(r => r.lost);
-  if (swept.length) { sfx.boom(); sfx.shake($('board'), true); swept.forEach(r => flash(C.unitById(b, r.id))); await wait(110); } else sfx.miss();
+  if (swept.length) { sfx.boom(); sfx.shake($('board'), true); swept.forEach(r => { const t = C.unitById(b, r.id); flash(t); move(t, 'squash', 320, dirTo(u, t)); burst('bit', t.x, t.y, 8, colorsOf(S.sprite(t.spec, 0, 'idle'))); }); await wait(110); } else sfx.miss();
   res.results.forEach(r => { const t = C.unitById(b, r.id); if (r.lost) floater(t.x, t.y, '-' + r.lost, '#ff6050', true); });
   markOuts(before);
   strip(); draw();
@@ -957,8 +1144,9 @@ async function runTurn(u) {
 async function endFight() {
   playerTurn = false;
   overlay = { reach: [], targets: [], area: [] }; draw();
-  H.unlock();
   const r = b.result;
+  if (r === 'win' || r === 'calm' || r === 'fixed') { H.lock(); await victoryHop(); }
+  H.unlock();
   stopBob();
   const d = done; done = null;
   if (d) d(r);
@@ -998,8 +1186,26 @@ export function tileCenter(x, y) {
   return { x: r.left + (x + 0.5) * r.width / b.map.w, y: r.top + (y + 0.5) * r.height / b.map.h };
 }
 export function isPlayerTurn() { return playerTurn && !H.isLocked(); }
+// test hook (v1.7): fire one feel effect on a unit, and read how many particles are alive (and the most ever).
+let partsPeak = 0;
+export function feel(kind, id) {
+  const u = b && (id ? C.unitById(b, id) : b.units.find(k => !k.out));
+  if (!u) return null;
+  if (kind === 'hit') { flash(u); move(u, 'squash', 320, { x: 1, y: 0 }); burst('bit', u.x, u.y, 12, colorsOf(S.sprite(u.spec, 0, 'idle'))); }
+  if (kind === 'miss') move(u, 'lean', 320, { x: 1, y: 0 });
+  if (kind === 'windup') move(u, 'windup', 300, { x: 1, y: 0 });
+  if (kind === 'ko') burst('star', u.x, u.y - 0.2, 6);
+  if (kind === 'heal') burst('heart', u.x, u.y, 4);
+  if (kind === 'zzz') burst('zzz', u.x, u.y, 3);
+  if (kind === 'spark') burst('spark', u.x, u.y, 4);
+  if (kind === 'glitter') burst('glitter', u.x, u.y, 3, ['#ffe27a', '#ffffff', '#ffb0e0', '#a0e0ff']);
+  if (kind === 'hop') move(u, 'hop', 420);
+  if (kind === 'blink') { u.blinkAt = performance.now(); juice(160); }
+  return feelStats();
+}
+export function feelStats() { partsPeak = Math.max(partsPeak, parts.length); return { parts: parts.length, peak: partsPeak, max: MAX_PARTS }; }
 
-function startBob() { stopBob(); bobTimer = setInterval(() => { frame ^= 1; draw(); if (sayWho) face('bsay-face', (C.unitById(b, sayWho) || {}).spec); }, 480); }
+function startBob() { stopBob(); bobTimer = setInterval(() => { frame ^= 1; blinkTick(); draw(); if (sayWho) face('bsay-face', (C.unitById(b, sayWho) || {}).spec); }, 480); }
 function stopBob() { clearInterval(bobTimer); bobTimer = 0; }
 
 let wired = false;
@@ -1013,9 +1219,10 @@ function wire() {
 // Start a fight. Resolves with 'win', 'lose' or 'tie'.
 export function start(fightDef, texts, hero) {
   def = fightDef; T = texts;
+  try { const url = groundURL(fightDef.place || 'woods'); $('board-wrap').style.backgroundImage = url ? `url(${url})` : ''; } catch (e) { /* plain edge */ }
   b = C.createBattle(fightDef, hero);
   overlay = { reach: [], targets: [], area: [] };
-  heroFirstDone = !!fightDef.skipHeroFirst; heroOutSaid = false; playerTurn = false; anim = null; floaters = []; aiming = false; aimCenter = null; throwing = null;
+  heroFirstDone = !!fightDef.skipHeroFirst; heroOutSaid = false; playerTurn = false; anim = null; floaters = []; parts = []; aiming = false; aimCenter = null; throwing = null;
   wire();
   return new Promise(res => {
     done = res;
@@ -1031,4 +1238,4 @@ export function start(fightDef, texts, hero) {
   });
 }
 
-export default { init, start, setFast, state, draw, tileCenter, isPlayerTurn, tileArt };
+export default { init, start, setFast, state, draw, tileCenter, isPlayerTurn, tileArt, feel, feelStats };

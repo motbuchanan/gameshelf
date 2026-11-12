@@ -111,6 +111,10 @@ export function heal() { notes([vary(784, 0.02), 988, 1175, 1568], 0.06, { type:
 export function knockOut() { tone(520, 0.4, { type: 'square', vol: 0.09, slide: 0.3 }); noise(0.2, { filter: 'lowpass', freq: 600, vol: 0.25, delay: 0.32 }); }
 export function calm() { notes([880, 1320], 0.12, { type: 'sine', vol: 0.1, dur: 0.4 }); }
 export function coin() { notes([vary(988, 0.02), 1319], 0.07, { type: 'square', vol: 0.08, dur: 0.12 }); }
+// A friend joins: a happy little two-step chirp.
+export function cheer() { notes([659, 880, 1109], 0.07, { type: 'triangle', vol: 0.11, dur: 0.14 }); notes([1319, 1760], 0.09, { type: 'sine', vol: 0.08, dur: 0.22, delay: 0.24 }); }
+// Something flies into the Big Book: a soft page flap.
+export function whoosh() { noise(0.18, { freq: 900, sweep: 2600, q: 0.8, vol: 0.12 }); }
 export function boom() { noise(0.35, { filter: 'lowpass', freq: 500, vol: 0.5 }); tone(90, 0.3, { type: 'square', vol: 0.12, slide: 0.5 }); }
 
 // Level up and the end of a chapter.
@@ -144,4 +148,4 @@ export function shake(el, big) {
   setTimeout(() => el.classList.remove('shake', 'shake-big'), 450);
 }
 
-export default { unlock, tap, tumble, land, tier, hit, miss, heal, knockOut, calm, coin, boom, levelUp, fanfare, isOn, setOn, shakeOK, shake };
+export default { unlock, tap, tumble, land, tier, hit, miss, heal, knockOut, calm, coin, cheer, whoosh, boom, levelUp, fanfare, isOn, setOn, shakeOK, shake };

@@ -15,6 +15,19 @@ export const TERRAIN = {
   'c': { id: 'crate',  name: 'Crates',      cost: 1, blocks: false, cover: true,  enter: true },
   '>': { id: 'beltr',  name: 'Moving floor', cost: 1, blocks: false, cover: false, enter: true, belt: 1 },
   '<': { id: 'beltl',  name: 'Moving floor', cost: 1, blocks: false, cover: false, enter: true, belt: -1 },
+  // Book Four: snow, ice, mountain caves, ledges and the windy peak.
+  's': { id: 'snow',   name: 'Snow',        cost: 1, blocks: false, cover: false, enter: true },
+  'd': { id: 'drift',  name: 'Snowdrift',   cost: 2, blocks: false, cover: false, enter: true },
+  'i': { id: 'ice',    name: 'Ice',         cost: 1, blocks: false, cover: false, enter: true, ice: true },
+  'P': { id: 'pine',   name: 'Snowy pine',  cost: 0, blocks: true,  cover: false, enter: false },
+  'r': { id: 'rock',   name: 'Boulder',     cost: 0, blocks: true,  cover: false, enter: false },
+  'w': { id: 'cave',   name: 'Cave wall',   cost: 0, blocks: true,  cover: false, enter: false },
+  ',': { id: 'cavefloor', name: 'Cave floor', cost: 1, blocks: false, cover: false, enter: true },
+  'u': { id: 'sun',    name: 'Sunbeam',     cost: 1, blocks: false, cover: false, enter: true, sun: true },
+  'h': { id: 'ledge',  name: 'Ledge',       cost: 2, blocks: false, cover: false, enter: true, high: true },
+  'g': { id: 'gap',    name: 'Gap',         cost: 0, blocks: false, cover: false, enter: false },
+  '}': { id: 'windr',  name: 'Windy snow',  cost: 1, blocks: false, cover: false, enter: true, belt: 1, wind: true },
+  '{': { id: 'windl',  name: 'Windy snow',  cost: 1, blocks: false, cover: false, enter: true, belt: -1, wind: true },
 };
 
 export function makeMap(rows) {

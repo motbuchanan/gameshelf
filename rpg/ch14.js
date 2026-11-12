@@ -299,7 +299,7 @@ export const SCENES = {
       { who: 'pim', text: 'Wren has to come back here sometime. When she does, we\'ll be waiting. And we\'ll talk.' },
     ],
     heal: true,
-    levelUp: true,
+    levelUp: true, banter: true,
     next: 'cliff',
   },
   cliff: {

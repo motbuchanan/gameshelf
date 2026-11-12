@@ -66,7 +66,7 @@ export const FIGHTS = {
     warn: true,
     calm: { max: 4, bonusIf: { diary2: 10, toymaker: 10, tockNote: 5, knocked: 5, mouseDoor: 5, brassGear: 5, 'team:bolt': 10 }, startIf: { talkedFirst: 1 } },
     fix: { max: 3, target: 'beast', bonusIf: { 'team:bolt': 10, 'team:juni': 10, lockToys: 5, groveMap: 5 } },
-    summonBoost: 30,
+    summonBoost: 30, bossEnds: true,
     roundCap: 18, capResult: 'win', boost: { hp: 4, skill: 35 },
     taught: CH11.LEARNED, skipHeroFirst: true,
     meets: ['beast', 'mouse', 'bird'],
@@ -243,6 +243,7 @@ export const SCENES = {
   },
   // ----- home, and the egg -----
   home: {
+    place: 'millbrook',
     lines: [
       { who: 'narrator', text: 'A week later, Millbrook throws a party. Of course it does. Everyone comes: Gran, Captain Ward, the baker, and friends from all over.' },
       { who: 'narrator', text: 'Bramble sits in the grumpy corner. And next to her, very quietly, sits Wren.' },

@@ -307,7 +307,7 @@ export const SCENES = {
       { who: 'nell', text: '(whispering) Tomorrow, we go up that tower.' },
     ],
     heal: true,
-    levelUp: true,
+    levelUp: true, banter: true,
     next: 'end',
   },
   end: { end: true, title: 'End of Chapter 12', text: 'Next: Chapter 13, The Clock Tower.' },

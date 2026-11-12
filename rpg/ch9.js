@@ -202,6 +202,7 @@ export const SCENES = {
     next: 'tower_door',
   },
   tower_door: {
+    place: 'tower',
     lines: [
       { who: 'narrator', text: 'The tower door is tiny. Only a few kids can squeeze through at once.' },
       { who: 'mossback', text: 'If I don\'t fit, I shall guard the door. I am very good at standing in front of things.', if: 'party:mossback' },

@@ -191,6 +191,7 @@ export const SCENES = {
     next: 'fight:boss',
   },
   victory: {
+    place: 'woodsnight',
     lines: [
       { who: 'narrator', text: 'Grubjaw drops his flail. He backs away, looking at all the kids.' },
       { who: 'narrator', text: '"Ha... ha ha... okay, okay! You win! Grubjaw is going on a very long trip! Far away! Bye!"' },

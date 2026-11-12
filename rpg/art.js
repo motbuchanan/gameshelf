@@ -53,6 +53,14 @@ export const PAL = {
   catbrass: ['#5a4a2a', '#9a8450', '#d0bc84'],
   chain: ['#4e5662', '#8a94a2', '#c8d0da'],
   dragon: ['#2a6a5a', '#3fa58a', '#7ad8b8'],
+  starmother: ['#4a5a8a', '#8aa4d8', '#d8e4ff'],
+  frost: ['#8a9cb0', '#d8e4f0', '#ffffff'],
+  snowgob: ['#4a7a7a', '#7ab0aa', '#b0dcd4'],
+  stone: ['#4e5258', '#7c828a', '#a8aeb6'],
+  stonemane: ['#2e3238', '#4a4e56', '#686e76'],
+  granite: ['#5a4e58', '#8a7e88', '#b8aeb6'],
+  horse: ['#b8b0a8', '#f0ece6', '#ffffff'],
+  horsemane: ['#8a6a2a', '#d0a040', '#f0d070'],
   dbelly: ['#c8a050', '#f0d080', '#fff0b8'],
   shell: ['#b8a890', '#e8dcc8', '#fffaf0'],
   silver: ['#6a7480', '#b8c2cc', '#f4f8fc'],
@@ -124,6 +132,7 @@ export const GEAR = {
   satchel:     { slot: 'back', name: 'Satchel', kind: 'satchel' },
   quiver:      { slot: 'back', name: 'Quiver', kind: 'quiver' },
   cape:        { slot: 'back', name: 'Little cape', kind: 'cape' },
+  furcloak:    { slot: 'back', name: 'Fur cloak', kind: 'cape', mat: 'fur', fur: true },
 };
 
 // ---------- weapon + shield drawing ----------
@@ -263,7 +272,9 @@ function backLayer(g, item, b, body) {
     poly(g, [[20, 17 + b], [24, 15 + b], [27, 27 + b], [23, 29 + b]], 'leather');
     for (const [x, y] of [[21, 13], [23, 12], [25, 13]]) { line(g, x, y + b, x + 0.5, y + 4 + b, 1, 'wood'); g.set(x, y - 1 + b, 'white'); g.set(x - 1, y + b, 'white'); }
   } else if (item.kind === 'cape') {
-    poly(g, [[10, 22 + b], [22, 22 + b], [24, 34 + b], [8, 34 + b]], body.capeMat || 'hood');
+    // a little wider than the body, so the cape shows on both sides
+    poly(g, [[9, 21 + b], [23, 21 + b], [26, 35 + b], [6, 35 + b]], item.mat || body.capeMat || 'hood');
+    if (item.fur) { rect(g, 8, 20 + b, 16, 3, 'shell'); for (const x of [6, 10, 14, 18, 22, 25]) g.set(x, 35 + b, 'shell'); }
   }
 }
 
@@ -341,7 +352,8 @@ function drawKid(ctx) {
   }
   // face
   const ey = headTop + 8 + b;
-  for (const ex of [11, 18]) { rect(g, ex, ey, 2, 3, 'eye'); g.set(ex, ey, 'white'); }
+  // v1.7: a quick blink (eyes become a short line)
+  for (const ex of [11, 18]) { if (pose === 'blink') rect(g, ex, ey + 2, 2, 1, 'eye'); else { rect(g, ex, ey, 2, 3, 'eye'); g.set(ex, ey, 'white'); } }
   g.set(10, ey + 3, 'blush'); g.set(21, ey + 3, 'blush');
   if (dwarf) { g.set(15, ey + 3, 'blush'); g.set(16, ey + 3, 'blush'); }
   g.set(14, ey + 4, 'mouth'); g.set(15, ey + 5, 'mouth'); g.set(16, ey + 5, 'mouth'); g.set(17, ey + 4, 'mouth');
@@ -639,8 +651,78 @@ function drawBeast(ctx) {
     rect(g, 15, 2 + b, 3, 1, 'eye');
   }
 }
+// The baby dragon grows up a little in Book Four: no shell, four stubby legs, bigger wings.
+function drawDragonGrown(ctx) {
+  const { g, bob: b, frame, spec } = ctx;
+  const big = spec.size === 2 ? 1 : 0, w = frame === 1 ? -3 : 0;
+  line(g, 22, 29 + b, 29, 24 + b, 2 + big, 'skin'); poly(g, [[29, 21 + b], [32, 24 + b], [29, 27 + b]], 'skin');
+  poly(g, [[10, 19 + b], [1 - big, 9 + b + w], [6, 22 + b]], 'skin'); poly(g, [[22, 19 + b], [31 + big, 9 + b + w], [26, 22 + b]], 'skin');
+  for (const [x, y] of [[3, 13], [28, 13]]) g.set(x, y + b + w, 'belly');
+  ellipse(g, 16, 26 + b, 8 + big, 6 + big, 'skin');
+  ellipse(g, 16, 28 + b, 5, 4, 'belly');
+  for (const x of [10, 13, 18, 21]) { rect(g, x, 31, 3, 6, 'skin'); rect(g, x, 37, 3, 1, 'eye'); }
+  ellipse(g, 16, 14 + b - big, 7, 6, 'skin');
+  line(g, 12, 9 + b - big, 10, 5 + b - big, 1, 'belly'); line(g, 20, 9 + b - big, 22, 5 + b - big, 1, 'belly');
+  for (const ex of [13, 19]) { ellipse(g, ex, 13 + b - big, 2, 2.2, 'white'); rect(g, ex, 13 + b - big, 1, 2, 'eye'); }
+  g.set(15, 17 + b - big, 'nose'); g.set(17, 17 + b - big, 'nose');
+  g.set(11, 16 + b - big, 'blush'); g.set(21, 16 + b - big, 'blush');
+  for (const [x, y] of [[16, 21], [14, 23], [18, 23]]) g.set(x, y + b, 'belly');
+}
+// The Starmother: a huge silver-blue star dragon. She fills the whole picture.
+function drawStarmother(ctx) {
+  const { g, bob: b, frame } = ctx;
+  const w = frame === 1 ? -2 : 0;
+  poly(g, [[8, 18 + b], [0, 2 + w], [2, 22 + b]], 'skin'); poly(g, [[24, 18 + b], [32, 2 + w], [30, 22 + b]], 'skin');
+  for (const [x, y] of [[2, 8], [4, 14], [29, 8], [27, 14]]) g.set(x, y + w, 'white');
+  line(g, 22, 32, 31, 36, 3, 'skin');
+  ellipse(g, 16, 28, 10, 8, 'skin'); ellipse(g, 16, 30, 6, 5, 'belly');
+  for (const x of [8, 12, 19, 23]) { rect(g, x, 33, 3, 6, 'skin'); rect(g, x, 38, 3, 1, 'eye'); }
+  line(g, 16, 22 + b, 15, 14 + b, 5, 'skin');
+  ellipse(g, 15, 10 + b, 6, 5, 'skin'); poly(g, [[9, 10 + b], [4, 12 + b], [9, 14 + b]], 'skin');
+  line(g, 13, 6 + b, 10, 1 + b, 1, 'belly'); line(g, 18, 6 + b, 21, 1 + b, 1, 'belly');
+  ellipse(g, 13, 9 + b, 1.6, 1.6, 'glow'); g.set(13, 9 + b, 'eye'); g.set(5, 12 + b, 'nose');
+  for (const [x, y] of [[12, 25], [20, 27], [16, 31], [10, 29], [22, 31], [17, 24]]) g.set(x, y, 'white');
+}
+// Sir Bartholomew's very shiny horse.
+function drawHorse(ctx) {
+  const { g, bob: b, frame } = ctx;
+  line(g, 26, 22 + b, 30, 30 + b, 2, 'mane');
+  ellipse(g, 18, 24 + b, 9, 5, 'skin');
+  for (const x of [11, 14, 21, 24]) { rect(g, x, 27, 2, 10 - (frame && x % 2 ? 1 : 0), 'skin'); rect(g, x, 37, 2, 1, 'eye'); }
+  line(g, 11, 21 + b, 7, 12 + b, 4, 'skin');
+  poly(g, [[3, 11 + b], [9, 9 + b], [9, 14 + b], [3, 15 + b]], 'skin');
+  line(g, 9, 9 + b, 12, 20 + b, 2, 'mane');
+  g.set(6, 11 + b, 'eye'); g.set(3, 14 + b, 'nose');
+  poly(g, [[7, 8 + b], [8, 5 + b], [9, 8 + b]], 'skin');
+  rect(g, 14, 20 + b, 8, 3, 'cloth'); rect(g, 15, 23 + b, 6, 3, 'cloth');
+}
+function drawCrownTroll(ctx) {
+  drawGnoll(ctx);
+  const { g, bob: b } = ctx;
+  rect(g, 11, 2 + b, 10, 2, 'crown');
+  for (const x of [11, 15, 19]) rect(g, x, 0 + b, 2, 2, 'crown');
+  g.set(16, 3 + b, 'ember');
+}
+// The Dragon Catcher: Wren's old plans, built clanky. A cage hangs from one arm.
+function drawCatcher(ctx) {
+  drawBeast({ ...ctx, spec: { ...ctx.spec, empty: true } });
+  const { g, bob: b, spec } = ctx;
+  // Sir Bartholomew in the seat on top, plume and all
+  rect(g, 13, 4 + b, 6, 5, 'cloth');
+  ellipse(g, 16, 3 + b, 2.6, 2.4, 'silver'); rect(g, 15, 3 + b, 3, 1, 'eye');
+  line(g, 17, 1 + b, 20, -2 + b, 1, 'ember');
+  // the cage, with three locks
+  const opened = spec.fixed || 0;
+  rect(g, 0, 2 + b, 9, 10, 'iron');
+  rect(g, 1, 3 + b, 7, 8, 'dragon');
+  for (const x of [2, 4, 6]) rect(g, x, 3 + b, 1, 8, 'iron');
+  [0, 1, 2].forEach(i => g.set(1 + i * 3, 12 + b, i < opened ? 'iron' : 'glow'));
+}
+
 // The baby dragon: big eyes, little wings, half an eggshell.
 function drawDragon(ctx) {
+  if (ctx.spec.mother) return drawStarmother(ctx);
+  if (ctx.spec.grown) return drawDragonGrown(ctx);
   const { g, bob: b, frame } = ctx;
   // tail
   line(g, 22, 30 + b, 28, 27 + b, 2, 'skin'); poly(g, [[28, 25 + b], [31, 27 + b], [28, 29 + b]], 'skin');
@@ -667,7 +749,7 @@ export const BUILDS = {
     palette: s => ({ skin: SKINS[s.skin] || SKINS.peach, hair: HAIRS[s.hairColor] || HAIRS.brown, cloth: CLOTH[s.cloth] || CLOTH.green }),
     draw: drawKid,
   },
-  goblin: { palette: s => ({ skin: PAL.goblin, hood: CLOTH[s.cloth] || PAL.hood }), draw: drawGoblin },
+  goblin: { palette: s => ({ skin: PAL[s.fur] || PAL.goblin, hood: s.cloth === 'white' ? PAL.frost : (CLOTH[s.cloth] || PAL.hood) }), draw: drawGoblin },
   kobold: { palette: () => ({ skin: PAL.kobold }), draw: drawKobold },
   gnoll: { palette: s => ({ skin: PAL[s.fur] || PAL.fur, mane: PAL[s.mane] || PAL.mane }), draw: drawGnoll },
   wolf: { palette: s => ({ skin: PAL[s.fur] || PAL.wolf, belly: PAL.wolfbelly }), draw: drawWolf },
@@ -681,7 +763,12 @@ export const BUILDS = {
   bear: { palette: () => ({ skin: PAL.bearbrass, belly: PAL.copper }), draw: drawBear },
   clockbird: { palette: () => ({ skin: PAL.brass }), draw: drawClockBird },
   beast: { palette: () => ({ skin: PAL.brass, cloth: CLOTH.mustard || PAL.padded }), draw: drawBeast },
-  dragon: { palette: () => ({ skin: PAL.dragon, belly: PAL.dbelly }), draw: drawDragon },
+  dragon: { palette: s => ({ skin: s.mother ? PAL.starmother : PAL.dragon, belly: s.mother ? PAL.frost : PAL.dbelly }), draw: drawDragon },
+  // Book Four
+  horse: { palette: () => ({ skin: PAL.horse, mane: PAL.horsemane, cloth: CLOTH.red }), draw: drawHorse },
+  hound: { palette: () => ({ skin: PAL.iron, belly: PAL.copper }), draw: drawClockDog },
+  crowntroll: { palette: s => ({ skin: PAL[s.fur] || PAL.granite, mane: PAL[s.mane] || PAL.stonemane, crown: PAL.gold }), draw: drawCrownTroll },
+  catcher: { palette: () => ({ skin: PAL.iron, cloth: CLOTH.red, dragon: PAL.dragon }), draw: drawCatcher },
 };
 
 // ---------- the first cast ----------
@@ -827,8 +914,33 @@ export const CAST = [
     bio: 'The best tinker in Gearwick, and only a little older than you. She builds clockwork animals. She wore a silver mask so nobody could see she was lonely. Now she fixes toys for Old Tock, and she fixes things in fights too.' },
   { id: 'turnip', name: 'Turnip the Goat', role: 'A very hungry adventurer', group: 'friends', spec: { build: 'goat' },
     bio: 'A goat from Riverbend who ran away, ate a pie, and decided he was an adventurer. He followed the kids to Bramble\'s tower and then all the way to Gearwick. He has eaten two hats, one pie, a wall of thorns and part of a clock.' },
-  { id: 'dragon', name: 'The Baby Dragon', role: 'A brand new friend', group: 'friends', spec: { build: 'dragon' },
-    bio: 'The Starstone was never a stone. It was an egg! This tiny dragon sneezes sparkles and has never seen the world before. What happens next is Book Four.' },
+  { id: 'dragon', name: 'The Baby Dragon', role: 'Your dragon', group: 'friends', spec: { build: 'dragon' },
+    bio: 'The Starstone was never a stone. It was a star dragon\'s egg! The baby sneezes sparkles, naps on roofs, and learns a new trick on every adventure. It comes with you everywhere, and it doesn\'t take a spot on the team.' },
+  // Book Four
+  { id: 'starmother', name: 'The Starmother', role: 'A star dragon', group: 'story', spec: { build: 'dragon', mother: true },
+    bio: 'A huge silver-blue star dragon from the top of Starpeak. She searched for her lost egg for years. She lets her baby live in Millbrook, and she visits every full moon.' },
+  { id: 'sirbart', name: 'Sir Bartholomew Boldly', role: 'A knight who never won anything', group: 'story',
+    spec: { build: 'kid', people: 'human', skin: 'tan', hair: 'short', hairColor: 'brown', cloth: 'red', layers: { body: 'chainshirt', head: 'helmet', mainHand: 'longsword', offHand: 'roundshield' } },
+    bio: 'A loud, clanky knight who wants a dragon story of his own. He isn\'t mean, just desperate to be somebody. In the end he becomes the Keeper of Starpeak, a knight who protects dragons.' },
+  { id: 'dot', name: 'Dot', role: 'The knight\'s squire', group: 'friends',
+    spec: { build: 'kid', people: 'human', skin: 'brown', hair: 'curly', hairColor: 'black', cloth: 'teal', layers: { body: 'tunic', mainHand: 'dagger', back: 'satchel' } },
+    bio: 'Sir Bartholomew\'s squire. Nervous, kind, and secretly in love with dragons. She draws them on everything. She left a ribbon trail so you could find your dragon.' },
+  { id: 'shinyhorse', name: 'Sparkhoof', role: 'The knight\'s horse', group: 'story', spec: { build: 'horse' },
+    bio: 'The shiniest horse in the kingdom. Sir Bartholomew polishes him every morning. Sparkhoof would rather be eating.' },
+  { id: 'hound', name: 'Clockwork Hound', role: 'Enemy', group: 'monsters', spec: { build: 'hound' },
+    bio: 'An iron dog that sniffs out dragons. Wren built the first ones years ago and sold the plans to a knight. Hard to hit, and it never gets tired.' },
+  { id: 'fox', name: 'Frost Fox', role: 'Enemy', group: 'monsters', spec: { build: 'wolf', fur: 'frost' },
+    bio: 'A snow-white fox from the Frostpine Pass. Frost foxes hunt in little packs, and they are very good on ice. You can slide into them on purpose.' },
+  { id: 'snowgob', name: 'Snow Goblin', role: 'Enemy', group: 'monsters', spec: { build: 'goblin', fur: 'snowgob', cloth: 'white', layers: { mainHand: 'rustknife', head: 'hood' } },
+    bio: 'Grubjaw\'s mountain cousins. They wear fluffy hoods, love snowball fights, and work for anyone who pays in shiny things.' },
+  { id: 'snowgobarcher', name: 'Snowball Goblin', role: 'Enemy', group: 'monsters', spec: { build: 'goblin', fur: 'snowgob', cloth: 'white', layers: { head: 'hood', back: 'quiver' } },
+    bio: 'A snow goblin with an endless supply of snowballs. From up on a ledge, its aim gets even better.' },
+  { id: 'mtroll', name: 'Mountain Troll', role: 'Enemy', group: 'monsters', spec: { build: 'gnoll', fur: 'stone', mane: 'stonemane', layers: {} },
+    bio: 'Mossback\'s cousins from under the mountain. Big and tough, and they heal a little every turn. Sunlight makes them sleepy and stiff, so they stop healing. So does a Spark.' },
+  { id: 'granite', name: 'Queen Granite', role: 'The troll queen', group: 'monsters', spec: { build: 'crowntroll' },
+    bio: 'Mossback\'s great-aunt, queen of the troll caves. She loves riddles, manners and shiny things, and she wanted your dragon for her treasure pile.' },
+  { id: 'catcher', name: 'The Dragon Catcher', role: 'Big boss', group: 'monsters', spec: { build: 'catcher' },
+    bio: 'A clanky machine built from Wren\'s old plans, with Sir Bartholomew in the seat. It stomps, throws snowballs, and carries the dragon\'s cage on one arm. Open the cage\'s three locks to set the dragon free.' },
 ];
 
 // Hero gear choices shown in the gallery. null = nothing in that slot.

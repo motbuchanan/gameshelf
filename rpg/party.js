@@ -73,11 +73,14 @@ export const TALENTS = {
   // Book Three: new at level 7
   tinker:     { name: 'Tinker\'s Eye', text: 'You see the glowing weak spots on clockwork things: 10 more squares to hit them or fix them.' },
   helping:    { name: 'Helping Hand', text: 'Friends who help you with a skill roll give 5 more squares.' },
+  // Book Four: new at level 9
+  sure:       { name: 'Sure Feet', text: 'Ice, wind and moving floors never slide you.' },
+  dragonfriend: { name: 'Dragon Friend', text: 'Your dragon can use each of its tricks one more time in every fight.' },
 };
-export const TALENT_LEVELS = [3, 5, 7];
+export const TALENT_LEVELS = [3, 5, 7, 9];
 export const STAT_PICK_LEVELS = [4];
 // Tinker's Eye and Helping Hand only show up from level 7 (lv: the level the talent is for).
-export const TALENT_MIN_LEVEL = { tinker: 7, helping: 7 };
+export const TALENT_MIN_LEVEL = { tinker: 7, helping: 7, sure: 9, dragonfriend: 9 };
 export function talentChoices(c, lv = (c.level || 1)) { return Object.keys(TALENTS).filter(t => !(c.talents || []).includes(t) && lv >= (TALENT_MIN_LEVEL[t] || 0)); }
 
 // Leveling up. Each new level: +3 max hearts, +5 to the stat the hero is best at, and one new practiced skill they pick.

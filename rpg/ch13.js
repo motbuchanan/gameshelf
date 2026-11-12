@@ -91,6 +91,7 @@ export const FIGHTS = {
 
 export const SCENES = {
   intro: {
+    place: 'gearwick',
     lines: [
       { who: 'narrator', text: 'Morning in Gearwick. Tick, tock, ding! The kids eat breakfast at the Rusty Spring Inn and look up at the clock tower.' },
       { who: 'toymaker', text: 'You\'re going up the tower? Then take this. An oil can, for stuck gears. Wren\'s machines hate oil on their feet.' },
@@ -107,6 +108,7 @@ export const SCENES = {
   },
   // ----- getting in: three ways, three different clues -----
   door: {
+    place: 'gearwick',
     lines: [
       { who: 'narrator', text: 'The big tower door is locked tight. A sign says "KEEP OUT. I MEAN IT." Vines climb all the way up the wall to an open window.' },
       { who: 'narrator', text: 'And down by the bottom step, there\'s a door no bigger than a book, with a tiny mouse-shaped keyhole.', if: 'item:mousekey' },
@@ -168,6 +170,7 @@ export const SCENES = {
   },
   // ----- the clockwork knights: an off switch, or a fight -----
   knights: {
+    place: 'clocktower',
     lines: [
       { who: 'narrator', text: 'Up the stairs: CLANK. CLANK. Two tall suits of armor step out to block the way. Their eyes glow yellow.' },
       { who: 'narrator', text: '"HALT. NO VISITORS," they say, in voices like a squeaky door.' },
@@ -299,7 +302,7 @@ export const SCENES = {
     ],
     give: { items: { net: 1 } },
     heal: true,
-    levelUp: true,
+    levelUp: true, banter: true,
     next: 'chute',
   },
   chute: {

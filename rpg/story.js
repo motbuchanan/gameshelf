@@ -52,7 +52,15 @@ import CH13 from './ch13.js';
 import CH14 from './ch14.js';
 import CH15 from './ch15.js';
 import { CLUES } from './clues.js';
-import { SNOOZE } from './roster.js';
+import { BANTER } from './banter.js';
+import { drawPlace, placeURL, CHAPTER_PLACE, PLACE_NAME } from './backdrops.js';
+import { SNOOZE, DRAGON_TRICKS } from './roster.js';
+import J from './juice.js';
+import CH16 from './ch16.js';
+import CH17 from './ch17.js';
+import CH18 from './ch18.js';
+import CH19 from './ch19.js';
+import CH20 from './ch20.js';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -77,7 +85,12 @@ const CHAPTERS = {
   ch12: { title: 'Chapter 12: Gearwick', scenes: CH12.SCENES, fights: CH12.FIGHTS, texts: CH12.TEXT, next: 'ch13' },
   ch13: { title: 'Chapter 13: The Clock Tower', scenes: CH13.SCENES, fights: CH13.FIGHTS, texts: CH13.TEXT, next: 'ch14' },
   ch14: { title: 'Chapter 14: The Clockwork Workshop', scenes: CH14.SCENES, fights: CH14.FIGHTS, texts: CH14.TEXT, next: 'ch15' },
-  ch15: { title: 'Chapter 15: The Silver Mask', scenes: CH15.SCENES, fights: CH15.FIGHTS, texts: CH15.TEXT, next: null },
+  ch15: { title: 'Chapter 15: The Silver Mask', scenes: CH15.SCENES, fights: CH15.FIGHTS, texts: CH15.TEXT, next: 'ch16' },
+  ch16: { title: 'Chapter 16: The Hatchling', scenes: CH16.SCENES, fights: CH16.FIGHTS, texts: CH16.TEXT, next: 'ch17' },
+  ch17: { title: 'Chapter 17: The Frostpine Pass', scenes: CH17.SCENES, fights: CH17.FIGHTS, texts: CH17.TEXT, next: 'ch18' },
+  ch18: { title: 'Chapter 18: Under the Mountain', scenes: CH18.SCENES, fights: CH18.FIGHTS, texts: CH18.TEXT, next: 'ch19' },
+  ch19: { title: 'Chapter 19: The Sky Bridge', scenes: CH19.SCENES, fights: CH19.FIGHTS, texts: CH19.TEXT, next: 'ch20' },
+  ch20: { title: 'Chapter 20: Starpeak', scenes: CH20.SCENES, fights: CH20.FIGHTS, texts: CH20.TEXT, next: null },
 };
 export const hasChapter = id => !!CHAPTERS[id];
 export function chapterTitle(chId) { return CHAPTERS[chId] ? CHAPTERS[chId].title : ''; }
@@ -85,7 +98,7 @@ const clone = o => JSON.parse(JSON.stringify(o));
 const chapterNum = id => parseInt(String(id).replace(/\D/g, ''), 10) || 1;
 export const HELP_BONUS = 10;
 
-let ch = null, hero = null, frame = 0, timer = 0, speaker = null;
+let ch = null, hero = null, frame = 0, timer = 0, speaker = null, tick = 0, place = 'woods';
 
 // ---------- flags, party, conditions ----------
 function sv() { return save.get(); }
@@ -108,17 +121,49 @@ function setFlags(obj) {
 }
 // Clues found by a scene are announced when its last line shows, so the toast never gets ahead of the story.
 let heldClues = null;
-function clueToast(list) { if (list && list.length) { sfx.coin(); H.toast('New clue in the Big Book: ' + list.map(c => c.name).join(', ') + '!', 3400); } }
-function flushClues() { const l = heldClues; heldClues = null; clueToast(l); }
+function clueToast(list) { if (list && list.length) { sfx.coin(); H.toast('New clue in the Big Book: ' + list.map(c => c.name).join(', ') + '!', 3400); toBook(); } }
+// v1.7: a little book flies from the toast to the Big Book tab, and the tab wiggles.
+function toBook() { setTimeout(() => { sfx.whoosh(); J.flyTo($('toast'), document.querySelector('.navbtn[data-screen="gallery-screen"]'), I.icon('book', 34)); }, fast ? 0 : 250); }
+function flushClues() { const l = heldClues; heldClues = null; clueToast(l); flushJoins(); if (heldCoins) { const c = heldCoins; heldCoins = null; coinPop(...c); } }
+let heldCoins = null;
+// v1.7: a friend who joins pops in with a cheer, when the scene's last line shows.
+let heldJoins = null;
+function flushJoins() { const l = heldJoins; heldJoins = null; if (l && l.length) friendPop(l); }
+let joinTimer = 0;
+function friendPop(ids) {
+  let el = $('join-pop');
+  if (!el) { el = document.createElement('div'); el.id = 'join-pop'; el.className = 'xp-pop join-pop'; el.setAttribute('role', 'status'); el.addEventListener('click', () => el.classList.remove('show')); document.body.appendChild(el); }
+  const names = ids.map(nameFor);
+  const said = names.length === 1 ? names[0] + ' joined your team!' : names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1] + ' joined your team!';
+  el.innerHTML = `<span class="join-faces">${ids.map(id => `<canvas width="32" height="40" data-k="${esc(id)}"></canvas>`).join('')}</span><b>${esc(said)}</b>`;
+  el.querySelectorAll('canvas').forEach(cv => { const sp = specFor(cv.dataset.k); if (sp) S.draw(cv.getContext('2d'), sp, 0, 0, 1, 0); });
+  el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+  sfx.cheer();
+  J.starBurst(el.querySelector('.join-faces'), 8);
+  clearTimeout(joinTimer); joinTimer = setTimeout(() => el.classList.remove('show'), 2800);
+}
+// v1.7: coins you earn count up in a little pop; the town and the smithy count too.
+let lastCoins = null, coinTimer = 0;
+function coinPop(from, to) {
+  let el = $('coin-pop');
+  if (!el) { el = document.createElement('div'); el.id = 'coin-pop'; el.className = 'xp-pop coin-pop'; el.setAttribute('role', 'status'); el.addEventListener('click', () => el.classList.remove('show')); document.body.appendChild(el); }
+  el.innerHTML = `${I.icon('coin', 34)}<b>+${to - from}</b><span><i id="coin-pop-n">${from}</i> coins</span>`;
+  el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+  sfx.coin();
+  setTimeout(() => J.countUp($('coin-pop-n'), from, to, 700), fast ? 0 : 220);
+  lastCoins = to;
+  clearTimeout(coinTimer); coinTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
 export function party() {
   const s = sv(); if (!s) return START_PARTY.slice();
   if (!Array.isArray(s.party)) s.party = START_PARTY.slice();
   return s.party;
 }
 function join(ids) {
-  const p = party();
-  [].concat(ids).forEach(id => { if (!p.includes(id)) p.push(id); book.meet(id); F.joined(sv(), id); });
+  const p = party(), fresh = [];
+  [].concat(ids).forEach(id => { if (!p.includes(id)) { p.push(id); fresh.push(id); } book.meet(id); F.joined(sv(), id); });
   save.write();
+  if (fresh.length) { if (heldJoins) heldJoins.push(...fresh); else friendPop(fresh); }
 }
 function test1(c) {
   if (c.startsWith('party:')) return party().includes(c.slice(6));
@@ -140,52 +185,82 @@ export function cond(o) {
 // ---------- faces ----------
 function specFor(who) {
   if (who === 'hero') return P.spriteSpec(hero);
+  if (who === 'dragon' && storyFlags().dragonGrown) return { build: 'dragon', grown: true, size: storyFlags().dragonBig ? 2 : 1 };
   const c = CAST.find(k => k.id === who);
   return c ? c.spec : null;
 }
+// The baby dragon's name, picked by the player in Chapter 16.
+export function dragonName() { return storyFlags().dragonName || 'the dragon'; }
 function nameFor(who) {
   if (who === 'hero') return hero.name;
+  if (who === 'dragon' && storyFlags().dragonName) return storyFlags().dragonName;
   const c = CAST.find(k => k.id === who);
   if (!c) return '';
   // "The Silver Mask" shows as "Silver Mask", and "Old Tock" keeps both words.
   const w = c.name.split(' ');
   return w[0] === 'The' ? w.slice(1).join(' ') : w[0] === 'Old' ? w.slice(0, 2).join(' ') : w[0];
 }
-const fill = t => String(t).replace(/\{name\}/g, hero.name);
+const fill = t => String(t).replace(/\{name\}/g, hero.name).replace(/\{dragon\}/g, dragonName());
 
-// The narrator gets a little woods scene with the party in it instead of one face.
-function drawScene(c) {
-  const K = '#1a120c';
-  c.fillStyle = '#4f8a3c'; c.fillRect(0, 0, 128, 80);
-  for (let i = 0; i < 60; i++) { c.fillStyle = i % 2 ? '#5f9a48' : '#437a33'; c.fillRect((i * 37) % 128, 30 + (i * 23) % 50, 1, 1); }
-  c.fillStyle = '#2d5a3a'; c.fillRect(0, 0, 128, 26);
-  for (let x = -6; x < 128; x += 18) {
-    const h = 8 + ((x * 7) & 7);
-    c.fillStyle = K; c.fillRect(x + 6, 14 + h - 8, 4, 14);
-    c.fillStyle = '#6b4226'; c.fillRect(x + 7, 14 + h - 8, 2, 14);
-    c.fillStyle = K; c.fillRect(x, h - 8, 16, 16);
-    c.fillStyle = '#245a26'; c.fillRect(x + 1, h - 7, 14, 14);
-    c.fillStyle = '#3a7a34'; c.fillRect(x + 3, h - 5, 4, 3);
-  }
+// The story picture is always the place you're in. The narrator shows the party standing there; a speaker is
+// drawn big, standing in front of the same place.
+function sceneKids() {
   const who = (ch && ch.sceneKids) || party().slice(0, 3);
-  const kids = [hero && P.spriteSpec(hero), ...who.map(specFor)].filter(Boolean).slice(0, 4);
-  kids.forEach((sp, i) => S.draw(c, sp, 6 + i * 30, 36, 1, (frame + i) % 2));
+  return [hero && P.spriteSpec(hero), ...who.map(specFor)].filter(Boolean).slice(0, 4);
+}
+function drawScene(c) {
+  drawPlace(c, place, tick);
+  sceneKids().forEach((sp, i) => S.draw(c, sp, 6 + i * 30, 36, 1, (frame + i) % 2));
 }
 function drawFace() {
   const cv = $('story-face'); if (!cv) return;
   const spec = speaker && specFor(speaker);
-  const w = spec ? 32 : 128, h = spec ? 40 : 80;
-  if (cv.width !== w) { cv.width = w; cv.height = h; }
-  const c = cv.getContext('2d'); c.imageSmoothingEnabled = false; c.clearRect(0, 0, w, h);
-  if (spec) S.draw(c, spec, 0, 0, 1, frame); else drawScene(c);
+  if (cv.width !== 128) { cv.width = 128; cv.height = 80; }
+  const c = cv.getContext('2d'); c.imageSmoothingEnabled = false; c.clearRect(0, 0, 128, 80);
+  const now = performance.now();
+  const hy = hopAt && now - hopAt < 340 ? Math.round(Math.sin(Math.PI * (now - hopAt) / 340) * 5) : 0;
+  const pose = blinkAt && now - blinkAt < 170 ? 'blink' : 'idle';
+  if (spec) { drawPlace(c, place, tick); S.draw(c, spec, 32, -hy, 2, frame, pose); } else drawScene(c);
   $('story-stage').classList.toggle('narrator', !spec);
+  drawTeam();
 }
+// under the picture: where you are, and your team standing together
+function drawTeam() {
+  const where = $('story-where'), nm = PLACE_NAME[place] || ''; if (where && where.textContent !== nm) where.textContent = nm;
+  const cv = $('story-team'); if (!cv || !cv.offsetParent) return;
+  const c = cv.getContext('2d'); c.imageSmoothingEnabled = false; c.clearRect(0, 0, 128, 44);
+  c.save(); c.translate(0, -36); drawPlace(c, place, tick); c.restore();
+  const kids = sceneKids(); const gap = Math.min(30, 120 / Math.max(1, kids.length));
+  kids.forEach((sp, i) => S.draw(c, sp, 4 + i * gap, 2, 1, (frame + i + 1) % 2));
+}
+function setPlace(p) { if (p && p !== place) { place = p; drawFace(); } }
 
+// v1.7: each line slides in, and a speaker hops a little when they start talking.
+let hopAt = 0, blinkAt = 0;
+function hopSpeaker() {
+  if (J.still()) return;
+  hopAt = performance.now();
+  const step = () => { drawFace(); if (performance.now() - hopAt < 360) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+}
 function showLine(line) {
+  const was = speaker;
   speaker = line.who === 'narrator' || !line.who ? null : line.who;
   $('story-name').textContent = speaker ? nameFor(speaker) : 'The story';
-  $('story-say').textContent = fill(line.text);
+  const say = $('story-say');
+  say.textContent = fill(line.text);
+  J.pop(say, 'say-in');
   drawFace();
+  if (speaker && speaker !== was) hopSpeaker();
+}
+// A picked choice glows for a moment before the story moves on.
+async function chosen(id) {
+  const act = $('story-act'), el = $(id);
+  act.classList.add('picking');
+  if (el) el.classList.add('chosen');
+  act.querySelectorAll('button[id]').forEach(b => b.removeAttribute('id'));   // the old choices are finished
+  await new Promise(r => setTimeout(r, fast ? 0 : 230));
+  act.classList.remove('picking');
 }
 
 function button(id, label, big, onClick) {
@@ -228,11 +303,11 @@ function xpFloor(level) {
   s.hero.xp = need; hero = s.hero; save.write();
   return add;
 }
-// Story caps: level 3 waits for Grubjaw (Chapter 5), level 5 waits for Bramble (Chapter 10), and level 7 waits
-// for the Silver Mask (Chapter 15), whatever XP says.
+// Story caps: level 3 waits for Grubjaw (Chapter 5), level 5 waits for Bramble (Chapter 10), level 7 waits
+// for the Silver Mask (Chapter 15), and level 9 waits for Starpeak (Chapter 20), whatever XP says.
 export function levelCap(s) {
   const f = (s && s.flags) || {}, st = f.story || {};
-  return !f.ch5 ? 2 : !f.ch10 ? 4 : !(f.ch15 || st.maskDone) ? 6 : 99;
+  return !f.ch5 ? 2 : !f.ch10 ? 4 : !(f.ch15 || st.maskDone) ? 6 : !(f.ch20 || st.starDone) ? 8 : 99;
 }
 // Rest time: level up once for every full star bar.
 async function restLevelUps() {
@@ -305,7 +380,7 @@ function applyEffects(sc) {
     const again = free && pk && paid[pk];
     if (free && pk) paid[pk] = 1;
     if (again) H.toast('You already got this reward the first time.', 2600);
-    if (g.coins && !(again && g.coins > 0)) s.coins = Math.max(0, (s.coins || 0) + g.coins);
+    if (g.coins && !(again && g.coins > 0)) { const c0 = s.coins || 0; s.coins = Math.max(0, c0 + g.coins); if (s.coins > c0) { const shown = [c0, s.coins]; if (heldClues) heldCoins = shown; else coinPop(...shown); } }
     if (g.spell) { s.hero.spells = s.hero.spells || []; if (!s.hero.spells.includes(g.spell)) s.hero.spells.push(g.spell); }
     if (g.talent) { s.hero.talents = s.hero.talents || []; if (!s.hero.talents.includes(g.talent)) s.hero.talents.push(g.talent); }
     if (g.items) { s.hero.items = s.hero.items || {}; for (const k in g.items) { if (again && k === 'potion') continue; s.hero.items[k] = (s.hero.items[k] || 0) + g.items[k]; } }
@@ -326,15 +401,17 @@ async function playScene(id) {
   if (!sc) throw new Error('missing scene ' + id);
   // random: pick one of several scenes (riddles change each time you play)
   if (sc.random) return playScene(sc.random[rint(0, sc.random.length - 1)]);
+  if (sc.place) setPlace(sc.place);
   if (sc.end) return chapterEnd(sc);
-  heldClues = [];
+  heldClues = []; heldJoins = [];
   sc._id = id;
   applyEffects(sc);
   if (sc.xp) earnXP(ch.id + ':' + (sc.xpKey || id), sc.xp, sc.xpWhy || 'You got past it!');
   if (sc.xpFloor) { const x0 = (hero.xp || 0) - (sc.xp || 0); if (xpFloor(sc.xpFloor)) xpPop((hero.xp || 0) - x0, (sc.xpWhy || 'Big win!') + ' You reached level ' + sc.xpFloor + '!'); }
   if (sc.hurt) H.toast(`Ouch! You lose ${sc.hurt === 1 ? 'a heart' : sc.hurt + ' hearts'}.`);
   const act = $('story-act');
-  const lines = (sc.lines || []).filter(cond);
+  // banter: camp chatter from every friend on the team comes first (Books Three and Four).
+  const lines = [...(sc.banter ? BANTER(chapterNum(ch.id)) : []), ...(sc.lines || [])].filter(cond);
   // Choices whose conditions all fail are skipped (the scene just goes on to nextIf / next).
   const shown = (sc.choices || []).filter(cond);
   const waitsAfter = shown.length || sc.check || sc.pickTeam || sc.hub || sc.trailmap;
@@ -347,10 +424,11 @@ async function playScene(id) {
     await new Promise(res => act.appendChild(button('story-next', 'Next', true, res)));
   }
   flushClues();
+  if (sc.nameDragon) await nameDragonStep();
   if (sc.check) return playScene(await runCheck(sc.check, id));
   if (shown.length) {
     act.innerHTML = '';
-    const pick = await new Promise(res => shown.forEach((c, k) => act.appendChild(button('story-choice-' + k, fill(c.label), k === 0, () => res(c)))));
+    const pick = await new Promise(res => shown.forEach((c, k) => act.appendChild(button('story-choice-' + k, fill(c.label), k === 0, () => chosen('story-choice-' + k).then(() => res(c))))));
     setFlags(pick.set);
     if (pick.retry) ch.retry = true;
     return playScene(pick.go);
@@ -362,6 +440,33 @@ async function playScene(id) {
   if (sc.levelUp) await restLevelUps();
   const nx = (sc.nextIf || []).find(cond);
   return playScene(nx ? nx.go : sc.next);
+}
+
+// ---------- naming the dragon ----------
+const DRAGON_IDEAS = ['Sparkle', 'Comet', 'Pebble', 'Nugget', 'Twinkle', 'Ember', 'Biscuit', 'Pip', 'Sprout', 'Mochi', 'Blue', 'Zap', 'Puddle', 'Star', 'Waffle', 'Bean'];
+async function nameDragonStep() {
+  speaker = 'dragon'; drawFace();
+  $('story-name').textContent = 'Name your dragon';
+  $('story-say').innerHTML = `<div class="dname"><p>What will you call your baby dragon?</p><input id="dragon-name" class="name-input" maxlength="12" autocomplete="off" autocapitalize="words" value="${esc(storyFlags().dragonName || '')}" aria-label="Dragon name"></div>`;
+  const act = $('story-act'); act.innerHTML = '';
+  const inp = $('dragon-name');
+  return new Promise(res => {
+    const idea = document.createElement('button'); idea.type = 'button'; idea.id = 'dragon-idea'; idea.className = 'btn'; idea.textContent = 'Give me an idea';
+    idea.addEventListener('click', () => { const pool = DRAGON_IDEAS.filter(n => n !== inp.value); inp.value = pool[rint(0, pool.length - 1)]; ok.disabled = false; });
+    const ok = button('dragon-ok', 'That\'s the name!', true, () => {});
+    ok.disabled = !inp.value.trim();
+    inp.addEventListener('input', () => { ok.disabled = !inp.value.trim(); });
+    const done = () => {
+      const n = inp.value.trim().replace(/\s+/g, ' ').slice(0, 12);
+      if (!n) return;
+      const nice = n.charAt(0).toUpperCase() + n.slice(1);
+      setFlags({ dragonName: nice });
+      res(nice);
+    };
+    ok.addEventListener('click', function go() { if (!inp.value.trim()) { ok.addEventListener('click', go, { once: true }); return; } done(); }, { once: true });
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter' && inp.value.trim()) { e.preventDefault(); inp.blur(); done(); } });
+    act.appendChild(idea); act.appendChild(ok);
+  });
 }
 
 // ---------- skill checks ----------
@@ -449,7 +554,17 @@ function buildFight(name) {
       d.units.push(unit);
     });
   }
-  d.events = (d.events || []).filter(cond);
+  // Book Four: the dragon comes on every adventure without taking a team spot. Its tricks grow chapter by chapter.
+  d.dragonName = f.dragonName || 'your dragon';
+  d.place = d.place || place;
+  if (d.dragon && f.dragon && f.dragonName) {
+    const extra = (f.careNap ? 1 : 0) + ((hero.talents || []).includes('dragonfriend') ? 1 : 0);
+    const tricks = DRAGON_TRICKS.filter(t => f[t.flag]).map(t => ({ ...t, uses: t.uses + extra }));
+    const unit = { id: 'dragon', monster: 'babydragon', name: f.dragonName, side: 'hero', ai: 'friend', x: d.dragon.x, y: d.dragon.y,
+      spec: { grown: !!f.dragonGrown, size: f.dragonBig ? 2 : 1 }, tricks, hpPlus: f.careFed ? 3 : 0, skillPlus: f.carePlayed ? 10 : 0, fly: !!f.dragonWings };
+    d.units.push(unit);
+  }
+  d.events = (d.events || []).filter(cond).map(e => (e.lines ? { ...e, lines: e.lines.filter(cond) } : e));
   if (d.cage && d.team) {
     const team = d.units.filter(u => u.side === 'hero' && u.ai === 'friend' && !u.bystander).map(u => u.id);
     if (!team.includes(d.cage.opener)) d.cage.opener = team[0];
@@ -479,7 +594,7 @@ async function fight(name) {
   const fresh = (def.meets || []).filter(id => book.meet(id));
   H.setAdvView('battle-screen');
   const result = await board.start(def, ch.texts, hero);
-  if (fresh.length) H.toast('New in the Big Book: ' + fresh.map(id => (CAST.find(c => c.id === id) || {}).name).join(', ') + '!');
+  if (fresh.length) { H.toast('New in the Big Book: ' + fresh.map(id => (CAST.find(c => c.id === id) || {}).name).join(', ') + '!'); toBook(); }
   ch.result = result;
   if (def.mode === 'hp') {
     const me = C.unitById(board.state(), 'hero');
@@ -588,7 +703,8 @@ async function hub(h, hubId) {
   const s = sv();
   speaker = null; drawFace();
   $('story-name').textContent = h.place || 'Millbrook';
-  $('story-say').innerHTML = `<div class="hub"><p>${esc(fill(h.text || 'Where do you want to go?'))}</p><div class="hub-coins">${I.icon('coin', 22)} <b id="hub-coins">${s.coins || 0}</b> coins</div><div class="hub-grid" id="hub-grid"></div></div>`;
+  $('story-say').innerHTML = `<div class="hub" style="--hub-bg:url(${placeURL(place, 0.25)})"><p>${esc(fill(h.text || 'Where do you want to go?'))}</p><div class="hub-coins">${I.icon('coin', 22)} <b id="hub-coins">${lastCoins == null ? s.coins || 0 : lastCoins}</b> coins</div><div class="hub-grid" id="hub-grid"></div></div>`;
+  J.countUp($('hub-coins'), lastCoins == null ? s.coins || 0 : lastCoins, s.coins || 0); lastCoins = s.coins || 0;
   const grid = $('hub-grid');
   return new Promise(res => {
     h.people.filter(cond).forEach(p => {
@@ -635,14 +751,15 @@ async function shop(opts) {
       const itemRows = stock.filter(it => ITEMS[it.id]).map(it => `<div class="shop-row"><span class="shop-ico">${I.icon(ITEM_ICON[it.id] || 'star', 28)}</span><b>${esc(ITEMS[it.id].name)}${h.items[it.id] ? ' (' + h.items[it.id] + ')' : ''}</b><span>${esc(ITEMS[it.id].what)}</span>${ITEMS[it.id].keep && h.items[it.id] ? '<span class="shop-on">Yours!</span>' : `<button class="btn small${(s.coins || 0) >= it.price ? '' : ' off'}" id="shop-buy-${it.id}" type="button">${I.icon('coin', 14)} ${it.price}</button>`}</div>`).join('');
       const rows = stock.filter(it => GEAR[it.id]).map(it => {
         const g = GEAR[it.id], own = h.bag.includes(it.id) || Object.values(h.gear).includes(it.id), wearing = h.gear[g.slot] === it.id;
-        const what = g.dice ? `${I.icon('die', 16)} ${g.dice}` : ({ buckler: 'Armor', ironcap: 'Armor', padded: 'Armor', helmet: 'Strong armor', roundshield: 'Strong armor', chainshirt: 'Armor', cape: 'Looks great' }[it.id] || '');
+        const what = g.dice ? `${I.icon('die', 16)} ${g.dice}` : ({ buckler: 'Armor', ironcap: 'Armor', padded: 'Armor', helmet: 'Strong armor', roundshield: 'Strong armor', chainshirt: 'Armor', cape: 'Looks great', furcloak: 'Warm armor' }[it.id] || '');
         const btn = wearing ? '<span class="shop-on">Wearing</span>' : own ? `<button class="btn small" id="shop-wear-${it.id}" type="button">Wear</button>`
           : `<button class="btn small${(s.coins || 0) >= it.price ? '' : ' off'}" id="shop-buy-${it.id}" type="button">${I.icon('coin', 14)} ${it.price}</button>`;
         return `<div class="shop-row"><canvas width="32" height="40" data-g="${it.id}"></canvas><b>${esc(g.name)}</b><span>${what}</span>${btn}</div>`;
       }).join('');
       const bagRows = !stock.some(it => GEAR[it.id]) ? '' : h.bag.filter(id => !stock.some(it => it.id === id) && GEAR[id] && h.gear[GEAR[id].slot] !== id)
         .map(id => `<div class="shop-row"><canvas width="32" height="40" data-g="${id}"></canvas><b>${esc(GEAR[id].name)}</b><span>In your bag</span><button class="btn small" id="shop-wear-${id}" type="button">Wear</button></div>`).join('');
-      $('story-say').innerHTML = `<div class="shop"><p>${esc((opts && opts.say) || '"Real gear for real heroes. Goblin junk pays for it!"')}</p><div class="hub-coins">${I.icon('coin', 22)} <b>${s.coins || 0}</b> coins</div>${itemRows}${rows}${bagRows}</div>`;
+      $('story-say').innerHTML = `<div class="shop"><p>${esc((opts && opts.say) || '"Real gear for real heroes. Goblin junk pays for it!"')}</p><div class="hub-coins">${I.icon('coin', 22)} <b id="shop-coins">${lastCoins == null ? s.coins || 0 : lastCoins}</b> coins</div>${itemRows}${rows}${bagRows}</div>`;
+      J.countUp($('shop-coins'), lastCoins == null ? s.coins || 0 : lastCoins, s.coins || 0, 450); lastCoins = s.coins || 0;
       $('story-say').querySelectorAll('canvas[data-g]').forEach(cv => {
         if (!cv.dataset.g) { cv.remove(); return; }
         const g = GEAR[cv.dataset.g];
@@ -680,6 +797,8 @@ async function levelUpScreen() {
   speaker = 'hero'; drawFace();
   $('story-name').textContent = '';
   sfx.levelUp();
+  hopSpeaker(); setTimeout(hopSpeaker, 420);
+  J.starBurst($('story-face'), 14);
   if (P.STAT_PICK_LEVELS.includes(next)) {
     $('story-say').innerHTML = `<div class="lvl">${title}<p>Your XP star bar is full! This time YOU choose what grows. Pick one:</p></div>`;
     act.innerHTML = '';
@@ -727,7 +846,7 @@ async function chapterEnd(sc) {
   await restLevelUps();   // after the chapter is saved, so closing the iPad here loses nothing
   speaker = null; drawFace();
   $('story-name').textContent = '';
-  const portraits = sc.party ? `<div class="end-party" id="end-party">${[...new Set(['hero', ...party(), ...(sc.extraFaces || [])])].map(id => `<canvas width="32" height="40" data-k="${id}"></canvas>`).join('')}</div>` : '';
+  const portraits = sc.party ? `<div class="end-party" id="end-party">${[...new Set(['hero', ...party(), ...(sc.extraFaces || [])])].map((id, k) => `<canvas width="32" height="40" data-k="${id}" style="--i:${k}"></canvas>`).join('')}</div>` : '';
   $('story-say').innerHTML = `<div class="end-title">${I.icon('star', 32)}<span>${esc(sc.title)}</span>${I.icon('star', 32)}</div>${portraits}<p>${esc(fill(sc.text))}</p>`;
   sfx.fanfare();
   $('story-say').querySelectorAll('#end-party canvas').forEach(cv => S.draw(cv.getContext('2d'), specFor(cv.dataset.k), 0, 0, 1, 0));
@@ -737,8 +856,23 @@ async function chapterEnd(sc) {
   act.appendChild(button('story-again', 'Play this chapter again', false, () => play(ch.id)));
 }
 
-function startAnim() { stopAnim(); timer = setInterval(() => { frame ^= 1; drawFace(); }, 480); }
+// Ambient life: the place's little movements (snow, smoke, gears) tick about 6 times a second; sprites bob every third tick.
+// With "reduce motion" on, the place holds still and only the slow bob stays.
+const stillPlaces = (() => { try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } })();
+function startAnim() {
+  stopAnim();
+  timer = setInterval(() => {
+    if (!stillPlaces) tick++; else tick = 3;
+    if (stillPlaces || ++animStep % 3 === 0) frame ^= 1;
+    // a speaker blinks now and then (about every four seconds)
+    if (speaker && Math.random() < (stillPlaces ? 0.12 : 0.04)) { blinkAt = performance.now(); setTimeout(drawFace, 180); }
+    drawFace();
+  }, stillPlaces ? 480 : 160);
+}
+let animStep = 0;
 function stopAnim() { clearInterval(timer); timer = 0; }
+// The picture only animates while the story screen is showing (not behind the dice or the Big Book).
+export function setShowing(on) { if (on && ch) startAnim(); else stopAnim(); }
 
 export function play(chId) {
   const s = sv();
@@ -746,6 +880,7 @@ export function play(chId) {
   if (!CHAPTERS[chId]) return;
   hero = s.hero;
   party(); storyFlags();
+  lastCoins = null;
   ch = { id: chId, ...CHAPTERS[chId], result: null, snapshot: null, retry: false, sceneKids: null, replay: !!((s.flags || {})[chId]) };
   // Book Three: the last team picked stays the team (and the rest stay home) until a new pick.
   const sf = storyFlags();
@@ -754,9 +889,10 @@ export function play(chId) {
     ch.home = party().filter(id => !ch.team.includes(id) && F.JOBS[id]);
   }
   $('story-chapter').textContent = ch.title;
+  place = CHAPTER_PLACE[chId] || 'woods';
   H.setAdvView('story-screen');
   startAnim();
   return playScene('intro');
 }
 
-export default { init, play, chapterTitle, hasChapter, setFast, cond, party, storyFlags, SHOP, ITEMS };
+export default { setShowing, init, play, chapterTitle, hasChapter, setFast, cond, party, storyFlags, SHOP, ITEMS };

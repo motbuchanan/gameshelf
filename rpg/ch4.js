@@ -170,6 +170,7 @@ export const SCENES = {
     next: 'tunnels',
   },
   tunnels: {
+    place: 'caves',
     lines: [
       { who: 'narrator', text: 'Inside, the tunnels are low and dark. Roots hang from the ceiling. Something drips.' },
       { who: 'pim', text: 'Careful. Kobolds put traps in goblin tunnels. It\'s like their job.' },
@@ -337,6 +338,7 @@ export const SCENES = {
     next: 'rest',
   },
   rest: {
+    place: 'woodsnight',
     lines: [
       { who: 'narrator', text: 'Out under the stars, the kids rest. Tobin shares the snacks he saved in his pockets.' },
       { who: 'pim', text: 'One more day. Then we get Juni.' },

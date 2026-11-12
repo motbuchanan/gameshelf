@@ -183,6 +183,7 @@ export const SCENES = {
     next: 'home',
   },
   home: {
+    place: 'millbrook',
     lines: [
       { who: 'narrator', text: 'A week later, the whole town of Millbrook and half of Riverbend plant a hundred little trees at the far edge of Whisper Woods, right where the old silver grove used to stand.' },
       { who: 'narrator', text: 'Then there\'s a party. Of course there\'s a party. And Bramble comes. She sits in the corner looking grumpy, but she comes.' },
