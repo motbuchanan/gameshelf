@@ -92,6 +92,19 @@ Writes plays to `bloodstream_games` (shelf Most Played); progress in `bloodstrea
 `bloodstream_games` added to gamenight GAME_KEYS / achievements NAMES in the Oct 25 repair round.
 - [ ] Phase 2: Fighty germ-swat minigame, Brain missions, more organs/bosses, crew bios in Journal **IDEA**
 
+### Oops Lab: mistakes-are-fun contraption game  **LIVE**
+Path: `oopslab.html` · Current: **v0.62** (2026-11-12) · shelf **v78**
+Single-file canvas game (arcade cabinet, ARCADE_H, sits after Bloodstream). Built to practice making
+mistakes and handling the feelings without grading the player: the player coaches a crew character
+through frustration (5 calm-down tools, all valid; each character has a hidden favorite) and collects
+failures as cards. 8 characters (4 unlock by play, Perfectionator has a growth arc), 5 contraptions
+(Catapult, Splash Cannon, Balloon Lift, Rocket, Seesaw), 5 ammo, 4 test yards, 70 Oops Book cards +
+crew versions, combos, rare moments, 49 badges, 14 Lab Tales, Oops Museum, Buddy Mode, crew shout-outs.
+Progress in localStorage `oopslab.v1`. Does NOT load gamenight.js and writes no `_games` record yet,
+so it is not in Most Played or the shelf achievements (no GAME_KEYS / NAMES entry needed until it does).
+- [ ] Optional: record plays to `oopslab_games` (needs gamenight GAME_KEYS + achievements NAMES) **IDEA**
+- [ ] Art pass for the other contraptions and the moon (v0.6 detail is Test Yard + catapult) **IDEA**
+
 ### Measure Up: build-a-band math game  **LIVE**
 Path: `/measureup/` · Current: **v0.33** (2026-08-23)
 Single-file HTML PWA. Build a band of 11 members + Elly the host; each member
