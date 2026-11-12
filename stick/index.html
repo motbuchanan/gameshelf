@@ -65,6 +65,7 @@
   .pad .tag{position:absolute; top:-8px; right:-8px; background:var(--gold); color:#000; font-size:11px; border-radius:999px; padding:2px 7px;}
   .ring{position:absolute; border:3px solid #fff; border-radius:50%; transform:translate(-50%,-50%); pointer-events:none; animation:ring .35s ease-out forwards;}
   @keyframes ring{from{opacity:.8; scale:1} to{opacity:0; scale:1.6}}
+  .kitwrap.lefty .pad .lbl{transform:scaleX(-1)}
   .kitwrap.edit .pad{outline:2px dashed var(--early); outline-offset:4px}
   .editbox{display:none}
   .editbox.show{display:block}
@@ -117,7 +118,7 @@
     <h1>ST<span style="color:var(--gold)">I</span>CK</h1>
     <p class="sub" style="margin:0">see · tap · internalize · count · keep time</p>
   </div>
-  <span id="verBadge">v0.4 · Nov 12</span>
+  <span id="verBadge">v0.5 · Nov 12</span>
 </div>
 <div class="bar" style="margin-top:8px">
   <div class="seg" id="modeSeg">
@@ -138,7 +139,13 @@
   <div class="row"><b style="font-size:17px">Today's 5 minutes</b><span class="grow"></span><span id="streak" class="small muted"></span></div>
   <p class="lead">Three things. Warm up, one beat from the book, then play it with a song. Tap a card to go there. Green check when it is done.</p>
   <div class="biglist" id="todayCards"></div>
-  <div class="row" style="margin-top:10px"><button class="btn" id="grownBtn">👪 Grown-ups</button><span class="hint">Progress, minutes practiced, export and import.</span></div>
+  <div class="row" style="margin-top:10px"><button class="btn" id="grownBtn">👪 Grown-ups</button><button class="btn" id="teachBtn">🎓 For the teacher</button><span class="hint">Progress, minutes practiced, export and import.</span></div>
+  <div id="teachBox" class="card" style="display:none">
+    <p class="lead" style="margin:0 0 6px"><b>Hi, drum teacher.</b> Garrett's dad built this from the practice sheets you sent home. The Book tab has your 12 exercises in the same picture grid. It counts him in, lights up the drums, and scores his timing. Nothing to sign up for.</p>
+    <p class="small muted" style="margin:0 0 8px">Two questions whenever you have a minute: does anything here work differently from how you teach it, and what are the next two or three things he will see? Thank you.</p>
+    <div id="teachSummary" class="small"></div>
+    <div class="row"><button class="btn" id="teachCopy">Copy this week's summary</button><button class="btn" id="teachOpen">Open The Book</button></div>
+  </div>
   <div id="grownBox" class="card" style="display:none">
     <div id="grownStats"></div>
     <div class="row"><button class="btn" id="expBtn">Copy progress</button><button class="btn" id="impBtn">Paste progress</button></div>
@@ -152,6 +159,7 @@
   <div class="row" style="margin-top:8px">
     <label class="field">Layout <select id="layoutSel"><option value="full">Full kit</option><option value="pad7">Roll-up pad (7)</option><option value="custom">My custom kit</option></select></label>
     <button class="btn" id="editKit">✏️ Edit kit</button>
+    <button class="btn" id="leftyBtn">🔁 Lefty</button>
     
     <span class="hint">Tap pads to play. Multi-touch works. Turn the click on and play along.</span>
   </div>
@@ -200,6 +208,7 @@
       <button class="btn" id="patHear">🔊 Hear it</button>
       <button class="btn gold" id="patPlay">👆 Play along</button>
       <button class="btn" id="patSlow">🐢 Half speed</button>
+      <button class="btn" id="patHalfBar">✂️ Half bar</button>
       <label class="field">Loops <select id="patLoops"><option>2</option><option selected>4</option><option>8</option><option value="0">∞</option></select></label>
       <button class="btn" id="patEdit">✏️ Copy &amp; edit</button>
     </div>
@@ -242,6 +251,7 @@
     <span id="micState" class="small muted">mic off</span>
     <label class="field">Sensitivity <input type="range" id="micSens" min="1" max="10" step="1" value="5"></label>
     <div class="meter" style="width:140px"><i id="micMeter"></i></div>
+    <button class="btn" id="latBtn">⏱ Tap test</button><span id="latState" class="small muted"></span>
   </div>
   <div class="row">
     <label class="field">Drill <select id="trSel"></select></label>
@@ -256,7 +266,7 @@
   <div class="big" id="trBig"></div>
   <div class="fb" id="trFb"></div>
   <div class="stars" id="trStars"></div>
-  <p class="hint">The mic only hears <i>that a hit happened</i>, not which pad, so the Trainer scores timing. Use the screen Kit or Patterns to practice which drum goes where. Mic needs the https Game Shelf address, not a downloaded file. You can also tap the kit below instead of the mic.</p>
+  <p class="hint">The mic only hears <i>that a hit happened</i>, not which pad, so the Trainer scores timing. Use the screen Kit or Patterns to practice which drum goes where. Mic needs the https Game Shelf address, not a downloaded file. You can also tap the kit below instead of the mic. The app ignores its own click and the count-in, but if the iPad speaker is loud and close to the pad, turn it down or use a small speaker away from the mic.</p>
   <div class="prog" id="trProg"></div>
   <div id="trKitSlot" style="margin-top:8px"></div>
 </div>
@@ -265,13 +275,13 @@
 
 <script>
 'use strict';
-const VER='v0.4 · Nov 12';
+const VER='v0.5 · Nov 12';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 let toastT; function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),1600);}
 $('#verBadge').onclick=()=>toast('STICK '+VER);
 
 /* ---------- storage ---------- */
-const STORE='stickProg_v1'; let mem={};
+const STORE='stickProg_v1'; let mem={}; let lefty=false;
 function load(){try{return JSON.parse(localStorage.getItem(STORE)||'{}')}catch(e){return mem}}
 function save(p){mem=p;try{localStorage.setItem(STORE,JSON.stringify(p))}catch(e){}}
 let P=load(); P.lessons=P.lessons||{}; P.scores=P.scores||{}; P.mine=P.mine||[]; P.custom=P.custom||null;
@@ -328,7 +338,7 @@ let pads=kitPads(), padEls={}, editing=false, selPad=null, showRL=false;
 function padVoice(p){ const base=INST[p.id]?INST[p.id].voice:{type:'tom'}; return Object.assign({},base,p.voice||{}); }
 function padName(p){ return p.name||(INST[p.id]?INST[p.id].name:'Pad'); }
 function renderKit(){
-  const k=$('#kit'); k.innerHTML=''; padEls={};
+  const k=$('#kit'); k.innerHTML=''; padEls={}; k.style.transform=lefty?'scaleX(-1)':''; k.classList.toggle('lefty',lefty);
   pads.forEach((p,i)=>{
     const d=document.createElement('div'); const inst=INST[p.id]||{cls:'drum',sub:''};
     d.className='pad '+inst.cls; d.style.left=p.x+'%'; d.style.top=p.y+'%'; d.style.width=p.s+'%'; d.style.aspectRatio='1/1';
@@ -374,7 +384,8 @@ function stopMetro(){ metroOn=false; $('#metroBtn').classList.remove('gold'); cl
 
 // A pattern: {name, beats(4|3), res(8|16), lanes:{inst:[16 ints 0/1/2]}, sticking:[...]}
 let seq=null; // running session
-function stopSeq(){ if(seq){ clearInterval(seq.timer); cancelAnimationFrame(seq.raf); seq.onStop&&seq.onStop(); seq=null; } $$('.pad').forEach(e=>e.classList.remove('lit')); }
+let clickTimes=[]; // scheduled click times, for the mic gate
+function stopSeq(){ clickTimes=[]; if(seq){ clearInterval(seq.timer); cancelAnimationFrame(seq.raf); seq.onStop&&seq.onStop(); seq=null; } $$('.pad').forEach(e=>e.classList.remove('lit')); }
 function stopEverything(){ stopSeq(); stopMetro(); stopAllAudio(); trainerStop(); }
 $('#stopAll').onclick=()=>{ stopEverything(); toast('Stopped'); };
 
@@ -390,8 +401,8 @@ function runPattern(pat,opts){
   const totalSteps=(countIn+loops)*steps;
   // scheduler
   seq.timer=setInterval(()=>{ if(!seq)return; while(seq.nextStep<totalSteps && start+seq.nextStep*sp < a.currentTime+.2){ const n=seq.nextStep; const t=start+n*sp; const s=n%steps; const inCount=n<countIn*steps;
-      if(s%4===0 && (opts.click!==false)) click(t,s===0);
-      if(s%4===0 && ((inCount&&opts.voice)||countAloud)) voiceAt(1+s/4,t);
+      if(s%4===0 && (opts.click!==false)){ click(t,s===0); clickTimes.push(t); if(clickTimes.length>64) clickTimes.shift(); }
+      if(s%4===0 && ((inCount&&opts.voice)||countAloud)) voiceAt(1+s/4,t); else if(s%4===2 && countAloud===2 && !inCount) voiceAt('&',t);
       if(!inCount && opts.sound!==false){ for(const inst in pat.lanes){ const v=pat.lanes[inst][s]; if(v) playInst(inst,t,v===2?1:.75); } }
       if(opts.onStep) opts.onStep(n,s,t,inCount);
       seq.nextStep++; }
@@ -406,8 +417,8 @@ const VOICE={}; let voiceLoad=null;
 function loadVoices(){ if(voiceLoad)return voiceLoad; const a=ac(); voiceLoad=Promise.all(['one','two','three','four','and'].map(w=>fetch('count-'+w+'.wav').then(r=>r.ok?r.arrayBuffer():Promise.reject()).then(b=>a.decodeAudioData(b)).then(buf=>{VOICE[w]=buf;}).catch(()=>{}))); return voiceLoad; }
 const NUMW=['','one','two','three','four'];
 function voiceAt(n,when){ const a=ac(); const buf=VOICE[n==='&'?'and':NUMW[n]]; if(!buf){ if(n!=='&'){ const o=a.createOscillator(); o.type='triangle'; o.frequency.value=440*Math.pow(2,(n-1)*2/12); const g=a.createGain(); env(g,when,.35,.12); o.connect(g); g.connect(master); o.start(when); track(o,when,.12);} return; } const src=a.createBufferSource(); src.buffer=buf; const g=a.createGain(); g.gain.value=1.1; src.connect(g); g.connect(master); src.start(when); track(src,when,buf.duration); }
-let countAloud=false;
-$('#countBtn').onclick=()=>{ countAloud=!countAloud; $('#countBtn').classList.toggle('gold',countAloud); loadVoices(); toast(countAloud?'Counting out loud on every bar':'Count voice only on the count-in'); };
+let countAloud=0; // 0 off, 1 numbers, 2 numbers and ands
+$('#countBtn').onclick=()=>{ countAloud=(countAloud+1)%3; $('#countBtn').classList.toggle('gold',countAloud>0); $('#countBtn').textContent=['🗣 Count','🗣 1 2 3 4','🗣 1 & 2 &'][countAloud]; loadVoices(); toast(['Count voice only on the count-in','Counting the numbers on every bar','Counting 1 & 2 & 3 & 4 & on every bar'][countAloud]); };
 
 // count strip
 function buildCount(el,beats,res){ el.innerHTML=''; const n=beats*(res===16?4:2); for(let i=0;i<n;i++){ const s=document.createElement('span'); const lab=res===16?COUNT16[i]:(i%2?'&':String(1+i/2)); s.textContent=lab; if(/\d/.test(lab))s.classList.add('num'); el.appendChild(s);} }
@@ -423,10 +434,11 @@ function stars(score){ return score>=.9?'★★★':score>=.7?'★★☆':score>
 // scoring session: match user hit times against expected hits (timing-only when instAgnostic)
 const MATCH=.2; // widest window we will pair a hit to (sec); judged after subtracting the player's steady offset
 function makeScorer(s,fbEl,bigEl,instAgnostic){
-  const exp=s.hits.map(h=>({...h,hit:false})); let extras=0; let offs=[]; let off=0;
+  const exp=s.hits.map(h=>({...h,hit:false})); let extras=0; let offs=[]; let off=P.latency||0;
   return { hit(inst,tAbs){ const t=tAbs-s.start; let best=null,bd=1; exp.forEach(h=>{ if(h.hit)return; if(!instAgnostic && h.inst!==inst && !(h.inst==='hato'&&inst==='hat'))return; const d=t-h.t-off; if(Math.abs(d)<=MATCH && Math.abs(d)<bd){bd=Math.abs(d);best=h;best.d=t-h.t;} });
       if(best){best.hit=true; offs.push(best.d); if(offs.length>=4){ const sorted=offs.slice().sort((a,b)=>a-b); off=sorted[Math.floor(sorted.length/2)]; } const j=judge(best.d-off); best.j=j; fbEl.className='fb '+(j==='perfect'?'good':j); fbEl.textContent=fbText(j); } else { extras++; fbEl.className='fb miss'; fbEl.textContent=instAgnostic?'off the beat':'wrong pad or off the beat'; } },
     result(){ const n=exp.length; const matched=exp.filter(h=>h.hit); const sorted=matched.map(h=>h.d).sort((a,b)=>a-b); const med=sorted.length?sorted[Math.floor(sorted.length/2)]:0; let got=0; matched.forEach(h=>{ const j=judge(h.d-med); h.j=j; if(j!=='miss') got++; }); const score=n?Math.max(0,(got-extras*.5)/n):0; return {n,got,extras,score,offset:med}; },
+    perDrum(r){ const by={}; exp.forEach(h=>{ const b=by[h.inst]=by[h.inst]||{n:0,ok:0}; b.n++; if(h.hit&&h.j&&h.j!=='miss') b.ok++; }); const ks=Object.keys(by); if(ks.length<2) return ''; return ' '+ks.map(k=>(INST[k]?INST[k].name:k)+' '+Math.round(by[k].ok/by[k].n*100)+'%').join(' · '); },
     offsetNote(r){ const ms=Math.round(r.offset*1000); if(Math.abs(ms)<30||r.got<3) return ''; return ` You were steady but ${Math.abs(ms)} ms ${ms>0?'late':'early'} overall, which is usually the pad or mic delay, not you.`; } };
 }
 /* ---------- staff notation ---------- */
@@ -471,6 +483,8 @@ const ICON={
   kick:(x,y,c)=>`<g transform="translate(${x} ${y})"><ellipse cx="6" cy="-2" rx="13" ry="14" fill="#fff" stroke="${c}" stroke-width="2.2"/><ellipse cx="-2" cy="0" rx="13" ry="14" fill="#fff" stroke="${c}" stroke-width="2.2"/><circle cx="-2" cy="0" r="2.5" fill="none" stroke="${c}" stroke-width="1.5"/><line x1="-2" y1="2" x2="-6" y2="15" stroke="${c}" stroke-width="2"/><rect x="-11" y="13" width="9" height="4" rx="1" fill="${c}"/></g>`,
 };
 const ICONFAM={hat:'cym',hato:'cym',ride:'cym',crash:'cym',snare:'snare',tom1:'tom',tom2:'tom',ftom:'tom',kick:'kick'};
+const LIMB={hat:'RH',hato:'RH',ride:'RH',crash:'RH',snare:'LH',tom1:'RH',tom2:'RH',ftom:'RH',kick:'RF'};
+function limb(inst){ const l=LIMB[inst]||''; if(!lefty) return l; return l.replace(/^R/,'X').replace(/^L/,'R').replace(/^X/,'L'); }
 function drawSheet(el,pat,opts){
   opts=opts||{}; const res=pat.res||8; const div=res===16?1:res===8?2:4; const steps=pat.beats*4; const cols=steps/div;
   const insts=LANE_ORDER.filter(i=>pat.lanes[i]&&pat.lanes[i].some(v=>v)); if(!insts.length) insts.push('snare');
@@ -481,7 +495,7 @@ function drawSheet(el,pat,opts){
   // box around drum rows (cymbal row sits above the box like the book)
   const boxTop=insts[0]&&ICONFAM[insts[0]]==='cym'?top+rowH-6:top-2; o+=`<rect x="${left-30}" y="${boxTop}" width="${W-left+14}" height="${H-boxTop-8}" fill="none" stroke="#333" stroke-width="1.5"/>`;
   for(let r=1;r<insts.length;r++){ const yy=top+r*rowH-6; if(yy>boxTop) o+=`<line x1="${left-30}" y1="${yy}" x2="${W-16}" y2="${yy}" stroke="#333" stroke-width="1"/>`; }
-  insts.forEach((inst,r)=>{ const nm=inst==='hato'?'Hi-hat (open)':INST[inst].name; o+=`<text x="${left-36}" y="${ys(r)+4}" font-size="12" font-family="Trebuchet MS,sans-serif" fill="#333" text-anchor="end">${nm.toUpperCase()}</text>`; });
+  insts.forEach((inst,r)=>{ const nm=inst==='hato'?'Hi-hat (open)':INST[inst].name; o+=`<text x="${left-36}" y="${ys(r)+1}" font-size="12" font-family="Trebuchet MS,sans-serif" fill="#333" text-anchor="end">${nm.toUpperCase()}</text><text x="${left-36}" y="${ys(r)+15}" font-size="11" font-weight="bold" font-family="Trebuchet MS,sans-serif" fill="#8a2d0f" text-anchor="end">${limb(inst)}</text>`; });
   for(let c=0;c<cols;c++){ const s=c*div; const hitRows=insts.map((inst,r)=>pat.lanes[inst][s]?r:-1).filter(r=>r>=0); if(!hitRows.length)continue; const col=opts.hl===s?'#c9780f':'#222';
     if(hitRows.length>1||ICONFAM[insts[hitRows[0]]]==='cym'){ const y1=ys(hitRows[0]), y2=hitRows.length>1?ys(hitRows[hitRows.length-1]):y1+16; o+=`<line x1="${xs(c)}" y1="${y1}" x2="${xs(c)}" y2="${y2}" stroke="${col}" stroke-width="2.4"/>`; }
     hitRows.forEach(r=>{ const inst=insts[r]; o+=ICON[ICONFAM[inst]](xs(c),ys(r),col); if(pat.lanes[inst][s]===2) o+=`<text x="${xs(c)+22}" y="${ys(r)-10}" font-size="13" font-weight="bold" fill="${col}">></text>`; });
@@ -542,29 +556,36 @@ const BEATS=[
  {id:'accent',name:'Accents on 1',g:'hands',beats:4,res:8,tip:'Every number is LOUD, every & is soft. Big stroke, then little strokes. Loud and soft is called dynamics.',lanes:{snare:L('X.x.X.x.X.x.X.x.')},sticking:['R','','L','','R','','L','','R','','L','','R','','L','']},
  {id:'flam',name:'Flam Feel',g:'hands',beats:4,res:8,tip:'Not a real flam yet (that needs two hands almost together). Here: one hand on the numbers, the other on the &. Trade hands each bar when you can.',lanes:{snare:L('x.x.x.x.x.x.x.x.')},sticking:['R','','L','','R','','L','','R','','L','','R','','L','']},
  // fills
- {id:'fill1',name:'Fill: Snare 8ths',g:'fills',beats:4,res:8,tip:'Play the Money Beat for 3 beats, then on beat 4 hit the snare twice: "4 &". That is a fill. Crash on the next 1.',lanes:{hat:L('x.x.x.x.x.x.....'),snare:L('....x.......x.x.'),kick:L('x.......x.......')}},
- {id:'fill2',name:'Fill: Snare 16ths',g:'fills',beats:4,res:16,tip:'Beat 4 gets four snare hits: "4 e & a". R L R L.',lanes:{hat:L('x.x.x.x.x.x.....'),snare:L('....x.......xxxx'),kick:L('x.......x.......')},sticking:['','','','','','','','','','','','','R','L','R','L']},
- {id:'fill3',name:'Fill: Down the Toms',g:'fills',beats:4,res:16,tip:'Beat 4: snare, hi tom, mid tom, floor tom. Walk down the kit. Right hand leads.',lanes:{hat:L('x.x.x.x.x.x.....'),snare:L('....x.......x...'),tom1:L('.............x..'),tom2:L('..............x.'),ftom:L('...............x'),kick:L('x.......x.......')}},
- {id:'fill4',name:'Fill: Whole Bar',g:'fills',beats:4,res:16,tip:'A full bar of fill: four on the snare, four on hi tom, four on mid tom, four on the floor tom. Then crash on 1.',lanes:{snare:L('xxxx............'),tom1:L('....xxxx........'),tom2:L('........xxxx....'),ftom:L('............xxxx')},sticking:'RLRLRLRLRLRLRLRL'.split('')},
- {id:'fill5',name:'Fill: Kick & Snare',g:'fills',beats:4,res:16,tip:'Beat 4: snare, kick, snare, snare. Hands and foot taking turns.',lanes:{hat:L('x.x.x.x.x.x.....'),snare:L('....x.......x.xx'),kick:L('x.......x....x..')}},
+ {id:'fill1',name:'Fill 1: Snare on 4 &',g:'fills',beats:4,res:8,tip:'Drum Beat 1 for 3 beats, then on beat 4 hit the snare twice: "4 &". That is a fill. The next 1 gets a crash.',lanes:{hat:L('x.x.x.x.x.x.....'),snare:L('....x.......x.x.'),kick:L('x.......x.......')}},
+ {id:'fill0',name:'Fill 0: Snare on 3 & 4 &',g:'fills',beats:4,res:8,tip:'Easiest fill of all: play the hats on 1 & 2 &, then four snare hits, 3 & 4 &. R L R L.',lanes:{hat:L('x.x.x.x.........'),snare:L('....x...x.x.x.x.'),kick:L('x...............')},sticking:['','','','','','','','','R','','L','','R','','L','']},
+ {id:'fill1b',name:'Fill 1b: Snare then tom',g:'fills',beats:4,res:8,tip:'Beat 4: snare on 4, hi tom on the &. Two drums, two hits. Walk it.',lanes:{hat:L('x.x.x.x.x.x.....'),snare:L('....x.......x...'),tom1:L('..............x.'),kick:L('x.......x.......')}},
+ {id:'crash1',name:'Crash on 1',g:'fills',beats:4,res:8,tip:'Start of a song or after a fill: crash and bass drum together on 1, then the beat. The crash says "here we go".',lanes:{crash:L('x...............'),hat:L('..x.x.x.x.x.x.x.'),snare:L('....x.......x...'),kick:L('x.......x.......')}},
+ {id:'end1',name:'Ending',g:'fills',beats:4,res:8,tip:'How a song stops: beat for 2 beats, then a fill on 3 & 4 &, then crash on the next 1 and let it ring. Then stop.',lanes:{hat:L('x.x.x.x.........'),snare:L('....x...x.x.x.x.'),kick:L('x...............')},sticking:['','','','','','','','','R','','L','','R','','L','']},
+ {id:'fill2',name:'Fill: Snare 16ths (later)',g:'fills',beats:4,res:16,tip:'Beat 4 gets four snare hits: "4 e & a". R L R L.',lanes:{hat:L('x.x.x.x.x.x.....'),snare:L('....x.......xxxx'),kick:L('x.......x.......')},sticking:['','','','','','','','','','','','','R','L','R','L']},
+ {id:'fill3',name:'Fill: Down the Toms (16ths)',g:'fills',beats:4,res:16,tip:'Beat 4: snare, hi tom, mid tom, floor tom. Walk down the kit. Right hand leads.',lanes:{hat:L('x.x.x.x.x.x.....'),snare:L('....x.......x...'),tom1:L('.............x..'),tom2:L('..............x.'),ftom:L('...............x'),kick:L('x.......x.......')}},
+ {id:'fill4',name:'Fill: Whole Bar (16ths)',g:'fills',beats:4,res:16,tip:'A full bar of fill: four on the snare, four on hi tom, four on mid tom, four on the floor tom. Then crash on 1.',lanes:{snare:L('xxxx............'),tom1:L('....xxxx........'),tom2:L('........xxxx....'),ftom:L('............xxxx')},sticking:'RLRLRLRLRLRLRLRL'.split('')},
+ {id:'fill5',name:'Fill: Kick & Snare (16ths)',g:'fills',beats:4,res:16,tip:'Beat 4: snare, kick, snare, snare. Hands and foot taking turns.',lanes:{hat:L('x.x.x.x.x.x.....'),snare:L('....x.......x.xx'),kick:L('x.......x....x..')}},
 ];
 function patById(id){ return BEATS.find(p=>p.id===id)||P.mine.find(p=>p.id===id); }
 
 /* ---------- patterns panel ---------- */
-let patGroup='sheet', lp='learn', curPat=null, patHalf=false;
+let patGroup='sheet', lp='learn', curPat=null, patHalf=false, halfBar=false;
+function halfOf(p){ if(!halfBar||p.beats!==4) return p; const q={...p,id:p.id,beats:2,lanes:{}}; for(const i in p.lanes) q.lanes[i]=p.lanes[i].slice(0,8); if(p.sticking) q.sticking=p.sticking.slice(0,8); return q; }
+function cur(){ return halfOf(curPat); }
 $('#viewSeg').onclick=e=>{ const b=e.target.closest('button'); if(!b)return; sheetView=b.dataset.v==='sheet'; $$('#viewSeg button').forEach(x=>x.classList.toggle('active',x===b)); P.sheetView=sheetView; save(P); if(curPat) drawBoth($('#patSheet'),$('#patStaff'),curPat); };
 if(P.sheetView===false){ sheetView=false; $$('#viewSeg button').forEach(x=>x.classList.toggle('active',x.dataset.v==='staff')); }
 $('#patGroupSeg').onclick=e=>{ const b=e.target.closest('button'); if(!b)return; patGroup=b.dataset.g; $$('#patGroupSeg button').forEach(x=>x.classList.toggle('active',x===b)); listPatterns(); };
 $('#lpSeg').onclick=e=>{ const b=e.target.closest('button'); if(!b)return; lp=b.dataset.lp; $$('#lpSeg button').forEach(x=>x.classList.toggle('active',x===b)); $('#patHint').textContent=lp==='learn'?'Learn mode lights the pad before each hit and plays the pattern with you.':'Prove mode: the pattern is silent after the count-in. You play it. Timing is scored per hit.'; };
 function listPatterns(){ const el=$('#patList'); el.innerHTML=''; $('#patView').style.display='none'; $('#patEditor').style.display='none'; el.style.display='grid'; const list=patGroup==='mine'?P.mine:BEATS.filter(p=>p.g===patGroup); if(!list.length){ el.innerHTML='<p class="muted">No patterns here yet. Open any pattern and tap "Copy & edit" to make your own.</p>'; } list.forEach(p=>{ const c=document.createElement('div'); c.className='card'; const sc=P.scores[p.id]; c.innerHTML=`<b>${p.name}</b><div class="small muted">${p.track?'Track '+p.track+' · ':''}${p.beats}/4 · ${p.res===16?'16ths':p.res===8?'8ths':'quarters'}</div><div class="stars" style="text-align:left;font-size:16px">${sc?stars(sc.best):'☆☆☆'}</div>`; c.onclick=()=>openPat(p); el.appendChild(c); }); }
 function openPat(p){ curPat=p; stopSeq(); $('#patList').style.display='none'; $('#patEditor').style.display='none'; $('#patView').style.display='block'; $('#patName').textContent=p.name; $('#patInfo').textContent=(p.track?'Track '+p.track+' · ':'')+`${p.beats}/4`; $('#patTip').textContent=p.tip||''; drawBoth($('#patSheet'),$('#patStaff'),p); drawGrid($('#patGrid'),p,false); buildCount($('#patCount'),p.beats,p.res===16?16:8); $('#patBig').textContent=''; $('#patFb').textContent=''; const sc=P.scores[p.id]; $('#patStars').textContent=sc?stars(sc.best)+'  best '+Math.round(sc.best*100)+'%':''; }
-$('#patHear').onclick=()=>{ if(!curPat)return; runPattern(curPat,{loops:2,countIn:0,bpm:patHalf?bpm/2:bpm,onStep:(n,s,t,inC)=>{ setTimeout(()=>{ setCount($('#patCount'),s,curPat.res===16?16:8); gridNow($('#patGrid'),s); drawBoth($('#patSheet'),$('#patStaff'),curPat,{hl:s}); for(const inst in curPat.lanes){ if(curPat.lanes[inst][s]){ light(inst,true); setTimeout(()=>light(inst,false),120); } } },Math.max(0,(t-ac().currentTime)*1000)); }, onStop:()=>{ drawBoth($('#patSheet'),$('#patStaff'),curPat); gridNow($('#patGrid'),-1); }}); };
+$('#patHear').onclick=()=>{ if(!curPat)return; const cp=cur(); runPattern(cp,{loops:2,countIn:0,bpm:patHalf?bpm/2:bpm,onStep:(n,s,t,inC)=>{ setTimeout(()=>{ setCount($('#patCount'),s,cp.res===16?16:8); gridNow($('#patGrid'),s); drawBoth($('#patSheet'),$('#patStaff'),cp,{hl:s}); for(const inst in cp.lanes){ if(cp.lanes[inst][s]){ light(inst,true); setTimeout(()=>light(inst,false),120); } } },Math.max(0,(t-ac().currentTime)*1000)); }, onStop:()=>{ drawBoth($('#patSheet'),$('#patStaff'),cp); gridNow($('#patGrid'),-1); }}); };
 $('#patSlow').onclick=()=>{ patHalf=!patHalf; $('#patSlow').classList.toggle('gold',patHalf); };
-$('#patPlay').onclick=()=>{ if(!curPat)return; const loops=+$('#patLoops').value; const res=curPat.res===16?16:8; const learn=lp==='learn'; let scorer=null;
-  const s=runPattern(curPat,{loops,countIn:1,bpm:patHalf?bpm/2:bpm,sound:learn,voice:true,
-    onStep:(n,st,t,inC)=>{ const d=Math.max(0,(t-ac().currentTime)*1000); setTimeout(()=>{ setCount($('#patCount'),st,res); gridNow($('#patGrid'),st); drawBoth($('#patSheet'),$('#patStaff'),curPat,{hl:st}); if(inC){ $('#patBig').textContent=st%4===0?String(1+st/4):''; } else { $('#patBig').textContent=''; } },d);
-      if(learn && !inC){ for(const inst in curPat.lanes){ if(curPat.lanes[inst][st]){ setTimeout(()=>light(inst,true),Math.max(0,d-150)); setTimeout(()=>light(inst,false),d+100); } } } },
-    onDone:(ss)=>{ const r=scorer.result(); $('#patBig').textContent=Math.round(r.score*100)+'%'; $('#patStars').textContent=stars(r.score); $('#patFb').className='fb'; $('#patFb').textContent=`${r.got} of ${r.n} hits on time${r.extras?', '+r.extras+' extra':''}.`+scorer.offsetNote(r); if(!learn){ const prev=P.scores[curPat.id]||{best:0,runs:0}; prev.runs++; prev.best=Math.max(prev.best,r.score); prev.last=Date.now(); P.scores[curPat.id]=prev; save(P); } userHitHook=null; drawBoth($('#patSheet'),$('#patStaff'),curPat); gridNow($('#patGrid'),-1); todayDone('beat',curPat.id,r.score); },
+$('#patHalfBar').onclick=()=>{ halfBar=!halfBar; $('#patHalfBar').classList.toggle('gold',halfBar); if(curPat){ stopSeq(); drawBoth($('#patSheet'),$('#patStaff'),cur()); drawGrid($('#patGrid'),cur(),false); buildCount($('#patCount'),cur().beats,cur().res===16?16:8); } toast(halfBar?'Half bar: just 1 & 2 &, then it repeats':'Whole bar'); };
+$('#patPlay').onclick=()=>{ if(!curPat)return; const cp=cur(); const loops=+$('#patLoops').value; const res=cp.res===16?16:8; const learn=lp==='learn'; let scorer=null;
+  const s=runPattern(cp,{loops,countIn:1,bpm:patHalf?bpm/2:bpm,sound:learn,voice:true,
+    onStep:(n,st,t,inC)=>{ const d=Math.max(0,(t-ac().currentTime)*1000); setTimeout(()=>{ setCount($('#patCount'),st,res); gridNow($('#patGrid'),st); drawBoth($('#patSheet'),$('#patStaff'),cp,{hl:st}); if(inC){ $('#patBig').textContent=st%4===0?String(1+st/4):''; } else { $('#patBig').textContent=''; } },d);
+      if(learn && !inC){ for(const inst in cp.lanes){ if(cp.lanes[inst][st]){ setTimeout(()=>light(inst,true),Math.max(0,d-150)); setTimeout(()=>light(inst,false),d+100); } } } },
+    onDone:(ss)=>{ const r=scorer.result(); $('#patBig').textContent=Math.round(r.score*100)+'%'; $('#patStars').textContent=stars(r.score); $('#patFb').className='fb'; $('#patFb').textContent=`${r.got} of ${r.n} hits on time${r.extras?', '+r.extras+' extra':''}.`+scorer.offsetNote(r); if(!learn){ const prev=P.scores[curPat.id]||{best:0,runs:0}; prev.runs++; prev.best=Math.max(prev.best,r.score); prev.last=Date.now(); P.scores[curPat.id]=prev; save(P); } userHitHook=null; drawBoth($('#patSheet'),$('#patStaff'),cp); gridNow($('#patGrid'),-1); todayDone('beat',curPat.id,r.score); $('#patFb').textContent+=scorer.perDrum(r); },
     onStop:()=>{ userHitHook=null; }});
   scorer=makeScorer(s,$('#patFb'),$('#patBig'),false); userHitHook=(inst,t)=>scorer.hit(inst,t); toast(learn?'Count-in, then play along':'Count-in, then you play. Scored.'); };
 // editor
@@ -628,7 +649,7 @@ $('#trSel').onchange=()=>drawBoth($('#trSheet'),$('#trStaff'),patById($('#trSel'
 async function micStart(){ try{ const a=ac(); const st=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}}); mic=a.createMediaStreamSource(st); micAn=a.createAnalyser(); micAn.fftSize=1024; micBuf=new Float32Array(micAn.fftSize); mic.connect(micAn); micOn=true; micStream=st; $('#micState').textContent='listening'; $('#micBtn').textContent='🎤 Mic on'; micLoop(); }catch(e){ $('#micState').textContent='mic blocked ('+(e.name||'error')+')'; toast('Mic needs permission and the https address'); } }
 let micStream=null;
 function micStop(){ if(micStream){ micStream.getTracks().forEach(t=>t.stop()); micStream=null; } micOn=false; cancelAnimationFrame(micRaf); $('#micState').textContent='mic off'; $('#micBtn').textContent='🎤 Listen'; $('#micMeter').style.width='0'; }
-function micLoop(){ if(!micOn)return; micAn.getFloatTimeDomainData(micBuf); let sum=0; for(let i=0;i<micBuf.length;i++) sum+=micBuf[i]*micBuf[i]; const rms=Math.sqrt(sum/micBuf.length); const sens=+$('#micSens').value; const thr=0.02+(10-sens)*0.012; const now=ac().currentTime; $('#micMeter').style.width=Math.min(100,rms*600)+'%'; if(rms>thr && rms>micAvg*2.2 && now-micLast>.04){ micLast=now; if(micHook) micHook(now); } micAvg=micAvg*.92+rms*.08; micRaf=requestAnimationFrame(micLoop); }
+function micLoop(){ if(!micOn)return; micAn.getFloatTimeDomainData(micBuf); let sum=0; for(let i=0;i<micBuf.length;i++) sum+=micBuf[i]*micBuf[i]; const rms=Math.sqrt(sum/micBuf.length); const sens=+$('#micSens').value; const thr=0.02+(10-sens)*0.012; const now=ac().currentTime; $('#micMeter').style.width=Math.min(100,rms*600)+'%'; if(rms>thr && rms>micAvg*2.2 && now-micLast>.04){ micLast=now; const lat=(P.latency||0); const nearClick=clickTimes.some(c=>Math.abs(now-lat-c)<.045); if(!nearClick && micHook) micHook(now); } micAvg=micAvg*.92+rms*.08; micRaf=requestAnimationFrame(micLoop); }
 $('#micBtn').onclick=()=>micOn?micStop():micStart();
 function trainerStop(){ micHook=null; }
 $('#trGo').onclick=()=>{ const pat=patById($('#trSel').value); const loops=+$('#trLoops').value; const cin=+$('#trCountIn').value; const res=pat.res===16?16:8; buildCount($('#trCount'),pat.beats,res); let countTxt='', scorer;
@@ -638,7 +659,7 @@ $('#trGo').onclick=()=>{ const pat=patById($('#trSel').value); const loops=+$('#
     onDone:(ss)=>{ const r=scorer.result(); $('#trBig').textContent=Math.round(r.score*100)+'%'; $('#trStars').textContent=stars(r.score); $('#trFb').className='fb'; $('#trFb').textContent=`${r.got} of ${r.n} on time${r.extras?', '+r.extras+' extra':''}.`+scorer.offsetNote(r); micHook=null; userHitHook=null; const key='tr_'+pat.id; const prev=P.scores[key]||{best:0,runs:0,hist:[]}; prev.runs++; prev.best=Math.max(prev.best,r.score); prev.hist=(prev.hist||[]).concat([Math.round(r.score*100)]).slice(-10); prev.last=Date.now(); P.scores[key]=prev; save(P); drawBoth($('#trSheet'),$('#trStaff'),pat); renderTrProg(); todayDone('warm',pat.id,r.score); },
     onStop:()=>{ micHook=null; userHitHook=null; }});
   scorer=makeScorer(s,$('#trFb'),$('#trBig'),true);
-  const onHit=(tAbs)=>{ scorer.hit(null,tAbs); const tt=tAbs-s.start; let best=null,bd=1; s.hits.forEach(h=>{ if(!h.hitJ && Math.abs(h.t-tt)<=WIN && Math.abs(h.t-tt)<bd){bd=Math.abs(h.t-tt);best=h;} }); if(best) best.hitJ=judge(tt-best.t); };
+  const onHit=(tAbs)=>{ if(tAbs<s.start+s.countIn*s.steps*s.sp-.05) return; scorer.hit(null,tAbs); const tt=tAbs-s.start; let best=null,bd=1; s.hits.forEach(h=>{ if(!h.hitJ && Math.abs(h.t-tt)<=WIN && Math.abs(h.t-tt)<bd){bd=Math.abs(h.t-tt);best=h;} }); if(best) best.hitJ=judge(tt-best.t); };
   micHook=onHit; userHitHook=(inst,t)=>onHit(t); $('#trStars').textContent=''; toast(micOn?'Count-in, then play the pad':'Mic is off: tap the screen, or hit Listen first'); };
 function renderTrProg(){ const el=$('#trProg'); el.innerHTML=''; Object.keys(P.scores).filter(k=>k.startsWith('tr_')).forEach(k=>{ const p=patById(k.slice(3)); if(!p)return; const sc=P.scores[k]; const c=document.createElement('div'); c.className='card'; c.innerHTML=`<b>${p.name}</b><br><span class="stars" style="font-size:14px">${stars(sc.best)}</span> ${Math.round(sc.best*100)}% · ${sc.runs} runs<br><span class="muted">${(sc.hist||[]).join(' → ')}</span>`; el.appendChild(c); }); }
 renderTrProg();
@@ -704,12 +725,14 @@ const LESSONS=[
    {h:'Beat 6',t:'The whole set: "1 &", "3 &", and the & after 4. If it falls apart, go back to Beat 4 and build up.',pat:'t12',res:8},
    {h:'Prove it',t:'Open Patterns, The Book group, Prove mode, and play Beat 1 four times. Two stars and you are ready to take it to the real kit.',goto:'t7'},
  ]},
- {id:'fills',name:'Fills',sub:'what they are and when they go',steps:[
+ {id:'fills',name:'Fills, Crashes, Start and Stop',sub:'8th-note fills first; 16ths come later',steps:[
    {h:'What a fill is',t:'A fill is a short break from the beat, usually on the last beat of a bar, that leads into the next part of the song. Beat, beat, beat, FILL, crash.',pat:'fill1',res:8},
-   {h:'Two hits',t:'The simplest fill: on beat 4, hit the snare on 4 and on &. Then back to the beat.',pat:'fill1',res:8},
-   {h:'Four hits',t:'Beat 4 gets 4 e & a on the snare, R L R L.',pat:'fill2',res:16},
-   {h:'Around the kit',t:'Snare, hi tom, mid tom, floor tom. One hit each on beat 4. Walk it down.',pat:'fill3',res:16},
-   {h:'Crash on 1',t:'After a fill, hit the crash on the 1 of the next bar, together with the kick. That crash is the "we are here" sign.',pat:'fill4',res:16},
+   {h:'Fill 0',t:'The easiest fill: hats for two beats, then four snare hits on 3 & 4 &, R L R L. This is the one to take to class first.',pat:'fill0',res:8},
+   {h:'Fill 1',t:'Drum Beat 1 with two snare hits on 4 &. Then straight back into the beat.',pat:'fill1',res:8},
+   {h:'Snare then tom',t:'Same spot, two drums: snare on 4, hi tom on &. Right hand goes over to the tom.',pat:'fill1b',res:8},
+   {h:'Crash on 1',t:'A crash with the bass drum on 1 starts a song or lands a fill. After it, the right hand goes back to the hi-hat on the &.',pat:'crash1',res:8},
+   {h:'Starting and stopping',t:'Songs start with a count-in (1 2 3 4), a crash on 1, then the beat. They stop with a fill, then a crash on 1 that rings out. Practice: Crash on 1, then Drum Beat 1 four times, then Ending.',pat:'end1',res:8},
+   {h:'Later: 16th fills',t:'When the 8th fills are easy, the same fills get twice as fast: 4 e & a. Those are in Patterns under Fills, marked 16ths. Not yet.',pat:'fill2',res:16,hearOnly:true},
  ]},
  {id:'music',name:'Playing With Music',sub:'keeping a beat under a song',steps:[
    {h:'Your job',t:'With a band, the drummer is the clock. Everyone else listens to you. Keep the beat steady, do not speed up when it gets exciting.',count:4},
@@ -768,6 +791,10 @@ function renderToday(){ const t=pickToday(); const el=$('#todayCards'); el.inner
 function renderGrown(){ const el=$('#grownStats'); const week=[]; let tot=0; for(let i=6;i>=0;i--){ const k=dayKey(new Date(Date.now()-i*864e5)); const m=((P.min||{})[k]||0)/60; tot+=m; week.push(`<span class="card" style="padding:4px 8px;margin:2px;display:inline-block">${k.slice(5)}: ${m.toFixed(1)} min</span>`); }
   let rows=''; BEATS.concat(P.mine).forEach(p=>{ const a=P.scores[p.id], b=P.scores['tr_'+p.id]; if(!a&&!b)return; const best=Math.max(a?a.best:0,b?b.best:0); const runs=(a?a.runs:0)+(b?b.runs:0); const last=Math.max(a?a.last||0:0,b?b.last||0:0); rows+=`<div class="card" style="margin:3px 0;padding:6px 10px;display:flex;gap:8px;align-items:center"><span style="min-width:140px">${p.name}</span><span class="stars" style="font-size:14px">${stars(best)}</span><span class="small muted">${Math.round(best*100)}% · ${runs} runs${last?' · '+new Date(last).toLocaleDateString():''}</span></div>`; });
   const ld=Object.keys(P.lessons).length; el.innerHTML=`<b>This week: ${tot.toFixed(0)} minutes of timed practice</b><div style="margin:6px 0">${week.join('')}</div><b>Lessons finished: ${ld} of ${LESSONS.length}</b><div style="margin-top:6px"><b>Patterns</b></div>${rows||'<p class="muted small">No scored runs yet.</p>'}`; }
+function teachSummary(){ const week=[]; let tot=0; for(let i=6;i>=0;i--){ const k=dayKey(new Date(Date.now()-i*864e5)); tot+=((P.min||{})[k]||0)/60; } const rows=BEATS.filter(p=>p.g==='sheet').map(p=>{ const a=P.scores[p.id], b=P.scores['tr_'+p.id]; const best=Math.max(a?a.best:0,b?b.best:0); const runs=(a?a.runs:0)+(b?b.runs:0); return runs?`${p.name} (track ${p.track}): ${stars(best)} ${Math.round(best*100)}%, ${runs} runs`:null; }).filter(Boolean); const st=P.streak||{n:0}; return `STICK practice summary for Garrett, week ending ${dayKey()}\n${tot.toFixed(1)} minutes of timed practice this week. Streak: ${st.n} days.\n`+(rows.length?rows.join('\n'):'No scored runs on the book exercises yet.'); }
+$('#teachBtn').onclick=()=>{ const b=$('#teachBox'); b.style.display=b.style.display==='none'?'block':'none'; $('#teachSummary').textContent=teachSummary(); };
+$('#teachCopy').onclick=async()=>{ const t=teachSummary(); try{ await navigator.clipboard.writeText(t); toast('Summary copied'); }catch(e){ $('#teachSummary').textContent=t; toast('Select the text to copy'); } };
+$('#teachOpen').onclick=()=>{ setMode('patterns'); patGroup='sheet'; $$('#patGroupSeg button').forEach(x=>x.classList.toggle('active',x.dataset.g==='sheet')); listPatterns(); };
 $('#grownBtn').onclick=()=>{ const b=$('#grownBox'); b.style.display=b.style.display==='none'?'block':'none'; if(b.style.display==='block') renderGrown(); };
 $('#expBtn').onclick=async()=>{ const txt=JSON.stringify(P); const ta=$('#progTxt'); ta.style.display='block'; ta.value=txt; try{ await navigator.clipboard.writeText(txt); toast('Progress copied'); }catch(e){ ta.select(); toast('Select all and copy'); } };
 $('#impBtn').onclick=()=>{ const ta=$('#progTxt'); if(ta.style.display==='none'){ ta.style.display='block'; ta.value=''; ta.placeholder='Paste progress here, then tap Paste progress again'; ta.focus(); return; } try{ const o=JSON.parse(ta.value); if(!o||typeof o!=='object'||!o.scores) throw 0; P=o; P.lessons=P.lessons||{}; P.scores=P.scores||{}; P.mine=P.mine||[]; save(P); toast('Progress loaded'); renderToday(); renderGrown(); listLessons(); listPatterns(); renderTrProg(); }catch(e){ toast('That did not look like STICK progress'); } };
@@ -781,7 +808,13 @@ $('#modeSeg').onclick=e=>{ const b=e.target.closest('button'); if(b) setMode(b.d
 const KEYS={a:'hat',s:'snare',d:'kick',f:'tom1',g:'tom2',h:'ftom',j:'crash',k:'ride'};
 document.addEventListener('keydown',e=>{ if(e.repeat)return; const id=KEYS[e.key]; if(!id)return; const i=pads.findIndex(p=>p.id===id); if(i>=0) hitPad(i); else { playInst(id); onUserHit(id); } });
 document.addEventListener('visibilitychange',()=>{ if(document.hidden) stopEverything(); });
-setMode('today');
+$('#leftyBtn').onclick=()=>{ lefty=!lefty; $('#leftyBtn').classList.toggle('gold',lefty); P.lefty=lefty; save(P); renderKit(); if(curPat) drawBoth($('#patSheet'),$('#patStaff'),cur()); toast(lefty?'Left-handed: kit mirrored, RH and LH swapped':'Right-handed'); };
+if(P.lefty){ lefty=true; $('#leftyBtn').classList.add('gold'); renderKit(); }
+// latency tap test: 8 clicks, tap along, store the median offset
+$('#latBtn').onclick=()=>{ stopSeq(); const a=ac(); const t0=a.currentTime+.3; const sp=60/90; const times=[]; for(let i=0;i<8;i++){ click(t0+i*sp,i%4===0); times.push(t0+i*sp); } const taps=[]; $('#latState').textContent='tap on each click (8)'; const h=(tAbs)=>{ let best=null,bd=1; times.forEach(c=>{ const d=tAbs-c; if(Math.abs(d)<.3&&Math.abs(d)<bd){bd=Math.abs(d);best=d;} }); if(best!=null){ taps.push(best); $('#latState').textContent='tap on each click ('+(8-taps.length)+')'; } if(taps.length>=8||tAbs>times[7]+.5){ userHitHook=null; micHook=null; const sorted=taps.slice().sort((x,y)=>x-y); const med=sorted.length?sorted[Math.floor(sorted.length/2)]:0; P.latency=Math.round(med*1000)/1000; save(P); $('#latState').textContent='offset '+Math.round(med*1000)+' ms saved'; toast('Your taps land '+Math.round(med*1000)+' ms '+(med>0?'late':'early')+'. Scoring now allows for it.'); } }; userHitHook=(inst,t)=>h(t); micHook=h; setTimeout(()=>{ if(userHitHook){ userHitHook=null; micHook=null; $('#latState').textContent=taps.length?('offset '+Math.round((P.latency||0)*1000)+' ms'):'no taps heard'; } }, (times[7]-a.currentTime+1)*1000); };
+if(P.latency) $('#latState').textContent='offset '+Math.round(P.latency*1000)+' ms';
+// deep link: ?pat=t7&bpm=70&prove=1
+(function(){ const q=new URLSearchParams(location.search); const id=q.get('pat'); if(q.get('bpm')){ bpm=Math.max(40,Math.min(200,+q.get('bpm')||80)); $('#bpm').value=bpm; } if(id&&patById(id)){ const p=patById(id); setMode('patterns'); patGroup=p.g; $$('#patGroupSeg button').forEach(x=>x.classList.toggle('active',x.dataset.g===p.g)); if(q.get('prove')){ lp='prove'; $$('#lpSeg button').forEach(x=>x.classList.toggle('active',x.dataset.lp==='prove')); } listPatterns(); openPat(p); } else setMode('today'); })();
 if('serviceWorker' in navigator && location.protocol==='https:'){ navigator.serviceWorker.register('./sw.js').catch(()=>{}); }
 </script>
 </body>

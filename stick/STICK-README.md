@@ -1,13 +1,16 @@
-# STICK v0.4 · Nov 12 2026 — count voice fix
+# STICK v0.5 · Nov 12 2026 — ready for the teacher
 
-Upload INTO the existing stick/ folder of motbuchanan/gameshelf (replace index.html and sw.js, add the five wav files):
-  stick/index.html      v0.4
-  stick/sw.js           cache stick-v0-4 (precaches the wavs)
-  stick/count-one.wav, count-two.wav, count-three.wav, count-four.wav, count-and.wav   (~11 KB each)
+Upload INTO the existing stick/ folder of motbuchanan/gameshelf, replacing: index.html, sw.js (cache stick-v0-5). Nothing else changes; the wavs and icon from v0.4 stay.
 
-Root index.html and sw.js are unchanged; nothing else to upload.
+New in v0.5
+- Trainer ignores its own click (45 ms gate around every scheduled click) and ignores everything during the count-in.
+- RH / LH / RF under each row of the picture grid, like the teacher wrote on the sheet. Lefty button on the Kit mirrors the kit and swaps RH/LH.
+- Count button now cycles: off / "1 2 3 4" / "1 & 2 & 3 & 4 &" on every bar.
+- Half bar button on any 4/4 pattern: plays just "1 & 2 &" and repeats (2/4), for when a beat will not come together.
+- Fills lesson rebuilt as 8th-note fills first (Fill 0 on 3 & 4 &, Fill 1, snare-then-tom), then Crash on 1, then Starting and Stopping; 16th fills marked "later".
+- Per-drum result line in Prove mode ("Hi-hat 100% · Bass drum 100% · Snare 0%").
+- Tap test in Trainer: 8 clicks, tap along, stores the device offset and scoring allows for it.
+- "For the teacher" card on Today: a short note, the two questions, and a copyable weekly summary.
+- Deep links: ?pat=t8&bpm=70&prove=1 opens straight to that pattern.
 
-What was wrong: the count-in used the browser's speech synthesizer (speechSynthesis), which starts whenever the device feels like it, 100 to 500 ms late and different every time, and on iPad it queues. It could never line up with the click.
-Fix: five short recorded words scheduled on the Web Audio clock, the same clock the click and the drums use. Verified headless: 0.0 ms error on all four count-in beats.
-New: a "🗣 Count" button next to Click. Off = numbers only on the count-in (default). On = "1 2 3 4" spoken on every bar while a pattern plays, so he can count along.
-Fallback: if the wavs fail to load (downloaded file, offline before first visit), the count-in uses rising pitched tones instead of silence.
+Also delivered: STICK-teacher-card.pdf (two cards per letter page, cut in half) and stick-qr.png (bare QR). Both point at https://motbuchanan.github.io/gameshelf/stick/
