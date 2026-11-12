@@ -46,6 +46,17 @@
   .row{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:6px 0;}
   .card{background:var(--panel2); border:1px solid var(--line); border-radius:12px; padding:10px; margin:8px 0;}
   .card.sel{border-color:var(--gold)}
+  .ovl{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:60;display:flex;align-items:center;justify-content:center;padding:16px}
+  .ovlcard{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px;max-width:540px;width:100%;max-height:90vh;overflow:auto}
+  .ovlcard h2{font-family:Georgia,serif;margin:0 0 8px;color:var(--gold)}
+  .ovlcard p{font-size:15px;line-height:1.5;margin:0 0 8px}
+  .tl{border-left:3px solid var(--line);padding-left:12px;margin:10px 0 18px}
+  .tl h3{margin:0 0 2px;font-size:17px}
+  .tstep{margin:10px 0 14px}
+  .tstep b{color:var(--gold)}
+  .tstep p{margin:3px 0 6px;font-size:14px;line-height:1.45}
+  .tsheet{max-width:520px}
+  .ttag{display:inline-block;font-size:11px;background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:2px 8px;margin-right:4px;color:var(--muted)}
   .toast{position:fixed; left:50%; bottom:24px; transform:translateX(-50%); background:#000c; color:#fff; padding:10px 16px; border-radius:999px; font-size:13px; opacity:0; transition:opacity .2s; pointer-events:none; z-index:50;}
   .toast.on{opacity:1}
 
@@ -118,7 +129,7 @@
     <h1>ST<span style="color:var(--gold)">I</span>CK</h1>
     <p class="sub" style="margin:0">see · tap · internalize · count · keep time</p>
   </div>
-  <span id="verBadge">v0.5 · Nov 12</span>
+  <span id="verBadge">v0.6 · Nov 12</span>
 </div>
 <div class="bar" style="margin-top:8px">
   <div class="seg" id="modeSeg">
@@ -127,6 +138,7 @@
     <button data-mode="patterns">Patterns</button>
     <button data-mode="play">🎵 Play-Along</button>
     <button data-mode="trainer">🎤 Trainer</button>
+    <button data-mode="tour">🗺 Course</button>
   </div>
   <label class="field">Tempo <input type="number" id="bpm" min="40" max="200" value="80" style="width:64px"></label>
   <button class="btn" id="metroBtn">⏱ Click</button>
@@ -144,11 +156,11 @@
     <p class="lead" style="margin:0 0 6px"><b>Hi, drum teacher.</b> Garrett's dad built this from the practice sheets you sent home. The Book tab has your 12 exercises in the same picture grid. It counts him in, lights up the drums, and scores his timing. Nothing to sign up for.</p>
     <p class="small muted" style="margin:0 0 8px">Two questions whenever you have a minute: does anything here work differently from how you teach it, and what are the next two or three things he will see? Thank you.</p>
     <div id="teachSummary" class="small"></div>
-    <div class="row"><button class="btn" id="teachCopy">Copy this week's summary</button><button class="btn" id="teachOpen">Open The Book</button></div>
+    <div class="row"><button class="btn" id="teachCopy">Copy this week's summary</button><button class="btn" id="teachOpen">Open the Course Map</button></div>
   </div>
   <div id="grownBox" class="card" style="display:none">
     <div id="grownStats"></div>
-    <div class="row"><button class="btn" id="expBtn">Copy progress</button><button class="btn" id="impBtn">Paste progress</button></div>
+    <div class="row"><button class="btn" id="introBtn">Replay welcome</button><button class="btn" id="expBtn">Copy progress</button><button class="btn" id="impBtn">Paste progress</button></div>
     <textarea id="progTxt" style="width:100%;height:70px;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:6px;font-size:11px;display:none"></textarea>
   </div>
   <div id="todayKitSlot" style="margin-top:8px"></div>
@@ -271,11 +283,24 @@
   <div id="trKitSlot" style="margin-top:8px"></div>
 </div>
 
+<!-- COURSE MAP -->
+<div id="p-tour" class="panel">
+  <div id="tourIntro"></div>
+  <div id="tourBody"></div>
+</div>
+
+<!-- WELCOME -->
+<div id="ovl" class="ovl" style="display:none"><div class="ovlcard">
+  <div id="ovlBody"></div>
+  <div class="row" style="margin-top:12px"><button class="btn" id="ovlBack">◀ Back</button><span class="grow"></span><button class="btn" id="ovlSkip">Look around</button><button class="btn gold" id="ovlNext">Next ▶</button></div>
+  <div id="ovlDots" style="text-align:center;margin-top:8px;color:var(--muted);letter-spacing:6px"></div>
+</div></div>
+
 <div class="toast" id="toast"></div>
 
 <script>
 'use strict';
-const VER='v0.5 · Nov 12';
+const VER='v0.6 · Nov 12';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 let toastT; function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),1600);}
 $('#verBadge').onclick=()=>toast('STICK '+VER);
@@ -794,7 +819,7 @@ function renderGrown(){ const el=$('#grownStats'); const week=[]; let tot=0; for
 function teachSummary(){ const week=[]; let tot=0; for(let i=6;i>=0;i--){ const k=dayKey(new Date(Date.now()-i*864e5)); tot+=((P.min||{})[k]||0)/60; } const rows=BEATS.filter(p=>p.g==='sheet').map(p=>{ const a=P.scores[p.id], b=P.scores['tr_'+p.id]; const best=Math.max(a?a.best:0,b?b.best:0); const runs=(a?a.runs:0)+(b?b.runs:0); return runs?`${p.name} (track ${p.track}): ${stars(best)} ${Math.round(best*100)}%, ${runs} runs`:null; }).filter(Boolean); const st=P.streak||{n:0}; return `STICK practice summary for Garrett, week ending ${dayKey()}\n${tot.toFixed(1)} minutes of timed practice this week. Streak: ${st.n} days.\n`+(rows.length?rows.join('\n'):'No scored runs on the book exercises yet.'); }
 $('#teachBtn').onclick=()=>{ const b=$('#teachBox'); b.style.display=b.style.display==='none'?'block':'none'; $('#teachSummary').textContent=teachSummary(); };
 $('#teachCopy').onclick=async()=>{ const t=teachSummary(); try{ await navigator.clipboard.writeText(t); toast('Summary copied'); }catch(e){ $('#teachSummary').textContent=t; toast('Select the text to copy'); } };
-$('#teachOpen').onclick=()=>{ setMode('patterns'); patGroup='sheet'; $$('#patGroupSeg button').forEach(x=>x.classList.toggle('active',x.dataset.g==='sheet')); listPatterns(); };
+$('#teachOpen').onclick=()=>{ setMode('tour'); };
 $('#grownBtn').onclick=()=>{ const b=$('#grownBox'); b.style.display=b.style.display==='none'?'block':'none'; if(b.style.display==='block') renderGrown(); };
 $('#expBtn').onclick=async()=>{ const txt=JSON.stringify(P); const ta=$('#progTxt'); ta.style.display='block'; ta.value=txt; try{ await navigator.clipboard.writeText(txt); toast('Progress copied'); }catch(e){ ta.select(); toast('Select all and copy'); } };
 $('#impBtn').onclick=()=>{ const ta=$('#progTxt'); if(ta.style.display==='none'){ ta.style.display='block'; ta.value=''; ta.placeholder='Paste progress here, then tap Paste progress again'; ta.focus(); return; } try{ const o=JSON.parse(ta.value); if(!o||typeof o!=='object'||!o.scores) throw 0; P=o; P.lessons=P.lessons||{}; P.scores=P.scores||{}; P.mine=P.mine||[]; save(P); toast('Progress loaded'); renderToday(); renderGrown(); listLessons(); listPatterns(); renderTrProg(); }catch(e){ toast('That did not look like STICK progress'); } };
@@ -802,7 +827,9 @@ renderToday();
 
 /* ---------- modes ---------- */
 const kitHome=$('#kit').parentNode;
-function setMode(m){ $$('#modeSeg button').forEach(b=>b.classList.toggle('active',b.dataset.mode===m)); $$('.panel').forEach(p=>p.classList.remove('show')); $('#p-'+m).classList.add('show'); const k=$('#kit'); const slot={patterns:'#patKitSlot',lessons:'#lessonKitSlot',play:'#playKitSlot',trainer:'#trKitSlot',today:'#todayKitSlot'}[m]; if(m==='today') renderToday(); if(slot) $(slot).appendChild(k); else kitHome.insertBefore(k,kitHome.firstChild); if(m!=='kit'){ editing=false; $('#editbox').classList.remove('show'); k.classList.remove('edit'); } }
+// tour panel hides the kit entirely
+
+function setMode(m){ $$('#modeSeg button').forEach(b=>b.classList.toggle('active',b.dataset.mode===m)); $$('.panel').forEach(p=>p.classList.remove('show')); $('#p-'+m).classList.add('show'); const k=$('#kit'); k.style.display=''; const slot={patterns:'#patKitSlot',lessons:'#lessonKitSlot',play:'#playKitSlot',trainer:'#trKitSlot',today:'#todayKitSlot'}[m]; if(m==='tour'){ renderTour(); } if(m==='today') renderToday(); if(slot) $(slot).appendChild(k); else kitHome.insertBefore(k,kitHome.firstChild); if(m!=='kit'){ editing=false; $('#editbox').classList.remove('show'); k.classList.remove('edit'); } }
 $('#modeSeg').onclick=e=>{ const b=e.target.closest('button'); if(b) setMode(b.dataset.mode); };
 // keyboard support for desktop testing
 const KEYS={a:'hat',s:'snare',d:'kick',f:'tom1',g:'tom2',h:'ftom',j:'crash',k:'ride'};
@@ -813,8 +840,52 @@ if(P.lefty){ lefty=true; $('#leftyBtn').classList.add('gold'); renderKit(); }
 // latency tap test: 8 clicks, tap along, store the median offset
 $('#latBtn').onclick=()=>{ stopSeq(); const a=ac(); const t0=a.currentTime+.3; const sp=60/90; const times=[]; for(let i=0;i<8;i++){ click(t0+i*sp,i%4===0); times.push(t0+i*sp); } const taps=[]; $('#latState').textContent='tap on each click (8)'; const h=(tAbs)=>{ let best=null,bd=1; times.forEach(c=>{ const d=tAbs-c; if(Math.abs(d)<.3&&Math.abs(d)<bd){bd=Math.abs(d);best=d;} }); if(best!=null){ taps.push(best); $('#latState').textContent='tap on each click ('+(8-taps.length)+')'; } if(taps.length>=8||tAbs>times[7]+.5){ userHitHook=null; micHook=null; const sorted=taps.slice().sort((x,y)=>x-y); const med=sorted.length?sorted[Math.floor(sorted.length/2)]:0; P.latency=Math.round(med*1000)/1000; save(P); $('#latState').textContent='offset '+Math.round(med*1000)+' ms saved'; toast('Your taps land '+Math.round(med*1000)+' ms '+(med>0?'late':'early')+'. Scoring now allows for it.'); } }; userHitHook=(inst,t)=>h(t); micHook=h; setTimeout(()=>{ if(userHitHook){ userHitHook=null; micHook=null; $('#latState').textContent=taps.length?('offset '+Math.round((P.latency||0)*1000)+' ms'):'no taps heard'; } }, (times[7]-a.currentTime+1)*1000); };
 if(P.latency) $('#latState').textContent='offset '+Math.round(P.latency*1000)+' ms';
+/* ---------- course map (for the teacher and parents) ---------- */
+function renderTour(){
+  const k=$('#kit'); if(k.parentNode&&k.parentNode.id!=='kitHomeHidden'){ /* leave kit where it is but hidden */ } k.style.display='none';
+  $('#tourIntro').innerHTML=`<p class="lead" style="font-size:16px"><b>Course map.</b> Every lesson in STICK, in the order Garrett meets it, with the exact words he reads and the picture grid he plays from. Tap 🔊 to hear any pattern, or "Open" to try that step yourself.</p>
+  <div class="card"><b>How a practice works</b>
+   <p class="small" style="margin:6px 0 0;line-height:1.5">• <b>Today</b> gives him 3 things, about 5 minutes: a warm-up, one beat from your sheets, and the same beat with a backing song.<br>
+   • Every pattern has <b>Hear it</b> (listen first), <b>Learn</b> (drums light up just before each hit, sound plays with him) and <b>Prove</b> (count-in, then silent; he plays it and gets scored).<br>
+   • Counting is always "1 & 2 & 3 & 4 &", spoken on the count-in, and optionally on every bar.<br>
+   • Timing score: within 40 ms = perfect, within 120 ms = on time (early or late shown), wider = miss. If he is steadily early or late by the same amount (usually the iPad or mic delay), that offset is removed before scoring. Stars: 1 at 45%, 2 at 70%, 3 at 90%.<br>
+   • <b>Trainer</b> mode listens through the iPad mic while he plays a real practice pad. It can hear <i>when</i> he hits, not <i>which</i> drum, so it scores timing only.<br>
+   • Extras when a beat won't come together: <b>Half speed</b>, and <b>Half bar</b> (just "1 & 2 &" on repeat).</p></div>
+  <p class="small muted">Nothing here is locked; he can open any lesson. The sheets you sent home are lessons 6 and 7 and the "The Book" tab.</p>`;
+  const body=$('#tourBody'); body.innerHTML='';
+  LESSONS.forEach((l,i)=>{ const wrap=document.createElement('div'); wrap.className='tl';
+    let h=`<h3>${i+1}. ${l.name}</h3><div class="small muted">${l.sub} · ${l.steps.length} steps</div>`;
+    l.steps.forEach((st,j)=>{ const tags=[]; if(st.pat) tags.push(st.hearOnly?'listen only':'listen, then play'); if(st.quiz) tags.push('quiz: tap the right drum'); if(st.inst) tags.push('hear the drum'); if(st.count) tags.push('count along'); if(st.goto) tags.push('sends him to practice'); if(st.pic) tags.push('picture');
+      h+=`<div class="tstep"><b>${j+1}. ${st.h}</b> ${tags.map(t=>`<span class="ttag">${t}</span>`).join('')}<p>${st.t}</p>`;
+      if(st.pic) h+=`<div class="tsheet">${st.pic==='grip'?PIC_GRIP:PIC_SIT}</div>`;
+      if(st.pat) h+=`<div class="tsheet" id="ts_${i}_${j}"></div>`;
+      if(st.staffAll) h+=`<div class="tsheet"><svg id="tm_${i}_${j}"></svg></div>`;
+      h+=`<div class="row">${st.pat?`<button class="btn" data-hear="${st.pat}">🔊 Hear</button>`:''}${st.inst?`<button class="btn" data-inst="${st.inst}">🔊 ${INST[st.inst].name}</button>`:''}<button class="btn" data-open="${i},${j}">Open ▶</button></div></div>`; });
+    wrap.innerHTML=h; body.appendChild(wrap);
+    l.steps.forEach((st,j)=>{ if(st.pat){ const p=lessonPat(st.pat); if(p) drawSheet(document.getElementById(`ts_${i}_${j}`),p); } if(st.staffAll) drawStaffMap(document.getElementById(`tm_${i}_${j}`)); });
+  });
+  body.querySelectorAll('[data-hear]').forEach(b=>b.onclick=()=>{ const p=lessonPat(b.dataset.hear); runPattern(p,{loops:2,countIn:1,voice:true}); });
+  body.querySelectorAll('[data-inst]').forEach(b=>b.onclick=()=>playInst(b.dataset.inst));
+  body.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>{ const [i,j]=b.dataset.open.split(',').map(Number); setMode('lessons'); openLesson(LESSONS[i]); curStep=j; showStep(); window.scrollTo(0,0); });
+}
+/* ---------- welcome walkthrough (first visit) ---------- */
+const WELCOME=[
+ {h:'Welcome to STICK',t:'This is for practicing drums at home between lessons. The pictures look just like the practice sheets from class: hi-hat on top, snare in the middle, bass drum on the bottom, and the count across the top.'},
+ {h:'A practice is 3 things',t:'The <b>Today</b> screen picks three things, about five minutes: a warm-up, one beat from the book, and that beat with a song. Tap a card to go there. It gets a check when it is done.'},
+ {h:'Listen, then Learn, then Prove',t:'<b>Hear it</b> plays the pattern for you. <b>Learn</b> lights up each drum right before you hit it. <b>Prove</b> counts you in, then goes quiet so you play it yourself, and gives you stars.'},
+ {h:'Count out loud',t:'Say "1 & 2 & 3 & 4 &" while you play, just like at class. The app counts you in with "1, 2, 3, 4". If it is too hard, try <b>Half speed</b>.'},
+ {h:'Start with Lesson 1',t:'Lesson 1 shows you the parts of the kit. Grown-ups: the <b>🗺 Course</b> button shows every lesson on one page.'},
+];
+let wi=0;
+function showWelcome(){ wi=0; $('#ovl').style.display='flex'; drawWelcome(); }
+function drawWelcome(){ const w=WELCOME[wi]; $('#ovlBody').innerHTML=`<h2>${w.h}</h2><p>${w.t}</p>`+(wi===0?`<div class="tsheet" id="ovlSheet"></div>`:''); if(wi===0) drawSheet($('#ovlSheet'),patById('t7')); $('#ovlBack').style.visibility=wi?'visible':'hidden'; $('#ovlNext').textContent=wi===WELCOME.length-1?'Start Lesson 1 ▶':'Next ▶'; $('#ovlDots').textContent=WELCOME.map((_,k)=>k===wi?'●':'○').join(''); }
+function closeWelcome(){ $('#ovl').style.display='none'; P.seen=1; save(P); }
+$('#ovlNext').onclick=()=>{ if(wi<WELCOME.length-1){ wi++; drawWelcome(); } else { closeWelcome(); setMode('lessons'); openLesson(LESSONS[0]); } };
+$('#ovlBack').onclick=()=>{ if(wi>0){ wi--; drawWelcome(); } };
+$('#ovlSkip').onclick=()=>closeWelcome();
+$('#introBtn').onclick=()=>showWelcome();
 // deep link: ?pat=t7&bpm=70&prove=1
-(function(){ const q=new URLSearchParams(location.search); const id=q.get('pat'); if(q.get('bpm')){ bpm=Math.max(40,Math.min(200,+q.get('bpm')||80)); $('#bpm').value=bpm; } if(id&&patById(id)){ const p=patById(id); setMode('patterns'); patGroup=p.g; $$('#patGroupSeg button').forEach(x=>x.classList.toggle('active',x.dataset.g===p.g)); if(q.get('prove')){ lp='prove'; $$('#lpSeg button').forEach(x=>x.classList.toggle('active',x.dataset.lp==='prove')); } listPatterns(); openPat(p); } else setMode('today'); })();
+(function(){ const q=new URLSearchParams(location.search); const id=q.get('pat'); if(q.get('bpm')){ bpm=Math.max(40,Math.min(200,+q.get('bpm')||80)); $('#bpm').value=bpm; } if(id&&patById(id)){ const p=patById(id); setMode('patterns'); patGroup=p.g; $$('#patGroupSeg button').forEach(x=>x.classList.toggle('active',x.dataset.g===p.g)); if(q.get('prove')){ lp='prove'; $$('#lpSeg button').forEach(x=>x.classList.toggle('active',x.dataset.lp==='prove')); } listPatterns(); openPat(p); } else if(q.get('teacher')!==null){ setMode('tour'); } else { setMode('today'); if(!P.seen) showWelcome(); } })();
 if('serviceWorker' in navigator && location.protocol==='https:'){ navigator.serviceWorker.register('./sw.js').catch(()=>{}); }
 </script>
 </body>

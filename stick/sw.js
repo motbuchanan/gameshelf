@@ -1,4 +1,4 @@
-const CACHE='stick-v0-5';
+const CACHE='stick-v0-6';
 const CORE=['./','./index.html','./manifest.json','./icon.png','./count-one.wav','./count-two.wav','./count-three.wav','./count-four.wav','./count-and.wav'];
 self.addEventListener('install',e=>{ e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting())); });
 self.addEventListener('activate',e=>{ e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())); });
