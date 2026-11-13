@@ -124,7 +124,9 @@ addition to division. Progress in `bloodstream_v1`; plays to `bloodstream_games`
 - [ ] Part D: "From Dad" fact cards typed in by Mot **IDEA**
 
 ### Oops Lab: mistakes-are-fun contraption game  **LIVE**
-Path: `oopslab.html` · Current: **v0.62** (2026-11-12) · shelf **v78**
+Path: `oopslab.html` · Current: **v0.8** (2026-11-13) · shelf **v78**
+v0.8: Daily Experiments (3 per day, seeded by date, streak calendar, Shiny Charm reward), Crew Missions (8 three-step chains, each unlocks a Lab Tale), Shiny cards (1 in 20, 1 in 5 with charm), 12 new badges (61 total), award popup moved above the controls.
+v0.7: fixed sound spam after Kaboom / Hat Trick (cosmetic updates were re-running landing code every frame), knocked-over character now gets back up, first-time how-to card per contraption + "? How" button, GOAL arrow for the first 3 tries, update checker (auto-refresh on open, "Update now" bar during play). Fuzz-tested every contraption x yard x ammo: no stuck shots, no errors, no sound spam.
 Single-file canvas game (arcade cabinet, ARCADE_H, sits after Bloodstream). Built to practice making
 mistakes and handling the feelings without grading the player: the player coaches a crew character
 through frustration (5 calm-down tools, all valid; each character has a hidden favorite) and collects
@@ -133,6 +135,7 @@ failures as cards. 8 characters (4 unlock by play, Perfectionator has a growth a
 crew versions, combos, rare moments, 49 badges, 14 Lab Tales, Oops Museum, Buddy Mode, crew shout-outs.
 Progress in localStorage `oopslab.v1`. Does NOT load gamenight.js and writes no `_games` record yet,
 so it is not in Most Played or the shelf achievements (no GAME_KEYS / NAMES entry needed until it does).
+- [ ] Next from the retention list: Invention Workshop (design your own card / crew member), Dad Duels, seasonal events **IDEA**
 - [ ] Optional: record plays to `oopslab_games` (needs gamenight GAME_KEYS + achievements NAMES) **IDEA**
 - [ ] Art pass for the other contraptions and the moon (v0.6 detail is Test Yard + catapult) **IDEA**
 
